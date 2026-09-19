@@ -233,6 +233,17 @@ completed/changed tasks, stale timestamps and a full queue. The review credentia
 cannot call this endpoint. Inspect ambiguous responses using read-only review access
 before any further action; never claim jobs simply to inspect them.
 
+For explicitly requested site-owner acceptance cases when no signed-in browser is
+available, `prepare-acceptance-migration.py` can prepare a single additive data
+migration for an authenticated owner deployment. It does not submit anything or
+read a credential. Supply the prepared request JSON, the exact existing task UUID
+and title identifying the owner's account, and a fresh output SQL path. The SQL
+adds only the new queued task, retains existing jobs and quota configuration,
+checks global queue capacity, and deduplicates its request key. It introduces no
+HTTP authentication bypass. Ordinary user submissions continue through `/api/jobs`
+with their existing quota rules. Apply acceptance migrations only after the smoke
+gate, then inspect the new job using the separate read-only review tool.
+
 ## Release verification
 
 test-native-workflow-live.py runs a real three-page new-model workflow with all site requests intercepted locally. It never claims a queue task or spends website quota. test-content-workflow.py checks outline invalidation, reviewer isolation, report coverage, honest token accounting and passive chart workbook acceptance. Existing transport, attachment, lease, asset and queue tests remain applicable.
