@@ -49,12 +49,18 @@ training run. It reproduces 16/16 training predictions and 6/8 held-out predicti
 held-out images never enter updates. Actual checkpoint losses rise at epochs 1
 and 5 before declining. These are synthetic teaching results.
 
-This evidence applies only to the reviewed source SHA, not yet to browser
-execution or the final teaching artifacts. The final runtime release also passed
+This evidence applies only to the reviewed source SHA. A separate
+[actual Python worker check](cnn-python-worker-review.md) passed 22 assertions
+under production CSP, including default training and learning rate zero. Neither
+review certifies the unfinished teaching artifacts. The final runtime release passed
 [GitHub CI](https://github.com/dijiahU/rick-ppt/actions/runs/35471242145).
-The production conversation check and a controlled, same-task recovery check are
-prepared; they remain pending until observed during authoring. Automated feedback
-will be labeled as such in the task history.
+
+The [controlled live recovery](cnn-live-workflow.md) now passed initial
+continuation: the same task resumed the same author thread, reused research and
+restored checked source files without changing the old attempt. Website v27 then
+delivered one ordinary chat and two revision messages into that active turn.
+They are acknowledged and clearly labeled automated acceptance feedback; final
+answers and artifact application remain pending.
 
 ## Pending acceptance
 

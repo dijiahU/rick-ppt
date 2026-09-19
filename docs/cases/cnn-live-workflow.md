@@ -1,0 +1,74 @@
+# CNN live workflow checks
+
+These are observations from the authorized new
+[CNN task](https://rick-ppt.woodsy-crane-8759.chatgpt.site/jobs/db69fb9d-5d27-4fc2-9553-a722e2a5acbc).
+They do not approve its unfinished teaching deck.
+
+## Controlled interruption and continuation
+
+After the first actual scene render passed three browser cases, the host retained
+a 171-file checkpoint containing the authoring generator, scene, source programs,
+research, native workspace and capture. The operator verified the task's active
+author phase and the app-server child's parent, process group and working
+directory, then sent SIGTERM only to that owned author process group. The queue
+supervisor stayed running. This was a deliberate recovery test.
+
+The runner recorded an interrupted author phase and a new checkpoint. Read-only
+review confirmed the same website task had failed without a delivered artifact.
+The authorized worker retry endpoint then requeued that exact task using its
+observed failed-attempt timestamp. No new task or quota admission was created.
+
+Observed continuation:
+
+- The same task ID resumed in a new attempt directory; the old directory remains.
+- The real app-server resumed the same author thread with a new turn ID.
+- The completed research receipt was reused unchanged. There is still only one
+  research phase; continuation began at authoring.
+- Eight selected restored source/artifact files exactly matched their prior
+  SHA-256 values. The same eight originals also remained unchanged.
+- The plugin stayed `0.1.0+codex.20260919214127`, with runtime fingerprint
+  `fd43ec226d321db43f884afa598bc9f1ae2d2f34e20cafbf24fbc1d00a7c79de`.
+
+The selected files cover the outline, source notes, scene generator, first scene,
+complete training source, independently audited reference, actual initial scene
+capture and protected original PPTX. The journal additionally verifies every blob
+while restoring the checkpoint. This proves initial continuation from saved work;
+final artifact validation remains pending.
+
+## Conversation during resumed authoring
+
+Website version 27 deployed successfully from source
+`268cc7260f4089e3468a16d8b0d574c81247b0cd`. Its narrowly scoped additive migration
+created explicitly labeled automated acceptance messages only for this running
+CNN task under the original request's owner. The normal leased worker polling and
+Codex steering path then delivered all three into the active resumed author turn:
+
+| Message | Kind | Observed state |
+| --- | --- | --- |
+| `7e4a3568-fbc8-40de-8f01-53040228a9df` | Ordinary chat about training versus held-out evidence | Acknowledged; answer completion pending |
+| `4f70ec99-e21c-408e-96f5-a7795aa2eb3a` | Keep actual loss increases and label the synthetic results | Acknowledged; final artifact application pending |
+| `95f3e650-f1a7-4e0c-b0ca-d2e609ac464e` | Complete C04/C05/C06/C10 experiments and nondifferentiability explanations | Acknowledged; final artifact application pending |
+
+The durable input revision advanced from 0 to 2; ordinary chat did not increment
+it. Acknowledgement is not an applied edit. Final scene/native content, review
+receipts and applied message states must establish the requested corrections.
+
+Production message admission here used an owner-authorized data migration,
+not browser form clicks. The production browser connection is unavailable: the
+installed Edge automation extension is disabled. Upload/UI behavior has separate
+local route/browser and live isolated-phase evidence; this exercise does not
+claim production form or file-upload interaction.
+
+## Actual delivery retrieval
+
+Version 27 also adds optional, separate read-only retrieval of the current ZIP
+paired to the current PPTX. Both ETags and an opaque delivery-version identifier
+must match, and the client rechecks metadata after download. The route never
+claims queue work or initializes database tables. Fifteen client checks, isolated
+real authorization/route checks, the actual site's TypeScript check and production
+build passed. The upgraded read-only CLI was installed with its previous files
+backed up; its credential file was unchanged and was not copied.
+
+An actual production `fetch --bundle` during this unfinished task correctly
+reported `not_completed`. Downloaded final PPTX/ZIP bytes and their matching
+inspection remain pending.
