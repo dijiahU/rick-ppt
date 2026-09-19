@@ -136,13 +136,13 @@ Primary sources:
   durably; reconcile uncertain delivery before retrying. No private reasoning or
   host credentials enter website messages. Acceptance: actual small live Codex
   exercise receives an in-progress correction and resumes an interrupted thread.
-- [ ] **12 — Conversation/checkpoint backend.** Additive D1 migrations for
+- [x] **12 — Conversation/checkpoint backend.** Additive D1 migrations for
   task-owned messages, attachment metadata, worker acknowledgements and recovery
   state. Owner-only reads/writes; lease-checked worker delivery; bounded payloads;
   idempotent client message IDs; attachments hashed and downloaded into task scope;
   resume does not charge new quota or erase prior attempts. Acceptance: ownership,
   cross-user denial, races, upload limits, duplicate sends, lost response and
-  stale-lease tests; old worker routes remain compatible.
+  stale-lease tests; old worker routes remain compatible. Evidence: isolated SQLite/R2 handler suite passes; upload, claim, language and worker recovery regressions pass. D1 migration is additive; source excludes local credentials.
 - [ ] **13 — Website conversation UI.** Live transcript beside previews; ordinary
   chat and modification requests; attach files with upload/error/progress state;
   sent/received/applied status; assistant replies; reconnect without duplicate

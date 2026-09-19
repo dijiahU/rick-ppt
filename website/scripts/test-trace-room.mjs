@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import ts from 'typescript';
+import * as React from 'react';
+import * as jsx from 'react/jsx-runtime';
+import {renderToStaticMarkup} from 'react-dom/server';
+const events=[{seq:1,at:1,stage:'research',kind:'command',label:'Shell command',state:'failed',command:'python inspect.py',output:'<script>doNotExecute()</script>',exitCode:2},{seq:2,at:2,stage:'visual-1',kind:'review',label:'Stage result',state:'completed',detail:'检查了全部页面。',truncated:true}];
+let calls=0;
+const modules={react:{...React,useState(value){calls++;return React.useState(calls===1?events:calls===2?{available:true,totalEvents:2,status:'complete',finished:true}:value);}},'react/jsx-runtime':jsx};
+const code=ts.transpileModule(readFileSync(new URL('../app/admin/jobs/[id]/trace/trace-room.tsx',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+const exports={};new Function('require','exports',code)(name=>{assert.ok(modules[name],name);return modules[name];},exports);
+const html=renderToStaticMarkup(React.createElement(exports.default,{id:'local-fixture'}));
+for(const value of ['python inspect.py','退出码 2','视觉审核','检查了全部页面','在线显示已截断','导出执行记录','只看错误'])assert.ok(html.includes(value),value);
+assert.ok(!html.includes('<script>'));assert.ok(html.includes('&lt;script&gt;'));
+console.log('PASS: actual execution viewer renders commands, output, errors, review details, export controls and truncation; output is escaped as text');

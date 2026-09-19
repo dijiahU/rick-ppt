@@ -1,0 +1,12 @@
+.preview-dialog{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;border-radius:0;overflow:hidden;background:#101411;color:#fff}
+.preview-dialog[open]{display:grid;grid-template-rows:auto minmax(0,1fr)}
+.preview-dialog::backdrop{background:#101411}
+.preview-dialog .preview-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:max(10px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));font-size:13px}
+.preview-dialog .preview-toolbar>span{min-width:0;overflow-wrap:anywhere}
+.preview-dialog .preview-toolbar button{display:flex;align-items:center;gap:12px;flex-shrink:0;width:auto;margin:0;padding:10px 14px;border:1px solid #58645d;border-radius:5px;background:#253129;color:#fff;font:inherit;cursor:pointer}
+.preview-dialog .preview-toolbar button:hover{background:#37493d}
+.preview-dialog .preview-toolbar button:focus-visible{outline:2px solid #d7e9c5;outline-offset:3px}
+.preview-dialog .preview-toolbar button span{font-size:24px;line-height:1}
+.preview-dialog .preview-canvas{min-width:0;min-height:0;padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.preview-dialog .preview-canvas img{display:block;width:100%;height:100%;max-width:none;max-height:none;border:0;object-fit:contain}
+a[aria-haspopup="dialog"]{cursor:zoom-in}
