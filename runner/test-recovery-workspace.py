@@ -3,7 +3,10 @@ import shutil
 import sys
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'pptx-agent/skills/pptx/scripts'))
@@ -111,6 +114,67 @@ class RecoveryWorkspaceTests(unittest.TestCase):
             with self.assertRaises(ValueError):resolve_delivery({'path':path},self.new)
         receipt={'path':'finished.pptx','workspace':str(self.home/'workspace')}
         self.assertEqual(resolve_delivery(receipt,self.new)['path'],str(self.new/'finished.pptx'))
+
+    def test_supervisor_recovery_under_aliased_temp_parent_keeps_native_render_scoped(self):
+        import runner
+        from durable import Journal
+
+        real_parent=self.base/'real-parent';real_parent.mkdir()
+        (real_parent/'scratch').mkdir()
+        alias=self.base/'temporary-alias';alias.symlink_to(real_parent,target_is_directory=True)
+        temporary_alias=alias/'scratch'
+        task={'id':str(uuid.uuid4()),'lease':str(uuid.uuid4())}
+        state_root=self.base/'state'
+        cfg={'state_directory':str(state_root),'plugin_version':'0.2.0',
+             'plugin':str(ROOT/'pptx-agent'),'token':'synthetic-recovery-test-token'}
+        with Journal(state_root,task['id'],plugin_version='0.2.0') as journal:
+            journal.begin_phase('author',self.old)
+            journal.checkpoint(self.old,reason='before-interruption')
+
+        def continue_recovered(config,actual_task,lease,job,journal,plan):
+            # This assertion exercises the supervisor call site, not only the
+            # relocation helper which already canonicalizes its own copy.
+            self.assertEqual(job,job.resolve())
+            self.assertEqual(job.parent,real_parent/'scratch')
+            self.assertEqual(str(job),journal.state['workspace'])
+            source=job/'draft.pptx';source.write_bytes(b'PK-owned-render-fixture')
+            destination=job/'rendered';destination.mkdir()
+            queue=job/'render-requests'
+            identifier='a'*32
+            request={'args':['--headless','--convert-to','pdf','--outdir',str(destination),str(source.resolve())]}
+            (queue/(identifier+'.request.json')).write_text(json.dumps(request))
+
+            def convert(command,**kwargs):
+                self.assertIn('type=bind,source='+str(job)+',target=/work',command)
+                self.assertEqual(command[-1],'/work/draft.pptx')
+                self.assertIn('/work/rendered',command)
+                (destination/'draft.pdf').write_bytes(b'%PDF-scoped-fixture')
+                return SimpleNamespace(returncode=0,stdout='rendered',stderr='')
+
+            with patch.object(runner.subprocess,'run',side_effect=convert) as docker:
+                runner.render_requests(job)
+                self.assertEqual(docker.call_count,1)
+            reply=json.loads((queue/(identifier+'.reply.json')).read_text())
+            self.assertEqual(reply['returncode'],0)
+            self.assertTrue((destination/'draft.pdf').is_file())
+
+            outside=self.base/'outside.pptx';outside.write_bytes(b'PK-outside-fixture')
+            for index,args in enumerate([
+                [*request['args'][:-1],str(outside)],
+                ['--headless','--convert-to','pdf','--outdir',str(self.base),str(source)],
+            ]):
+                identifier=str(index+1)*32
+                (queue/(identifier+'.request.json')).write_text(json.dumps({'args':args}))
+                with patch.object(runner.subprocess,'run') as docker:
+                    runner.render_requests(job);docker.assert_not_called()
+                self.assertNotEqual(json.loads((queue/(identifier+'.reply.json')).read_text())['returncode'],0)
+            return 'continued-with-scoped-native-render'
+
+        with patch.object(runner.tempfile,'gettempdir',return_value=str(temporary_alias)),\
+             patch.object(runner,'_run_job_locked',side_effect=continue_recovered):
+            result=runner._run_job(cfg,task,SimpleNamespace())
+        self.assertEqual(result,'continued-with-scoped-native-render')
+        self.assertEqual(self.files(self.old),self.before_old)
 
 
 if __name__=='__main__':unittest.main()

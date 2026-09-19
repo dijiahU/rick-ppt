@@ -245,7 +245,10 @@ def _run_job(cfg,task,lease):
         if journal.state.get('snapshot_id'):
             from recovery_workspace import relocate_task
             old_root=journal.state['workspace']
-            job=Path(tempfile.gettempdir())/('pptx-lab-resume-'+uuid.uuid4().hex)
+            # macOS exposes the same temporary tree through /var and /private/var.
+            # Every downstream broker must receive the canonical task root, just
+            # as prepare() does; resolved input paths otherwise appear outside it.
+            job=Path(tempfile.gettempdir()).resolve()/('pptx-lab-resume-'+uuid.uuid4().hex)
             plan=journal.recover(job,plugin_version=version,recovery_id=task['lease'],allow_plugin_upgrade=True)
             relocate_task(old_root,job,cfg)
             refresh_support(cfg,job)

@@ -35,6 +35,26 @@ capture and protected original PPTX. The journal additionally verifies every blo
 while restoring the checkpoint. This proves initial continuation from saved work;
 final artifact validation remains pending.
 
+### Native rendering after recovery exposed a Mac path boundary
+
+The resumed author could read and extend its files, but its first native render
+was rejected before Docker started. The supervisor retained `/var/folders/...` as
+the recovered task root while the native input and output paths resolved to
+`/private/var/folders/...`. A lexical containment check treated these aliases of
+the same directory as different roots. Fresh tasks already canonicalized this
+path; the recovery call site did not.
+
+The recovery supervisor now resolves the temporary parent before creating the new
+attempt. A regression exercises the actual supervisor with a symlinked temporary
+ancestor, real journal recovery and the real render broker. Scoped conversion is
+accepted; outside-task input and output are still rejected. The eight recovery,
+seven trajectory-artifact and six trajectory checks passed. A separate minimal
+reproduction demonstrated zero converter calls with the old alias and one with
+the canonical root. This is a host recovery fix, not a relaxation of containment.
+
+The failed attempt and requests are retained. Continuation and actual Docker
+rendering on the corrected supervisor must be checked before this case passes.
+
 ## Conversation during resumed authoring
 
 Website version 27 deployed successfully from source
@@ -48,10 +68,26 @@ Codex steering path then delivered all three into the active resumed author turn
 | `7e4a3568-fbc8-40de-8f01-53040228a9df` | Ordinary chat about training versus held-out evidence | Acknowledged; answer completion pending |
 | `4f70ec99-e21c-408e-96f5-a7795aa2eb3a` | Keep actual loss increases and label the synthetic results | Acknowledged; final artifact application pending |
 | `95f3e650-f1a7-4e0c-b0ca-d2e609ac464e` | Complete C04/C05/C06/C10 experiments and nondifferentiability explanations | Acknowledged; final artifact application pending |
+| `47ad4991-89ca-4398-8bfd-c5e292ed07b3` | Correct scan highlights, manual-timeline continuation and actual source-line highlights | Acknowledged in website v28; final application pending |
 
-The durable input revision advanced from 0 to 2; ordinary chat did not increment
-it. Acknowledgement is not an applied edit. Final scene/native content, review
+The durable input revision advanced from 0 to 3; ordinary chat did not increment
+it. The author publicly answered the ordinary chat, distinguishing the 16 training
+examples from eight separate held-out examples and limiting the accuracy claim
+to that synthetic sample. Acknowledgement is not an applied edit. Final scene/native content, review
 receipts and applied message states must establish the requested corrections.
+
+The fourth input was admitted by website v28 from source
+`4e1d2c7fd55841747a72a71ee21a3dc8258e0cec`. Independent draft checks found that
+all four convolution output cells shared a row-only highlight predicate, and
+Step/Scrub changed the displayed playhead without seeking the timeline. Actual
+engine replay showed `1000 ms → Play + 16 ms → 16 ms`, instead of `1016 ms`.
+The feedback asks for corrected row-and-column highlights, a visible moving
+input patch, timeline continuity and operation-specific source highlights.
+
+Version 28 also includes a narrow [RSC dependency patch](../website-dependency-review.md).
+All 31 isolated website checks, TypeScript, production build and the real local
+desktop/mobile conversation/upload/reconnect/resume check passed. This local UI
+test used synthetic fixtures and does not change the production-browser limitation.
 
 Production message admission here used an owner-authorized data migration,
 not browser form clicks. The production browser connection is unavailable: the
