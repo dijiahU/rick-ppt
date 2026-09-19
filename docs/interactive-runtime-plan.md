@@ -157,10 +157,17 @@ Primary sources:
   Package/reinstall versioned plugin without deleting prior cache versions.
   Publish the validated site and drain/handoff workers without interrupting old
   tasks. Acceptance: deployment success and new-worker capability checks.
-- [ ] **15 — Full smoke gate.** Python, Vitest, Playwright, production build,
+- [x] **15 — Full smoke gate.** Python, Vitest, Playwright, production build,
   bundle-size guard, malicious input tests, native OOXML regression, LibreOffice,
   bundle boot, all optional packs, resumability and live feedback. Record exact
-  commands/results. Only after this gate run both teaching cases.
+  commands/results. Only after this gate run both teaching cases. Evidence:
+  [release-smoke-20260920.md](release-smoke-20260920.md) records 134 Python,
+  54 Vitest, 23 combined browser, three production diagnostics, eight production
+  pack checks, 30 website checks and the workflow/runner suites. A real 20m55s
+  Codex/native/interactive/review/delivery exercise passed 20 checks; final frozen
+  candidate revalidation passed eight checks with identical reviewed scene
+  captures. Linux GitHub verification passed on `a2f1bce`. Desktop host behavior
+  is explicitly unverified under item 18.
 - [ ] **16 — CNN case.** Write a reproducible prompt from the latest website
   brief, emphasizing first-principles computation, definitions, worked arithmetic,
   forward/backprop, training and annotated runnable code. Use composable scenes
