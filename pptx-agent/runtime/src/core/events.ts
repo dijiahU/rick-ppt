@@ -1,0 +1,2 @@
+import type {EventContext} from './types';
+export class EventBus {private handlers=new Map<string,Set<(event:EventContext)=>void>>();on(name:string,fn:(event:EventContext)=>void){const handlers=this.handlers.get(name)??new Set();handlers.add(fn);this.handlers.set(name,handlers);return ()=>handlers.delete(fn);}emit(event:EventContext){for(const fn of this.handlers.get(event.type)??[])fn(event);for(const fn of this.handlers.get('*')??[])fn(event);}dispose(){this.handlers.clear();}}

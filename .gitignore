@@ -25,3 +25,12 @@ test-results/
 benchmarks/
 dist/
 build/
+
+# Interactive build output and browsers
+node_modules/
+playwright-report/
+coverage/
+!pptx-agent/tests/
+!pptx-agent/tests/**
+!pptx-agent/runtime/tests/
+!pptx-agent/runtime/tests/**

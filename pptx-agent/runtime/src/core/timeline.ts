@@ -1,0 +1,18 @@
+import {SceneStore} from './store';
+import type {Dict,Action} from './types';
+const easing:Dict={linear:(t:number)=>t,easeIn:(t:number)=>t*t,easeOut:(t:number)=>1-(1-t)**2,easeInOut:(t:number)=>t<.5?2*t*t:1-(-2*t+2)**2/2};
+function color(v:any){if(typeof v!=='string')return null;const m=/^#([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(v);if(!m)return null;const s=m[1].length===3?m[1].split('').map(c=>c+c).join(''):m[1];return [0,2,4].map(i=>parseInt(s.slice(i,i+2),16));}
+export function interpolate(a:any,b:any,t:number):any{if(typeof a==='number'&&typeof b==='number')return a+(b-a)*t;if(Array.isArray(a)&&Array.isArray(b)&&a.length===b.length)return a.map((v,i)=>interpolate(v,b[i],t));if(a&&b&&typeof a==='object'&&typeof b==='object'&&Object.keys(a).join()===Object.keys(b).join())return Object.fromEntries(Object.keys(a).map(k=>[k,interpolate(a[k],b[k],t)]));const ca=color(a),cb=color(b);if(ca&&cb)return '#'+ca.map((v,i)=>Math.round(v+(cb[i]-v)*t).toString(16).padStart(2,'0')).join('');if(typeof a==='string'&&typeof b==='string'&&/^[Mm]/.test(a)){const tokens=(s:string)=>s.match(/[a-zA-Z]|[-+]?(?:\d*\.)?\d+(?:e[-+]?\d+)?/g)??[];const aa=tokens(a),bb=tokens(b);if(aa.length!==bb.length||aa.some((v,i)=>isNaN(+v)&&v!==bb[i]))throw new Error('Incompatible path morph');return aa.map((v,i)=>isNaN(+v)?v:String(+v+(+bb[i]-+v)*t)).join(' ');}return t<1?a:b;}
+export class TimelineEngine {
+ states:Dict={};private definitions:Dict={};private frame=0;private last=0;private alive=true;
+ constructor(definitions:Dict[],private store:SceneStore,private dispatch:(actions:Action[])=>void,private reduced=false){for(const t of definitions){this.definitions[t.id]=t;this.states[t.id]={time:0,playing:false,reverse:!!t.reverse,waiting:t.delay??0};}}
+ play(id:string){const s=this.require(id);s.playing=true;this.start();}
+ pause(id:string){this.require(id).playing=false;}
+ stop(id:string){this.pause(id);this.seek(id,0);}
+ seek(id:string,time:number){const s=this.require(id),t=this.definitions[id];s.time=Math.max(0,Math.min(t.duration,time));this.apply(t,s.time);}
+ private require(id:string){if(!this.states[id])throw new Error(`Unknown timeline ${id}`);return this.states[id];}
+ private apply(t:Dict,time:number){this.store.batch(()=>{for(const track of t.tracks){const k=track.keyframes;let left=k[0],right=k[k.length-1];for(let i=1;i<k.length;i++)if(time<=k[i].time){left=k[i-1];right=k[i];break;}const u=Math.max(0,Math.min(1,(time-left.time)/(right.time-left.time||1)));const fn=easing[right.easing??t.easing??'linear'];if(!fn)throw new Error('Unknown easing');const env=this.store.environment();this.store.set(track.path,interpolate(this.store.expressions.value(left.value,env),this.store.expressions.value(right.value,env),fn(u)));}});}
+ advance(delta:number){for(const [id,s]of Object.entries(this.states)){if(!s.playing)continue;const t=this.definitions[id];if(s.waiting>0){s.waiting-=delta;continue;}const before=s.time;const next=this.reduced?(s.reverse?0:t.duration):s.time+(s.reverse?-delta:delta);this.seek(id,next);for(const m of t.markers??[])if(s.reverse?m.time<before&&m.time>=s.time:m.time>before&&m.time<=s.time)this.dispatch(m.actions);if(next>=t.duration||next<=0){if(t.loop&&!this.reduced)s.time=s.reverse?t.duration:0;else s.playing=false;}}}
+ private start(){if(this.frame)return;this.last=performance.now();const tick=(now:number)=>{this.frame=0;if(!this.alive)return;this.advance(Math.min(100,now-this.last));this.last=now;if(Object.values(this.states).some(s=>s.playing))this.frame=requestAnimationFrame(tick);};this.frame=requestAnimationFrame(tick);}
+ dispose(){this.alive=false;cancelAnimationFrame(this.frame);}
+}
