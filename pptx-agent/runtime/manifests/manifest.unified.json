@@ -1,0 +1,67 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.27/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.27",
+  "version": "1.0.0",
+  "id": "55f52a44-cd78-4ec9-aac0-c4e72b59a677",
+  "localizationInfo": {
+    "defaultLanguageTag": "en-us"
+  },
+  "developer": {
+    "name": "Rick PPT",
+    "websiteUrl": "https://github.com/dijiahU/rick-ppt",
+    "privacyUrl": "https://localhost:41973/privacy.html",
+    "termsOfUseUrl": "https://localhost:41973/terms.html"
+  },
+  "name": {
+    "short": "Rick Interactive Runtime",
+    "full": "Rick PPT Interactive Slide Runtime"
+  },
+  "description": {
+    "short": "Interactive teaching inside PowerPoint.",
+    "full": "Composable scenes, charts, animation and code labs inside a slide."
+  },
+  "icons": {
+    "outline": "icons/icon-32.png",
+    "color": "icons/icon-192.png"
+  },
+  "accentColor": "#15233B",
+  "validDomains": [
+    "localhost"
+  ],
+  "authorization": {
+    "permissions": {
+      "resourceSpecific": [
+        {
+          "name": "Document.ReadWrite.User",
+          "type": "Delegated"
+        }
+      ]
+    }
+  },
+  "extensions": [
+    {
+      "requirements": {
+        "scopes": [
+          "presentation"
+        ],
+        "capabilities": [
+          {
+            "name": "PowerPointApi",
+            "minVersion": "1.1"
+          }
+        ]
+      },
+      "contentRuntimes": [
+        {
+          "id": "RickContentRuntime",
+          "code": {
+            "page": "https://localhost:41973/content.html"
+          },
+          "requestedWidth": 960,
+          "requestedHeight": 540,
+          "disableSnapshot": false
+        }
+      ]
+    }
+  ]
+}

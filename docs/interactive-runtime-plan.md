@@ -100,11 +100,11 @@ Primary sources:
   pre/post/Stop hooks detect invalid/stale scenes and missing test results; bounded
   Stop failure count remains. Acceptance: rollback restores both stores, export
   does not overwrite originals or existing outputs, no-scene behavior regresses. Evidence: 39 targeted scene/hook tests pass, including sidecar-only writes, preserved rollback copies and the three-attempt Stop cap; prior native regression suite passed.
-- [ ] **06 — Runtime app, HTTPS, manifests and CLI.** Office onReady/settings
+- [x] **06 — Runtime app, HTTPS, manifests and CLI.** Office onReady/settings
   identity; standalone mode; loopback static/API/WebSocket server with TLS/CSP;
   certificate install/status and doctor; all requested interactive CLI commands.
   Acceptance: build/manifests/doctor run, loopback path/symlink/origin tests pass,
-  actual runtime boot checks spec hash and identity.
+  actual runtime boot checks spec hash and identity. Evidence: doctor reports all dependencies/packs/manifests available; official XML ContentApp validator passes; macOS user-keychain certificate is trusted and Chromium reached actual HTTPS health without bypassing certificate errors. Production pack/browser tests exercise runtime boot. Desktop round-trip remains item 18.
 - [ ] **07 — Interactive rendering, bundles and review evidence.** Execute JSON
   testPlan; state/visibility/text/property/data/timeline assertions; initial,
   intermediate and reset captures; complete portable directory/ZIP with hashes,

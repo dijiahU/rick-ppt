@@ -109,7 +109,7 @@ def doctor(ws=None):
         except Exception:checks['certificate_parse']=False
     with socket.socket() as s:checks['port_available']=s.connect_ex(('127.0.0.1',config()['port']))!=0
     checks['xml_manifest']=(runtime/'manifests/manifest.addin.xml').is_file();checks['unified_manifest']=(runtime/'manifests/manifest.unified.json').is_file()
-    checks['feature_packs']={name:(runtime/'src/feature-packs'/f'{name}.ts').exists() or (runtime/'src/feature-packs'/f'{name}.tsx').exists() for name in ('three','code','ml','map','math')}
+    checks['feature_packs']={name:any((runtime/'src/feature-packs'/name/f'index.{ext}').exists() for ext in ('ts','tsx')) or any((runtime/'src/feature-packs'/f'{name}.{ext}').exists() for ext in ('ts','tsx')) for name in ('three','code','ml','map','math')}
     if ws:checks['interactive']=validate_interactive(ws.root)
     return checks
 
@@ -141,7 +141,7 @@ def dispatch(args):
     if command=='doctor':return doctor(select(ws_path) if ws_path else None)
     if command=='cert':
         if args.action=='status':return {k:v for k,v in doctor().items() if k.startswith('certificate')}
-        subprocess.run(['npx','--no-install','office-addin-dev-certs','install'],cwd=PLUGIN_ROOT/'runtime',check=True);return {'certificate':True}
+        subprocess.run(['node','scripts/certificates.mjs'],cwd=PLUGIN_ROOT/'runtime',check=True);return {'certificate':True}
     if command=='preview':
         validate_spec(args.file);source=Path(args.file).resolve()
         from .interactive_server import main
