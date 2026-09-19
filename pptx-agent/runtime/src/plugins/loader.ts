@@ -3,6 +3,7 @@ import {digest,safeRelative} from '../core/assets';
 import type {FeatureContext} from '../feature-packs/types';
 import type {Dict} from '../core/types';
 import {readBounded} from '../feature-packs/fetch';
+import {withDiagnostic} from '../core/diagnostics';
 
 export const pluginCapabilities=new Set(['components','actions','functions','dataSources']);
 export function validatePluginManifest(manifest:Dict,allowed:string[],base:string){
@@ -15,7 +16,7 @@ export async function validatePluginSource(source:string){
  if(source.length>2*1024*1024)throw new Error('Plugin exceeds 2 MiB');await init;const [imports]=parse(source);if(imports.length)throw new Error('Plugin must be a self-contained bundle without static/dynamic imports or import.meta');
 }
 export async function loadDeckPlugins(context:FeatureContext){
- const runtime=context.runtime;for(const manifest of runtime.scene.plugins??[]){
+ const runtime=context.runtime;for(const manifest of runtime.scene.plugins??[]){try{
   const url=validatePluginManifest(manifest,runtime.scene.runtimeOptions?.allowedPlugins??[],runtime.base);const response=await fetch(url,{credentials:'omit',redirect:'error'});if(!response.ok)throw new Error(`Plugin unavailable: ${manifest.id}`);
   const bytes=await readBounded(response,2*1024*1024);if(await digest(bytes)!==manifest.sha256)throw new Error(`Plugin integrity failed: ${manifest.id}`);
   const source=new TextDecoder('utf-8',{fatal:true}).decode(bytes);await validatePluginSource(source);const blob=URL.createObjectURL(new Blob([source],{type:'text/javascript'}));let plugin:any;
@@ -28,5 +29,5 @@ export async function loadDeckPlugins(context:FeatureContext){
   for(const [name,fn]of Object.entries(plugin.dataSources??{})){if(typeof fn!=='function')throw new Error('Plugin data source must be callable');context.dataSource(`${manifest.id}.${name}`,source=>(fn as any)(source,api));}
   const api=Object.freeze({id:manifest.id,version:manifest.version,readState:()=>structuredClone(runtime.store.get()),readData:()=>structuredClone(runtime.store.getData()),setState:(path:string,value:any)=>{requireCapability('actions');runtime.store.set(path,value);},emit:(type:string,value:any)=>{requireCapability('actions');runtime.emit({type,target:manifest.id,value,timestamp:performance.now()});},asset:(key:string)=>runtime.assets.resolve(key)});
   if(plugin.init)await plugin.init(api);if(plugin.dispose)context.dispose(()=>plugin.dispose());
- }
+ }catch(error){throw withDiagnostic(error,{sceneId:runtime.scene.id,plugin:manifest.id,asset:manifest.path,phase:'plugin-load'});}}
 }

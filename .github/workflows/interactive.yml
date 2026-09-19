@@ -38,6 +38,7 @@ jobs:
           npm run build
           npx playwright install chromium
           npm run test:e2e
+          npx playwright test --config tests/browser/production.config.ts
           npx playwright test --config tests/feature-packs/production.config.ts
       - name: Native and real bundle regressions
         working-directory: pptx-agent

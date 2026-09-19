@@ -21,7 +21,7 @@ onmessage=async(event)=>{
   }else{
    lockNetwork();Object.defineProperty(globalThis,'console',{value:Object.freeze({log:(...values)=>output('stdout',values.map(v=>typeof v==='string'?v:JSON.stringify(v)).join(' ')),info:(...v)=>output('stdout',v.join(' ')),warn:(...v)=>output('stderr',v.join(' ')),error:(...v)=>output('stderr',v.join(' '))}),writable:false});
    send({type:'started'});const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
-   result=await new AsyncFunction('input','print','"use strict";\n'+request.code)(()=>inputs.length?inputs.shift():null,(...values)=>output('stdout',values.join(' ')));
+   result=await new AsyncFunction('input','print','"use strict";\nreturn await (async () => {\n'+request.code+'\n})();')(()=>inputs.length?inputs.shift():null,(...values)=>output('stdout',values.join(' ')));
   }
   send({type:'done',result:serializable(result)});
  }catch(error){output('stderr',String(error?.stack??error));send({type:'error',error:String(error?.message??error)});}

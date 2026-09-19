@@ -30,6 +30,28 @@ test('Python uses local Pyodide and stdin/stdout in a bounded worker',async({pag
  await action(page,'code.setCode',{code:'from js import fetch\nawait fetch("https://example.com/denied")'});await action(page,'code.run');expect((await state(page,'result')).status).toBe('error');
 });
 
+test('Monaco teaching highlights follow state, inclusive ranges and actual source edits',async({page,context},testInfo)=>{
+ const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+ const code='const input = 3;\nlet total = 0;\ntotal += input;\nprint(total);\nreturn total;';
+ const editor=node('CodeEditor',{code,resultPath:'result',revealHighlightedLine:true});editor.bind={highlightLines:{expr:'state.lesson.codeLine'}};
+ await prepare(context,page,baseScene(['code'],[editor],{initialState:{lesson:{codeLine:1}}}));
+ const highlighted=page.locator('.monaco-editor .pptx-code-active-line');await expect(highlighted).toHaveCount(1);
+ const initialY=(await highlighted.boundingBox())!.y;
+ await page.screenshot({path:testInfo.outputPath('highlight-initial.png')});
+ await page.evaluate(()=>window.__interactive.runtime.store.set('lesson.codeLine',3));
+ await expect.poll(async()=>(await highlighted.boundingBox())?.y??0).toBeGreaterThan(initialY);
+ await action(page,'code.run');expect(await state(page,'result')).toMatchObject({status:'done',result:3});
+ await page.screenshot({path:testInfo.outputPath('highlight-step-three.png')});
+ await page.evaluate(()=>window.__interactive.runtime.store.set('lesson.codeLine',[2,[4,5]]));await expect(highlighted).toHaveCount(3);
+ await page.evaluate(()=>window.__interactive.runtime.store.set('lesson.codeLine',[0,99999,'3',[5,2]]));await expect(highlighted).toHaveCount(0);
+ await page.evaluate(()=>window.__interactive.runtime.store.set('lesson.codeLine',5));await expect(highlighted).toHaveCount(1);
+ await page.getByRole('textbox',{name:'Editable teaching code',exact:true}).focus();const selectAll=await page.evaluate(()=>/Macintosh|Mac OS X/.test(navigator.userAgent)?'Meta+A':'Control+A');await page.keyboard.press(selectAll);await page.keyboard.insertText('return 9;');
+ await expect(highlighted).toHaveCount(0);await page.getByRole('button',{name:'Run code',exact:true}).click();await expect.poll(()=>state(page,'result.result')).toBe(9);
+ await action(page,'code.reset');await expect(highlighted).toHaveCount(1);expect(await state(page,'result')).toBeNull();
+ await page.evaluate(()=>window.__interactive.runtime.store.set('lesson.codeLine',1));await page.screenshot({path:testInfo.outputPath('highlight-reset.png')});
+ expect(errors).toEqual([]);expect(await page.evaluate(()=>window.__interactive.runtime.error)).toBeFalsy();
+});
+
 function glbTriangle(){const positions=Buffer.from(new Float32Array([-1,-1,0,1,-1,0,0,1,0]).buffer);const model={asset:{version:'2.0'},scene:0,scenes:[{nodes:[0]}],nodes:[{name:'triangle',mesh:0}],meshes:[{primitives:[{attributes:{POSITION:0}}]}],buffers:[{byteLength:positions.length}],bufferViews:[{buffer:0,byteOffset:0,byteLength:positions.length,target:34962}],accessors:[{bufferView:0,componentType:5126,count:3,type:'VEC3',min:[-1,-1,0],max:[1,1,0]}]};let json=Buffer.from(JSON.stringify(model));json=Buffer.concat([json,Buffer.alloc((4-json.length%4)%4,32)]);const header=Buffer.alloc(20);header.writeUInt32LE(0x46546c67,0);header.writeUInt32LE(2,4);header.writeUInt32LE(12+8+json.length+8+positions.length,8);header.writeUInt32LE(json.length,12);header.writeUInt32LE(0x4e4f534a,16);const bin=Buffer.alloc(8);bin.writeUInt32LE(positions.length,0);bin.writeUInt32LE(0x004e4942,4);return Buffer.concat([header,json,bin,positions]);}
 test('Three loads a real GLB, raycasts and binds object visibility',async({page,context})=>{
  const model=glbTriangle();const sceneNode=node('ThreeScene',{src:'triangle.glb',camera:{position:[0,0,3],target:[0,0,0]},selectionPath:'selected'});sceneNode.bind={visibility:{expr:'state.visibility'}};await prepare(context,page,baseScene(['three'],[sceneNode],{assets:{model:{path:'triangle.glb',bytes:model.length,sha256:createHash('sha256').update(model).digest('hex')}},interactions:[{target:'demo',event:'threeReady',actions:[{type:'set',path:'modelReady',value:true}]}]}),{'triangle.glb':{body:model,type:'model/gltf-binary'}});await expect.poll(()=>state(page,'modelReady')).toBe(true);const canvas=page.locator('[data-feature=ThreeScene] canvas');await expect(canvas).toBeVisible();await canvas.click();await expect.poll(()=>state(page,'selected')).toBe('triangle');await action(page,'three.camera',{position:[1,1,4],target:[0,0,0],duration:50});await page.waitForTimeout(100);await page.evaluate(()=>window.__interactive.dispatch([{type:'plugin',name:'three.inspect',target:'demo',result:'view'}]));expect((await state(page,'view')).camera.position[0]).toBeCloseTo(1);await page.evaluate(()=>window.__interactive.runtime.store.set('visibility',{triangle:false}));await page.waitForTimeout(50);await page.evaluate(()=>window.__interactive.dispatch([{type:'plugin',name:'three.inspect',target:'demo',result:'view'}]));expect((await state(page,'view')).objects.find((item:any)=>item.name==='triangle').visible).toBe(false);await expect(page.getByRole('alert')).toHaveCount(0);

@@ -3,6 +3,7 @@ import type {Runtime} from '../core/runtime';
 import type {Dict} from '../core/types';
 import type {FeatureContext,FeatureProps,FeatureAction,FeaturePack} from './types';
 import {loadDeckPlugins} from '../plugins/loader';
+import {withDiagnostic} from '../core/diagnostics';
 
 type Registry={components:Map<string,ComponentType<FeatureProps>>;actions:Map<string,FeatureAction>;sources:Map<string,(source:Dict)=>Promise<unknown>>;loaded:Set<string>};
 const registries=new WeakMap<Runtime,Registry>();
@@ -12,9 +13,9 @@ function unique<T>(map:Map<string,T>,name:string,value:T){if(!/^[A-Za-z][A-Za-z0
 export async function loadFeaturePacks(runtime:Runtime){
  const r=registry(runtime);if(r.loaded.has('_initialized'))return;r.loaded.add('_initialized');
  const context:FeatureContext={runtime,component:(name,component)=>unique(r.components,name,component),action:(name,action)=>unique(r.actions,name,action),dataSource:(name,adapter)=>unique(r.sources,name,adapter),dispose:callback=>runtime.plugins.push(callback)};
- runtime.actions.register('plugin',async(action,event)=>{const fn=r.actions.get(action.name);if(!fn)throw new Error(`Extension action unavailable: ${action.name}`);const args=runtime.expressions.value(action.args??action.value??{},runtime.store.environment({},event));const result=await fn({...args,target:action.target??args.target},event);if(action.result)runtime.store.set(action.result,result??null);});
+ runtime.actions.register('plugin',async(action,event)=>{const fn=r.actions.get(action.name);if(!fn)throw new Error(`Extension action unavailable: ${action.name}`);const args=runtime.expressions.value(action.args??action.value??{},runtime.store.environment(event.locals??{},event));const result=await fn({...args,target:action.target??args.target},event);if(action.result)runtime.store.set(action.result,result??null);});
  runtime.data.register('plugin',async source=>{const adapter=r.sources.get(source.adapter);if(!adapter)throw new Error(`Extension data adapter unavailable: ${source.adapter}`);return adapter(source);});
- for(const name of new Set(runtime.scene.requires??[])){if(name==='core')continue;const load=loaders[name];if(!load)throw new Error(`Unsupported feature pack: ${name}`);const pack=(await load()).default;if(pack.id!==name)throw new Error('Feature pack identity mismatch');await pack.install(context);r.loaded.add(name);}
+ for(const name of new Set(runtime.scene.requires??[])){if(name==='core')continue;try{const load=loaders[name];if(!load)throw new Error(`Unsupported feature pack: ${name}`);const pack=(await load()).default;if(pack.id!==name)throw new Error('Feature pack identity mismatch');await pack.install(context);r.loaded.add(name);}catch(error){throw withDiagnostic(error,{sceneId:runtime.scene.id,plugin:name,phase:'feature-pack-load'});}}
  await loadDeckPlugins(context);
  runtime.plugins.push(()=>{r.components.clear();r.actions.clear();r.sources.clear();registries.delete(runtime);});
 }

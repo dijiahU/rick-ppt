@@ -1,10 +1,11 @@
-import {memo,useCallback,useMemo,useRef,useSyncExternalStore} from 'react';
+import {memo,useCallback,useLayoutEffect,useMemo,useRef,useSyncExternalStore} from 'react';
 import type {ReactNode,RefObject} from 'react';
 import type {SceneNode,Dict} from '../core/types';
 import {Runtime} from '../core/runtime';
 import {bindNode} from '../core/bindings';
 import {logicalPoint} from '../core/coordinates';
 import {equal} from '../core/state';
+import {withDiagnostic} from '../core/diagnostics';
 import {HtmlRenderer} from './HtmlRenderer';
 import {CanvasRenderer} from './CanvasRenderer';
 import {FeatureNode,hasFeatureComponent} from '../feature-packs/index';
@@ -13,7 +14,25 @@ type Owner={node:SceneNode;p:Dict;ref:RefObject<SVGGElement|null>;baseId:string;
 const NO_PARENTS:Owner[]=[];
 export function useSelected<T>(runtime:Runtime,select:(env:any)=>T){const cache=useRef<T>(undefined as T);const get=useCallback(()=>{const next=select(runtime.store.environment());if(!equal(cache.current,next))cache.current=next;return cache.current;},[runtime,select]);const subscribe=useCallback((fn:()=>void)=>runtime.store.subscribe(select,fn),[runtime,select]);return useSyncExternalStore(subscribe,get,get);}
 export function layoutChildren(nodes:SceneNode[],p:Dict){const padding=Number(p.padding??0),gap=Number(p.gap??0),w=p.width??100,h=p.height??100;let pos=padding;const row=p.layout==='row',column=p.layout==='column';const total=nodes.reduce((s,c)=>s+Number(c.props?.[row?'width':'height']??(row?100:40)),0)+gap*Math.max(0,nodes.length-1);if(p.justify==='center')pos=Math.max(padding,((row?w:h)-total)/2);if(p.justify==='end')pos=Math.max(padding,(row?w:h)-padding-total);const actualGap=p.justify==='space-between'&&nodes.length>1?Math.max(0,((row?w:h)-2*padding-(total-gap*(nodes.length-1)))/(nodes.length-1)):gap;return nodes.map((child,i)=>{let off={x:0,y:0};if(row||column){const cross=Number(child.props?.[row?'height':'width']??(row?40:100)),size=row?h:w;const align=p.align==='center'?(size-cross)/2:p.align==='end'?size-padding-cross:padding;off=row?{x:pos,y:align}:{x:align,y:pos};pos+=Number(child.props?.[row?'width':'height']??(row?100:40))+actualGap;}if(p.layout==='grid'){const columns=Math.max(1,p.columns??Math.ceil(Math.sqrt(nodes.length))),rows=Math.max(1,p.rows??Math.ceil(nodes.length/columns));off={x:padding+(i%columns)*((w-2*padding+gap)/columns),y:padding+Math.floor(i/columns)*((h-2*padding+gap)/rows)};}return{child,off};});}
-function enforceRenderBudget(runtime:Runtime,nodes:SceneNode[],env:any){let count=0;const visit=(list:SceneNode[],locals:Dict,depth:number)=>{if(depth>32)throw new Error('Rendered node nesting exceeded');for(const node of list){const expand=(local:Dict)=>{const bound=bindNode(node,{...env,locals:local},runtime.expressions);if(!bound.visible||env.state._visibility?.[node.id]===false)return;if(++count>10000)throw new Error('Rendered node count exceeded');if(node.type==='Group')visit(node.children??[],local,depth+1);else if(node.type==='component'&&runtime.components.has(node.component!))visit(runtime.components.render(node.component!,bound,runtime.scene.theme??{}),{...local,props:bound},depth+1);};if(node.repeat){const values=runtime.expressions.value(node.repeat.source,{...env,locals});if(!Array.isArray(values)||values.length>10000)throw new Error('Repeat requires at most 10000 rows');for(let index=0;index<values.length;index++)expand({...locals,[node.repeat.item]:values[index],index});}else expand(locals);}};visit(nodes,{},0);}
+const analyzed=new WeakMap<Runtime,{nodes:SceneNode[];state:Dict;data:Dict}>();
+function expressionCount(value:any):number{if(!value||typeof value!=='object')return 0;if(Object.keys(value).length===1&&typeof value.expr==='string')return 1;return Object.values(value).reduce<number>((n,item)=>n+expressionCount(item),0);}
+function enforceRenderBudget(runtime:Runtime,nodes:SceneNode[],env:any){
+ const previous=analyzed.get(runtime);if(previous?.nodes===nodes&&previous.state===env.state&&previous.data===env.data)return;
+ let count=0,bindings=0;
+ const visit=(list:SceneNode[],locals:Dict,depth:number)=>{
+  if(depth>32)throw new Error('Rendered node nesting exceeded');
+  for(const node of list){
+   const expand=(local:Dict)=>{try{const bound=bindNode(node,{...env,locals:local},runtime.expressions);if(!bound.visible||env.state._visibility?.[node.id]===false)return;
+    if(++count>10000)throw new Error('Rendered node count exceeded');bindings+=Object.keys(node.bind??{}).length+expressionCount(node.props)+(node.when?1:0);
+    if(node.type==='Group')visit(node.children??[],local,depth+1);
+    else if(node.type==='component'&&runtime.components.has(node.component!))visit(runtime.components.render(node.component!,bound,runtime.scene.theme??{}),{...local,props:bound},depth+1);
+   }catch(error){throw withDiagnostic(error,{sceneId:runtime.scene.id,nodeId:node.id,phase:'render'});}};
+   if(node.repeat){const values=runtime.expressions.value(node.repeat.source,{...env,locals});if(!Array.isArray(values)||values.length>10000)throw new Error('Repeat requires at most 10000 rows');for(let index=0;index<values.length;index++)expand({...locals,[node.repeat.item]:values[index],index});}else expand(locals);
+  }
+ };
+ visit(nodes,{},0);runtime.metrics.nodes=count;runtime.metrics.bindings=bindings;runtime.metrics.canvasAdvisory=count>=runtime.metrics.canvasThreshold;
+ analyzed.set(runtime,{nodes,state:env.state,data:env.data});
+}
 /** Resolve layout from current bound dimensions and expanded repetition. Only a
  * changed arrangement updates this component; leaf values retain subscriptions. */
 export const NodeList=memo(function NodeList({nodes,runtime,locals=EMPTY,p=EMPTY,prefix='',parents=NO_PARENTS}:{nodes:SceneNode[];runtime:Runtime;locals?:Dict;p?:Dict;prefix?:string;parents?:Owner[]}){
@@ -23,6 +42,7 @@ export const NodeList=memo(function NodeList({nodes,runtime,locals=EMPTY,p=EMPTY
 export const NodeRenderer=memo(function NodeRenderer({node,runtime,locals=EMPTY,offset=ZERO,prefix='',parents=NO_PARENTS}:{node:SceneNode;runtime:Runtime;locals?:Dict;offset?:{x:number;y:number};prefix?:string;parents?:Owner[]}){
  const selector=useCallback((env:any)=>{if(node.repeat)return {p:{visible:true},visibility:true};return {p:bindNode(node,{...env,locals},runtime.expressions),visibility:env.state._visibility?.[node.id]};},[node,locals,runtime]);
  const {p,visibility}=useSelected(runtime,selector),ref=useRef<SVGGElement>(null),baseId=prefix+node.id;
+ useLayoutEffect(()=>node.type==='component'&&hasFeatureComponent(runtime,node.component!)?runtime.registerEventInstance(baseId,node.id,locals):undefined,[runtime,node.type,node.component,node.id,baseId,locals]);
  const owner=useRef<Owner>({node,p,ref,baseId,locals});Object.assign(owner.current,{node,p,ref,baseId,locals});const childParents=useMemo(()=>[owner.current,...parents],[parents]);
  const event=(type:string,e:any,override?:any)=>{
   e.stopPropagation?.();const svg=ref.current?.ownerSVGElement;if(!svg)return;
@@ -42,7 +62,7 @@ export const NodeRenderer=memo(function NodeRenderer({node,runtime,locals=EMPTY,
  const shape:any={fill:p.fill??runtime.scene.theme?.text??'#172033',stroke:p.stroke??'none',strokeWidth:p.strokeWidth??1};const origin=p.transformOrigin??{};let content:ReactNode;const points=Array.isArray(p.points)?p.points.map((v:number[])=>v.join(',')).join(' '):p.points;
  switch(node.type){
  case 'Group':content=<NodeList nodes={node.children??[]} p={p} runtime={runtime} locals={locals} prefix={prefix} parents={childParents}/>;break;
- case 'component':content=hasFeatureComponent(runtime,node.component!)?<FeatureNode name={node.component!} p={p} runtime={runtime} nodeId={node.id}/>:<NodeList nodes={runtime.components.render(node.component!,p,runtime.scene.theme??{})} runtime={runtime} locals={{...locals,props:p}} prefix={baseId+'.'} parents={childParents}/>;break;
+ case 'component':content=hasFeatureComponent(runtime,node.component!)?<FeatureNode name={node.component!} p={p} runtime={runtime} nodeId={baseId}/>:<NodeList nodes={runtime.components.render(node.component!,p,runtime.scene.theme??{})} runtime={runtime} locals={{...locals,props:p}} prefix={baseId+'.'} parents={childParents}/>;break;
  case 'Rect':case 'RoundedRect':content=<rect width={w} height={h} rx={p.radius??(node.type==='RoundedRect'?12:0)} {...shape}/>;break;
  case 'Circle':content=<circle r={p.radius??w/2} {...shape}/>;break;case 'Ellipse':content=<ellipse rx={w/2} ry={h/2} {...shape}/>;break;
  case 'Line':case 'Arrow':content=<><defs><marker id={'arrow-'+baseId} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill={p.stroke??'#172033'}/></marker></defs><line x1={0} y1={0} x2={(p.x2??(p.x??0)+w)-(p.x??0)} y2={(p.y2??p.y??0)-(p.y??0)} {...shape} markerEnd={node.type==='Arrow'?`url(#arrow-${baseId})`:undefined}/></>;break;
