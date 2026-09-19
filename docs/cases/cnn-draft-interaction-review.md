@@ -49,11 +49,45 @@ PNG hashes and selection timestamps. Pages 9–20, later changes, final sequenci
 projection-distance code readability and actual PowerPoint playback remain
 outside this limited check.
 
+## Full-CNN finite differences through the browser controls
+
+Actual clicks followed `Complete CNN check → Run inputs → Reset → Run inputs`.
+Both programs ran exactly once in local Pyodide. Scene SHA-256 is
+`1652ad3613de084c15942bf339ef320bbfcdadcc785d11b0e8288fc97d5e7292`;
+the embedded complete checker SHA-256 is
+`1783033aef5ddc9e3c35598e0dd6bb9c1970f396b5a1201ec709037d730641d1`.
+The latter differs from the previously audited source only in its unused
+training function's checkpoint collection; executed derivative code is unchanged.
+
+| Parameter family | Actual analytic derivative | Absolute finite-difference error |
+| --- | ---: | ---: |
+| Convolution weight K | -0.0003116363521444964 | 9.0166e-12 |
+| Convolution bias b | -0.03425252389552196 | 1.1629e-11 |
+| Classifier weight W | -0.023743121543069224 | 3.5574e-12 |
+| Classifier bias a | -0.502496665080199 | 3.3082e-12 |
+
+All derivatives are nonzero, epsilon is `1e-5`, and both signed perturbations
+retain the ReLU gates. Reset restores the original small fixture and clears the
+result; running again gives analytic 12 and numerical `12.000000000256248`.
+Three actual screenshots were inspected; results and controls are readable.
+
+The original private report retains its **43/46** result. One failed QA assertion
+incorrectly demanded CPython's rounded text; saved DOM and Pyodide values show
+the correct ten-decimal display `12.0000000003`. A separate posthoc record fixes
+that assertion without rerunning either program or rewriting the original
+evidence. The resulting functional/numerical subset is **40/40**. The other two
+failed assertions describe the same real font CSP violation. The proof identifier
+is `cnn-full-gradient-browser-review-01`; its original report SHA-256 is
+`1f5a291722a62fe80af425e5f7c79991dba92ca1c6c2cef0734ffa6e3998879c`.
+
 ## Remaining checks
 
-The full-CNN derivative browser run has reproduced all four parameter-family
-checks, but also exposed an inline KaTeX font blocked by production CSP. The
-numerical result is not a claim of zero console violations. Font packaging and
-the separately acknowledged formula-region clipping still require resolution.
+Vite inlined the 3,624-byte `KaTeX_Size3.woff2`, which production `font-src 'self'`
+blocks. Same-origin WOFF/TTF fallbacks remain available and the inspected formula
+is readable, but this run is not a zero-CSP pass. A separate build correction
+will keep fonts as same-origin files without loosening CSP. It must not silently
+replace the immutable runtime used by the running author.
+
+The separately acknowledged formula-region clipping still requires resolution.
 Final acceptance must use the current delivered PPTX/ZIP and their exact scenes,
 not infer approval from these preserved drafts.
