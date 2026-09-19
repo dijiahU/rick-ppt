@@ -17,12 +17,19 @@ Status: **in progress; no teaching artifact accepted yet**.
   `fd43ec226d321db43f884afa598bc9f1ae2d2f34e20cafbf24fbc1d00a7c79de`.
   Website v25 requeued this same task; the actual Codex research phase began at
   **2026-09-19 21:42 UTC** with a persisted checkpoint and thread identity.
-- Current repaired release: **`0.1.0+codex.20260919230549`**, runtime
+- Monaco repaired release: **`0.1.0+codex.20260919230549`**, runtime
   `be097a482201dd70ecdc8755b2a1c4aee5f0f54402878c42b43caa42365cf5fd`.
   The same task recovered its existing work at **2026-09-19 23:14 UTC** after
   the Monaco correction passed the new smoke checks. All eight selected original
   and restored files match. A plugin upgrade rebuilds the model context and
   invalidates old stage receipts; it does not certify or discard the saved deck.
+- Current corrected release: **`0.1.0+codex.20260919234350`**, runtime
+  `8635c55584176218c6eadbc829d8796531bc99887469f24f6fc2345130222d37`.
+  An actual HTTP/2 checkpoint publication failure stopped the prior attempt.
+  After the transport correction and font-release checks, the same task resumed
+  at **2026-09-19 23:49 UTC**. All eight selected original and restored files
+  match, including the repaired v007 scenes and saved native page. The new
+  context is revalidating the preserved work; final delivery is still pending.
 
 ## Observations and repair history
 

@@ -90,6 +90,17 @@ now keeps fonts as same-origin files without loosening CSP. Its nine production
 pack checks pass, including actual Size3 loading and zero CSP violations. That
 candidate remains separate from the immutable runtime used by the running author.
 
-The separately acknowledged formula-region clipping still requires resolution.
-Final acceptance must use the current delivered PPTX/ZIP and their exact scenes,
-not infer approval from these preserved drafts.
+The formula-region correction has since passed 108 checks on three preserved
+v007 scenes at 1280×720, 800×600, 1280×900 and 760×560. All 12 screenshots were
+inspected. Unlike the earlier outer-box test, these checks measure every visible
+KaTeX character and glyph element against the actual region and footer. Scenes
+15/16 retain at least 10.236 px of lower clearance at the tightest viewport.
+The exact scene hashes are:
+
+- Scan: `d485adf09d359115cb589a45310ff390a4f73aec6340a5f9f1dffbc31a079bc3`.
+- Forward: `913d51988f70006124bb5939652a0718395f72b4b0419146bcd222fdbc2de1ff`.
+- Backward: `5b59e26906670b8fade0d72ed9e9141000a87dabde5ea7dc97ca33cec80e1030`.
+
+That check used the retained `be097…` runtime. Font-patched release evidence is
+separate. Final acceptance must use the current delivered PPTX/ZIP and their
+exact scenes, not infer approval from these preserved drafts.

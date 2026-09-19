@@ -86,11 +86,12 @@ Codex steering path then delivered all three into the active resumed author turn
 | `47ad4991-89ca-4398-8bfd-c5e292ed07b3` | Correct scan highlights, manual-timeline continuation and actual source-line highlights | Acknowledged in website v28; final application pending |
 | `132c625d-e876-4412-a98e-1b0229e3b570` | Repair remaining v005 formula-subscript clipping | Acknowledged after website v29; application pending |
 
-The durable input revision advanced from 0 to 3; ordinary chat did not increment
-it. The author publicly answered the ordinary chat, distinguishing the 16 training
+Ordinary chat did not increment the input revision. By website v29 there were
+four user revisions; later plugin upgrades invalidate stage receipts separately.
+The author publicly answered the ordinary chat, distinguishing the 16 training
 examples from eight separate held-out examples and limiting the accuracy claim
 to that synthetic sample. The completed content turn applied the answered chat;
-all three revision messages remain acknowledged pending artifact application.
+all revision messages remain acknowledged pending artifact application.
 Acknowledgement is not an applied edit. Final scene/native content, review
 receipts and applied message states must establish the requested corrections.
 
@@ -104,7 +105,11 @@ would incorrectly pass. Website v29, source
 `37ef401849d5a11d3cde56b7f146657e766d5e92`, adds a labeled request to reposition and
 enlarge those formula regions, preserving the verified mathematics and animation.
 Its six synthetic migration checks verify scope, idempotence and unchanged jobs.
-This is another pending correction, not final visual approval.
+The v007 repair subsequently passed 108 checks across three exact scenes at four
+viewports, with all 12 screenshots inspected. Per-character glyph rectangles
+remain inside the formula region and above the footer; the tightest view still
+has more than 10 px of lower clearance. This proves the preserved draft repair,
+not final artifact application or approval of the complete deck.
 
 The fourth input was admitted by website v28 from source
 `4e1d2c7fd55841747a72a71ee21a3dc8258e0cec`. Independent draft checks found that
@@ -138,3 +143,26 @@ backed up; its credential file was unchanged and was not copied.
 An actual production `fetch --bundle` during this unfinished task correctly
 reported `not_completed`. Downloaded final PPTX/ZIP bytes and their matching
 inspection remain pending.
+
+## Real network interruption and fourth continuation
+
+The author stopped after a transient network failure while publishing a
+checkpoint. The local snapshot and files were already durable. A missing
+`curl16` classification let an HTTP/2 framing error escape the conversation's
+normal retry path; source `d57f8df` corrects that boundary. Thirteen transport and
+37 conversation tests verify deferred publication, unchanged/reopened snapshots,
+stable outbox IDs and continued rejection of stale leases or authentication.
+
+The failed attempt and read-only website fetch are retained. Its idle supervisor
+drained, and release `0.1.0+codex.20260919234350` was installed and staged with the
+separately verified font correction. An explicit retry of the same failed task,
+conditional on its observed update timestamp, was accepted at 23:49 UTC. A fresh
+worker passed startup isolation and journal checks, then restored a new workspace.
+
+The private `cnn-recovery-live-04` proof records the old/new identities and eight
+selected file hashes. All originals are unchanged and all eight restored copies
+match. They include the outline, source notes, training source, repaired v007
+scan/forward/backward scenes, a native page and the protected original. Input
+revision 6 includes the plugin change; it is not six user edit messages. The
+plugin upgrade creates a fresh model context from verified files rather than
+claiming same-thread continuation. Final scene/native reviews remain pending.
