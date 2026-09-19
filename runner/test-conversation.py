@@ -4,14 +4,22 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 import uuid
 
 from conversation import Conversation, RevisionPending, _publish_task_file
 from durable import Journal, JournalError, RPCError, TransportError
-from resilience import WorkerHTTPError
+from resilience import WorkerHTTPError, request
+
+
+def http2_failure(cfg, path, body, lease, raw):
+    # Exercise the real HTTP classifier; no network call or live credential.
+    with patch('resilience.subprocess.run', return_value=subprocess.CompletedProcess([], 16, b'200', b'HTTP2 framing error')):
+        return request(cfg, path, body, lease, raw)
 
 
 class Clock:
@@ -42,6 +50,8 @@ class Website:
             raise WorkerHTTPError(action, status=503, retryable=True)
         if failure == "fatal":
             raise WorkerHTTPError(action, status=403, retryable=False)
+        if failure == "http2":
+            return http2_failure(cfg, path, body, lease, raw)
         if action == "poll":
             return {"messages": copy.deepcopy(self.rows), "revision": max((r["seq"] for r in self.rows if r["kind"] == "revision"), default=0)}
         if action == "attachment":
@@ -63,6 +73,8 @@ class Website:
             raise AssertionError("Unexpected test action")
         if failure == "lost":
             raise WorkerHTTPError(action, curl=28, reason="Response lost after commit", retryable=True)
+        if failure == "http2-lost":
+            return http2_failure(cfg, path, body, lease, raw)
         return {"ok": True}
 
 
@@ -370,6 +382,21 @@ class ConversationTests(unittest.TestCase):
         self.conversation.flush(force=True)
         self.assertFalse(self.website.assistant)
 
+    def test_http2_lost_assistant_response_keeps_durable_id_for_reconnect(self):
+        self.conversation.assistant({"type":"assistant.message", "id":"http2-reply", "body":"The scene is ready.", "complete":True}, scope="author")
+        identifier = next(iter(self.conversation.pending_public))
+        self.website.failures["assistant"] = ["http2-lost"]
+        self.conversation.flush(force=True)
+        self.assertIn(identifier, self.conversation.pending_public)
+        self.assertFalse((self.conversation.outbox / (identifier + ".sent")).exists())
+        self.assertEqual(len(self.website.assistant), 1)
+        reconnected = self.new_conversation()
+        reconnected.flush(force=True)
+        self.assertFalse(reconnected.pending_public)
+        self.assertEqual(len(self.website.assistant), 1)
+        self.assertEqual([call[1]["id"] for call in self.website.calls if call[0]=="assistant"], [identifier, identifier])
+        self.assertTrue((reconnected.outbox / (identifier + ".sent")).exists())
+
     def test_public_assistant_redacts_credentials_paths_and_controls(self):
         body = "Here is " + self.cfg["token"] + " " + self.task["lease"] + " " + str(self.job) + "/private.txt\x00"
         self.conversation.assistant({"type": "assistant.message", "id": "i", "body": body, "complete": True}, scope="author")
@@ -447,6 +474,39 @@ class ConversationTests(unittest.TestCase):
         self.assertNotIn(self.task["lease"], json.dumps(value))
         self.assertNotIn(str(self.job), json.dumps(value))
 
+    def test_http2_checkpoint_keeps_running_journal_and_retries_after_reopen(self):
+        self.journal.checkpoint(self.job)
+        before = copy.deepcopy(self.journal.state)
+        self.website.failures["checkpoint"] = ["http2"]
+        self.conversation.checkpoint(phase="author")
+        self.assertIsNone(self.conversation.last_checkpoint)
+        self.assertEqual(self.journal.state, before)
+        self.assertEqual(self.journal.state["phase"]["status"], "running")
+        self.assertFalse(self.website.checkpoints)
+        self.journal.close()
+        self.journal = Journal(self.base / "host", self.task["id"])
+        self.assertEqual(self.journal.state["snapshot_id"], before["snapshot_id"])
+        reconnected = self.new_conversation()
+        reconnected.checkpoint(phase="author")
+        reconnected.checkpoint(phase="author")
+        calls = [call[1] for call in self.website.calls if call[0]=="checkpoint"]
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0], calls[1])
+        self.assertEqual(len(self.website.checkpoints), 1)
+        self.assertIsNotNone(reconnected.last_checkpoint)
+
+    def test_checkpoint_auth_lease_and_programming_errors_still_propagate(self):
+        self.journal.checkpoint(self.job)
+        self.conversation.send = request
+        for status in (401,403,409):
+            with self.subTest(status=status), patch('resilience.subprocess.run', return_value=subprocess.CompletedProcess([],16,str(status).encode(),b'')):
+                with self.assertRaises(WorkerHTTPError) as caught:self.conversation.checkpoint()
+                self.assertEqual(caught.exception.status, status)
+                self.assertFalse(caught.exception.retryable)
+        with patch('resilience.subprocess.run', side_effect=ValueError('Invalid local adapter')):
+            with self.assertRaisesRegex(ValueError, 'Invalid local adapter'):self.conversation.checkpoint()
+        self.assertIsNone(self.conversation.last_checkpoint)
+
     def test_journal_recovery_reconciles_delivery_and_preserves_source_attachment(self):
         data = b"reference"
         item = self.attachment(data)
@@ -472,7 +532,8 @@ class ConversationTests(unittest.TestCase):
     def test_retryable_poll_outage_retains_inbox_and_recovers(self):
         row = self.row()
         self.website.rows = [row]
-        self.website.failures["poll"] = ["retryable"]
+        self.website.failures["poll"] = ["retryable", "http2"]
+        self.assertFalse(self.poll())
         self.assertFalse(self.poll())
         self.assertFalse(self.journal.state["inbox"])
         self.assertTrue(self.poll())

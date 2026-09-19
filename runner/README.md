@@ -217,6 +217,14 @@ to 10 seconds. An explicit lease/auth rejection stops the attempt immediately;
 150 seconds without an acknowledgement stops it before the server's 180-second
 stale-job cutoff. Claim requests are never automatically replayed.
 
+HTTP/2 framing failures (`curl16`) are transient when no HTTP status or a 2xx
+status was received, like other lost transport responses. Conversation poll and
+checkpoint publication defer to their existing later retries; the local journal
+snapshot remains saved before publication, and completed assistant replies keep
+their durable outbox IDs across reconnects. Authentication/lease rejections and
+local programming errors still propagate. This does not replay claim/operator
+retry requests or change the HTTP protocol policy.
+
 Attachment reads and final completion/failure messages retry transient failures
 up to three attempts. The deployed worker API accepts repeated completion/failure
 acknowledgements for the same lease without replacing a delivered result. Deploy

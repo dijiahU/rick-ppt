@@ -41,7 +41,8 @@ def request(cfg,path,body=b'{}',lease=None,raw=False):
                 try:status=int(result.stdout.strip())
                 except (ValueError,TypeError):status=0
                 if result.returncode or not 200<=status<300:
-                    transient=status in (408,425,429,500,502,503,504) or ((not status or 200<=status<300) and result.returncode in (5,6,7,18,28,35,52,55,56,92))
+                    # curl16 is an HTTP/2 framing failure; defer it like a lost response.
+                    transient=status in (408,425,429,500,502,503,504) or ((not status or 200<=status<300) and result.returncode in (5,6,7,16,18,28,35,52,55,56,92))
                     raise WorkerHTTPError(action,status=status,curl=result.returncode,retryable=transient)
                 response.seek(0);data=response.read(maximum+1)
                 if len(data)>maximum:raise WorkerHTTPError(action,status=status,reason='response too large')

@@ -41,12 +41,29 @@ class TransportTests(unittest.TestCase):
 
     def test_claim_and_operator_retry_never_reissued_automatically(self):
         for action in ('claim','retry','heartbeat'):
-            replies=[(0,28,b''),(200,0,b'{"ok":true}')]
-            with self.assertRaises(WorkerHTTPError):self.invoke(action,replies)
-            self.assertEqual(len(replies),1)
+            for code in (16,28):
+                with self.subTest(action=action,curl=code):
+                    replies=[(0,code,b''),(200,0,b'{"ok":true}')]
+                    with self.assertRaises(WorkerHTTPError) as caught:self.invoke(action,replies)
+                    self.assertTrue(caught.exception.retryable);self.assertEqual(len(replies),1)
+
+    def test_http2_failure_retries_only_existing_safe_lease_operations(self):
+        for action in ('attachment','complete','bundle','fail'):
+            for status in (0,200):
+                with self.subTest(action=action,status=status):
+                    result,calls=self.invoke(action,[(status,16,b'incomplete'),(200,0,b'{"ok":true}')])
+                    self.assertEqual(result,{'ok':True});self.assertEqual(len(calls),2)
+
+    def test_http2_conversation_errors_defer_to_existing_caller_retry(self):
+        for action in ('checkpoint','poll','assistant','ack','applied'):
+            with self.subTest(action=action):
+                replies=[(200,16,b'incomplete'),(200,0,b'{"ok":true}')]
+                with self.assertRaises(WorkerHTTPError) as caught:self.invoke(action,replies)
+                self.assertTrue(caught.exception.retryable);self.assertEqual(caught.exception.curl,16)
+                self.assertEqual(len(replies),1)
 
     def test_terminal_status_and_certificate_errors_not_retried(self):
-        for status,code in ((401,22),(403,22),(409,22),(413,22),(0,60)):
+        for status,code in ((401,22),(403,22),(409,22),(413,22),(0,60),(401,16),(403,16),(409,16)):
             replies=[(status,code,b'LOCAL_TEST_SECRET'),(200,0,b'{}')]
             with self.assertRaises(WorkerHTTPError) as caught:self.invoke('complete',replies)
             self.assertFalse(caught.exception.retryable);self.assertEqual(len(replies),1)
@@ -58,9 +75,10 @@ class TransportTests(unittest.TestCase):
         self.assertTrue(result['ok']);self.assertEqual(len(calls),3)
 
     def test_retry_budget_is_bounded(self):
-        replies=[(503,22,b'')]*4
-        with self.assertRaises(WorkerHTTPError):self.invoke('complete',replies)
-        self.assertEqual(len(replies),1)
+        for status,code in ((503,22),(0,16)):
+            replies=[(status,code,b'')]*4
+            with self.assertRaises(WorkerHTTPError):self.invoke('complete',replies)
+            self.assertEqual(len(replies),1)
 
 class LeaseTests(unittest.TestCase):
     def test_outage_budget_and_recovery_reset(self):
