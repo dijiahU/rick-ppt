@@ -49,6 +49,8 @@ class Tests(unittest.TestCase):
         value = interactive(); del value['slides'][0]['presentationMode']
         del value['slides'][0]['interaction']['bounds']
         self.assertNotIn('bounds', validate_outline(value)['slides'][0]['interaction'])
+        value = interactive(); value['slides'][0]['interaction']['bounds']['x'] = 0.0
+        self.assertIs(type(validate_outline(value)['slides'][0]['interaction']['bounds']['x']), int)
 
     def test_rejects_paths_secrets_and_malformed_metadata(self):
         for mode in ('script', None, [], 1):

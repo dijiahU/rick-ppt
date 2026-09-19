@@ -36,9 +36,9 @@ def validate_interaction(value):
         rectangle = {}
         for key in ('x', 'y', 'width', 'height'):
             number = bounds.get(key)
-            if type(number) is not int or not (0 if key in ('x', 'y') else 1) <= number <= MAX_BOUND_EMU:
+            if type(number) not in (int, float) or not (0 if key in ('x', 'y') else 1) <= number <= MAX_BOUND_EMU or int(number) != number:
                 raise ValueError('Invalid outline interaction EMU bounds')
-            rectangle[key] = number
+            rectangle[key] = int(number)
         if rectangle['x'] + rectangle['width'] > MAX_BOUND_EMU or rectangle['y'] + rectangle['height'] > MAX_BOUND_EMU:
             raise ValueError('Outline interaction bounds overflow')
         result['bounds'] = rectangle
