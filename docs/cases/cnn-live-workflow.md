@@ -84,7 +84,7 @@ Codex steering path then delivered all three into the active resumed author turn
 | `4f70ec99-e21c-408e-96f5-a7795aa2eb3a` | Keep actual loss increases and label the synthetic results | Acknowledged; final artifact application pending |
 | `95f3e650-f1a7-4e0c-b0ca-d2e609ac464e` | Complete C04/C05/C06/C10 experiments and nondifferentiability explanations | Acknowledged; final artifact application pending |
 | `47ad4991-89ca-4398-8bfd-c5e292ed07b3` | Correct scan highlights, manual-timeline continuation and actual source-line highlights | Acknowledged in website v28; final application pending |
-| `132c625d-e876-4412-a98e-1b0229e3b570` | Repair remaining v005 formula-subscript clipping | Admitted by website v29; application pending |
+| `132c625d-e876-4412-a98e-1b0229e3b570` | Repair remaining v005 formula-subscript clipping | Acknowledged after website v29; application pending |
 
 The durable input revision advanced from 0 to 3; ordinary chat did not increment
 it. The author publicly answered the ordinary chat, distinguishing the 16 training

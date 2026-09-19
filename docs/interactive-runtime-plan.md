@@ -178,9 +178,15 @@ Primary sources:
   captures. Linux GitHub verification passed on `a2f1bce`. Desktop host behavior
   is explicitly unverified under item 18.
   Installed-cachebuster startup regression adds 70 passing workflow checks and
-  a real create/reopen/recover preflight before queue polling. Final runtime
-  fingerprint is `fd43ec226d321db43f884afa598bc9f1ae2d2f34e20cafbf24fbc1d00a7c79de`;
+  a real create/reopen/recover preflight before queue polling. Initial case runtime
+  fingerprint was `fd43ec226d321db43f884afa598bc9f1ae2d2f34e20cafbf24fbc1d00a7c79de`;
   fresh host/native/bundle revalidation again passed eight checks on that build.
+  The subsequent CNN-discovered Monaco correction passed 79 unit, 24 browser,
+  nine production-pack, three diagnostic and eight host/native/bundle checks.
+  Its current immutable release is `0.1.0+codex.20260919230549`, fingerprint
+  `be097a482201dd70ecdc8755b2a1c4aee5f0f54402878c42b43caa42365cf5fd`.
+  The same CNN task restored its saved work under that release; see the linked
+  smoke report for scope and retained earlier evidence.
 - [ ] **16 — CNN case.** Write a reproducible prompt from the latest website
   brief, emphasizing first-principles computation, definitions, worked arithmetic,
   forward/backprop, training and annotated runnable code. Use composable scenes

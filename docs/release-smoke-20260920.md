@@ -143,8 +143,11 @@ doctor, filesystem/network isolation and installed-version journal preflight
 passed. All 18 older cache versions are retained. The installer removed them,
 so their complete backups restored the original hooks and files; subsequent
 Python use regenerated 24 bytecode files, while all non-bytecode source files
-still match. Original bytecode also remains in the backup. The running website
-worker must be handed over to this immutable release before final case acceptance.
+still match. Original bytecode also remains in the backup. After startup checks,
+the replacement worker resumed the same CNN task at 23:14 UTC with this immutable
+release. All eight selected originals/restored files matched. Changed plugin
+identity invalidates earlier stage receipts, so final case evidence must be
+regenerated against this build.
 At 21:25 UTC the old idle worker drained normally. After the startup and Office
 identity corrections, worker 4473 passed the installed-version recovery preflight
 and began CNN research at 21:42 UTC. `worker-handoff.json` and
