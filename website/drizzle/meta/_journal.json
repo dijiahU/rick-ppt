@@ -50,6 +50,13 @@
       "when": 1789853369418,
       "tag": "0006_cnn_acceptance_retry",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1789854648261,
+      "tag": "0007_cnn_live_conversation_acceptance",
+      "breakpoints": true
     }
   ]
 }
