@@ -36,6 +36,13 @@
       "when": 1789847412199,
       "tag": "0004_lush_thunderbolt_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1789852848968,
+      "tag": "0005_cnn_interactive_acceptance",
+      "breakpoints": true
     }
   ]
 }
