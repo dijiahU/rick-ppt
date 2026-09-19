@@ -47,7 +47,7 @@ def create_app(root, runtime=None, allowlist=()):
         host=urlsplit('http://'+request.host).hostname
         if host not in ('localhost','127.0.0.1','::1'):raise web.HTTPForbidden(text='Loopback Host required')
         try:response=await handler(request)
-        except web.HTTPException as error:response=error
+        except web.HTTPException as error:response=web.Response(status=error.status,text=error.text,headers=error.headers)
         office=' https://appsforoffice.microsoft.com' if request.path.endswith('content.html') else ''
         response.headers.update({'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; script-src 'self' blob: 'wasm-unsafe-eval'"+office+"; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: "+' '.join(origins)+"; media-src 'self' blob:; connect-src 'self' "+' '.join(origins)+"; font-src 'self'; worker-src 'self' blob:; frame-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self' https://*.office.com https://*.officeapps.live.com https://*.microsoft365.com"})
         if request.path=='/packs/code/code-runner.worker.js':

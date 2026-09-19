@@ -34,3 +34,5 @@ coverage/
 !pptx-agent/tests/**
 !pptx-agent/runtime/tests/
 !pptx-agent/runtime/tests/**
+**/__pycache__/
+*.py[cod]

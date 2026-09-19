@@ -95,6 +95,25 @@ def test_sidecar_snapshot_migration_and_stale_receipt(ws,tmp_path):
     assert not validate_interactive(ws.root,require_runtime=True)['ok']
 
 
+def test_hooks_detect_scene_only_writes_and_bound_stop_retries(ws,tmp_path):
+    from pptx_core.hooks import pre,post,stop
+    region(ws,tmp_path)
+    ws.state.update(baseline=manifest(ws.root),interactive_baseline=ws.sidecar_manifest());ws.save();ws.refresh()
+    assert not ws.state['dirty']
+    path=ws.home/'interactive/deck/scenes/example.json'
+    event={'cwd':str(ws.home),'tool_name':'apply_patch','tool_input':{'path':str(path)},'tool_use_id':'scene-test'}
+    before=len(list((ws.home/'snapshots').iterdir()))
+    assert pre(ws,event) is None
+    assert len(list((ws.home/'snapshots').iterdir()))==before+1
+    path.write_text(path.read_text().replace('Hello','Changed'))
+    assert post(ws,event)['decision']=='block'
+    assert ws.state['interactive_dirty'] and not ws.state['native_dirty']
+    for index in range(3):
+        result=stop(ws,{'stop_hook_active':index>0})
+        assert ('systemMessage' in result) if index==2 else result['decision']=='block'
+    assert ws.state['latest_output'] is None and ws.state['stop_failures']==3
+
+
 def test_snapshot_corruption_never_replaces_workspace(ws):
     ident=snapshot(ws);(ws.home/'snapshots'/ident/'workspace/bad').write_text('corruption')
     before=manifest(ws.root)

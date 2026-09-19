@@ -118,6 +118,8 @@ def pre(ws, event):
             p = (cwd / value).resolve()
             if p.is_relative_to(ws.root) and high_risk(p.relative_to(ws.root).as_posix()):
                 risky = True
+            if p.is_relative_to(ws.home / "interactive"):
+                risky = True
         if risky:
             snapshot(ws, "pre-tool-high-risk-or-opaque-write")
         atomic_json(record_path(ws, event), {"manifest": before, "interactive_manifest": ws.sidecar_manifest(), "at": now()})

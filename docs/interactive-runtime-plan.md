@@ -95,11 +95,11 @@ Primary sources:
   Acceptance: generated relationships/types match official structure; deliberately
   broken graph/hash/fallback is rejected; unrelated part bytes stay identical;
   native tests still pass. Evidence: 90 Python tests passed (2026-09-20), including official golden structural comparison, six graph corruption cases, clone/resize/detach and unchanged unrelated bytes.
-- [ ] **05 — Workspace v2, hooks and export safety.** v1 migration; independent
+- [x] **05 — Workspace v2, hooks and export safety.** v1 migration; independent
   native/sidecar dirty flags; snapshot and rollback include scenes and receipts;
   pre/post/Stop hooks detect invalid/stale scenes and missing test results; bounded
   Stop failure count remains. Acceptance: rollback restores both stores, export
-  does not overwrite originals or existing outputs, no-scene behavior regresses.
+  does not overwrite originals or existing outputs, no-scene behavior regresses. Evidence: 39 targeted scene/hook tests pass, including sidecar-only writes, preserved rollback copies and the three-attempt Stop cap; prior native regression suite passed.
 - [ ] **06 — Runtime app, HTTPS, manifests and CLI.** Office onReady/settings
   identity; standalone mode; loopback static/API/WebSocket server with TLS/CSP;
   certificate install/status and doctor; all requested interactive CLI commands.
