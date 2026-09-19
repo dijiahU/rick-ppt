@@ -1,0 +1,511 @@
+{
+  "schemaVersion": 1,
+  "id": "controls-showcase",
+  "viewport": {
+    "width": 1000,
+    "height": 700
+  },
+  "theme": {
+    "background": "#f1f5f9",
+    "text": "#172033",
+    "accent": "#2563eb"
+  },
+  "initialState": {
+    "count": 0,
+    "name": "Rick",
+    "note": "Hello",
+    "gain": 2,
+    "mode": "low",
+    "enabled": false,
+    "tab": 0,
+    "tabClicks": 0,
+    "keyClicks": 0,
+    "x": 0,
+    "progress": 0,
+    "mediaTime": 0,
+    "cue": false,
+    "speed": 1,
+    "box": {
+      "x": 25,
+      "y": 20
+    }
+  },
+  "derivedState": {
+    "double": {
+      "expr": "state.count*2"
+    }
+  },
+  "nodes": [
+    {
+      "id": "title",
+      "type": "Text",
+      "props": {
+        "x": 30,
+        "y": 15,
+        "width": 930,
+        "height": 50,
+        "text": "Composable runtime \u00b7 interaction laboratory",
+        "fontSize": 30,
+        "bold": true
+      }
+    },
+    {
+      "id": "increment",
+      "type": "Button",
+      "props": {
+        "x": 30,
+        "y": 85,
+        "width": 150,
+        "height": 42,
+        "text": "Increment"
+      }
+    },
+    {
+      "id": "counter",
+      "type": "Text",
+      "props": {
+        "x": 200,
+        "y": 85,
+        "width": 320,
+        "height": 42
+      },
+      "bind": {
+        "text": {
+          "expr": "\"Count \" + state.count + \" \u00b7 double \" + state.double"
+        }
+      }
+    },
+    {
+      "id": "name",
+      "type": "Input",
+      "props": {
+        "x": 30,
+        "y": 145,
+        "width": 240,
+        "height": 42,
+        "ariaLabel": "Your name"
+      },
+      "bind": {
+        "value": {
+          "expr": "state.name"
+        }
+      }
+    },
+    {
+      "id": "note",
+      "type": "Textarea",
+      "props": {
+        "x": 290,
+        "y": 145,
+        "width": 280,
+        "height": 70,
+        "ariaLabel": "Notes"
+      },
+      "bind": {
+        "value": {
+          "expr": "state.note"
+        }
+      }
+    },
+    {
+      "id": "gain",
+      "type": "Slider",
+      "props": {
+        "x": 30,
+        "y": 230,
+        "width": 240,
+        "height": 42,
+        "min": 0,
+        "max": 10,
+        "step": 1,
+        "ariaLabel": "Gain"
+      },
+      "bind": {
+        "value": {
+          "expr": "state.gain"
+        }
+      }
+    },
+    {
+      "id": "gainLabel",
+      "type": "Text",
+      "props": {
+        "x": 290,
+        "y": 230,
+        "width": 220,
+        "height": 42
+      },
+      "bind": {
+        "text": {
+          "expr": "\"Gain \" + state.gain"
+        }
+      }
+    },
+    {
+      "id": "mode",
+      "type": "Select",
+      "props": {
+        "x": 30,
+        "y": 290,
+        "width": 240,
+        "height": 42,
+        "ariaLabel": "Mode",
+        "options": [
+          {
+            "label": "Low",
+            "value": "low"
+          },
+          {
+            "label": "High",
+            "value": "high"
+          }
+        ]
+      },
+      "bind": {
+        "value": {
+          "expr": "state.mode"
+        }
+      }
+    },
+    {
+      "id": "enabled",
+      "type": "Toggle",
+      "props": {
+        "x": 290,
+        "y": 290,
+        "width": 240,
+        "height": 42,
+        "text": "Enabled",
+        "ariaLabel": "Enabled"
+      },
+      "bind": {
+        "value": {
+          "expr": "state.enabled"
+        }
+      }
+    },
+    {
+      "id": "tabs",
+      "type": "component",
+      "component": "tabs",
+      "props": {
+        "x": 30,
+        "y": 350,
+        "width": 540,
+        "height": 48,
+        "items": [
+          "Observe",
+          "Change",
+          "Explain"
+        ]
+      },
+      "bind": {
+        "active": {
+          "expr": "state.tab"
+        }
+      }
+    },
+    {
+      "id": "keyboardBox",
+      "type": "Group",
+      "props": {
+        "x": 30,
+        "y": 420,
+        "width": 220,
+        "height": 45,
+        "ariaLabel": "Keyboard action"
+      },
+      "children": [
+        {
+          "id": "keyboardBackground",
+          "type": "RoundedRect",
+          "props": {
+            "width": 220,
+            "height": 45,
+            "fill": "#0d9488"
+          }
+        },
+        {
+          "id": "keyboardLabel",
+          "type": "Text",
+          "props": {
+            "width": 220,
+            "height": 45,
+            "text": "Enter / Space",
+            "textAlign": "center",
+            "fontSize": 22,
+            "fill": "#fff"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reset",
+      "type": "Button",
+      "props": {
+        "x": 290,
+        "y": 420,
+        "width": 180,
+        "height": 45,
+        "text": "Reset"
+      }
+    },
+    {
+      "id": "upload",
+      "type": "FileInput",
+      "props": {
+        "x": 30,
+        "y": 485,
+        "width": 530,
+        "height": 42,
+        "ariaLabel": "Load JSON or CSV"
+      }
+    },
+    {
+      "id": "transformed",
+      "type": "Group",
+      "props": {
+        "x": 680,
+        "y": 180,
+        "scale": 1.5,
+        "rotation": 25
+      },
+      "children": [
+        {
+          "id": "dragBackground",
+          "type": "Rect",
+          "props": {
+            "x": 0,
+            "y": 0,
+            "width": 160,
+            "height": 160,
+            "fill": "#dbeafe"
+          }
+        },
+        {
+          "id": "dragBox",
+          "type": "RoundedRect",
+          "props": {
+            "width": 70,
+            "height": 50,
+            "fill": "#f97316",
+            "ariaLabel": "Drag within transformed parent"
+          },
+          "bind": {
+            "x": {
+              "expr": "state.box.x"
+            },
+            "y": {
+              "expr": "state.box.y"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sentinel",
+      "type": "Text",
+      "props": {
+        "x": 600,
+        "y": 490,
+        "width": 360,
+        "height": 50,
+        "text": "Independent static node",
+        "fontSize": 20
+      }
+    },
+    {
+      "id": "instructions",
+      "type": "Text",
+      "props": {
+        "x": 30,
+        "y": 560,
+        "width": 920,
+        "height": 90,
+        "text": "Try keyboard, pointer, input, file upload, nested transforms and Reset. State changes drive only the nodes that depend on them.",
+        "fontSize": 23
+      }
+    }
+  ],
+  "interactions": [
+    {
+      "target": "increment",
+      "event": "click",
+      "actions": [
+        {
+          "type": "increment",
+          "path": "count"
+        }
+      ]
+    },
+    {
+      "target": "name",
+      "event": "input",
+      "actions": [
+        {
+          "type": "set",
+          "path": "name",
+          "value": {
+            "expr": "event.value"
+          }
+        }
+      ]
+    },
+    {
+      "target": "note",
+      "event": "input",
+      "actions": [
+        {
+          "type": "set",
+          "path": "note",
+          "value": {
+            "expr": "event.value"
+          }
+        }
+      ]
+    },
+    {
+      "target": "gain",
+      "event": "input",
+      "actions": [
+        {
+          "type": "set",
+          "path": "gain",
+          "value": {
+            "expr": "event.value"
+          }
+        }
+      ]
+    },
+    {
+      "target": "mode",
+      "event": "change",
+      "actions": [
+        {
+          "type": "set",
+          "path": "mode",
+          "value": {
+            "expr": "event.value"
+          }
+        }
+      ]
+    },
+    {
+      "target": "enabled",
+      "event": "change",
+      "actions": [
+        {
+          "type": "set",
+          "path": "enabled",
+          "value": {
+            "expr": "event.value"
+          }
+        }
+      ]
+    },
+    {
+      "target": "tabs",
+      "event": "click",
+      "actions": [
+        {
+          "type": "set",
+          "path": "tab",
+          "value": {
+            "expr": "event.value"
+          }
+        },
+        {
+          "type": "increment",
+          "path": "tabClicks"
+        }
+      ]
+    },
+    {
+      "target": "keyboardBox",
+      "event": "click",
+      "actions": [
+        {
+          "type": "increment",
+          "path": "keyClicks"
+        }
+      ]
+    },
+    {
+      "target": "upload",
+      "event": "change",
+      "actions": [
+        {
+          "type": "set",
+          "path": "uploaded",
+          "value": {
+            "expr": "event.value"
+          }
+        }
+      ]
+    },
+    {
+      "target": "reset",
+      "event": "click",
+      "actions": [
+        {
+          "type": "reset"
+        }
+      ]
+    }
+  ],
+  "behaviors": [
+    {
+      "type": "drag",
+      "target": "dragBox",
+      "xPath": "box.x",
+      "yPath": "box.y",
+      "snap": {
+        "x": 5,
+        "y": 5
+      },
+      "bounds": {
+        "xMin": 0,
+        "xMax": 100,
+        "yMin": 0,
+        "yMax": 100
+      }
+    }
+  ],
+  "testPlan": [
+    {
+      "name": "increment-and-reset",
+      "actions": [
+        {
+          "type": "click",
+          "target": "increment"
+        }
+      ],
+      "assertions": [
+        {
+          "type": "state",
+          "path": "count",
+          "equals": 1
+        }
+      ],
+      "capture": true
+    },
+    {
+      "name": "keyboard-action",
+      "actions": [
+        {
+          "type": "key",
+          "target": "keyboardBox",
+          "key": "Enter"
+        }
+      ],
+      "assertions": [
+        {
+          "type": "state",
+          "path": "keyClicks",
+          "equals": 1
+        }
+      ],
+      "capture": true
+    }
+  ]
+}

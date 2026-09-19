@@ -1,0 +1,558 @@
+{
+  "schemaVersion": 1,
+  "id": "primitive-component-gallery",
+  "viewport": {
+    "width": 1200,
+    "height": 850
+  },
+  "theme": {
+    "background": "#f8fafc",
+    "accent": "#0d9488",
+    "text": "#172033"
+  },
+  "assets": {
+    "before": {
+      "path": "assets/before.svg",
+      "bytes": 236,
+      "sha256": "08b56f2e2bf9cdc1d362e7e0bd063535abbb646f70eed353554c45d25fdf0e40"
+    },
+    "after": {
+      "path": "assets/after.svg",
+      "bytes": 236,
+      "sha256": "8464020bb1b0978d8c667c24ab77619b6610dd75ca8daa29a6ac2032096fedda"
+    },
+    "movie": {
+      "path": "assets/motion.webm",
+      "bytes": 5561,
+      "sha256": "4955e54c09756888011234e89f86d891de1cc13e7c72158bca03de64226c0eb4"
+    }
+  },
+  "initialState": {
+    "comparison": 0.5
+  },
+  "nodes": [
+    {
+      "id": "title",
+      "type": "Text",
+      "props": {
+        "x": 25,
+        "y": 15,
+        "width": 1150,
+        "height": 45,
+        "text": "Native vectors, media and first-party components",
+        "fontSize": 30,
+        "bold": true
+      }
+    },
+    {
+      "id": "rect",
+      "type": "Rect",
+      "props": {
+        "x": 25,
+        "y": 85,
+        "width": 85,
+        "height": 60,
+        "fill": "#2563eb"
+      }
+    },
+    {
+      "id": "rounded",
+      "type": "RoundedRect",
+      "props": {
+        "x": 135,
+        "y": 85,
+        "width": 85,
+        "height": 60,
+        "fill": "#0d9488",
+        "radius": 15
+      }
+    },
+    {
+      "id": "circle",
+      "type": "Circle",
+      "props": {
+        "x": 285,
+        "y": 115,
+        "radius": 30,
+        "fill": "#f97316"
+      }
+    },
+    {
+      "id": "ellipse",
+      "type": "Ellipse",
+      "props": {
+        "x": 380,
+        "y": 115,
+        "width": 85,
+        "height": 50,
+        "fill": "#8b5cf6"
+      }
+    },
+    {
+      "id": "arrow",
+      "type": "Arrow",
+      "props": {
+        "x": 450,
+        "y": 85,
+        "x2": 520,
+        "y2": 145,
+        "stroke": "#172033",
+        "strokeWidth": 3
+      }
+    },
+    {
+      "id": "line",
+      "type": "Line",
+      "props": {
+        "x": 550,
+        "y": 85,
+        "x2": 620,
+        "y2": 145,
+        "stroke": "#172033",
+        "strokeWidth": 3
+      }
+    },
+    {
+      "id": "polyline",
+      "type": "Polyline",
+      "props": {
+        "x": 660,
+        "y": 85,
+        "points": [
+          [
+            0,
+            60
+          ],
+          [
+            25,
+            5
+          ],
+          [
+            50,
+            50
+          ],
+          [
+            75,
+            0
+          ]
+        ],
+        "fill": "none",
+        "stroke": "#2563eb",
+        "strokeWidth": 4
+      }
+    },
+    {
+      "id": "polygon",
+      "type": "Polygon",
+      "props": {
+        "x": 765,
+        "y": 85,
+        "points": [
+          [
+            0,
+            60
+          ],
+          [
+            40,
+            0
+          ],
+          [
+            80,
+            60
+          ]
+        ],
+        "fill": "#0d9488"
+      }
+    },
+    {
+      "id": "path",
+      "type": "Path",
+      "props": {
+        "x": 880,
+        "y": 85,
+        "d": "M0 55 C25 -10 55 -10 80 55 Z",
+        "fill": "#f97316"
+      }
+    },
+    {
+      "id": "icon",
+      "type": "Icon",
+      "props": {
+        "x": 1005,
+        "y": 88,
+        "width": 50,
+        "height": 50,
+        "name": "play",
+        "fill": "#172033"
+      }
+    },
+    {
+      "id": "rich",
+      "type": "RichText",
+      "props": {
+        "x": 25,
+        "y": 170,
+        "width": 430,
+        "height": 55,
+        "runs": [
+          {
+            "text": "Rich ",
+            "bold": true
+          },
+          {
+            "text": "text ",
+            "italic": true,
+            "color": "#2563eb"
+          },
+          {
+            "text": "without raw HTML",
+            "underline": true
+          }
+        ],
+        "fontSize": 25
+      }
+    },
+    {
+      "id": "canvas",
+      "type": "Canvas",
+      "props": {
+        "x": 495,
+        "y": 180,
+        "width": 130,
+        "height": 60,
+        "items": [
+          {
+            "type": "rect",
+            "x": 0,
+            "y": 0,
+            "width": 130,
+            "height": 60,
+            "fill": "#dbeafe"
+          },
+          {
+            "type": "circle",
+            "x": 65,
+            "y": 30,
+            "radius": 24,
+            "fill": "#2563eb"
+          }
+        ]
+      }
+    },
+    {
+      "id": "image",
+      "type": "Image",
+      "props": {
+        "x": 660,
+        "y": 170,
+        "width": 160,
+        "height": 100,
+        "src": "before"
+      }
+    },
+    {
+      "id": "comparison",
+      "type": "component",
+      "props": {
+        "x": 890,
+        "y": 170,
+        "width": 220,
+        "height": 135,
+        "before": "before",
+        "after": "after",
+        "position": 0.5
+      },
+      "component": "imageComparison"
+    },
+    {
+      "id": "lineChart",
+      "type": "component",
+      "props": {
+        "x": 25,
+        "y": 295,
+        "width": 230,
+        "height": 150,
+        "data": [
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 3
+          },
+          {
+            "x": 2,
+            "y": -1
+          },
+          {
+            "x": 3,
+            "y": 2
+          }
+        ]
+      },
+      "component": "lineChart"
+    },
+    {
+      "id": "areaChart",
+      "type": "component",
+      "props": {
+        "x": 310,
+        "y": 295,
+        "width": 230,
+        "height": 150,
+        "data": [
+          1,
+          3,
+          2,
+          4
+        ]
+      },
+      "component": "areaChart"
+    },
+    {
+      "id": "scatter",
+      "type": "component",
+      "props": {
+        "x": 590,
+        "y": 295,
+        "width": 220,
+        "height": 150,
+        "data": [
+          {
+            "x": 0,
+            "y": 1
+          },
+          {
+            "x": 1,
+            "y": 3
+          },
+          {
+            "x": 2,
+            "y": -1
+          },
+          {
+            "x": 3,
+            "y": 2
+          }
+        ]
+      },
+      "component": "scatterChart"
+    },
+    {
+      "id": "network",
+      "type": "component",
+      "props": {
+        "x": 910,
+        "y": 330,
+        "width": 250,
+        "height": 120,
+        "nodes": [
+          {
+            "id": "input",
+            "x": 0,
+            "y": 0,
+            "label": "Input"
+          },
+          {
+            "id": "output",
+            "x": 150,
+            "y": 0,
+            "label": "Output"
+          }
+        ],
+        "edges": [
+          {
+            "from": "input",
+            "to": "output"
+          }
+        ]
+      },
+      "component": "network"
+    },
+    {
+      "id": "table",
+      "type": "component",
+      "props": {
+        "x": 25,
+        "y": 475,
+        "width": 330,
+        "height": 160,
+        "columns": [
+          {
+            "key": "stage",
+            "label": "Stage"
+          },
+          {
+            "key": "value",
+            "label": "Value"
+          }
+        ],
+        "data": [
+          {
+            "stage": "A",
+            "value": 12
+          },
+          {
+            "stage": "B",
+            "value": 18
+          }
+        ],
+        "rowHeight": 45
+      },
+      "component": "table"
+    },
+    {
+      "id": "progress",
+      "type": "component",
+      "props": {
+        "x": 400,
+        "y": 485,
+        "width": 220,
+        "height": 26,
+        "value": 0.65
+      },
+      "component": "progress"
+    },
+    {
+      "id": "kpi",
+      "type": "component",
+      "props": {
+        "x": 400,
+        "y": 535,
+        "width": 220,
+        "height": 120,
+        "value": 42,
+        "label": "computed result"
+      },
+      "component": "KPI"
+    },
+    {
+      "id": "hotspots",
+      "type": "component",
+      "props": {
+        "x": 680,
+        "y": 480,
+        "width": 240,
+        "height": 150,
+        "src": "before",
+        "hotspots": [
+          {
+            "x": 38,
+            "y": 50,
+            "label": "1",
+            "description": "Inspect circle"
+          }
+        ]
+      },
+      "component": "hotspotImage"
+    },
+    {
+      "id": "carousel",
+      "type": "component",
+      "props": {
+        "x": 955,
+        "y": 480,
+        "width": 220,
+        "height": 150,
+        "items": [
+          "before",
+          "after"
+        ],
+        "active": 1
+      },
+      "component": "carousel"
+    },
+    {
+      "id": "timeline",
+      "type": "component",
+      "props": {
+        "x": 25,
+        "y": 685,
+        "width": 380,
+        "height": 145,
+        "data": [
+          {
+            "label": "Observe"
+          },
+          {
+            "label": "Change"
+          },
+          {
+            "label": "Explain"
+          }
+        ],
+        "active": 1
+      },
+      "component": "timeline"
+    },
+    {
+      "id": "tooltip",
+      "type": "component",
+      "props": {
+        "x": 450,
+        "y": 705,
+        "width": 235,
+        "height": 90,
+        "text": "State-aware tooltip",
+        "open": true
+      },
+      "component": "tooltip"
+    },
+    {
+      "id": "video",
+      "type": "Video",
+      "props": {
+        "x": 740,
+        "y": 675,
+        "width": 250,
+        "height": 145,
+        "src": "movie",
+        "controls": true,
+        "muted": true
+      }
+    },
+    {
+      "id": "videoPlay",
+      "type": "Button",
+      "props": {
+        "x": 1010,
+        "y": 710,
+        "width": 155,
+        "height": 45,
+        "text": "Play video"
+      }
+    }
+  ],
+  "interactions": [
+    {
+      "target": "videoPlay",
+      "event": "click",
+      "actions": [
+        {
+          "type": "media",
+          "target": "video",
+          "method": "play"
+        }
+      ]
+    }
+  ],
+  "testPlan": [
+    {
+      "name": "gallery-loaded",
+      "actions": [],
+      "assertions": [
+        {
+          "type": "visible",
+          "target": "video"
+        },
+        {
+          "type": "text",
+          "target": "kpi.value",
+          "contains": "42"
+        }
+      ],
+      "capture": true
+    }
+  ]
+}

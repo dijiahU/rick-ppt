@@ -108,7 +108,8 @@
               "csv",
               "http",
               "sse",
-              "websocket"
+              "websocket",
+              "plugin"
             ]
           },
           "value": {
@@ -135,6 +136,13 @@
           "refreshMs": {
             "type": "number",
             "minimum": 1000
+          },
+          "adapter": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "options": {
+            "$ref": "#/$defs/value"
           }
         },
         "required": [
@@ -244,7 +252,34 @@
             "type": "object"
           },
           "snap": {
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "y": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "width": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "height": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
           },
           "min": {
             "type": "number"
@@ -297,7 +332,9 @@
             "maximum": 3600000
           },
           "delay": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0,
+            "maximum": 3600000
           },
           "easing": {
             "type": "string",
@@ -339,6 +376,35 @@
               "additionalProperties": false
             },
             "maxItems": 1000
+          },
+          "playbackRate": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 100
+          },
+          "bind": {
+            "type": "object",
+            "properties": {
+              "duration": {
+                "$ref": "#/$defs/expression"
+              },
+              "delay": {
+                "$ref": "#/$defs/expression"
+              },
+              "easing": {
+                "$ref": "#/$defs/expression"
+              },
+              "loop": {
+                "$ref": "#/$defs/expression"
+              },
+              "reverse": {
+                "$ref": "#/$defs/expression"
+              },
+              "playbackRate": {
+                "$ref": "#/$defs/expression"
+              }
+            },
+            "additionalProperties": false
           }
         },
         "required": [
@@ -619,7 +685,8 @@
             "delay",
             "undo",
             "redo",
-            "media"
+            "media",
+            "plugin"
           ]
         },
         "path": {
@@ -881,7 +948,8 @@
             ],
             "additionalProperties": false
           },
-          "maxItems": 200
+          "maxItems": 200,
+          "minItems": 1
         }
       },
       "required": [

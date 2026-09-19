@@ -18,9 +18,10 @@ export function builtinFunctions(){const r=new FunctionRegistry();const f:Record
  rgba:(r,g,b,a)=>`rgba(${r},${g},${b},${a})`,replace:(s,a,b)=>String(s).split(a).join(b)};
  for(const [name,fn]of Object.entries(f))r.register(name,fn);return r;}
 export class Expressions {
- private cache=new Map<string,jsep.Expression>();private depth=0;
+ private cache=new Map<string,jsep.Expression>();private depth=0;private environments:Environment[]=[];
  constructor(public functions=builtinFunctions()){}
- evaluate(source:string,env:Environment):any {if(source.length>2048)throw new Error('Expression too long');if(++this.depth>32){this.depth--;throw new Error('Function recursion limit');}try{let ast=this.cache.get(source);if(!ast){ast=jsep(source);if(this.cache.size>2048)this.cache.clear();this.cache.set(source,ast);}let budget=4096;
+ context():Environment{return this.environments.at(-1)??{state:{},data:{}};}
+ evaluate(source:string,env:Environment):any {if(source.length>2048)throw new Error('Expression too long');if(++this.depth>32){this.depth--;throw new Error('Function recursion limit');}try{this.environments.push(env);let ast=this.cache.get(source);if(!ast){ast=jsep(source);if(this.cache.size>2048)this.cache.clear();this.cache.set(source,ast);}let budget=4096;
  const read=(n:any):any=>{if(--budget<0)throw new Error('Expression budget exceeded');switch(n.type){
  case 'Literal':return n.value;
  case 'Identifier':{safeKey(n.name);if(['state','data','locals','event'].includes(n.name))return (env as any)[n.name]??{};if(n.name==='PI')return Math.PI;if(n.name==='E')return Math.E;if(Object.hasOwn(env.locals??{},n.name))return env.locals![n.name];throw new Error(`Unknown identifier: ${n.name}`);}
@@ -30,6 +31,6 @@ export class Expressions {
  case 'BinaryExpression':case 'LogicalExpression':{const a=read(n.left);if(n.operator==='&&')return a&&read(n.right);if(n.operator==='||')return a||read(n.right);if(n.operator==='??')return a??read(n.right);const b=read(n.right);switch(n.operator){case '+':return a+b;case '-':return a-b;case '*':return a*b;case '/':return a/b;case '%':return a%b;case '**':return a**b;case '<':return a<b;case '>':return a>b;case '<=':return a<=b;case '>=':return a>=b;case '==':case '===':return a===b;case '!=':case '!==':return a!==b;default:throw new Error('Unsupported operator');}}
  case 'ConditionalExpression':return read(n.test)?read(n.consequent):read(n.alternate);
  case 'CallExpression':{let name=n.callee.name;if(n.callee.type==='MemberExpression'&&n.callee.object.name==='Math'&&!n.callee.computed)name=n.callee.property.name;else if(n.callee.type!=='Identifier')throw new Error('Only registered function calls allowed');safeKey(name);return this.functions.call(name,n.arguments.map(read));}
- default:throw new Error(`Unsupported expression: ${n.type}`);}};return read(ast);}finally{this.depth--;}}
+ default:throw new Error(`Unsupported expression: ${n.type}`);}};return read(ast);}catch(error){throw new Error(`Expression ${source}: ${error instanceof Error?error.message:String(error)}`,{cause:error});}finally{this.environments.pop();this.depth--;}}
  value(value:any,env:Environment):any{if(value&&typeof value==='object'){if(Object.keys(value).length===1&&typeof value.expr==='string')return this.evaluate(value.expr,env);if(Array.isArray(value))return value.map(v=>this.value(v,env));return Object.fromEntries(Object.entries(value).map(([k,v])=>[safeKey(k),this.value(v,env)]));}return value;}
 }

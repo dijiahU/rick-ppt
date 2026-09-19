@@ -83,12 +83,12 @@ Primary sources:
   pure registry, bindings, events/actions, transforms, coordinates, timeline and
   seeded compute. Evidence: 26 Vitest tests and production build passed;
   precompiled schema avoids eval in the browser; commit `820aec1`.
-- [ ] **03 — Complete rendering and interaction semantics.** All specified SVG,
+- [x] **03 — Complete rendering and interaction semantics.** All specified SVG,
   HTML/media/control primitives; repeat/when; nested row/column/grid layout;
   transform/clip/mask; drag/resize/pan/zoom/scrub/selection/brush; accessibility,
   reduced motion, selective subscriptions and diagnostics. Acceptance: browser
   tests change actual state/geometry, verify keyboard and scaled coordinates,
-  restore/reset and capture meaningful states.
+  restore/reset and capture meaningful states. Evidence: 11 real Chromium semantics tests and 49 Vitest tests passed, including scaled gestures, DOM isolation, media playback/cues, template limits and restored states; retained screenshots inspected.
 - [x] **04 — OOXML helper + native regressions.** Discover/attach/update/detach/
   resize/clone; multiple instances per slide and across slides; stable manifest
   ID; snapshots and native underlays; actual golden semantic comparison.

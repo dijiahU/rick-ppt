@@ -3,9 +3,9 @@ import {SceneStore} from './store';
 import {EventBus} from './events';
 import {allowedUrl} from './assets';
 export class ActionDispatcher {
- services:Dict={};private count=0;private depth=0;private disposed=false;private timers=new Map<any,()=>void>();private custom=new Map<string,(a:Action,e:Dict)=>void>();
+ services:Dict={};private count=0;private depth=0;private disposed=false;private timers=new Map<any,()=>void>();private custom=new Map<string,(a:Action,e:Dict)=>void|Promise<void>>();
  constructor(private store:SceneStore,private bus:EventBus,private maximum=2000){}
- register(name:string,fn:(a:Action,e:Dict)=>void){if(this.custom.has(name))throw new Error('Duplicate action');this.custom.set(name,fn);}
+ register(name:string,fn:(a:Action,e:Dict)=>void|Promise<void>){if(this.custom.has(name))throw new Error('Duplicate action');this.custom.set(name,fn);}
  async run(actions:Action[],event:Dict={},locals:Dict={},shared=false):Promise<void>{if(this.disposed)return;if(!this.depth&&!shared)this.count=0;this.depth++;try{for(const action of actions){if(++this.count>this.maximum)throw new Error('Action transaction limit exceeded');await this.execute(action,event,locals);}}finally{this.depth--;}}
  private execute(a:Action,event:Dict,locals:Dict):void|Promise<void>{const env=this.store.environment(locals,event);const value=this.store.expressions.value(a.value,env);const path=a.path??'';switch(a.type){
  case 'set':case 'select':this.store.set(path,value);break;
@@ -29,7 +29,7 @@ export class ActionDispatcher {
  case 'navigateView':this.store.set(path||'view',value);break;
  case 'openUrl':{const url=allowedUrl(this.store.expressions.value(a.url,env),this.services.base,this.services.allowlist);window.open(url,'_blank','noopener,noreferrer');break;}
  case 'media':this.services.media(a.target,a.method,value);break;
- default:if(!this.custom.has(a.type))throw new Error(`Unknown action: ${a.type}`);this.custom.get(a.type)!(a,event);
+ default:if(!this.custom.has(a.type))throw new Error(`Unknown action: ${a.type}`);return this.custom.get(a.type)!(a,event);
  }}
  dispose(){this.disposed=true;for(const [id,resolve]of this.timers){clearTimeout(id);resolve();}this.timers.clear();}
 }
