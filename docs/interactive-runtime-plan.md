@@ -122,13 +122,13 @@ Primary sources:
   map/allowlisted tiles; KaTeX; same-origin, hashed capability-declared plugins.
   Acceptance: real browser smoke for each pack, code run/reset/timeout/network
   denial, local WASM/assets, core never imports heavy chunks eagerly; size report.
-- [ ] **10 — Durable workflow journal and recovery engine.** Record task/run,
+- [x] **10 — Durable workflow journal and recovery engine.** Record task/run,
   phase/thread/turn, plugin version, revision, message cursor, workspace hashes,
   finished stages, next stage and output receipts atomically. Recover under a
   per-task lock; verify artifacts; fork a new attempt workspace for restoration;
   prefer same-thread resume; rebuild safe context if the thread is unavailable.
   Acceptance: kill/restart during authoring, resume after a finished phase, corrupt
-  checkpoint rejection, duplicate recovery exclusion and original preservation.
+  checkpoint rejection, duplicate recovery exclusion and original preservation. Evidence: 37 standard-library tests passed, including real SIGKILL, commit/projection crash window, uncertain inbox reconciliation and original preservation. Integration remains item 14.
 - [ ] **11 — Codex app-server transport and live steering.** Stdio JSON-RPC
   handshake; isolated task permissions and environment; streaming public messages;
   turn/start, steer with expected turn, resume and interrupt; maintain heartbeats,
