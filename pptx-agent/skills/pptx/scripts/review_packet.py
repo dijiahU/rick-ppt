@@ -101,6 +101,20 @@ def collect(workspace, render, destination):
         for n,tile in enumerate(group):sheet.paste(tile,((n%3)*420,(n//3)*260))
         name=f'contact-{offset//12+1}.jpg';sheet.save(destination/name,quality=90);sheets.append(name)
     value={'slides':records,'contact_sheets':sheets,'playback':'Real playback not verified.'}
+    from pptx_core.interactive_validate import validate_interactive
+    value['interactive'] = validate_interactive(root)
+    for instance in value['interactive']['instances']:
+        receipt = ws.home/'interactive/tests'/f'{instance["sceneId"]}.json'
+        if receipt.exists():
+            report = json.loads(receipt.read_text())
+            target = destination/'interactive'/instance['sceneId']
+            target.mkdir(parents=True, exist_ok=True)
+            captures=[]
+            for name in report.get('captures', []):
+                from pptx_core.interactive_validate import safe_path
+                source=safe_path(Path(report['directory']),name)
+                shutil.copyfile(source,target/name);captures.append(str((target/name).relative_to(destination)))
+            instance['runtime_tests']=report['tests'];instance['captures']=captures
     try:value['static_states']=state_previews(root,pages,destination)
     except Exception as error:value['static_states']={'frames':[],'error':type(error).__name__,'limitation':'Static state rendering failed; only final pages and timing inventory are available.'}
     atomic_json(destination/'inventory.json',value)

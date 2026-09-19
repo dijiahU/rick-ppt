@@ -7,10 +7,11 @@ name = "pptx-agent"
 version = "0.1.0"
 description = "A direct OOXML development environment for native PowerPoint files"
 requires-python = ">=3.11"
-dependencies = ["lxml>=5", "Pillow>=10"]
+dependencies = ["lxml>=5", "Pillow>=10", "jsonschema>=4.23,<5", "aiohttp>=3.11,<4"]
 
 [project.optional-dependencies]
 test = ["pytest>=8", "python-pptx>=1"]
+interactive = ["playwright>=1.51,<2"]
 
 [project.scripts]
 pptx = "pptx_core.cli:main"

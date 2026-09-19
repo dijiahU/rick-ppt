@@ -33,7 +33,9 @@ def inspect(ws, number):
                        "name": props.get("name") if props is not None else None,
                        "text": "\n".join(n.text or "" for n in node.iter() if local(n) == "t"),
                        "transform": bounds})
-    return {"slide": number, "part": part, "shapes": result, "relationships": relationships(ws.root, part)}
+    from .interactive_ooxml import discover_content_addins
+    return {"slide": number, "part": part, "shapes": result, "relationships": relationships(ws.root, part),
+            "interactive": [i for i in discover_content_addins(ws.root) if i["slide"] == number]}
 
 
 def parser():
@@ -66,10 +68,15 @@ def parser():
     rb.add_argument("snapshot")
     e = commands.add_parser("export")
     e.add_argument("output", nargs="?")
+    from .interactive import add_parser
+    add_parser(commands)
     return p
 
 
 def dispatch(args):
+    if args.command == "interactive":
+        from .interactive import dispatch as interactive_dispatch
+        return interactive_dispatch(args), 0
     if args.command == "unpack":
         ws = unpack(args.source, args.base)
         if args.render:
@@ -112,6 +119,9 @@ def dispatch(args):
         with ws.lock():
             ws.refresh()
             result = validate(ws.root, min(args.level, 2))
+            if args.level >= 2:
+                from .interactive_validate import validate_interactive
+                result.errors.extend(validate_interactive(ws.root)["errors"])
             ws.state["last_validation"] = {"at": now(), **result.to_dict()}
             ws.save()
         value = result.to_dict()

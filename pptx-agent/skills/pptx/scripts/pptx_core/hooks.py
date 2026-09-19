@@ -120,21 +120,24 @@ def pre(ws, event):
                 risky = True
         if risky:
             snapshot(ws, "pre-tool-high-risk-or-opaque-write")
-        atomic_json(record_path(ws, event), {"manifest": before, "at": now()})
+        atomic_json(record_path(ws, event), {"manifest": before, "interactive_manifest": ws.sidecar_manifest(), "at": now()})
     return None
 
 
 def post(ws, event):
     with ws.lock():
         record = record_path(ws, event)
-        before = json.loads(record.read_text())["manifest"] if record.exists() else ws.state["baseline"]
+        previous = json.loads(record.read_text()) if record.exists() else {"manifest": ws.state["baseline"]}
+        before = previous["manifest"]
         after = ws.refresh()
-        record.unlink(missing_ok=True)
         ws.check_original()
         changed = changed_paths(before, after)
-        if not changed:
+        sidecar_changes = changed_paths(previous.get("interactive_manifest", ws.state["interactive_baseline"]), ws.sidecar_manifest())
+        if not changed and not sidecar_changes:
             return None
         report = validate(ws.root)
+        from .interactive_validate import validate_interactive
+        report.errors.extend(validate_interactive(ws.root)["errors"])
         ws.state["last_validation"] = {"at": now(), "changed": changed, **report.to_dict()}
         ws.save()
         if not report.ok:
@@ -155,6 +158,13 @@ def stop(ws, event):
             ws.state["stop_failures"] = 0
             ws.save()
     try:
+        from .interactive_ooxml import discover_content_addins
+        from .interactive_validate import config
+        if any(i.get("addinId") == config()["addinId"] for i in discover_content_addins(ws.root)):
+            import uuid
+            from .interactive_bundle import assemble_bundle
+            bundle = assemble_bundle(ws, ws.home / "output" / ("interactive-" + uuid.uuid4().hex[:12]))
+            return {"systemMessage": f"Interactive PPTX validated, tested and bundled: {bundle['bundle']}"}
         path = export(ws)
         return {"systemMessage": f"PPTX validated, rendered and exported: {path}"}
     except Exception as exc:

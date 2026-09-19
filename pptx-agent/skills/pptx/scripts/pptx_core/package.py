@@ -61,8 +61,21 @@ class Workspace:
         self.root = self.home / "workspace"
         self.state_path = self.home / "state.json"
         self.state = json.loads(self.state_path.read_text())
-        if self.state.get("version") != 1 or self.state.get("workspace") != str(self.root):
+        self.migrate_state()
+
+    def migrate_state(self):
+        if self.state.get("version") not in (1, 2) or self.state.get("workspace") != str(self.root):
             raise PptxError(f"Invalid workspace state: {self.state_path}")
+        self.state.update(version=2)
+        self.state.setdefault("interactive_baseline", {})
+        self.state.setdefault("interactive_dirty", False)
+        self.state.setdefault("native_dirty", self.state.get("dirty", False))
+        self.state.setdefault("interactive", False)
+        self.state.setdefault("latest_bundle", None)
+
+    def sidecar_manifest(self):
+        path = self.home / "interactive" / "deck"
+        return manifest(path) if path.exists() else {}
 
     def save(self):
         atomic_json(self.state_path, self.state)
@@ -72,6 +85,7 @@ class Workspace:
         with (self.home / ".lock").open("a") as stream:
             fcntl.flock(stream, fcntl.LOCK_EX)
             self.state = json.loads(self.state_path.read_text())
+            self.migrate_state()
             try:
                 yield self
             finally:
@@ -80,7 +94,10 @@ class Workspace:
     def refresh(self):
         current = manifest(self.root)
         files = changed_paths(self.state["baseline"], current)
-        self.state.update(dirty=bool(files), changed_files=files,
+        sidecar_files = changed_paths(self.state["interactive_baseline"], self.sidecar_manifest())
+        self.state.update(dirty=bool(files or sidecar_files), native_dirty=bool(files),
+                          interactive_dirty=bool(sidecar_files), interactive_changed_files=sidecar_files,
+                          changed_files=files,
                           changed_slides=affected_slides(self.root, files))
         self.save()
         return current
@@ -139,7 +156,7 @@ def unpack(source, base=None):
             (stage / name).mkdir()
         initial = manifest(root)
         atomic_json(stage / "state.json", {
-            "version": 1, "source": str(source), "source_hash": sha256(source),
+            "version": 2, "source": str(source), "source_hash": sha256(source),
             "workspace": str(home / "workspace"), "active": True, "dirty": False,
             "changed_files": [], "changed_slides": [], "baseline": initial,
             "original_manifest": initial, "last_validation": {"at": now(), **result.to_dict()},
@@ -159,6 +176,10 @@ def export(ws, output=None):
         ws.check_original()
         before = ws.refresh()
         result = validate(ws.root)
+        from .interactive_validate import validate_interactive
+        interactive = validate_interactive(ws.root, require_runtime=True)
+        result.errors.extend(interactive["errors"])
+        sidecar_before = ws.sidecar_manifest()
         ws.state["last_validation"] = {"at": now(), **result.to_dict()}
         ws.save()
         result.require()
@@ -176,6 +197,8 @@ def export(ws, output=None):
             ws.check_original()
             if changed_paths(before, manifest(ws.root)):
                 raise PptxError("Workspace changed during export; retry after edits finish")
+            if changed_paths(sidecar_before, ws.sidecar_manifest()):
+                raise PptxError("Interactive scene changed during export; retry after edits finish")
             # link() is atomic and refuses existing files, including racing writers.
             dest = wanted
             suffix = 2
@@ -186,7 +209,7 @@ def export(ws, output=None):
                 except FileExistsError:
                     dest = wanted.with_name(f"{wanted.stem}-{suffix}.pptx")
                     suffix += 1
-            ws.state.update(baseline=before, dirty=False, changed_files=[], changed_slides=[],
+            ws.state.update(baseline=before, native_dirty=False, dirty=ws.state["interactive_dirty"], changed_files=[], changed_slides=[],
                             last_render=rendered, latest_output=str(dest), stop_failures=0)
             ws.save()
         return dest

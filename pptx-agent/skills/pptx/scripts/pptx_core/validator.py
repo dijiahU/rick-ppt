@@ -67,11 +67,11 @@ def validate(root, level=2):
         tags = {f"{{{PR}}}Relationships"} if name.endswith(".rels") else expected.get(name)
         for directory, element in (("ppt/slides/", "sld"), ("ppt/slideLayouts/", "sldLayout"),
                                    ("ppt/slideMasters/", "sldMaster")):
-            if name.startswith(directory) and name.endswith(".xml") and "/_rels/" not in name:
+            if name.rsplit("/", 1)[0] + "/" == directory and name.endswith(".xml"):
                 tags = {f"{{{P}}}{element}", f"{{{STRICT_P}}}{element}"}
         if tags and tree.tag not in tags:
             report.errors.append(f"{name}: invalid root namespace or element {tree.tag}")
-        if name.startswith("ppt/slides/") and name.endswith(".xml"):
+        if name.rsplit("/", 1)[0] == "ppt/slides" and name.endswith(".xml"):
             if duplicate_shape_ids(tree):
                 report.errors.append(f"{name}: duplicate or missing shape ID")
     if level == 1:
@@ -153,4 +153,6 @@ def validate(root, level=2):
                     report.errors.append(f"{name}: expected one internal slideMaster relationship")
     except (PptxError, etree.Error, OSError) as exc:
         report.errors.append(str(exc))
+    from .interactive_ooxml import validate_ooxml
+    report.errors.extend(validate_ooxml(root))
     return report

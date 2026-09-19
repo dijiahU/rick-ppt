@@ -89,12 +89,12 @@ Primary sources:
   reduced motion, selective subscriptions and diagnostics. Acceptance: browser
   tests change actual state/geometry, verify keyboard and scaled coordinates,
   restore/reset and capture meaningful states.
-- [ ] **04 — OOXML helper + native regressions.** Discover/attach/update/detach/
+- [x] **04 — OOXML helper + native regressions.** Discover/attach/update/detach/
   resize/clone; multiple instances per slide and across slides; stable manifest
   ID; snapshots and native underlays; actual golden semantic comparison.
   Acceptance: generated relationships/types match official structure; deliberately
   broken graph/hash/fallback is rejected; unrelated part bytes stay identical;
-  native tests still pass.
+  native tests still pass. Evidence: 90 Python tests passed (2026-09-20), including official golden structural comparison, six graph corruption cases, clone/resize/detach and unchanged unrelated bytes.
 - [ ] **05 — Workspace v2, hooks and export safety.** v1 migration; independent
   native/sidecar dirty flags; snapshot and rollback include scenes and receipts;
   pre/post/Stop hooks detect invalid/stale scenes and missing test results; bounded
