@@ -51,6 +51,7 @@ jobs:
           pptx-agent/.venv/bin/python runner/test-content-workflow.py
           pptx-agent/.venv/bin/python runner/test-acceptance-migration.py
           pptx-agent/.venv/bin/python runner/test-inspect-case-artifacts.py
+          pptx-agent/.venv/bin/python runner/test-review.py
       - name: Retain browser evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -60,3 +61,25 @@ jobs:
             pptx-agent/runtime/playwright-report/
             pptx-agent/runtime/test-results/
           if-no-files-found: ignore
+  website-boundaries:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - name: Install website dependencies
+        run: npm ci --prefix website
+      - name: Conversation, recovery and read-only delivery routes
+        working-directory: website
+        run: |
+          node --experimental-strip-types --test scripts/test-conversation.mjs
+          node --experimental-strip-types --test scripts/test-worker-recovery.mjs
+          node --experimental-strip-types --test scripts/test-review-bundle.mjs
+          npx tsc --noEmit
+      - name: Build the website without production credentials
+        working-directory: website
+        run: npm run build
