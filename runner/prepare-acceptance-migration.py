@@ -9,7 +9,6 @@ The new job counts in normal history and uses the ordinary worker/lease pipeline
 import argparse
 import json
 from pathlib import Path
-import time
 import uuid
 
 
@@ -28,7 +27,7 @@ def utf16_length(value):
     return len(value.encode('utf-16-le'))//2
 
 
-def prepare(request, source_task, source_title, identifier, timestamp):
+def prepare(request, source_task, source_title, identifier, timestamp=None):
     canonical_uuid(source_task);canonical_uuid(identifier)
     if not isinstance(request,dict):raise ValueError('Expected a submission object')
     key=canonical_uuid(request.get('requestKey'))
@@ -42,7 +41,8 @@ def prepare(request, source_task, source_title, identifier, timestamp):
     if request.get('mode','create')!='create' or request.get('files'):raise ValueError('Only new attachment-free cases are supported')
     if len(json.dumps(request,ensure_ascii=False,separators=(',',':')).encode())>16000:raise ValueError('Request exceeds the ordinary JSON body limit')
     if not isinstance(source_title,str) or not source_title:raise ValueError('Require the exact source task title')
-    if isinstance(timestamp,bool) or not isinstance(timestamp,int) or timestamp<0:raise ValueError('Invalid timestamp')
+    if timestamp is not None and (isinstance(timestamp,bool) or not isinstance(timestamp,int) or timestamp<0):raise ValueError('Invalid timestamp')
+    clock="CAST(strftime('%s','now') AS INTEGER) * 1000" if timestamp is None else str(timestamp)
     # A missing/mismatched source account or full queue fails NOT NULL constraints;
     # it cannot silently assign another account or exceed normal queue capacity.
     owner=f'(SELECT user_id FROM jobs WHERE id={sql_text(source_task)} AND title={sql_text(source_title)})'
@@ -50,7 +50,7 @@ def prepare(request, source_task, source_title, identifier, timestamp):
     return ('-- One explicitly requested site-owner acceptance case; preserves all existing rows.\n'
             '-- No credential, authentication route, account role or quota setting is modified.\n'
             'INSERT INTO jobs (id,user_id,request_key,title,brief,pages,style,language,attachments,status,created_at,updated_at)\n'
-            'VALUES ('+', '.join((sql_text(identifier),owner,sql_text(key),sql_text(title.strip()),sql_text(brief.strip()),str(pages),sql_text(style),"'en'","'[]'",status,str(timestamp),str(timestamp)))+')\n'
+            'VALUES ('+', '.join((sql_text(identifier),owner,sql_text(key),sql_text(title.strip()),sql_text(brief.strip()),str(pages),sql_text(style),"'en'","'[]'",status,clock,clock))+')\n'
             'ON CONFLICT(user_id,request_key) DO NOTHING;\n')
 
 
@@ -63,7 +63,7 @@ def main():
     p.add_argument('--job-id',default=None)
     args=p.parse_args();identifier=args.job_id or str(uuid.uuid4())
     request=json.loads(args.request.read_text())
-    sql=prepare(request,args.owner_source_task,args.owner_source_title,identifier,int(time.time()*1000))
+    sql=prepare(request,args.owner_source_task,args.owner_source_title,identifier)
     with args.output.open('x') as stream:stream.write(sql)
     print(json.dumps({'prepared':str(args.output),'job_id':identifier,'pages':request['pages'],
                       'brief_utf16_units':utf16_length(request['brief']),'submitted':False}))

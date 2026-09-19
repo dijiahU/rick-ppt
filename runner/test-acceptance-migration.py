@@ -49,5 +49,12 @@ class AcceptanceMigrationTests(unittest.TestCase):
             with self.assertRaises((ValueError,AttributeError,TypeError)):
                 self.sql(request={**self.request,**patch})
 
+    def test_prepared_case_timestamp_is_set_at_deployment(self):
+        sql=module.prepare(self.request,self.source,'Prior lesson',self.identifier)
+        self.db.executescript(sql)
+        created,updated=self.db.execute('SELECT created_at,updated_at FROM jobs WHERE id=?',(self.identifier,)).fetchone()
+        self.assertEqual(created,updated)
+        self.assertGreater(created,1_700_000_000_000)
+
 
 if __name__=='__main__':unittest.main()
