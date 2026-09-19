@@ -1,0 +1,166 @@
+{
+  "schema": "yolo-reference-observed/v1",
+  "scope": "Independent scalar synthetic fixture acceptance only; no full-model execution, browser, live task or final deck approval.",
+  "model_version": "Ultralytics YOLOv8 detection 8.2.0",
+  "model_commit": "27836d34fa7b19d38af22200805aa5d25dddaedf",
+  "source_sha256": "a441b3a14a3e9ff10547cb1e8d2aac09d66d468d376581faac2ad03b0ac098e0",
+  "checks": {
+    "passed": 75,
+    "total": 75
+  },
+  "overlap": {
+    "area_a": 1600.0,
+    "area_b": 1600.0,
+    "intersection": 900.0,
+    "union": 2300.0,
+    "iou": 0.391304347826087
+  },
+  "decode": {
+    "xyxy": [
+      68.0,
+      76.0,
+      116.0,
+      140.0
+    ],
+    "xywh": [
+      92.0,
+      108.0,
+      48.0,
+      64.0
+    ]
+  },
+  "changed_decode": {
+    "xyxy": [
+      68.0,
+      76.0,
+      124.0,
+      140.0
+    ],
+    "xywh": [
+      96.0,
+      108.0,
+      56.0,
+      64.0
+    ]
+  },
+  "four_bin_expectation": 2.0,
+  "nms_kept_ids": {
+    "aware_03": [
+      "A",
+      "C"
+    ],
+    "aware_05": [
+      "A",
+      "B",
+      "C"
+    ],
+    "confidence_085": [
+      "A"
+    ],
+    "agnostic_03": [
+      "A"
+    ]
+  },
+  "ciou": {
+    "iou": 0.391304347826087,
+    "center_distance_term": 0.04,
+    "aspect_term": 0.0,
+    "alpha": 0.0,
+    "ciou": 0.351304347826087,
+    "box_loss": 0.648695652173913
+  },
+  "bce": {
+    "loss": 0.22314355131420976,
+    "probability": 0.8,
+    "gradient": -0.19999999999999996
+  },
+  "dfl": {
+    "loss": 0.8664339756999314,
+    "target_mass": [
+      0.0,
+      0.0,
+      0.75,
+      0.25,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "gradient_sum": 8.326672684688674e-17
+  },
+  "component_gains": {
+    "box_loss": 0.648695652173913,
+    "classification_loss": 0.22314355131420976,
+    "mean_side_dfl": 0.8664339756999314,
+    "gains": {
+      "box": 7.5,
+      "cls": 0.5,
+      "dfl": 1.5
+    },
+    "weighted": {
+      "box": 4.8652173913043475,
+      "cls": 0.11157177565710488,
+      "dfl": 1.2996509635498972
+    },
+    "total": 6.276440130511349,
+    "scope": "unrelated component illustrations, not a training batch"
+  },
+  "ranking": [
+    0.013975424859373685,
+    0.07440776088822991
+  ],
+  "educational_head": {
+    "scope": "educational class/distance-head optimizer, not YOLOv8 training",
+    "steps": 80,
+    "learning_rate": 0.5,
+    "parameter_count": 17,
+    "changed_parameter_count": 17,
+    "initial": {
+      "step": 0,
+      "loss": 3.4657359027997265,
+      "class_probability": 0.5,
+      "expected_distance": 7.5
+    },
+    "final": {
+      "step": 80,
+      "loss": 0.6436653621470312,
+      "class_probability": 0.9744346035121731,
+      "expected_distance": 2.55308580494365
+    }
+  },
+  "zero_learning_rate": {
+    "parameter_count": 17,
+    "changed_parameter_count": 0,
+    "initial": {
+      "step": 0,
+      "loss": 3.4657359027997265,
+      "class_probability": 0.5,
+      "expected_distance": 7.5
+    },
+    "final": {
+      "step": 80,
+      "loss": 3.4657359027997265,
+      "class_probability": 0.5,
+      "expected_distance": 7.5
+    }
+  },
+  "finite_difference_count": 50,
+  "finite_difference_maximum_absolute_error": 1.6005599623447608e-12,
+  "decimal_optimizer_maximum_parameter_error": 8.881784197001252e-16,
+  "conventions": {
+    "confidence": "strict score > confidence",
+    "suppression": "strict IoU > threshold, compared only to kept boxes",
+    "ties": "descending score then original input index; a teaching contract, not CPU/GPU backend parity",
+    "zero_area": "IoU is0; CIoU and NMS reject degenerate input boxes",
+    "training_dfl_target": "clamp to [0,14.99]; prediction support remains0..15",
+    "ciou": "forward scalar formula without tiny implementation epsilons; no detached-alpha gradient claim"
+  }
+}
