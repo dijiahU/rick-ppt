@@ -181,8 +181,32 @@ WOFF2 HTTP 200, waits for `document.fonts.ready`, and checks all emitted CSS for
 inline fonts. No CSP violation, console error or page exception occurred. Both
 the independent reviewer and parent opened the actual fraction/parentheses PNG.
 
-The candidate is **not installed into the running CNN worker**. The previous
-96-file dist directory is retained in full, and the worker's immutable `be097…`
-release remains unchanged. New source/build evidence must not be described as
-current CNN delivery evidence. Installation and any affected case revalidation
-will be recorded at an explicit release boundary.
+The previous 96-file dist directory and immutable `be097…` release are retained
+unchanged. After an actual network interruption stopped CNN authoring, the
+corrected build was installed and staged as **`0.1.0+codex.20260919234350`**.
+Validation, doctor, filesystem/network isolation and installed-version journal
+preflight pass. All 69,921 files from 19 previous cache versions were retained
+byte-for-byte. The official installer prunes old versions, so the same wrapper
+process restored their complete backups before returning.
+
+Fresh host/native/bundle revalidation passes eight checks on the corrected
+build. The previously reviewed two-page PPTX remains exactly
+`d7c7772e3724d6e0d4596103f8a50bc62b3e249ed1782fe28c51394294984ba9`.
+This refreshes browser/native/packaging evidence; it is not another independent
+model review or final CNN acceptance. Any resumed case must regenerate matching
+runtime receipts.
+
+## Transient HTTP/2 checkpoint failure
+
+The real CNN author stopped after a checkpoint publication returned `curl16`.
+The local snapshot had already been saved, but HTTP/2 framing errors were missing
+from the transport's transient-error classification. They now follow the existing
+conversation checkpoint/poll/outbox deferral paths. No new automatic claim or
+operator retry was added, and authentication/lease rejections still stop work.
+
+Source `d57f8df` passes **13 transport and 37 conversation tests**. The real
+classifier is exercised through checkpoint publication, reopened journal state,
+message polling and an assistant response whose acknowledgement is lost. Saved
+snapshot and outbox identities survive; retries do not duplicate the message.
+HTTP 401/403/409 and local programming errors still propagate. The active failed
+attempt, its trajectory and its saved native/scene files are retained for recovery.

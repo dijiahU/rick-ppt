@@ -1,6 +1,6 @@
 {
   "name": "pptx-agent",
-  "version": "0.1.0+codex.20260919230549",
+  "version": "0.1.0+codex.20260919234350",
   "description": "Research and create editable native PowerPoint with composable interactive regions, executable code, animation and independent reviews.",
   "author": {
     "name": "rick"

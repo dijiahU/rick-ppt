@@ -183,10 +183,16 @@ Primary sources:
   fresh host/native/bundle revalidation again passed eight checks on that build.
   The subsequent CNN-discovered Monaco correction passed 79 unit, 24 browser,
   nine production-pack, three diagnostic and eight host/native/bundle checks.
-  Its current immutable release is `0.1.0+codex.20260919230549`, fingerprint
+  Its immutable Monaco release is `0.1.0+codex.20260919230549`, fingerprint
   `be097a482201dd70ecdc8755b2a1c4aee5f0f54402878c42b43caa42365cf5fd`.
   The same CNN task restored its saved work under that release; see the linked
   smoke report for scope and retained earlier evidence.
+  The subsequent local-font correction passed nine production pack checks and
+  eight fresh host/native/bundle checks; release `0.1.0+codex.20260919234350`
+  is now installed and staged, fingerprint
+  `8635c55584176218c6eadbc829d8796531bc99887469f24f6fc2345130222d37`.
+  A real HTTP/2 checkpoint interruption also led to 13 passing transport and 37
+  conversation checks for nonfatal transient publication and preserved identities.
 - [ ] **16 — CNN case.** Write a reproducible prompt from the latest website
   brief, emphasizing first-principles computation, definitions, worked arithmetic,
   forward/backprop, training and annotated runnable code. Use composable scenes
