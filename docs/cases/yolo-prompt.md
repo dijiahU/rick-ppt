@@ -97,18 +97,18 @@ implementations of the algorithms rather than copying large source fragments:
   [LetterBox source](https://github.com/ultralytics/ultralytics/blob/27836d34fa7b19d38af22200805aa5d25dddaedf/ultralytics/data/augment.py).
 - Anchor `(10.5,12.5)` in feature-grid units, stride 8 and distances
   `[2,3,4,5]` yield xyxy `[68,76,116,140]`, or xywh `[92,108,48,64]`.
-- A four-bin *visual simplification* `[.1,.2,.3,.4]` has expectation 2.0.
-  Label this reduced chart separately from the model's real 16 bins (0–15).
+- Four-bin illustration `[.1,.2,.3,.4]` has expectation 2. Model bins are
+  0–15; clip DFL training targets to `[0,14.99]` before interpolation.
 - Boxes `A=[10,10,50,50]`, `B=[20,20,60,60]` have intersection 900,
-  union 2300 and IoU `9/23 = .391304347826087`. Identical nondegenerate
-  boxes give 1; disjoint boxes give 0; define zero-area boxes as IoU 0.
+  union 2300 and IoU `9/23 = .391304347826087`. Identical positive-area
+  boxes give 1; disjoint/zero-area boxes give 0. NMS/CIoU require positive area.
 - NMS candidates: `A` score .9/class 0; `B` score .8/class 0;
   `C=[12,12,48,48]` score .7/class 1. With confidence .5 and class-aware
   NMS, IoU threshold .3 keeps `A,C`; threshold .5 keeps `A,B,C`.
   Confidence .85 keeps `A` only. Explicit class-agnostic NMS at .3 keeps `A`.
-  Use stable score-descending, original-index tie ordering, and suppress when
-  IoU is strictly greater than the threshold. The selected default pipeline
-  uses strict `score > confidence`; label that boundary. See
+  Sort descending score, then original index: a teaching tie convention,
+  not backend parity. Keep `score > confidence`; suppress only when a
+  retained same-class box has `IoU > threshold` (any class if agnostic). See
   [postprocessing source](https://github.com/ultralytics/ultralytics/blob/27836d34fa7b19d38af22200805aa5d25dddaedf/ultralytics/utils/ops.py).
 - The two same-size boxes A/B have center-distance term `.04` and zero
   aspect-ratio term, so CIoU is `.351304347826087` and box loss

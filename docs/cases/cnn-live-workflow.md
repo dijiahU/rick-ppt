@@ -64,8 +64,11 @@ Seven selected source/artifact hashes matched in the new restored directory and
 the old directory. The saved input revision is now 3, so the workflow is checking
 the restored outline/evidence against those edits before resuming the interrupted
 author thread. The prior notes and completed research receipt remain retained;
-this second recovery does not yet establish same-author continuation or a finished
-delivery. The plugin/runtime bytes were unchanged by the supervisor correction.
+the completed revision-3 revalidation then resumed the same interrupted author
+thread with a new turn. All seven selected old files remain unchanged; five
+versioned/artifact copies still match after continuation, while the current
+outline and notes were deliberately revised. Final delivery remains pending.
+The plugin/runtime bytes were unchanged by the supervisor correction.
 
 ## Conversation during resumed authoring
 
