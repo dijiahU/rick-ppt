@@ -80,6 +80,16 @@ def budget_summary(stages):
       'stages':stages}
 
 
+def phase_time_limit(cfg, name, default, remaining):
+    """Host-only overrides can extend complex authoring, never the task deadline."""
+    overrides=cfg.get('phase_timeout_seconds',{})
+    if not isinstance(overrides,dict):raise ValueError('phase_timeout_seconds must be an object')
+    limit=overrides.get(name,default)
+    if isinstance(limit,bool) or not isinstance(limit,(int,float)) or not 30<=limit<=10800:
+        raise ValueError('Phase timeout must be between 30 and 10800 seconds')
+    return min(limit,remaining)
+
+
 class Execution:
     def __init__(self,bridge,cfg,task,job,lease,reporter,trace=None,trajectory=None,journal=None,recovery_plan=None):
         self.bridge,self.cfg,self.task,self.job,self.lease,self.reporter=bridge,cfg,task,job,lease,reporter
@@ -97,7 +107,7 @@ class Execution:
         """One isolated app-server phase with continuous host brokers and steering."""
         root=Path(root or self.job);phase_id=uuid.uuid4().hex
         output='phase-'+phase_id+'.json'
-        timeout=min(timeout,self.deadline-time.monotonic())
+        timeout=phase_time_limit(self.cfg,name,timeout,self.deadline-time.monotonic())
         if timeout<=0:raise TimeoutError('Presentation execution time limit reached')
         resumed_chat_ids=[]
         if public and self.journal:

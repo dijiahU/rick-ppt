@@ -31,8 +31,14 @@ settings.local.json contains the worker credential; keep it private and do not s
 are `site`, `token`, `plugin`, `python`, and `blank`; `plugin` must point to a built
 versioned plugin directory and `python` to its dependency environment. Optional
 `state_directory` selects private durable state. Never copy credentials into tasks.
-It must match WORKER_TOKEN in Sites. The bridge uses curl to respect this host's proxy setup.
-The credential is not passed to Codex, the renderer, command arguments or website client code.
+The token must match WORKER_TOKEN in Sites. The bridge uses curl to respect this
+host's proxy setup. The credential is not passed to Codex, the renderer, command
+arguments or website client code.
+
+For a complex interactive lesson, the host can set `job_timeout_seconds` up to
+10800 and `phase_timeout_seconds` to an object such as `{"author":7200}`. The
+authoring override is still bounded by the remaining overall task deadline;
+ordinary jobs retain the existing 45-minute authoring and 90-minute total defaults.
 
 ## Isolation and workflow
 

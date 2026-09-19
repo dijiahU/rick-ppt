@@ -11,7 +11,7 @@ import zipfile
 
 from outline import validate_outline,page_version
 from progress import Reporter
-from workflow import Execution,validate_report,budget_summary,usage_summary
+from workflow import Execution,validate_report,budget_summary,usage_summary,phase_time_limit
 from office_policy import validate_delivery,validate_workbook
 
 
@@ -31,6 +31,16 @@ def zip_bytes(files):
 
 
 class ContentWorkflowTests(unittest.TestCase):
+    def test_complex_authoring_override_keeps_the_global_deadline(self):
+        self.assertEqual(phase_time_limit({},'author',2700,9000),2700)
+        cfg={'phase_timeout_seconds':{'author':7200}}
+        self.assertEqual(phase_time_limit(cfg,'author',2700,9000),7200)
+        self.assertEqual(phase_time_limit(cfg,'author',2700,1200),1200)
+        self.assertEqual(phase_time_limit(cfg,'research',2700,9000),2700)
+        for value in (True,'7200',0,10801,float('nan'),float('inf')):
+            with self.assertRaises(ValueError):
+                phase_time_limit({'phase_timeout_seconds':{'author':value}},'author',2700,9000)
+
     def test_outline_is_substantive_scoped_and_stable(self):
         a=validate_outline(outline(),2);b=validate_outline({**a,'internal':'not published'},2)
         self.assertEqual(a,b);self.assertNotIn('internal',b)
