@@ -1,0 +1,3 @@
+import {defineConfig,devices} from '@playwright/test';
+import {resolve} from 'node:path';
+export default defineConfig({testDir:'.',testMatch:'packs.spec.ts',timeout:45000,expect:{timeout:10000},fullyParallel:true,workers:2,reporter:'list',outputDir:'../../test-results/pack-production',projects:[{name:'production-chromium',use:{...devices['Desktop Chrome'],baseURL:'http://127.0.0.1:41977',viewport:{width:1280,height:800},trace:'retain-on-failure',screenshot:'only-on-failure'}}],webServer:{command:'../.venv/bin/python -m pptx_core.interactive_server --root . --runtime dist --http --port 41977',cwd:resolve(import.meta.dirname,'../..'),url:'http://127.0.0.1:41977/api/health',reuseExistingServer:false,timeout:15000}});

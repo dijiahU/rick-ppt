@@ -116,12 +116,12 @@ Primary sources:
   matrix/comparison/hotspots/tabs/carousel/tooltip/stepper; GeoJSON Polygon,
   MultiPolygon, Point, LineString with projections and interaction composition.
   Acceptance: representative component/browser tests and a technical showcase. Evidence: shared gallery and chart/map scene browser checks verify data-bearing clicks, tabs, slider, table, chart and GeoJSON selections; screenshots inspected.
-- [ ] **09 — Lazy extension packs and custom plugins.** Three GLB/orbit/select/
+- [x] **09 — Lazy extension packs and custom plugins.** Three GLB/orbit/select/
   camera/visibility/explode; Monaco + bounded JS worker/Pyodide execution;
   generic ONNX model runner with WebGPU/WASM fallback and adapters; MapLibre local
   map/allowlisted tiles; KaTeX; same-origin, hashed capability-declared plugins.
   Acceptance: real browser smoke for each pack, code run/reset/timeout/network
-  denial, local WASM/assets, core never imports heavy chunks eagerly; size report.
+  denial, local WASM/assets, core never imports heavy chunks eagerly; size report. Evidence: 12 boundary tests and 7 production-CSP Chromium smokes passed real Monaco, JS/Pyodide, ONNX WASM, GLB/raycast, GeoJSON and KaTeX/plugin behavior. Core-only scene made no pack requests; core gzip 124,908 B; optional local runtime assets about 40.48 MiB; npm audit has 0 advisories.
 - [x] **10 — Durable workflow journal and recovery engine.** Record task/run,
   phase/thread/turn, plugin version, revision, message cursor, workspace hashes,
   finished stages, next stage and output receipts atomically. Recover under a

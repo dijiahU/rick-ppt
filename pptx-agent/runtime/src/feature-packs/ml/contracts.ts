@@ -1,0 +1,10 @@
+export type TensorValue={type:'float32'|'float64'|'int32'|'int64'|'uint8'|'bool';dims:number[];data:number[]|string[]|boolean[]};
+export type TensorMap=Record<string,TensorValue>;
+export interface ModelAdapter {preprocess(value:any,options:any):TensorMap|Promise<TensorMap>;postprocess(outputs:TensorMap,options:any):any|Promise<any>}
+export function validateTensors(inputs:TensorMap){let total=0;if(!inputs||typeof inputs!=='object'||!Object.keys(inputs).length||Object.keys(inputs).length>32)throw new Error('Expected 1–32 input tensors');for(const [name,value]of Object.entries(inputs)){
+ if(!/^[\w:./-]{1,160}$/.test(name)||['__proto__','prototype','constructor'].includes(name)||!['float32','float64','int32','int64','uint8','bool'].includes(value.type)||!Array.isArray(value.dims)||value.dims.length>8||value.dims.some(v=>!Number.isSafeInteger(v)||v<1))throw new Error('Invalid tensor name/type/dimensions');
+ const count=value.dims.reduce((a,b)=>a*b,1);if(!Number.isSafeInteger(count)||count>16*1024*1024||!Array.isArray(value.data)||value.data.length!==count)throw new Error('Tensor dimensions differ from data or exceed limit');total+=count*(value.type==='float64'||value.type==='int64'?8:value.type==='uint8'||value.type==='bool'?1:4);if(total>64*1024*1024)throw new Error('Tensor inputs exceed 64 MiB');
+ if(value.data.some(v=>value.type==='int64'?!/^-?\d{1,19}$/.test(String(v)):value.type==='bool'?typeof v!=='boolean'&&v!==0&&v!==1:typeof v!=='number'||!Number.isFinite(v)))throw new Error('Tensor data type mismatch');
+ if(value.type==='int64'&&value.data.some(v=>BigInt(String(v))<-(2n**63n)||BigInt(String(v))>2n**63n-1n)||value.type==='int32'&&value.data.some(v=>!Number.isInteger(v)||Number(v)<-2147483648||Number(v)>2147483647)||value.type==='uint8'&&value.data.some(v=>!Number.isInteger(v)||Number(v)<0||Number(v)>255)||value.type==='float32'&&value.data.some(v=>Math.abs(Number(v))>3.4028234663852886e38))throw new Error('Tensor value outside data type range');
+ }return inputs;}
+export const tensorAdapter:ModelAdapter={preprocess:value=>validateTensors(value),postprocess:outputs=>outputs};
