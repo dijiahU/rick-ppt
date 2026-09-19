@@ -85,6 +85,13 @@ for readable code and console output, rather than shrinking a complete program t
 fit. Use short commented experiments on mechanism pages and a complete runnable
 implementation across clearly connected code views.
 
+For a guided walkthrough, bind `highlightLines` to the current teaching step's
+1-based line number, or use an array such as `[2,[4,6]]`. Set
+`revealHighlightedLine` to scroll the selected statement into view. Keep the
+diagram, active statement and explanation synchronized through shared state.
+These are authored highlights, not a Python debugger or a trace of actual line
+execution. Recompute or invalidate the walkthrough's line map after source edits.
+
 The code pack includes Run/Stop/Reset controls and emits `codeChange`, `codeResult`
 and `codeReset`. A declarative action can run a specific editor:
 
