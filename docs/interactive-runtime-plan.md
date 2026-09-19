@@ -143,12 +143,12 @@ Primary sources:
   resume does not charge new quota or erase prior attempts. Acceptance: ownership,
   cross-user denial, races, upload limits, duplicate sends, lost response and
   stale-lease tests; old worker routes remain compatible. Evidence: isolated SQLite/R2 handler suite passes; upload, claim, language and worker recovery regressions pass. D1 migration is additive; source excludes local credentials.
-- [ ] **13 — Website conversation UI.** Live transcript beside previews; ordinary
+- [x] **13 — Website conversation UI.** Live transcript beside previews; ordinary
   chat and modification requests; attach files with upload/error/progress state;
   sent/received/applied status; assistant replies; reconnect without duplicate
   messages; resume affordance and clear recovery status. Preserve existing design,
   language selection, task history and current execution. Acceptance: real browser
-  submit/upload/reconnect/resume flows plus production build.
+  submit/upload/reconnect/resume flows plus production build. Evidence: Playwright desktop/mobile suite passed actual local routes, upload and applied status, reload/dedup, ordinary chat and same-task resume; final production build passed. No production fixture or user quota was changed.
 - [ ] **14 — Workflow integration and release.** Planning chooses native versus
   interactive treatment; runner exposes the installed runtime and test broker;
   revisions invalidate affected output/review evidence; independent reviewers

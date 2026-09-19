@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useMemo,useState} from 'react';
 import QueueStatus from '@/app/queue-status';
+import Conversation from './conversation';
 import CreationStory from '@/app/creation-story';
 import PreviewLink from '@/app/preview-link';
 import {creationWords} from '@/lib/creation-i18n';
@@ -48,6 +49,6 @@ export default function ProgressRoom({id}:{id:string}){
  {!visible.length?<p className="room-empty">{events?.length?w[21]:data?.status==='queued'?w[34]:w[20]}</p>:<ol className="room-events">{visible.map(e=><li key={e.seq}><div className="event-stamp"><span>#{e.seq}</span><time>{new Date(e.at).toLocaleTimeString(locale)}</time></div><article><div className="event-heading"><strong>{e.category?w[5+kinds.indexOf(e.category)]:t.activities[e.code]}</strong>{e.state&&<span className={`event-state ${e.state}`}>{w[25+['started','completed','failed'].indexOf(e.state)]}</span>}</div>{e.detail&&<p>{e.detail}</p>}{e.url&&<a className="event-url" href={e.url} target="_blank" rel="noopener noreferrer">{e.url} ↗</a>}<small>{e.reported?w[37]:w[36]}</small></article></li>)}</ol>}</>}
  {tab==='sources'&&<div className="room-sources">{!sources.length?<p>{w[30]}</p>:sources.map(([url,info])=><article key={url}><strong>{new URL(url).hostname}</strong><a href={url} target="_blank" rel="noopener noreferrer">{url} ↗</a><small>{new Date(info.at).toLocaleTimeString(locale)} · {info.count} {w[2]}</small></article>)}</div>}
  {tab==='previews'&&<div className="room-previews">{!data?.progress?.previews.length?<p>{t.noProgress}</p>:data.progress.previews.map(n=><PreviewLink key={n} href={`${base}/preview/${n}?v=${previewVersion(data.progress!,n)}`} label={`${t.slide} ${n}`}><img src={`${base}/preview/${n}?v=${previewVersion(data.progress!,n)}`} alt={`${t.slide} ${n}`} loading="lazy"/><span>{t.slide} {n} · {w[31]}</span></PreviewLink>)}</div>}
- </section><aside className="room-aside"><h2>{w[28]}</h2><p>{data?.progress?new Date(data.progress.updatedAt).toLocaleString(locale):'—'}</p><div aria-live="polite"><strong>{terminal?label(data!.status):latestNote?.phase?cw.phase[latestNote.phase]:events?.length?t.activities[events[events.length-1].code]:t.waiting}</strong><p>{latestNote?.detail||''}</p>{!terminal&&latestNote?.next&&<p><strong>{cw.next}</strong><br/>{latestNote.next}</p>}</div><p className="fineprint">{w[29]}</p></aside></div></>}
+ </section><aside className="room-aside">{data?.scope==='user'&&<Conversation id={id} status={data.status} updatedAt={data.updatedAt} onResume={()=>setRefresh(n=>n+1)}/>}<h2>{w[28]}</h2><p>{data?.progress?new Date(data.progress.updatedAt).toLocaleString(locale):'—'}</p><div aria-live="polite"><strong>{terminal?label(data!.status):latestNote?.phase?cw.phase[latestNote.phase]:events?.length?t.activities[events[events.length-1].code]:t.waiting}</strong><p>{latestNote?.detail||''}</p>{!terminal&&latestNote?.next&&<p><strong>{cw.next}</strong><br/>{latestNote.next}</p>}</div><p className="fineprint">{w[29]}</p></aside></div></>}
  </main>;
 }
