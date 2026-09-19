@@ -38,6 +38,24 @@ An exact-task/timestamp-scoped data migration records a visible explanation and
 requeues only this failed first attempt. It does not modify the original CNN,
 change quota settings or create another duplicate task.
 
+## Research evidence
+
+The worker has published a complete 20-slide outline, with one learner experiment
+and a readable native fallback planned per page. Its fixed Python reference is
+now retained as a [reproducible example](../../examples/cnn-reference/README.md).
+The [independent numerical review](cnn-numerical-review.md) verifies all 50
+parameters, 344 finite differences and an independently implemented 480-update
+training run. It reproduces 16/16 training predictions and 6/8 held-out predictions;
+held-out images never enter updates. Actual checkpoint losses rise at epochs 1
+and 5 before declining. These are synthetic teaching results.
+
+This evidence applies only to the reviewed source SHA, not yet to browser
+execution or the final teaching artifacts. The final runtime release also passed
+[GitHub CI](https://github.com/dijiahU/rick-ppt/actions/runs/35471242145).
+The production conversation check and a controlled, same-task recovery check are
+prepared; they remain pending until observed during authoring. Automated feedback
+will be labeled as such in the task history.
+
 ## Pending acceptance
 
 The native deck, scene reports, actual edited-code execution, mechanism animation,
