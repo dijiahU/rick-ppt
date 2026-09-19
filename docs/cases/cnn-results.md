@@ -40,7 +40,7 @@ change quota settings or create another duplicate task.
 
 ## Research evidence
 
-The worker has published a complete 20-slide outline, with one learner experiment
+The worker has prepared a complete 20-slide outline, with one learner experiment
 and a readable native fallback planned per page. Its fixed Python reference is
 now retained as a [reproducible example](../../examples/cnn-reference/README.md).
 The [independent numerical review](cnn-numerical-review.md) verifies all 50
