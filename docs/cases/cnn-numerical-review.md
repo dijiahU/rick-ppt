@@ -57,3 +57,31 @@ Only the Python/source portions of C10–C13 are established here. The final
 acceptance still needs actual scene output, changed-input/editor behavior,
 rendered teaching content, matching delivered artifacts and the separately
 recorded browser/Office playback checks.
+
+## Revised four-family learner experiment
+
+The restored task now adds a complete-CNN cross-entropy experiment in
+`sources/v002/full_cnn_gradient_check.py`, SHA-256
+`1546b0e28d4d9f328ac05bfecadbe8af6a84edb67a9aaa5ba8114a8a963125ab`.
+Its first 10,757 bytes retain every original model and training function. Only
+the entry point changes: an initialized class-0 image (seed 10) checks
+`K[0,0,0]`, `b[0]`, `W[0,0]` and `a[0]` with centered epsilon `1e-5`, without
+training. Each perturbation uses a fresh parameter copy.
+
+All 34 bounded independent assertions passed. The four analytic gradients are
+nonzero; their largest finite-difference error is `1.1628857599088605e-11`.
+A separate flat-patch/logistic calculation agrees, with maximum error
+`7.544846691853735e-12`. All eight signed perturbations preserve the 64 ReLU
+gates (44 active; minimum absolute preactivation `0.030047156202226727`). This
+establishes these selected perturbations, not arbitrary future edits.
+
+The reviewed slide-14 scene SHA-256 is
+`c1dd132983925b77ad228bf50efd1ae52819c3222f93f56e660d9870e778f7ae`.
+Its full-check action embeds the exact reviewed program. This correspondence is
+static evidence; actual browser execution remains a separate case check.
+The revised training source SHA-256
+`80d08c02414ffd7a2a4a40f9df16f7f336eaa7cc054f20c5f1cf94fa3a12b33a`
+preserves every original byte and only appends a comment and final `result`
+expression for the Python worker. The existing training and 344-gradient
+evidence was reused, not rerun or relabeled. The new check executed from copies
+inside the actual task sandbox, and all source/scene hashes remained unchanged.
