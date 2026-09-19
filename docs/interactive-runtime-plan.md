@@ -111,11 +111,11 @@ Primary sources:
   start/stop scripts and retained native PPTX; review packet integration.
   Acceptance: blank → attach → render → validate → LibreOffice → export → reopen
   → bundle → served preview succeeds and corrupted bundles fail.
-- [ ] **08 — First-party components and lightweight maps.** Data/state/theme-aware
+- [x] **08 — First-party components and lightweight maps.** Data/state/theme-aware
   bar/grouped/stacked, line/area/scatter, heatmap/table/KPI/progress/timeline/network/
   matrix/comparison/hotspots/tabs/carousel/tooltip/stepper; GeoJSON Polygon,
   MultiPolygon, Point, LineString with projections and interaction composition.
-  Acceptance: representative component/browser tests and a technical showcase.
+  Acceptance: representative component/browser tests and a technical showcase. Evidence: shared gallery and chart/map scene browser checks verify data-bearing clicks, tabs, slider, table, chart and GeoJSON selections; screenshots inspected.
 - [ ] **09 — Lazy extension packs and custom plugins.** Three GLB/orbit/select/
   camera/visibility/explode; Monaco + bounded JS worker/Pyodide execution;
   generic ONNX model runner with WebGPU/WASM fallback and adapters; MapLibre local

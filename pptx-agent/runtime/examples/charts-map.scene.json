@@ -1,0 +1,438 @@
+{
+  "schemaVersion": 1,
+  "id": "charts-and-geography",
+  "viewport": {
+    "width": 1000,
+    "height": 700
+  },
+  "theme": {
+    "background": "#fff",
+    "text": "#172033",
+    "accent": "#0d9488"
+  },
+  "initialState": {
+    "selectedBar": -1,
+    "selectedRegion": null,
+    "mapX": 0,
+    "mapY": 0,
+    "zoom": 1,
+    "hover": ""
+  },
+  "dataSources": {
+    "sales": {
+      "type": "inline",
+      "value": [
+        {
+          "label": "A",
+          "values": [
+            4,
+            -2
+          ]
+        },
+        {
+          "label": "B",
+          "values": [
+            2,
+            5
+          ]
+        },
+        {
+          "label": "C",
+          "values": [
+            -3,
+            1
+          ]
+        }
+      ]
+    },
+    "world": {
+      "type": "inline",
+      "value": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "id": "west",
+            "properties": {
+              "name": "West region"
+            },
+            "geometry": {
+              "type": "Polygon",
+              "coordinates": [
+                [
+                  [
+                    -140,
+                    -35
+                  ],
+                  [
+                    -35,
+                    -35
+                  ],
+                  [
+                    -35,
+                    40
+                  ],
+                  [
+                    -140,
+                    40
+                  ],
+                  [
+                    -140,
+                    -35
+                  ]
+                ],
+                [
+                  [
+                    -110,
+                    -10
+                  ],
+                  [
+                    -70,
+                    -10
+                  ],
+                  [
+                    -70,
+                    15
+                  ],
+                  [
+                    -110,
+                    15
+                  ],
+                  [
+                    -110,
+                    -10
+                  ]
+                ]
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "id": "route",
+            "properties": {
+              "name": "Route"
+            },
+            "geometry": {
+              "type": "LineString",
+              "coordinates": [
+                [
+                  -30,
+                  0
+                ],
+                [
+                  30,
+                  35
+                ],
+                [
+                  110,
+                  5
+                ]
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "id": "east",
+            "properties": {
+              "name": "East point"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                90,
+                25
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "id": "islands",
+            "properties": {
+              "name": "Islands"
+            },
+            "geometry": {
+              "type": "MultiPolygon",
+              "coordinates": [
+                [
+                  [
+                    [
+                      15,
+                      -10
+                    ],
+                    [
+                      40,
+                      -10
+                    ],
+                    [
+                      40,
+                      10
+                    ],
+                    [
+                      15,
+                      10
+                    ],
+                    [
+                      15,
+                      -10
+                    ]
+                  ]
+                ],
+                [
+                  [
+                    [
+                      65,
+                      -50
+                    ],
+                    [
+                      95,
+                      -50
+                    ],
+                    [
+                      95,
+                      -30
+                    ],
+                    [
+                      65,
+                      -30
+                    ],
+                    [
+                      65,
+                      -50
+                    ]
+                  ]
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "nodes": [
+    {
+      "id": "title",
+      "type": "Text",
+      "props": {
+        "x": 30,
+        "y": 12,
+        "width": 940,
+        "height": 50,
+        "text": "Data-driven components \u00b7 one event system",
+        "fontSize": 30,
+        "bold": true
+      }
+    },
+    {
+      "id": "bars",
+      "type": "component",
+      "component": "groupedBarChart",
+      "props": {
+        "x": 30,
+        "y": 85,
+        "width": 440,
+        "height": 245
+      },
+      "bind": {
+        "data": {
+          "expr": "data.sales"
+        },
+        "selected": {
+          "expr": "state.selectedBar"
+        }
+      }
+    },
+    {
+      "id": "heat",
+      "type": "component",
+      "component": "matrix",
+      "props": {
+        "x": 550,
+        "y": 90,
+        "width": 360,
+        "height": 180,
+        "data": [
+          [
+            1,
+            -2,
+            3
+          ],
+          [
+            4,
+            5,
+            -6
+          ]
+        ]
+      }
+    },
+    {
+      "id": "mapCaption",
+      "type": "Text",
+      "props": {
+        "x": 30,
+        "y": 345,
+        "width": 850,
+        "height": 44,
+        "text": "Select regions; drag or wheel to pan and zoom",
+        "fontSize": 23
+      }
+    },
+    {
+      "id": "map",
+      "type": "component",
+      "component": "geoJSON",
+      "props": {
+        "x": 30,
+        "y": 405,
+        "width": 620,
+        "height": 245,
+        "projection": "mercator",
+        "clip": {
+          "x": 0,
+          "y": 0,
+          "width": 620,
+          "height": 245
+        }
+      },
+      "bind": {
+        "data": {
+          "expr": "data.world"
+        },
+        "selected": {
+          "expr": "state.selectedRegion"
+        },
+        "panX": {
+          "expr": "state.mapX"
+        },
+        "panY": {
+          "expr": "state.mapY"
+        },
+        "zoom": {
+          "expr": "state.zoom"
+        }
+      }
+    },
+    {
+      "id": "choice",
+      "type": "Text",
+      "props": {
+        "x": 690,
+        "y": 410,
+        "width": 280,
+        "height": 70,
+        "fontSize": 22
+      },
+      "bind": {
+        "text": {
+          "expr": "\"Selected: \" + coalesce(state.selectedRegion,\"none\")"
+        }
+      }
+    },
+    {
+      "id": "hoverLabel",
+      "type": "Text",
+      "props": {
+        "x": 690,
+        "y": 495,
+        "width": 280,
+        "height": 70,
+        "fontSize": 22
+      },
+      "bind": {
+        "text": {
+          "expr": "state.hover"
+        }
+      }
+    },
+    {
+      "id": "reset",
+      "type": "Button",
+      "props": {
+        "x": 690,
+        "y": 590,
+        "width": 210,
+        "height": 48,
+        "text": "Reset view"
+      }
+    }
+  ],
+  "interactions": [
+    {
+      "target": "bars",
+      "event": "click",
+      "actions": [
+        {
+          "type": "set",
+          "path": "selectedBar",
+          "value": {
+            "expr": "event.value.index"
+          }
+        }
+      ]
+    },
+    {
+      "target": "map",
+      "event": "click",
+      "actions": [
+        {
+          "type": "set",
+          "path": "selectedRegion",
+          "value": {
+            "expr": "event.value.id"
+          }
+        }
+      ]
+    },
+    {
+      "target": "map",
+      "event": "hoverEnter",
+      "actions": [
+        {
+          "type": "set",
+          "path": "hover",
+          "value": {
+            "expr": "event.value.properties.name"
+          }
+        }
+      ]
+    },
+    {
+      "target": "reset",
+      "event": "click",
+      "actions": [
+        {
+          "type": "reset"
+        }
+      ]
+    }
+  ],
+  "behaviors": [
+    {
+      "type": "panZoom",
+      "target": "map",
+      "xPath": "mapX",
+      "yPath": "mapY",
+      "scalePath": "zoom",
+      "min": 0.5,
+      "max": 3
+    }
+  ],
+  "testPlan": [
+    {
+      "name": "select-first-bar",
+      "actions": [
+        {
+          "type": "click",
+          "target": "bars.bar-0-0"
+        }
+      ],
+      "assertions": [
+        {
+          "type": "state",
+          "path": "selectedBar",
+          "equals": 0
+        }
+      ],
+      "capture": true
+    }
+  ]
+}
