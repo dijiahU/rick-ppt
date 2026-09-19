@@ -1,0 +1,8 @@
+{
+  "description": "Protect and validate native PPTX workspaces",
+  "hooks": {
+    "PreToolUse": [{"matcher": "Bash|apply_patch|Edit|Write", "hooks": [{"type": "command", "command": "python3 \"$PLUGIN_ROOT/hooks/pre_tool.py\"", "timeout": 20, "statusMessage": "Protecting PPTX workspace"}]}],
+    "PostToolUse": [{"matcher": "Bash|apply_patch|Edit|Write", "hooks": [{"type": "command", "command": "python3 \"$PLUGIN_ROOT/hooks/post_tool.py\"", "timeout": 20, "statusMessage": "Validating PPTX changes"}]}],
+    "Stop": [{"hooks": [{"type": "command", "command": "python3 \"$PLUGIN_ROOT/hooks/stop.py\"", "timeout": 300, "statusMessage": "Validating, rendering and exporting PowerPoint"}]}]
+  }
+}

@@ -1,0 +1,27 @@
+# Local environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.DS_Store
+
+# Local configuration and private material
+.env
+.env.*
+*.local.json
+*.pem
+*.key
+*.log
+.work/
+.pptx-agent/
+records/
+failures/
+
+# Development artifacts are not part of this source distribution
+tests/
+test-results/
+benchmarks/
+dist/
+build/
