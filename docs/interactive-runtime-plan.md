@@ -129,13 +129,13 @@ Primary sources:
   prefer same-thread resume; rebuild safe context if the thread is unavailable.
   Acceptance: kill/restart during authoring, resume after a finished phase, corrupt
   checkpoint rejection, duplicate recovery exclusion and original preservation. Evidence: 37 standard-library tests passed, including real SIGKILL, commit/projection crash window, uncertain inbox reconciliation and original preservation. Integration remains item 14.
-- [ ] **11 — Codex app-server transport and live steering.** Stdio JSON-RPC
+- [x] **11 — Codex app-server transport and live steering.** Stdio JSON-RPC
   handshake; isolated task permissions and environment; streaming public messages;
   turn/start, steer with expected turn, resume and interrupt; maintain heartbeats,
   rendering/media brokers and trajectory recording. Store accepted message IDs
   durably; reconcile uncertain delivery before retrying. No private reasoning or
   host credentials enter website messages. Acceptance: actual small live Codex
-  exercise receives an in-progress correction and resumes an interrupted thread.
+  exercise receives an in-progress correction and resumes an interrupted thread. Evidence: 20 protocol tests and a real 49-second Codex 0.155.1 exercise passed outside read/write/network denial, same-turn steering, client-message reconciliation, interruption, server restart and same-thread context recovery. Public assistant messages exclude private reasoning.
 - [x] **12 — Conversation/checkpoint backend.** Additive D1 migrations for
   task-owned messages, attachment metadata, worker acknowledgements and recovery
   state. Owner-only reads/writes; lease-checked worker delivery; bounded payloads;
