@@ -32,6 +32,7 @@ from admin_trace import AdminTrace
 from conversation import Conversation, RevisionPending
 from durable import Journal
 from language import presentation_request
+from interactive_host import verify_frozen, bundle_frozen
 from progress import Reporter
 from resilience import WorkerHTTPError
 from trajectory import Trajectory
@@ -241,6 +242,8 @@ def check_bundle(path):
         assert verification["powerpoint_playback_verified"] is False
         assert all(name in files for name in ("runtime/dist/preview.html", "scripts/start.command",
                                               "scripts/stop.command", "scripts/start.ps1", "scripts/stop.ps1"))
+        assert all((archive.getinfo(files[name]).external_attr >> 16) & 0o100
+                   for name in ("scripts/start.command", "scripts/stop.command"))
         scenes = [json.loads(archive.read(files["deck/" + entry["path"]])) for entry in bundle["scenes"].values()]
         assertions = [assertion for scene in scenes for test in scene.get("testPlan", [])
                       for assertion in test.get("assertions", [])]
@@ -325,6 +328,7 @@ def run(out, gate_only=False):
             bundle = check_bundle(Path(result["bundle"]))
             proof["portable_bundle"] = bundle
             checks["portable_bundle_verified_and_complete"] = bundle["checksum_inventory_valid"] and bundle["runtime_verified"] and bundle["scene_count"] >= 1
+            checks["bundle_contains_exact_reviewed_pptx_bytes"] = bundle["pptx_sha256"] == digest(result["artifact"])
             checks["real_controls_have_numeric_increment_and_reset_tests"] = bundle["click_and_numeric_assertions_0_1_2"]
             packets = [root / "review-packet/inventory.json" for root in trajectory.roots if (root / "review-packet/inventory.json").is_file()]
             inventories = [json.loads(path.read_bytes()) for path in packets]
@@ -376,9 +380,82 @@ def run(out, gate_only=False):
     return proof["passed"]
 
 
+def reverify_reviewed(source, out):
+    """Fresh host/browser/native verification of a preserved reviewed candidate.
+
+    Used after changes confined to bundling/host gates. It makes no model calls
+    and does not imply that the original author/reviewer phases were repeated.
+    """
+    source, out = Path(source).absolute(), Path(out).absolute()
+    if out.exists():
+        raise FileExistsError('Proof destination exists; choose a fresh path')
+    source_bytes = source.read_bytes()
+    previous = json.loads(source_bytes)
+    if previous.get('passed') is not True or previous.get('mode') != 'actual-full-workflow':
+        raise ValueError('A passed actual full-workflow proof is required')
+    cfg = config()
+    author = Path(previous['task_workspace'])
+    old_bundle = Path(previous['delivery_bundle'])
+    old_presentation = old_bundle.parent / 'presentation.pptx'
+    reviewed = old_presentation.read_bytes()
+    if digest(reviewed) != previous['artifact_sha256']:
+        raise ValueError('Preserved reviewed artifact changed')
+    delivery = json.loads((author / 'delivery.json').read_bytes())
+    out.parent.mkdir(parents=True, exist_ok=True)
+    frozen, lease = bridge_source.prepare(cfg), SyntheticLease()
+    proof = {'schema': 'pptx-reviewed-bundle-followup/v1', 'passed': False, 'started_at': now(),
+             'mode': 'fresh-host-verification-of-preserved-reviewed-artifact', 'model_calls': 0,
+             'source_full_workflow_proof': str(source), 'source_proof_sha256': digest(source_bytes),
+             'frozen_workspace': str(frozen), 'checks': {}}
+    try:
+        (frozen / 'result.pptx').write_bytes(reviewed)
+        cli = str(PLUGIN / 'skills/pptx/scripts/pptx.py')
+        unpacked = json.loads(bridge_source.run_with_renderer(cfg, frozen,
+            bridge_source.sandbox(cfg, frozen, [cfg['python'], cli, 'unpack', str(frozen / 'result.pptx')]), tick=lease.check))
+        workspace = unpacked['workspace']
+        verification = verify_frozen(cfg, author, delivery, frozen, workspace, tick=lease.check)
+        validation = json.loads(bridge_source.run_with_renderer(cfg, frozen,
+            bridge_source.sandbox(cfg, frozen, [cfg['python'], cli, '-w', workspace, 'validate', '--level', '3']), tick=lease.check))
+        result = bundle_frozen(cfg, frozen, workspace, verification, 'reviewed-delivery', tick=lease.check,
+                               native_service=lambda: bridge_source.render_requests(frozen))
+        bundle = check_bundle(Path(result['zip']))
+        checks = proof['checks']
+        checks['reviewed_native_bytes_unchanged'] = digest(reviewed) == verification['reviewed_pptx_sha256']
+        checks['fresh_native_render_has_two_pages'] = len(validation['render']['pages']) == 2
+        checks['fresh_host_scene_tests_pass'] = verification['runtime_verified'] and all(
+            report['ok'] and report['testCount'] > 0 and all(t['assertions'] > 0 for t in report['tests'])
+            for report in verification['reports'].values())
+        checks['host_published_exact_reviewed_identity'] = result['exact_reviewed_pptx'] and result['pptx_sha256'] == previous['artifact_sha256']
+        checks['portable_zip_has_exact_reviewed_pptx_bytes'] = bundle['pptx_sha256'] == previous['artifact_sha256'] and Path(result['pptx']).read_bytes() == reviewed
+        checks['portable_checksums_and_numeric_tests_verified'] = bundle['checksum_inventory_valid'] and bundle['click_and_numeric_assertions_0_1_2']
+        checks['previous_full_proof_preserved'] = source.read_bytes() == source_bytes
+        checks['previous_native_and_bundle_preserved'] = old_presentation.read_bytes() == reviewed and digest(old_bundle.read_bytes()) == previous['portable_bundle']['zip_sha256']
+        proof['portable_bundle'] = bundle
+        proof['delivery_bundle'] = result['zip']
+        proof['reviewed_artifact_sha256'] = previous['artifact_sha256']
+        proof['fresh_native_previews'] = validation['render']['pages']
+        proof['scene_reports'] = [{key: report[key] for key in ('directory', 'captures', 'testCount', 'specHash')}
+                                  for report in verification['reports'].values()]
+        proof['lease_checks'] = lease.checks
+        proof['passed'] = all(checks.values())
+    except Exception as error:
+        proof['error_type'], proof['error'] = type(error).__name__, str(error)
+    finally:
+        proof['finished_at'] = now()
+        with out.open('x') as stream:
+            json.dump(proof, stream, indent=2)
+        print(json.dumps(proof, indent=2), flush=True)
+    return proof['passed']
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--gate-only", action="store_true")
+    parser.add_argument("--reverify-reviewed", type=Path,
+                        help="New host verification/bundle proof for an existing passed full-workflow candidate; no model calls")
     args = parser.parse_args()
-    raise SystemExit(0 if run(args.out, args.gate_only) else 1)
+    if args.gate_only and args.reverify_reviewed:
+        parser.error('--gate-only and --reverify-reviewed are mutually exclusive')
+    passed = reverify_reviewed(args.reverify_reviewed, args.out) if args.reverify_reviewed else run(args.out, args.gate_only)
+    raise SystemExit(0 if passed else 1)

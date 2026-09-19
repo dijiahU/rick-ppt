@@ -1,3 +1,5 @@
+import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -8,10 +10,12 @@ import tempfile
 import time
 import unittest
 import threading
+import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from interactive_host import (InteractiveHostBroker, InteractiveHostError, _read, _reserve,
-                              _snapshot_scene, _workspace, _copy_outputs, verify_frozen, bundle_frozen)
+                              _snapshot_scene, _workspace, _copy_outputs, _publish_reviewed_bundle,
+                              verify_frozen, bundle_frozen)
 
 PLUGIN = Path(__file__).resolve().parents[1] / 'pptx-agent'
 sys.path.insert(0, str(PLUGIN / 'skills/pptx/scripts'))
@@ -173,6 +177,21 @@ class HostTests(unittest.TestCase):
         self.assertTrue(Path(output['zip']).is_file())
         self.assertTrue(output['runtime_verified'])
         self.assertFalse(output['powerpoint_playback_verified'])
+        reviewed = (frozen / 'result.pptx').read_bytes()
+        self.assertEqual(Path(output['pptx']).read_bytes(), reviewed)
+        self.assertEqual(output['pptx_sha256'], hashlib.sha256(reviewed).hexdigest())
+        self.assertTrue(output['exact_reviewed_pptx'])
+        distribution = Path(output['bundle'])
+        self.assertEqual(json.loads((distribution / 'deck/bundle.json').read_text())['pptxHash'], output['pptx_sha256'])
+        with zipfile.ZipFile(output['zip']) as archive:
+            prefix = distribution.name + '/'
+            self.assertEqual(archive.read(prefix + 'presentation.pptx'), reviewed)
+            checksums = json.loads(archive.read(prefix + 'checksums.json'))
+            for name, expected in checksums.items():
+                self.assertEqual(hashlib.sha256(archive.read(prefix + name)).hexdigest(), expected)
+            for name in ('scripts/start.command', 'scripts/stop.command'):
+                self.assertTrue((distribution / name).stat().st_mode & 0o100)
+                self.assertTrue((archive.getinfo(prefix + name).external_attr >> 16) & 0o100)
         with self.assertRaises(InteractiveHostError):
             bundle_frozen(CFG, frozen, workspace.root, verification, 'delivery-bundle')
 
@@ -190,6 +209,61 @@ class HostTests(unittest.TestCase):
             bundle_frozen(CFG, frozen, workspace.root, verification, 'tampered-bundle')
         with self.assertRaisesRegex(InteractiveHostError, 'fresh host-owned'):
             bundle_frozen(CFG, frozen, workspace.root, {'receipt': 'invented'}, 'forged-bundle')
+
+    def test_changed_frozen_pptx_rejected_even_if_workspace_source_hash_is_rewritten(self):
+        _, frozen, workspace, delivery = self.author()
+        verification = verify_frozen(CFG, self.job, delivery, frozen, workspace.root)
+        changed = (frozen / 'result.pptx').read_bytes() + b'changed-archive-trailer'
+        (frozen / 'result.pptx').write_bytes(changed)
+        # An owner can remove a file's read-only bit; the receipt must still fail.
+        (workspace.home / 'original.pptx').chmod(0o600)
+        (workspace.home / 'original.pptx').write_bytes(changed)
+        state = json.loads(workspace.state_path.read_text())
+        state['source_hash'] = hashlib.sha256(changed).hexdigest()
+        atomic_json(workspace.state_path, state)
+        with self.assertRaisesRegex(InteractiveHostError, 'presentation changed after'):
+            bundle_frozen(CFG, frozen, workspace.root, verification, 'changed-original')
+
+    def bundle_fixture(self, changed=False):
+        def package(text, comment):
+            output = io.BytesIO()
+            with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as archive:
+                archive.comment = comment
+                archive.writestr('ppt/presentation.xml', text)
+                archive.writestr('[Content_Types].xml', b'<Types/>')
+            return output.getvalue()
+        reviewed = package(b'<reviewed/>', b'reviewed ZIP metadata')
+        generated = package(b'<altered/>' if changed else b'<reviewed/>', b'fresh export ZIP metadata')
+        private = self.root / 'private'
+        assembled = private / 'assembled'
+        (assembled / 'deck').mkdir(parents=True)
+        (assembled / 'presentation.pptx').write_bytes(generated)
+        (assembled / 'deck/bundle.json').write_text(json.dumps({'pptxHash': hashlib.sha256(generated).hexdigest()}))
+        (assembled / 'README.txt').write_bytes(b'Preserve existing distribution files')
+        (assembled / 'checksums.json').write_text('{}')
+        return private, assembled, reviewed, generated
+
+    def test_bundle_rejects_different_native_parts_without_publishing_or_replacing_them(self):
+        private, assembled, reviewed, generated = self.bundle_fixture(changed=True)
+        with self.assertRaisesRegex(InteractiveHostError, 'parts differ'):
+            _publish_reviewed_bundle(private, assembled, self.job, self.job / 'rejected', reviewed, zip_output=True)
+        self.assertFalse((self.job / 'rejected').exists())
+        self.assertFalse((self.job / 'rejected.zip').exists())
+        self.assertEqual((assembled / 'presentation.pptx').read_bytes(), generated)
+
+    def test_bundle_restores_exact_reviewed_bytes_when_only_archive_metadata_differs(self):
+        private, assembled, reviewed, generated = self.bundle_fixture()
+        self.assertNotEqual(reviewed, generated)
+        result = _publish_reviewed_bundle(private, assembled, self.job, self.job / 'exact', reviewed, zip_output=True)
+        self.assertEqual(Path(result['pptx']).read_bytes(), reviewed)
+        self.assertEqual((assembled / 'presentation.pptx').read_bytes(), generated)
+        with zipfile.ZipFile(result['zip']) as archive:
+            self.assertEqual(archive.read('exact/presentation.pptx'), reviewed)
+            manifest = json.loads(archive.read('exact/deck/bundle.json'))
+            self.assertEqual(manifest['pptxHash'], hashlib.sha256(reviewed).hexdigest())
+            checksums = json.loads(archive.read('exact/checksums.json'))
+            for name, expected in checksums.items():
+                self.assertEqual(hashlib.sha256(archive.read('exact/' + name)).hexdigest(), expected)
 
     def test_production_native_proxy_requires_service_and_trusted_helper_bytes(self):
         _, frozen, workspace, delivery = self.author()

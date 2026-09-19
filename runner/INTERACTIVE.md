@@ -50,6 +50,8 @@ verification = verify_frozen(
     tick=lease.check, trajectory=trajectory,
 )
 # Native validate --level 3 / review packet runs after this step.
+# The protected frozen workspace original is the reviewed PPTX; the host receipt
+# binds its exact SHA-256, so callers need no new untrusted artifact argument.
 if verification["interactive"]:
     distribution = bundle_frozen(
         cfg, frozen_root, frozen_workspace, verification,
@@ -61,7 +63,7 @@ if verification["interactive"]:
 
 `verify_frozen` returns `interactive: false` for native-only decks without needing
 an author workspace. Interactive results carry an in-memory host receipt bound
-to every frozen native, scene, asset, capture and test file, plus the tested runtime
+to the original frozen PPTX bytes and every native, scene, asset, capture and test file, plus the tested runtime
 distribution/configuration/manifests. `bundle_frozen`
 rejects missing/forged receipts and any later byte changes. It invokes the
 existing bundle API, including the real native export/render gate. After a
@@ -74,10 +76,16 @@ The host worker passes only that verified proxy to LibreOffice's adapter, keepin
 native conversion inside the existing Docker isolation. Direct LibreOffice is
 used only for controlled test roots without a task proxy.
 
-The distribution result includes `bundle`, `zip`, `pptx`, `runtime_verified` and
+The distribution result includes `bundle`, `zip`, `pptx`, `pptx_sha256`,
+`exact_reviewed_pptx: true`, `runtime_verified` and
 `powerpoint_playback_verified: false`. Browser rendering does not certify desktop
-PowerPoint playback. The bundled `presentation.pptx` is a fresh native export
-from the independently verified frozen workspace.
+PowerPoint playback. The bundled `presentation.pptx` contains exactly the same
+reviewed bytes as the standalone download. A fresh native export still validates
+the frozen workspace; all its ZIP parts must match the reviewed presentation
+before publication. Different part bytes fail delivery. When only ZIP packaging
+metadata differs, the host publishes the original reviewed PPTX, updates
+`deck/bundle.json` and every checksum, then verifies the final portable ZIP.
+The intermediate native export remains in private host staging for inspection.
 
 ## File protocol and preservation
 
@@ -124,7 +132,9 @@ forged author receipts, failing test plans, post-verification tampering, and
 native-only compatibility. The CLI integration test confirms that ordinary
 `interactive attach` uses the broker without adding an author network grant.
 
-Recorded result on 2026-09-20: all 12 tests passed in 16.182 seconds, including
+Recorded result on 2026-09-20 after the runtime build was frozen: all 15 tests
+passed in 21.547 seconds, including
 real scene execution, ordinary CLI attach through the proxy, actual native bundle
-export, and a separate loopback HTTP trap that received zero requests from the
-code worker. Desktop PowerPoint playback is outside this test suite.
+export, exact reviewed PPTX byte identity, rejected differing native parts and
+changed protected originals, and a separate loopback HTTP trap that received zero
+requests from the code worker. Desktop PowerPoint playback is outside this suite.

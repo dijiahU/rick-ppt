@@ -25,7 +25,8 @@ The lesson uses editable native context for `count_next = count + 1` and a
 declarative Increment/Reset region. The gate checks exact page count, native text,
 exported Content Add-in structure, real click assertions for 0/1/2, host captures
 in review packets, separate reviewer threads, resolved required findings,
-reviewed artifact hashes, all portable ZIP checksums, public previews, and a
+reviewed artifact hashes, exact standalone/bundled PPTX byte identity, all
+portable ZIP checksums, public previews, and a
 reusable delivery-ready checkpoint. Chromium verification is recorded separately
 from desktop PowerPoint playback; this test does not certify desktop playback.
 
@@ -44,6 +45,20 @@ delivered. The full run also verifies that a newly polled correction invalidates
 an already reviewed delivery and raises `RevisionPending` at the host boundary.
 The intentionally pending final correction belongs only to the retained synthetic
 smoke task; no website queue receives it.
+
+After a change confined to host verification or packaging, a preserved reviewed
+candidate can be rechecked in a fresh frozen workspace without repeating model
+authoring or claiming new independent reviews:
+
+```sh
+pptx-agent/.venv/bin/python runner/test-workflow-live.py --reverify-reviewed /absolute/passed-full-proof.json --out /absolute/new-followup-proof.json
+```
+
+This mode verifies the previous artifact hash, reruns actual scene tests and
+native rendering, builds a new portable distribution, and checks exact reviewed
+PPTX byte identity plus all bundle hashes. The original full proof and both old
+deliverables remain unchanged. Wait for concurrent runtime builds to finish
+before running it; changing runtime files correctly invalidates render receipts.
 
 Proof records contain aggregate assertions and artifact hashes rather than full
 conversation contents. A proof is successful only when `passed` is `true` and

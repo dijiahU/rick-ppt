@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -20,6 +21,7 @@ import tempfile
 import threading
 import time
 import uuid
+import zipfile
 from urllib.parse import urlsplit
 
 MAX_FILE = 256 * 1024 * 1024
@@ -124,12 +126,12 @@ def _relative(value):
     return PurePosixPath(value)
 
 
-def _put(root, relative, body):
+def _put(root, relative, body, *, mode=0o600):
     """Publish a new file, never replacing an existing file or symlink."""
     parts = _parts(root, relative)
     fd = _directory(root, parts[:-1], create=True)
     try:
-        child = os.open(parts[-1], os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=fd)
+        child = os.open(parts[-1], os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, mode, dir_fd=fd)
         with os.fdopen(child, 'wb') as stream:
             stream.write(body)
             stream.flush()
@@ -327,6 +329,97 @@ def _runtime_inventory(cfg):
             'manifests': _inventory(plugin, 'runtime/manifests')}
 
 
+def _archive_parts(body):
+    """Compare bounded package parts without extracting or trusting ZIP metadata."""
+    result, total = {}, 0
+    try:
+        with zipfile.ZipFile(io.BytesIO(body)) as archive:
+            entries = archive.infolist()
+            if len(entries) > MAX_FILES:
+                raise InteractiveHostError('Archive part count exceeds host budget')
+            seen = set()
+            for entry in entries:
+                name = entry.filename.rstrip('/') if entry.is_dir() else entry.filename
+                _relative(name)
+                if name in seen or entry.flag_bits & 1:
+                    raise InteractiveHostError('Duplicate or encrypted archive part')
+                seen.add(name)
+                if entry.is_dir():
+                    continue
+                total += entry.file_size
+                if entry.file_size > MAX_FILE or total > MAX_TOTAL:
+                    raise InteractiveHostError('Archive parts exceed host budget')
+                result[name] = _sha(archive.read(entry))
+    except (zipfile.BadZipFile, NotImplementedError, RuntimeError) as error:
+        raise InteractiveHostError('Invalid presentation archive') from error
+    return result
+
+
+def _publish_reviewed_bundle(private, assembled, frozen_root, target, reviewed, *, zip_output):
+    """Publish a new generation containing the exact independently reviewed PPTX.
+
+    The plugin's fresh export must first have identical part bytes. A content
+    mismatch is an error, never something to hide by replacing its presentation.
+    The intermediate plugin distribution stays intact in the private directory.
+    """
+    assembled = Path(assembled)
+    source = assembled.relative_to(private)
+    inventory = _inventory(private, source)
+    generated = _read(private, source / 'presentation.pptx', 30 * 1024 * 1024)
+    if _archive_parts(generated) != _archive_parts(reviewed):
+        raise InteractiveHostError('Re-exported PPTX parts differ from the reviewed presentation')
+    bundle = _json(private, source / 'deck/bundle.json')
+    bundle['pptxHash'] = _sha(reviewed)
+    replacements = {'presentation.pptx': reviewed,
+                    'deck/bundle.json': (json.dumps(bundle, ensure_ascii=False, indent=2) + '\n').encode()}
+    destination = target.relative_to(frozen_root)
+    _reserve(frozen_root, destination)
+    checksums = {}
+    executable = {'scripts/start.command', 'scripts/stop.command'}
+    for name, expected in inventory.items():
+        if name == 'checksums.json':
+            continue
+        body = _read(private, source / name)
+        if _sha(body) != expected['sha256']:
+            raise InteractiveHostError('Intermediate bundle changed during publication')
+        body = replacements.get(name, body)
+        _put(frozen_root, destination / name, body, mode=0o700 if name in executable else 0o600)
+        checksums[name] = _sha(body)
+    if not set(replacements).issubset(checksums):
+        raise InteractiveHostError('Intermediate bundle lacks its native presentation or manifest')
+    _put(frozen_root, destination / 'checksums.json',
+         (json.dumps(checksums, ensure_ascii=False, indent=2) + '\n').encode())
+    published = _inventory(frozen_root, destination)
+    if {name: value['sha256'] for name, value in published.items() if name != 'checksums.json'} != checksums:
+        raise InteractiveHostError('Published bundle checksum verification failed')
+    if (_read(frozen_root, destination / 'presentation.pptx', 30 * 1024 * 1024) != reviewed or
+            _json(frozen_root, destination / 'deck/bundle.json').get('pptxHash') != _sha(reviewed)):
+        raise InteractiveHostError('Published bundle lost reviewed presentation identity')
+    zipped = None
+    if zip_output:
+        candidate = private / ('reviewed-bundle-' + uuid.uuid4().hex + '.zip')
+        with zipfile.ZipFile(candidate, 'x', zipfile.ZIP_DEFLATED) as archive:
+            for name in sorted(published):
+                body = _read(frozen_root, destination / name)
+                if _sha(body) != published[name]['sha256']:
+                    raise InteractiveHostError('Bundle changed during ZIP assembly')
+                entry = zipfile.ZipInfo(target.name + '/' + name)
+                entry.compress_type = zipfile.ZIP_DEFLATED
+                entry.external_attr = (stat.S_IFREG | (0o700 if name in executable else 0o600)) << 16
+                archive.writestr(entry, body)
+        body = _read(private, candidate)
+        expected = {target.name + '/' + name: value['sha256'] for name, value in published.items()}
+        if _archive_parts(body) != expected:
+            raise InteractiveHostError('Portable ZIP differs from verified bundle files')
+        zipped = target.with_suffix('.zip')
+        _put(frozen_root, zipped.relative_to(frozen_root), body)
+        if _sha(_read(frozen_root, zipped)) != _sha(body):
+            raise InteractiveHostError('Published ZIP checksum verification failed')
+    return {'bundle': str(target), 'zip': str(zipped) if zipped else None,
+            'pptx': str(target / 'presentation.pptx'), 'pptx_sha256': _sha(reviewed),
+            'exact_reviewed_pptx': True}
+
+
 def _run_worker(cfg, operation, root, *, tick=None, native_service=None, timeout=240):
     request_file = root / ('host-operation-' + uuid.uuid4().hex + '.json')
     operation = {**operation, 'plugin': str(Path(cfg['plugin']).resolve(strict=True))}
@@ -516,6 +609,8 @@ def verify_frozen(cfg, author_job, delivery, frozen_root, frozen_workspace, *, t
     inspection = _run_worker(cfg, {'operation': 'inspect', 'workspace': str(frozen_home)}, private, tick=tick)
     if not inspection['instances']:
         return {'interactive': False, 'runtime_verified': False, 'powerpoint_playback_verified': False}
+    reviewed_path = frozen_home.relative_to(frozen_root) / 'original.pptx'
+    reviewed_sha = _sha(_read(frozen_root, reviewed_path, 30 * 1024 * 1024))
     if not isinstance(delivery, dict) or not isinstance(delivery.get('workspace'), str):
         raise InteractiveHostError('Interactive delivery.json must include its author workspace')
     source_home = _workspace(author_job, delivery['workspace'])
@@ -534,11 +629,13 @@ def verify_frozen(cfg, author_job, delivery, frozen_root, frozen_workspace, *, t
     result = _run_worker(cfg, {'operation': 'verify', 'workspace': str(frozen_home)}, private, tick=tick, timeout=900)
     if _runtime_inventory(cfg) != runtime_before:
         raise InteractiveHostError('Installed runtime changed during host verification')
+    if _sha(_read(frozen_root, reviewed_path, 30 * 1024 * 1024)) != reviewed_sha:
+        raise InteractiveHostError('Frozen presentation changed during host verification')
     token = uuid.uuid4().hex
-    record = {'root': str(frozen_root), 'home': str(frozen_home), 'native': _inventory(frozen_root, frozen_home.relative_to(frozen_root) / 'workspace'), 'interactive': _inventory(frozen_root, frozen_home.relative_to(frozen_root) / 'interactive'), 'runtime': runtime_before, 'reports': result['reports']}
+    record = {'root': str(frozen_root), 'home': str(frozen_home), 'native': _inventory(frozen_root, frozen_home.relative_to(frozen_root) / 'workspace'), 'interactive': _inventory(frozen_root, frozen_home.relative_to(frozen_root) / 'interactive'), 'runtime': runtime_before, 'reports': result['reports'], 'reviewed_pptx': reviewed_path.as_posix(), 'reviewed_sha256': reviewed_sha}
     _VERIFIED[token] = record
     _record(trajectory, 'interactive.frozen.verified', {'deck_id': bundle['deckId'], 'scenes': sorted(result['reports']), 'scene_hashes': {key: value['specHash'] for key, value in result['reports'].items()}})
-    return {'interactive': True, 'runtime_verified': True, 'powerpoint_playback_verified': False, 'receipt': token, 'deckId': bundle['deckId'], 'scenes': sorted(result['reports']), 'reports': result['reports'], 'workspace': str(frozen_home / 'workspace')}
+    return {'interactive': True, 'runtime_verified': True, 'powerpoint_playback_verified': False, 'receipt': token, 'deckId': bundle['deckId'], 'scenes': sorted(result['reports']), 'reports': result['reports'], 'workspace': str(frozen_home / 'workspace'), 'reviewed_pptx_sha256': reviewed_sha}
 
 
 def bundle_frozen(cfg, frozen_root, frozen_workspace, verification, output, *, zip_output=True, tick=None, native_service=None, trajectory=None):
@@ -551,6 +648,9 @@ def bundle_frozen(cfg, frozen_root, frozen_workspace, verification, output, *, z
         raise InteractiveHostError('Frozen native/scene/test bytes changed after host verification')
     if _runtime_inventory(cfg) != record['runtime']:
         raise InteractiveHostError('Installed runtime changed after host verification')
+    reviewed = _read(frozen_root, record['reviewed_pptx'], 30 * 1024 * 1024)
+    if _sha(reviewed) != record['reviewed_sha256']:
+        raise InteractiveHostError('Frozen presentation changed after host verification')
     target = frozen_root.joinpath(*_parts(frozen_root, output))
     parent = _directory(frozen_root, target.parent.relative_to(frozen_root).parts, create=True)
     try:
@@ -559,7 +659,10 @@ def bundle_frozen(cfg, frozen_root, frozen_workspace, verification, output, *, z
     finally:
         os.close(parent)
     private = _private_root()
-    operation = {'operation': 'bundle', 'workspace': str(home), 'output': str(target), 'zip': bool(zip_output)}
+    # The plugin export remains an independently validated intermediate. Only the
+    # host publishes a distribution containing the original reviewed ZIP bytes.
+    assembled = private / 'validated-native-bundle'
+    operation = {'operation': 'bundle', 'workspace': str(home), 'output': str(assembled), 'zip': False}
     helper = frozen_root / 'soffice-proxy.py'
     if helper.exists() or helper.is_symlink() or native_service is not None:
         if native_service is None:
@@ -570,8 +673,15 @@ def bundle_frozen(cfg, frozen_root, frozen_workspace, verification, output, *, z
     result = _run_worker(cfg, operation, private, tick=tick, native_service=native_service, timeout=600)
     if _runtime_inventory(cfg) != record['runtime']:
         raise InteractiveHostError('Installed runtime changed during bundle assembly')
-    _record(trajectory, 'interactive.bundle.completed', {'output': str(target), 'runtime_verified': result['runtime_verified']})
-    return result
+    if (_inventory(frozen_root, home.relative_to(frozen_root) / 'workspace') != record['native'] or
+            _inventory(frozen_root, home.relative_to(frozen_root) / 'interactive') != record['interactive'] or
+            _sha(_read(frozen_root, record['reviewed_pptx'], 30 * 1024 * 1024)) != record['reviewed_sha256']):
+        raise InteractiveHostError('Frozen presentation or scene changed during bundle assembly')
+    published = _publish_reviewed_bundle(private, assembled, frozen_root, target, reviewed, zip_output=zip_output)
+    if _runtime_inventory(cfg) != record['runtime']:
+        raise InteractiveHostError('Installed runtime changed during bundle publication')
+    _record(trajectory, 'interactive.bundle.completed', {'output': str(target), 'runtime_verified': result['runtime_verified'], 'reviewed_pptx_sha256': record['reviewed_sha256'], 'exact_reviewed_pptx': True})
+    return {**result, **published}
 
 
 def _worker_main(path):
