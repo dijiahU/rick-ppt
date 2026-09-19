@@ -105,12 +105,12 @@ Primary sources:
   certificate install/status and doctor; all requested interactive CLI commands.
   Acceptance: build/manifests/doctor run, loopback path/symlink/origin tests pass,
   actual runtime boot checks spec hash and identity. Evidence: doctor reports all dependencies/packs/manifests available; official XML ContentApp validator passes; macOS user-keychain certificate is trusted and Chromium reached actual HTTPS health without bypassing certificate errors. Production pack/browser tests exercise runtime boot. Desktop round-trip remains item 18.
-- [ ] **07 — Interactive rendering, bundles and review evidence.** Execute JSON
+- [x] **07 — Interactive rendering, bundles and review evidence.** Execute JSON
   testPlan; state/visibility/text/property/data/timeline assertions; initial,
   intermediate and reset captures; complete portable directory/ZIP with hashes,
   start/stop scripts and retained native PPTX; review packet integration.
   Acceptance: blank → attach → render → validate → LibreOffice → export → reopen
-  → bundle → served preview succeeds and corrupted bundles fail.
+  → bundle → served preview succeeds and corrupted bundles fail. Evidence: eight actual bundle integration tests plus twenty hook/CLI tests passed (28 total); dirty interactive Stop now creates a fresh bundle outside its workspace home, reports both native path and explicit desktop status. See runtime/docs/bundle-verification.md.
 - [x] **08 — First-party components and lightweight maps.** Data/state/theme-aware
   bar/grouped/stacked, line/area/scatter, heatmap/table/KPI/progress/timeline/network/
   matrix/comparison/hotspots/tabs/carousel/tooltip/stepper; GeoJSON Polygon,

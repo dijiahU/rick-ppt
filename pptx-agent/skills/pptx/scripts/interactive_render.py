@@ -3,6 +3,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
+import re
+import subprocess
+import sys
 from pathlib import Path
 from playwright.async_api import async_playwright
 from pptx_core.common import PptxError,atomic_json,sha256
@@ -21,7 +25,7 @@ async def execute(page, action):
             await control.evaluate('(el,value)=>{const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set;setter.call(el,String(value));el.dispatchEvent(new Event("input",{bubbles:true}));el.dispatchEvent(new Event("change",{bubbles:true}));}',action['value'])
     elif kind=='select':await locator.locator('select').select_option(str(action['value']))
     elif kind=='toggle':await locator.locator('input').set_checked(bool(action['value']))
-    elif kind=='keyboard':
+    elif kind in ('keyboard','key'):
         if locator:await locator.focus()
         await page.keyboard.press(action['key'])
     elif kind in ('drag','pan'):
@@ -50,7 +54,7 @@ async def assertion(page,item):
     else:
         locator=page.locator('[data-node-id='+json.dumps(item['target'])+']')
         if kind=='visible':value=await locator.is_visible()
-        elif kind=='text':value=await locator.inner_text()
+        elif kind=='text':value=await locator.text_content()
         elif kind=='attribute':value=await locator.get_attribute(item['name'])
         elif kind=='property':value=await locator.locator(item.get('selector','input')).evaluate('(el,name)=>el[name]',item['name'])
         else:raise PptxError(f'Unsupported test assertion: {kind}')
@@ -77,11 +81,12 @@ async def render_scene_async(spec,output,deck_root=None,deck_id=None,runtime=Non
             if not boot.get('ready'):raise PptxError(str(boot))
             await page.locator('[data-ready=true]').wait_for();await page.screenshot(path=str(output/'initial.png'));captures.append('initial.png')
             for index,test in enumerate(scene.get('testPlan',[])):
-                if test.get('reset'):await page.evaluate('window.__interactive.runtime.store.reset()')
+                if test.get('reset'):await page.evaluate('window.__interactive.dispatch([{type:"reset"}])')
                 for action in test['actions']:await execute(page,action)
                 for item in test['assertions']:await assertion(page,item)
                 if test.get('capture',True):
-                    filename=f'{index+1:02d}-{test["name"]}.png';await page.screenshot(path=str(output/filename));captures.append(filename)
+                    label=re.sub(r'[^A-Za-z0-9_-]+','-',test['name'])[:80] or 'test'
+                    filename=f'{index+1:02d}-{label}.png';await page.screenshot(path=str(output/filename));captures.append(filename)
                 tests.append({'name':test['name'],'ok':True,'assertions':len(test['assertions'])})
             await page.evaluate('window.__interactive.dispatch([{type:"reset"}])');await page.wait_for_timeout(50);await page.screenshot(path=str(output/'reset.png'));captures.append('reset.png')
             runtime_error=await page.evaluate('window.__interactive.runtime.error')
@@ -96,7 +101,20 @@ async def render_scene_async(spec,output,deck_root=None,deck_id=None,runtime=Non
     return report
 
 
-def render_scene(spec,output,**kwargs):return asyncio.run(render_scene_async(spec,output,**kwargs))
+def render_scene(spec,output,**kwargs):
+    proxy=os.environ.get('PPTX_INTERACTIVE_PROXY')
+    if proxy:
+        command=[sys.executable,proxy,'--spec',str(spec),'--output',str(output)]
+        for key in ('deck_root','deck_id'):
+            if kwargs.get(key) is not None:command.extend(['--'+key.replace('_','-'),str(kwargs[key])])
+        result=subprocess.run(command,capture_output=True,text=True,timeout=360)
+        if result.returncode:raise PptxError('Host interactive rendering failed: '+result.stderr[-2000:])
+        if len(result.stdout)>2*1024*1024:raise PptxError('Interactive render receipt exceeds its limit')
+        try:report=json.loads(result.stdout)
+        except (ValueError,TypeError) as error:raise PptxError('Invalid host render receipt') from error
+        if not isinstance(report,dict) or not report.get('ok'):raise PptxError('Host scene tests failed')
+        return report
+    return asyncio.run(render_scene_async(spec,output,**kwargs))
 
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('spec');p.add_argument('--out',required=True);a=p.parse_args();print(json.dumps(render_scene(a.spec,a.out),indent=2))
