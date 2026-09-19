@@ -80,16 +80,31 @@ Codex steering path then delivered all three into the active resumed author turn
 
 | Message | Kind | Observed state |
 | --- | --- | --- |
-| `7e4a3568-fbc8-40de-8f01-53040228a9df` | Ordinary chat about training versus held-out evidence | Acknowledged; answer completion pending |
+| `7e4a3568-fbc8-40de-8f01-53040228a9df` | Ordinary chat about training versus held-out evidence | Public answer observed; marked applied after the completed revision-3 content turn |
 | `4f70ec99-e21c-408e-96f5-a7795aa2eb3a` | Keep actual loss increases and label the synthetic results | Acknowledged; final artifact application pending |
 | `95f3e650-f1a7-4e0c-b0ca-d2e609ac464e` | Complete C04/C05/C06/C10 experiments and nondifferentiability explanations | Acknowledged; final artifact application pending |
 | `47ad4991-89ca-4398-8bfd-c5e292ed07b3` | Correct scan highlights, manual-timeline continuation and actual source-line highlights | Acknowledged in website v28; final application pending |
+| `132c625d-e876-4412-a98e-1b0229e3b570` | Repair remaining v005 formula-subscript clipping | Admitted by website v29; application pending |
 
 The durable input revision advanced from 0 to 3; ordinary chat did not increment
 it. The author publicly answered the ordinary chat, distinguishing the 16 training
 examples from eight separate held-out examples and limiting the accuracy claim
-to that synthetic sample. Acknowledgement is not an applied edit. Final scene/native content, review
+to that synthetic sample. The completed content turn applied the answered chat;
+all three revision messages remain acknowledged pending artifact application.
+Acknowledgement is not an applied edit. Final scene/native content, review
 receipts and applied message states must establish the requested corrections.
+
+The v003 scan/backward animation checks subsequently passed 258 assertions with
+19 captures, including actual clock continuation and rendered source highlights.
+Those checks still found clipped formulas. The v005 visual revision fixed the
+scan formula and the first native page's overlapping text, but actual screenshots
+still showed clipped summation subscripts in pages 15 and 16. A descendant-glyph
+check found about 4.52 px beyond the formula region; an outer KaTeX-box test alone
+would incorrectly pass. Website v29, source
+`37ef401849d5a11d3cde56b7f146657e766d5e92`, adds a labeled request to reposition and
+enlarge those formula regions, preserving the verified mathematics and animation.
+Its six synthetic migration checks verify scope, idempotence and unchanged jobs.
+This is another pending correction, not final visual approval.
 
 The fourth input was admitted by website v28 from source
 `4e1d2c7fd55841747a72a71ee21a3dc8258e0cec`. Independent draft checks found that

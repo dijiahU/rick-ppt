@@ -113,6 +113,38 @@ cache versions and the old marketplace source are preserved. Installed doctor,
 hook compatibility and narrow filesystem/network isolation checks passed. The
 native Docker render smoke passed on the identical frozen runtime. The final
 cachebuster additionally includes the evidence documents and showcase script.
+
+## CNN-discovered Monaco correction
+
+Source `8dd1e9f` fixes highlighted multiline editing. Synchronous decoration
+updates reentered Monaco's content-event delivery; its automatic indentation also
+published thousands of intermediate code-change events. The code pack now
+coalesces both outside that stack and publishes the final buffer once. The
+runtime's 2,000-action safety limit is unchanged.
+
+The single production build at `2026-09-19T23:01:52.400785Z` has 96 files and
+fingerprint `be097a482201dd70ecdc8755b2a1c4aee5f0f54402878c42b43caa42365cf5fd`.
+It passed 79 unit tests, 24 combined browser tests, nine production feature-pack
+checks and three production diagnostics. An independent learner-input replay of
+the preserved CNN draft passed 197 assertions with 24 captures, including real
+JS/Python keyboard edits, Stop, errors, Reset and zero-epoch training. The exact
+8,828-character synthetic input buffer that previously produced 3,805 page errors
+now produces zero. Real clipboard paste preserves all 2,781 source characters
+and remains executable. This distinguishes composition-style input from paste;
+it does not promise that auto-indented synthetic input equals its intended text.
+
+Fresh host/native/portable verification of the previously reviewed two-page
+smoke candidate passed all eight checks on this build. The native PPTX remains
+byte-identical to the reviewed artifact. This is fresh renderer and packaging
+evidence, not another model-review run or final CNN acceptance.
+
+The installed and staged release is `0.1.0+codex.20260919230549`. Plugin validation,
+doctor, filesystem/network isolation and installed-version journal preflight
+passed. All 18 older cache versions are retained. The installer removed them,
+so their complete backups restored the original hooks and files; subsequent
+Python use regenerated 24 bytecode files, while all non-bytecode source files
+still match. Original bytecode also remains in the backup. The running website
+worker must be handed over to this immutable release before final case acceptance.
 At 21:25 UTC the old idle worker drained normally. After the startup and Office
 identity corrections, worker 4473 passed the installed-version recovery preflight
 and began CNN research at 21:42 UTC. `worker-handoff.json` and
