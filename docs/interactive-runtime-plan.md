@@ -192,7 +192,10 @@ Primary sources:
   grid/head outputs, IoU, confidence thresholds, NMS, loss/training and inference.
   Distinguish versions precisely; demonstrate editable code and intuitive animation
   through the shared DSL/runtime/ML adapter. Test, independently review, export and
-  verify the second bundle. Do not build a separate YOLO runtime.
+  verify the second bundle. Do not build a separate YOLO runtime. Preparation:
+  the [pinned independent numerical reference](../examples/yolo-reference/README.md)
+  passes 75 checks, including IoU/NMS/DFL, CIoU and toy-logit optimization. This
+  does not submit the task or approve a full model, ONNX execution or teaching deck.
 - [ ] **18 — Desktop verification and final report.** Attempt real macOS
   PowerPoint open/load/click/drag/keyboard/slider/slideshow/save/reopen/settings
   persistence and code interaction. Windows/Web are only marked verified if

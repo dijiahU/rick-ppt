@@ -52,8 +52,20 @@ seven trajectory-artifact and six trajectory checks passed. A separate minimal
 reproduction demonstrated zero converter calls with the old alias and one with
 the canonical root. This is a host recovery fix, not a relaxation of containment.
 
-The failed attempt and requests are retained. Continuation and actual Docker
-rendering on the corrected supervisor must be checked before this case passes.
+The failed attempt and requests are retained. A synthetic recovery through the
+corrected supervisor then passed actual isolated Docker/LibreOffice conversion:
+the copied trusted blank produced a valid one-page PDF, both outside-task requests
+were rejected before Docker, and original/restored input hashes stayed unchanged.
+This verifies the broker fix, not the unfinished CNN slide visuals.
+
+The operator drained the old supervisor, retained its interrupted checkpoint and
+requeued the same CNN task after the replacement passed startup isolation checks.
+Seven selected source/artifact hashes matched in the new restored directory and
+the old directory. The saved input revision is now 3, so the workflow is checking
+the restored outline/evidence against those edits before resuming the interrupted
+author thread. The prior notes and completed research receipt remain retained;
+this second recovery does not yet establish same-author continuation or a finished
+delivery. The plugin/runtime bytes were unchanged by the supervisor correction.
 
 ## Conversation during resumed authoring
 
