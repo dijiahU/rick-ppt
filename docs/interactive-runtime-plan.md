@@ -149,7 +149,7 @@ Primary sources:
   messages; resume affordance and clear recovery status. Preserve existing design,
   language selection, task history and current execution. Acceptance: real browser
   submit/upload/reconnect/resume flows plus production build. Evidence: Playwright desktop/mobile suite passed actual local routes, upload and applied status, reload/dedup, ordinary chat and same-task resume; final production build passed. No production fixture or user quota was changed.
-- [ ] **14 — Workflow integration and release.** Planning chooses native versus
+- [x] **14 — Workflow integration and release.** Planning chooses native versus
   interactive treatment; runner exposes the installed runtime and test broker;
   revisions invalidate affected output/review evidence; independent reviewers
   inspect interactive captures; deliver PPTX plus bundle. Update SKILL, README,
@@ -157,6 +157,12 @@ Primary sources:
   Package/reinstall versioned plugin without deleting prior cache versions.
   Publish the validated site and drain/handoff workers without interrupting old
   tasks. Acceptance: deployment success and new-worker capability checks.
+  Evidence: website v23 deployed successfully; installed and staged plugin
+  `0.1.0+codex.20260919212441` preserves all 16 previous cache versions. Installed
+  doctor and filesystem/network isolation checks passed; actual native Docker
+  rendering passed on the same frozen runtime. With no queued/running jobs, old
+  worker 12123 drained normally and new worker 82331 reported ready at
+  2026-09-19 21:25 UTC. Private `worker-handoff.json` records the transition.
 - [x] **15 — Full smoke gate.** Python, Vitest, Playwright, production build,
   bundle-size guard, malicious input tests, native OOXML regression, LibreOffice,
   bundle boot, all optional packs, resumability and live feedback. Record exact

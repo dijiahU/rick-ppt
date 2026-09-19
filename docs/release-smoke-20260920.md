@@ -82,8 +82,17 @@ recovery, interactive outline metadata and an atomic late-revision delivery
 fence. Local desktop/mobile UI checks verified sending/uploading, applied status,
 reload/deduplication, normal chat and same-task resume against the actual routes.
 
-The installed immutable plugin and worker handoff are recorded in the execution
-plan. Teaching cases run only after that handoff. Their prompts and acceptance
+Plugin `0.1.0+codex.20260919212441` is installed and staged immutably; all 16 older
+cache versions and the old marketplace source are preserved. Installed doctor,
+hook compatibility and narrow filesystem/network isolation checks passed. The
+native Docker render smoke passed on the identical frozen runtime. The final
+cachebuster additionally includes the evidence documents and showcase script.
+At 21:25 UTC the old idle worker drained normally, and worker 82331 reported
+ready on the new settings. `worker-handoff.json` records the transition; the
+private worker log contains no task credentials. A process-scoped `caffeinate`
+keeps the Mac awake only while this worker runs; no login service was installed.
+
+Teaching cases run only after that handoff. Their prompts and acceptance
 contracts are in `docs/cases/`; preparing a prompt does not pass a case.
 
 PowerPoint desktop startup, slideshow focus and Office settings persistence are
