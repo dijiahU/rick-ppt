@@ -1,6 +1,6 @@
 ---
 name: pptx
-description: Research, write, create, inspect and edit native editable PowerPoint presentations, with actual renders and independent content and visual reviews.
+description: Research, create and edit native PowerPoint with composable interactive scenes, editable code labs, actual rendering and independent content and visual reviews.
 ---
 
 # Native PowerPoint
@@ -66,6 +66,23 @@ Build, render and inspect each page; repair defects and publish native previews
 where available. Return to content when a visual exposes a missing explanation.
 Essential self-reading meaning must be visible without inaccessible notes.
 
+For interactive lessons, simulations, editable runnable code or exploratory views,
+read [Interactive authoring](references/interactive-authoring.md). Use native OOXML
+for the slide and versioned JSON scenes for its Content Add-in regions. Choose
+native versus interactive treatment during the outline stage; never replace the
+whole deck with screenshots or write a new topic-specific React application.
+Use the shared runtime components, state, actions and optional packs. Retain native
+titles, context, equations and readable fallback meaning around the live region.
+Every scene needs meaningful input/result test assertions and real browser captures.
+When the host exposes INTERACTIVE.md, its file broker performs scene rendering
+without broadening the author's permissions. Export both the PPTX and its portable
+bundle; a PPTX by itself retains static fallbacks but not the complete runtime.
+
+In a resumable host workflow, inspect restored artifacts before continuing. Respect
+ordered user corrections supplied by the host and answer live chat. Refresh affected
+outline, scenes, captures and exports after a correction; prior reviews certify only
+their recorded input/artifact version. Preserve earlier exports and original inputs.
+
 ## 4. Independent audience reviews and revision
 
 Use two fresh reviewer contexts, not the author's conversation: host orchestration
@@ -85,6 +102,9 @@ required-media failures. Style suggestions may be retained with reasons. Recheck
 revisions, context and final order. No finding quotas or repeated taste-score loops.
 Static render/timing inspection is not playback verification. Report exactly what
 was tested; do not silently downgrade an essential requirement and declare completion.
+Review interactive initial, intermediate, changed-input and reset captures as well
+as native pages. Distinguish scene-runtime tests, static PowerPoint fallback and
+actual PowerPoint slideshow/settings round-trip verification.
 
 ## Native operations
 

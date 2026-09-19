@@ -4,13 +4,13 @@
 
 **[进入网站 · 在线制作 PPT →](https://rick-ppt.woodsy-crane-8759.chatgpt.site)**
 
-当前流程：研究与理解内容 → 逐页内容大纲 → 原生 OOXML 制作与渲染 → 独立内容和视觉审核。
+当前流程：研究与理解内容 → 逐页内容大纲 → 选择原生/交互/混合呈现 → OOXML 与声明式场景制作 → 实际渲染和交互测试 → 独立内容与视觉审核 → 导出。
 先决定说什么，再决定怎么呈现。主技能保留必要规则，细节按需读取。
 内容参考：[内容研究](skills/pptx/references/content.md)；公式采用
 [公式保真](skills/pptx/references/technical/formula-fidelity.md) 的专项核对，可运行只读 `inspect_formulas.py`。
 搜索可用于事实、文学解读与视觉/模板参考；搜索不等于获得素材下载或复用权限。
 
-原生 PPTX 创建与编辑环境。OOXML 是唯一内容源；不通过 python-pptx 重写用户文件，不引入 scene graph、MCP 或新的编辑器。
+原生页面使用 Direct OOXML。只有明确的 Content Add-in 区域使用共享的 JSON 场景运行时；页面上的原生文字、公式、图表和其他对象继续可编辑。普通页面不需要 Web 场景，用户文件不通过 python-pptx 重写。
 
 ## 安装与运行
 
@@ -84,4 +84,33 @@ Hooks 是可绕过的 guardrail，不能静态证明任意 Python/shell 的所�
 
 辅助脚本 native_builds.py（语义分组原生出现动画）和 review_packet.py（审核文本、整套缩略图、媒体与动画事实）。静态渲染不认证 PowerPoint 播放；必须保留该验证边界。
 
-本仓库仅分发插件代码、技能参考、必要资源和 hooks；网站、队列执行端、测试语料、测试结果和本地配置不在此仓库中。
+插件目录分发源码、技能参考、必要资源、hooks 与通用交互运行时。外层仓库还包含脱敏的网站、执行端和测试源码；本地配置、凭证、用户任务和运行轨迹不进入公开源码。
+
+## 交互运行时
+
+在插件目录安装浏览器依赖，再构建共享运行时：
+
+```sh
+.venv/bin/python -m pip install -e '.[interactive]'
+.venv/bin/python -m playwright install chromium
+cd runtime
+npm ci
+npm run build
+cd ..
+.venv/bin/pptx interactive cert install
+.venv/bin/pptx interactive doctor
+```
+
+`cert install` 使用本机开发证书和用户钥匙串；凭证、私钥不属于演示文稿。
+`interactive validate-spec` 检查场景；`attach/update/render` 生成实际测试与静态预览；
+`interactive bundle OUTPUT --zip` 创建新的独立目录及 ZIP，包含 PPTX、场景、资源、运行时、清单与启停脚本。已有输出不覆盖。
+
+运行时提供原语、布局、状态、表达式、事件、拖拽、时间线、计算、图表、表格和 GeoJSON。
+Monaco/Pyodide、Three、ONNX、MapLibre、KaTeX 按声明延迟加载。
+代码编辑器可运行隔离的短 JavaScript/Python 实验；教学数值必须通过实际输入/输出测试。
+
+阅读 [创作指南](skills/pptx/references/interactive-authoring.md)、
+[运行时说明](skills/pptx/references/interactive-runtime.md) 和
+[审核指南](skills/pptx/references/interactive-review.md)。实际支持范围见
+[兼容性矩阵](docs/interactive-compatibility.md)。浏览器通过和原生静态渲染通过分别记录；
+PowerPoint 编辑、放映和保存重开必须在目标软件单独验证。

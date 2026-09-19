@@ -1,15 +1,15 @@
 {
   "name": "pptx-agent",
   "version": "0.1.0+codex.20260919170350",
-  "description": "Research content, write a page outline and make native editable PowerPoint with independent content and visual reviews.",
+  "description": "Research and create editable native PowerPoint with composable interactive regions, executable code, animation and independent reviews.",
   "author": {
     "name": "rick"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "PPTX Agent",
-    "shortDescription": "Content first. Native PowerPoint. Independent reviews.",
-    "longDescription": "Read and research the subject, write a visible page outline, create native editable slides, and independently review content and visual delivery. Preserve existing decks, source evidence, meaningful staged reveals and honest playback verification.",
+    "shortDescription": "Editable PowerPoint, interactive lessons and independent reviews.",
+    "longDescription": "Research content, publish a page outline, compose native editable slides and declarative interactive regions, run real scene tests, and independently review content and visuals. Preserve existing decks and versioned artifacts. Supports code editors, timelines and optional feature packs with explicit playback verification.",
     "developerName": "rick",
     "category": "Productivity",
     "capabilities": [],
