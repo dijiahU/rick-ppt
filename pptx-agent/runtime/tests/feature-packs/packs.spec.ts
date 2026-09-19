@@ -119,6 +119,41 @@ test('ONNX runs an actual generic identity model with local WASM fallback',async
 test('MapLibre renders local GeoJSON and reports click selection',async({page,context})=>{
  await prepare(context,page,baseScene(['map'],[node('AdvancedMap',{geojson:{type:'FeatureCollection',features:[{type:'Feature',properties:{name:'local-point'},geometry:{type:'Point',coordinates:[0,0]}}]},center:[0,0],zoom:2,selectionPath:'selection'})],{interactions:[{target:'demo',event:'mapReady',actions:[{type:'set',path:'ready',value:true}]}]}));await expect.poll(()=>state(page,'ready')).toBe(true);await page.locator('.maplibregl-canvas').click();await expect.poll(async()=>((await state(page,'selection'))?.features??[]).length).toBeGreaterThan(0);await expect(page.getByRole('alert')).toHaveCount(0);
 });
-test('KaTeX updates from state and approved plugin functions initialize derived state',async({page,context})=>{
- const source='export default {id:"lesson",version:"1.0.0",functions:{double:x=>x*2}};';const math=node('Math',{displayMode:true});math.bind={tex:{expr:'state.tex'}} as any;await prepare(context,page,baseScene(['math'],[math],{initialState:{tex:'x^2+1',n:3},derivedState:{answer:{expr:'lesson_double(state.n)'}},plugins:[{id:'lesson',version:'1.0.0',path:'lesson.js',sha256:createHash('sha256').update(source).digest('hex'),capabilities:['functions']}],runtimeOptions:{allowedPlugins:['lesson']}}),{'lesson.js':{body:source,type:'text/javascript'}});expect(await state(page,'answer')).toBe(6);await expect(page.locator('.katex')).toHaveCount(1);await page.evaluate(()=>window.__interactive.runtime.store.set('tex','\\frac{a}{b}'));await expect(page.locator('[role=math]')).toContainText('ab');
+test('KaTeX updates from state, loads local fonts under CSP and initializes approved plugin functions',async({page,context},testInfo)=>{
+ const consoleErrors:string[]=[];const pageErrors:string[]=[];const fontResponses:{url:string;status:number}[]=[];
+ page.on('console',message=>{if(message.type()==='error')consoleErrors.push(message.text());});
+ page.on('pageerror',error=>pageErrors.push(error.message));
+ page.on('response',response=>{if(/\/KaTeX_Size3-Regular[^/]*\.woff2$/.test(new URL(response.url()).pathname))fontResponses.push({url:response.url(),status:response.status()});});
+ await page.addInitScript(()=>{
+  (window as any).__mathCspViolations=[];
+  document.addEventListener('securitypolicyviolation',event=>(window as any).__mathCspViolations.push({directive:event.violatedDirective,blocked:event.blockedURI}));
+ });
+ const manifest=JSON.parse(await readFile('dist/.vite/manifest.json','utf8'));
+ const cssFiles=[...new Set<string>(Object.values(manifest).flatMap((entry:any)=>entry.css??[]))];
+ expect(cssFiles.length).toBeGreaterThan(0);
+ for(const file of cssFiles)expect(await readFile(resolve('dist',file),'utf8'),file).not.toMatch(/@font-face\s*\{[^}]*url\(\s*["']?data:/i);
+ const source='export default {id:"lesson",version:"1.0.0",functions:{double:x=>x*2}};';
+ const math=node('Math',{displayMode:true,fontSize:44});math.bind={tex:{expr:'state.tex'}} as any;
+ await prepare(context,page,baseScene(['math'],[math],{initialState:{tex:'x^2+1',n:3},derivedState:{answer:{expr:'lesson_double(state.n)'}},plugins:[{id:'lesson',version:'1.0.0',path:'lesson.js',sha256:createHash('sha256').update(source).digest('hex'),capabilities:['functions']}],runtimeOptions:{allowedPlugins:['lesson']}}),{'lesson.js':{body:source,type:'text/javascript'}});
+ expect(await state(page,'answer')).toBe(6);await expect(page.locator('.katex')).toHaveCount(1);
+ await page.evaluate(()=>window.__interactive.runtime.store.set('tex','\\frac{a}{b}'));await expect(page.locator('[role=math]')).toContainText('ab');
+ // bigg delimiters actually use Size3; a simple fraction alone can miss this font.
+ await page.evaluate(()=>window.__interactive.runtime.store.set('tex','\\biggl(\\frac{a+b}{c+d}\\biggr)'));
+ await expect(page.locator('.delimsizing.size3')).toHaveCount(2);
+ const loadedFonts=await page.evaluate(async()=>{
+  const faces=await document.fonts.load('44px "KaTeX_Size3"','(');await document.fonts.ready;
+  return faces.map(face=>({family:face.family,status:face.status}));
+ });
+ expect(loadedFonts.length).toBeGreaterThan(0);expect(loadedFonts.every(font=>font.family==='KaTeX_Size3'&&font.status==='loaded')).toBe(true);
+ await expect.poll(()=>fontResponses.length).toBeGreaterThan(0);
+ expect(fontResponses.every(response=>response.status===200&&new URL(response.url).origin===new URL(page.url()).origin)).toBe(true);
+ let csp:string|undefined;
+ if(new URL(page.url()).port==='41977'){
+  const response=await page.request.get('/preview.html');csp=response.headers()['content-security-policy'];
+  expect(csp?.split(';').map(part=>part.trim()).find(part=>part.startsWith('font-src '))).toBe("font-src 'self'");
+ }
+ await page.screenshot({path:testInfo.outputPath('katex-local-size3.png')});
+ const violations=await page.evaluate(()=>(window as any).__mathCspViolations);
+ await testInfo.attach('katex-font-evidence',{body:JSON.stringify({cssFiles,loadedFonts,fontResponses,csp,violations,consoleErrors,pageErrors},null,2),contentType:'application/json'});
+ expect(violations).toEqual([]);expect(consoleErrors).toEqual([]);expect(pageErrors).toEqual([]);
 });

@@ -163,3 +163,26 @@ PowerPoint desktop startup, slideshow focus and Office settings persistence are
 native LibreOffice rendering and OOXML fixture matching do not prove those host
 behaviors. Windows and Office web are also unverified. See the separate manual
 checklist and compatibility matrix. All independent work continues.
+
+## CNN-discovered local font packaging correction
+
+A real full-CNN derivative scene exposed a blocked inline `KaTeX_Size3` WOFF2.
+Its 3,624 bytes were below Vite's default inlining threshold, while production
+CSP correctly permits only same-origin font files. Existing WOFF/TTF fallbacks
+kept the formula readable; the retained proof still records the violation.
+
+The build now excludes font extensions from asset inlining and preserves default
+handling for all other assets. Production CSP is unchanged. The corrected
+candidate has **97 files**, fingerprint
+`8635c55584176218c6eadbc829d8796531bc99887469f24f6fc2345130222d37`.
+Its build and **nine production feature-pack tests** pass. The enhanced KaTeX
+test renders actual Size3 delimiters, loads that font, observes a same-origin
+WOFF2 HTTP 200, waits for `document.fonts.ready`, and checks all emitted CSS for
+inline fonts. No CSP violation, console error or page exception occurred. Both
+the independent reviewer and parent opened the actual fraction/parentheses PNG.
+
+The candidate is **not installed into the running CNN worker**. The previous
+96-file dist directory is retained in full, and the worker's immutable `be097…`
+release remains unchanged. New source/build evidence must not be described as
+current CNN delivery evidence. Installation and any affected case revalidation
+will be recorded at an explicit release boundary.

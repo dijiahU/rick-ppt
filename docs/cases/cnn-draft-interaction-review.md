@@ -84,9 +84,11 @@ is `cnn-full-gradient-browser-review-01`; its original report SHA-256 is
 
 Vite inlined the 3,624-byte `KaTeX_Size3.woff2`, which production `font-src 'self'`
 blocks. Same-origin WOFF/TTF fallbacks remain available and the inspected formula
-is readable, but this run is not a zero-CSP pass. A separate build correction
-will keep fonts as same-origin files without loosening CSP. It must not silently
-replace the immutable runtime used by the running author.
+is readable, but this run is not a zero-CSP pass. A separate
+[build correction](../release-smoke-20260920.md#cnn-discovered-local-font-packaging-correction)
+now keeps fonts as same-origin files without loosening CSP. Its nine production
+pack checks pass, including actual Size3 loading and zero CSP violations. That
+candidate remains separate from the immutable runtime used by the running author.
 
 The separately acknowledged formula-region clipping still requires resolution.
 Final acceptance must use the current delivered PPTX/ZIP and their exact scenes,

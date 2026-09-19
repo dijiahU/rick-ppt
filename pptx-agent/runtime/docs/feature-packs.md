@@ -36,6 +36,11 @@ Application integrations can `registerModelAdapter(runtime, name, {preprocess, p
 
 `Math` (alias `Formula`) accepts `tex`/`value`, `displayMode`, fontSize/color and ariaLabel. KaTeX uses MathML accessibility output, no trusted HTML/URLs, bounded expansion and formula size. This pack affects only interactive content; native PPTX formulas retain the existing Office Math requirements.
 
+Font assets are emitted as local files, including KaTeX fonts below Vite's normal
+inline-size threshold, so production keeps `font-src 'self'`. The production
+KaTeX smoke renders Size3 delimiters, waits for actual font loading, checks local
+WOFF2 responses and CSP violations, and rejects inline fonts in built CSS.
+
 ## Explicit custom plugins
 
 A scene plugin manifest requires `id`, semantic `version`, a relative same-origin `path`, SHA-256, and an explicit `capabilities` array drawn from `functions`, `actions`, `components`, `dataSources`. Its ID must also appear in `runtimeOptions.allowedPlugins`. The runtime fetches and validates the exact bytes (maximum 2 MiB), rejects all static/dynamic imports and `import.meta` using an ES module lexer, then loads those verified bytes. Build the plugin as one self-contained ES module with default export:
