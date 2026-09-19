@@ -1,0 +1,90 @@
+{
+  "schema": "cnn-reference-browser-observed/v1",
+  "observed_at_utc": "2026-09-19T22:08:26Z",
+  "status": "passed",
+  "scope": "Fixed-source local Python worker compatibility under production CSP; excludes actual Monaco typing, final scene/deck acceptance and Office playback.",
+  "plugin_version": "0.1.0+codex.20260919214127",
+  "source_sha256": "128425bc16b0b624e472c1ac7e6e933efa238d4b039c20a0630d3fc23f0ac8b6",
+  "wrapper_sha256": {
+    "default": "aee95d6971d07ed044b5d003f21083c1a21ab2c4982c2d1c6255eecfa04c3d5a",
+    "lr0": "e7437dae404d97cbf6f181e9b8256617b1e2ecc3c9751925676e4b72ae699c17"
+  },
+  "runtime_fingerprint_sha256": "fd43ec226d321db43f884afa598bc9f1ae2d2f34e20cafbf24fbc1d00a7c79de",
+  "runtime_file_count": 96,
+  "wrapper_rule": "Unmodified source bytes; set __name__ to bypass the CLI-only entry, then train() or train(learning_rate=0.0) as the final Python expression.",
+  "timeout_policy": {
+    "python_initialization_ms": 60000,
+    "execution_ms": 5000,
+    "scene_overrides_timeout": false
+  },
+  "execution_count": {
+    "default": 1,
+    "lr0": 1
+  },
+  "checks": {
+    "passed": 22,
+    "total": 22
+  },
+  "default_recipe": {
+    "epochs": 30,
+    "learning_rate": 0.15,
+    "initialization_seed": 7
+  },
+  "default_metrics": {
+    "initial_training": {
+      "mean_ce": 0.6899881579037387,
+      "accuracy": 0.5,
+      "count": 16
+    },
+    "training": {
+      "mean_ce": 0.01698117456324391,
+      "accuracy": 1,
+      "count": 16
+    },
+    "held_out": {
+      "mean_ce": 0.558426986277263,
+      "accuracy": 0.75,
+      "count": 8
+    }
+  },
+  "parameter_count": 50,
+  "changed_parameter_count": 50,
+  "comparison_to_independent_cpython": {
+    "absolute_tolerance": 1e-06,
+    "maximum_parameter_absolute_error": 4.440892098500626e-16,
+    "maximum_metric_absolute_error": 2.220446049250313e-16
+  },
+  "zero_learning_rate": {
+    "epochs": 30,
+    "changed_parameter_count": 0,
+    "training_mean_ce": 0.6899881579037387,
+    "checkpoint_count": 8
+  },
+  "timing_observation": "New Python VM per run; loading/running/done DOM intervals include UI scheduling. Total worker elapsed spans creation through result receipt. Browser HTTP caching was disabled for the isolated check.",
+  "runs": {
+    "default": {
+      "status": "done",
+      "worker_total_elapsed_ms": 1030.4000000953674,
+      "dom_initialization_ms": 853.5,
+      "dom_execution_to_completed_ms": 176.80000019073486,
+      "returned_result_sha256": "404bd50973fdd1f3316fde7e835d00ac624ba8af66a6d96938987ee1fbe6bdfd"
+    },
+    "lr0": {
+      "status": "done",
+      "worker_total_elapsed_ms": 1022.5,
+      "dom_initialization_ms": 841.1999998092651,
+      "dom_execution_to_completed_ms": 181.80000019073486,
+      "returned_result_sha256": "754a0ef9e3be22af801e05933995b9693d66be2c8211f9de53ed69fb827646f7"
+    }
+  },
+  "returned_result_hash_encoding": "SHA256 of UTF-8 JavaScript JSON.stringify(full returned dictionary)",
+  "production_csp": {
+    "server_mode": "isolated loopback HTTP using release interactive_server",
+    "main": "default-src 'none'; script-src 'self' blob: 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: ; media-src 'self' blob:; connect-src 'self' ; font-src 'self'; worker-src 'self' blob:; frame-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self' https://*.office.com https://*.officeapps.live.com https://*.microsoft365.com",
+    "code_worker": "default-src 'none'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; connect-src 'self'; worker-src 'none'; object-src 'none'",
+    "asset_or_header_mocking": false,
+    "runtime_error_count": 0,
+    "violation_count": 0,
+    "external_request_count": 0
+  }
+}
