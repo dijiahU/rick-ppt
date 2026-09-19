@@ -58,8 +58,9 @@ and 5 before declining. These are synthetic teaching results.
 This evidence applies only to the reviewed source SHA. A separate
 [actual Python worker check](cnn-python-worker-review.md) passed 22 assertions
 under production CSP, including default training and learning rate zero. Neither
-review certifies the unfinished teaching artifacts. The final runtime release passed
-[GitHub CI](https://github.com/dijiahU/rick-ppt/actions/runs/35471242145).
+review certifies the unfinished teaching artifacts. The current runtime release
+and handover passed
+[GitHub CI](https://github.com/dijiahU/rick-ppt/actions/runs/35475675726).
 
 The [controlled live recovery](cnn-live-workflow.md) now passed initial
 continuation: the same task resumed the same author thread, reused research and
@@ -77,6 +78,13 @@ interactive scene receipts and corresponding page work were retained at handover
 the final 20-page artifact still needs complete revalidation on the new runtime.
 Website v29 also delivered a precise request to fix the remaining formula
 subscript clipping in v005 pages 15 and 16; the worker acknowledged it.
+
+The [bounded v005 draft review](cnn-draft-interaction-review.md) adds 196 passing
+multi-channel/ReLU/pooling assertions through real controls and workers, with
+14 inspected captures, plus an independent check of the first eight latest
+native previews. The full-CNN derivative browser check also found a font
+packaging/CSP issue; its numerical success does not waive that finding. Current
+scene changes and the eventual delivered pair still need final acceptance.
 
 ## Pending acceptance
 
