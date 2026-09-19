@@ -52,6 +52,58 @@ test('Monaco teaching highlights follow state, inclusive ranges and actual sourc
  expect(errors).toEqual([]);expect(await page.evaluate(()=>window.__interactive.runtime.error)).toBeFalsy();
 });
 
+test('Monaco keeps highlighted multiline edits, clipboard paste and syntax errors contained',async({page,context},testInfo)=>{
+ test.setTimeout(100000);
+ const errors:string[]=[];page.on('pageerror',error=>{if(errors.length<8)errors.push(error.stack??error.message);});
+ const code=await readFile(new URL('./fixtures/highlighted-convolution.py',import.meta.url),'utf8');
+ expect(code.length).toBe(2781);
+ const edited=code.replace('K = [[1, -1], [2, 0]]','K = [[2, -1], [2, 0]]');
+ const editor=node('CodeEditor',{language:'python',code,valuePath:'source',resultPath:'result',timeoutMs:3000,revealHighlightedLine:true});
+ editor.bind={highlightLines:{expr:'state.source == state.original ? 28 : 0'}};
+ await prepare(context,page,baseScene(['code'],[editor],{initialState:{source:code,original:code,result:null,changes:0},interactions:[{target:'demo',event:'codeChange',actions:[{type:'set',path:'result',value:null},{type:'increment',path:'changes',value:1}]}]}));
+ const textbox=page.getByRole('textbox',{name:'Editable teaching code',exact:true});
+ const highlighted=page.locator('.monaco-editor .pptx-code-active-line');
+ const modifier=await page.evaluate(()=>/Macintosh|Mac OS X/.test(navigator.userAgent)?'Meta':'Control');
+ const selectAll=async()=>{await textbox.focus();await page.keyboard.press(modifier+'+A');};
+ const run=async(status='done')=>{await page.getByRole('button',{name:'Run code',exact:true}).click();await expect.poll(async()=>(await state(page,'result'))?.status).toBe(status);return state(page,'result');};
+ await expect(highlighted.first()).toBeVisible();expect((await run()).result.output).toEqual([[7,9],[13,15]]);
+ // insertText is a composition-style multiline input, not clipboard paste.
+ // Monaco may auto-indent it; neither that nor invalid syntax may recurse
+ // through our content listener and decoration-change event delivery.
+ await selectAll();await page.keyboard.insertText(edited);
+ await expect.poll(()=>state(page,'source')).not.toBe(code);await expect(highlighted).toHaveCount(0);
+ await testInfo.attach('multiline-input-buffer',{body:String(await state(page,'source')),contentType:'text/plain'});
+ await testInfo.attach('multiline-page-errors',{body:JSON.stringify(errors,null,2),contentType:'application/json'});
+ await expect.poll(()=>state(page,'changes')).toBe(1);
+ expect(errors).toEqual([]);await expect(textbox).toBeVisible();
+ await page.screenshot({path:testInfo.outputPath('multiline-input-contained.png')});
+ await selectAll();await page.keyboard.insertText('def broken(:');
+ expect((await run('error')).stderr).toContain('SyntaxError');await expect(page.getByLabel('Code output',{exact:true})).toContainText('SyntaxError');
+ // A real paste of valid multiline Python must preserve every character and
+ // remain executable; this does not use a Monaco model setter.
+ const origin=new URL(page.url()).origin;await context.grantPermissions(['clipboard-read','clipboard-write'],{origin});
+ await page.evaluate(code=>navigator.clipboard.writeText(code),code);await selectAll();await page.keyboard.press(process.platform==='darwin'?'Meta+V':'Control+V');
+ await expect.poll(()=>state(page,'source')).toBe(code);await expect(highlighted.first()).toBeVisible();expect((await run()).result.output).toEqual([[7,9],[13,15]]);
+ // A normal single-character edit must still invalidate the mapped highlight.
+ await selectAll();await page.keyboard.press('ArrowLeft');
+ for(let i=0;i<code.indexOf('K = [[1, -1], [2, 0]]')+6;i++)await page.keyboard.press('ArrowRight');
+ await page.keyboard.press('Shift+ArrowRight');await page.keyboard.insertText('2');
+ await expect.poll(()=>state(page,'source')).toBe(edited);await expect(highlighted).toHaveCount(0);expect((await run()).result.output).toEqual([[8,11],[17,20]]);
+ await page.getByRole('button',{name:'Reset code',exact:true}).click();await expect.poll(()=>state(page,'source')).toBe(code);await expect(highlighted.first()).toBeVisible();expect(await state(page,'result')).toBeNull();
+ // Deferred publication must settle before the next declarative action uses
+ // the edited program. The runtime action safety limit is unchanged.
+ await page.evaluate(code=>window.__interactive.dispatch([{type:'plugin',name:'code.setCode',target:'demo',args:{code}},{type:'plugin',name:'code.run',target:'demo'}]),edited);
+ expect(await state(page,'source')).toBe(edited);expect((await state(page,'result')).result.output).toEqual([[8,11],[17,20]]);await expect(highlighted).toHaveCount(0);
+ await page.getByRole('button',{name:'Reset code',exact:true}).click();await expect.poll(()=>state(page,'source')).toBe(code);await expect(highlighted.first()).toBeVisible();expect(await state(page,'result')).toBeNull();
+ await page.screenshot({path:testInfo.outputPath('multiline-reset-highlight.png')});
+ expect(errors).toEqual([]);expect(await page.evaluate(()=>window.__interactive.runtime.error)).toBeFalsy();
+ if(new URL(page.url()).port==='41977'){
+  const document=await page.request.get('/preview.html'),worker=await page.request.get('/packs/code/code-runner.worker.js');
+  expect(document.headers()['content-security-policy']).not.toContain("'unsafe-eval'");
+  expect(worker.headers()['content-security-policy']).toContain("'unsafe-eval'");
+ }
+});
+
 function glbTriangle(){const positions=Buffer.from(new Float32Array([-1,-1,0,1,-1,0,0,1,0]).buffer);const model={asset:{version:'2.0'},scene:0,scenes:[{nodes:[0]}],nodes:[{name:'triangle',mesh:0}],meshes:[{primitives:[{attributes:{POSITION:0}}]}],buffers:[{byteLength:positions.length}],bufferViews:[{buffer:0,byteOffset:0,byteLength:positions.length,target:34962}],accessors:[{bufferView:0,componentType:5126,count:3,type:'VEC3',min:[-1,-1,0],max:[1,1,0]}]};let json=Buffer.from(JSON.stringify(model));json=Buffer.concat([json,Buffer.alloc((4-json.length%4)%4,32)]);const header=Buffer.alloc(20);header.writeUInt32LE(0x46546c67,0);header.writeUInt32LE(2,4);header.writeUInt32LE(12+8+json.length+8+positions.length,8);header.writeUInt32LE(json.length,12);header.writeUInt32LE(0x4e4f534a,16);const bin=Buffer.alloc(8);bin.writeUInt32LE(positions.length,0);bin.writeUInt32LE(0x004e4942,4);return Buffer.concat([header,json,bin,positions]);}
 test('Three loads a real GLB, raycasts and binds object visibility',async({page,context})=>{
  const model=glbTriangle();const sceneNode=node('ThreeScene',{src:'triangle.glb',camera:{position:[0,0,3],target:[0,0,0]},selectionPath:'selected'});sceneNode.bind={visibility:{expr:'state.visibility'}};await prepare(context,page,baseScene(['three'],[sceneNode],{assets:{model:{path:'triangle.glb',bytes:model.length,sha256:createHash('sha256').update(model).digest('hex')}},interactions:[{target:'demo',event:'threeReady',actions:[{type:'set',path:'modelReady',value:true}]}]}),{'triangle.glb':{body:model,type:'model/gltf-binary'}});await expect.poll(()=>state(page,'modelReady')).toBe(true);const canvas=page.locator('[data-feature=ThreeScene] canvas');await expect(canvas).toBeVisible();await canvas.click();await expect.poll(()=>state(page,'selected')).toBe('triangle');await action(page,'three.camera',{position:[1,1,4],target:[0,0,0],duration:50});await page.waitForTimeout(100);await page.evaluate(()=>window.__interactive.dispatch([{type:'plugin',name:'three.inspect',target:'demo',result:'view'}]));expect((await state(page,'view')).camera.position[0]).toBeCloseTo(1);await page.evaluate(()=>window.__interactive.runtime.store.set('visibility',{triangle:false}));await page.waitForTimeout(50);await page.evaluate(()=>window.__interactive.dispatch([{type:'plugin',name:'three.inspect',target:'demo',result:'view'}]));expect((await state(page,'view')).objects.find((item:any)=>item.name==='triangle').visible).toBe(false);await expect(page.getByRole('alert')).toHaveCount(0);

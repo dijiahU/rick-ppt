@@ -19,8 +19,45 @@ export function CodeEditor({p,runtime,nodeId}:FeatureProps){
  useEffect(()=>{if(!host.current)return;let live=true;const code=new CodeExecution((next,text)=>{if(live){setStatus(next);if(text)setOutput(text);}});execution.current=code;
   const instance=monaco.editor.create(host.current,{value:initial.current,language:p.language??'javascript',theme:p.theme??'vs-dark',automaticLayout:true,minimap:{enabled:false},fontSize:p.fontSize??15,scrollBeyondLastLine:false,wordWrap:'on',readOnly:!!p.readOnly,ariaLabel:p.ariaLabel??'Editable teaching code',padding:{top:8,bottom:8}});editor.current=instance;
   const decorations=instance.createDecorationsCollection();
-  highlight.current=(reveal=false)=>{const model=instance.getModel();if(!model)return;const ranges=normalizeHighlightLines(settings.current.highlightLines,model.getLineCount());decorations.set(ranges.map(range=>({range:new monaco.Range(range.startLineNumber,1,range.endLineNumber,model.getLineMaxColumn(range.endLineNumber)),options:{isWholeLine:true,className:'pptx-code-active-line',linesDecorationsClassName:'pptx-code-active-gutter',stickiness:monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges}})));if(reveal&&ranges.length)instance.revealLineInCenterIfOutsideViewport(ranges[0].startLineNumber,monaco.editor.ScrollType.Immediate);};
-  const changed=instance.onDidChangeModelContent(()=>{highlight.current?.();const value=instance.getValue();if(settings.current.valuePath)runtime.store.set(settings.current.valuePath,value);emitFeature(runtime,nodeId,'codeChange',value);});
+  let highlightQueued=false,revealQueued=false,decorationKey='';
+  highlight.current=(reveal=false)=>{
+   revealQueued ||= reveal;
+   if(highlightQueued)return;
+   highlightQueued=true;
+   // Monaco can still be delivering deferred content events during automatic
+   // indentation. Changing decorations on that stack re-enters its emitter.
+   // Coalesce updates after event delivery, using the latest bound props.
+   queueMicrotask(()=>{
+    highlightQueued=false;
+    const shouldReveal=revealQueued;revealQueued=false;
+    if(!live)return;
+    const model=instance.getModel();if(!model||model.isDisposed())return;
+    const ranges=normalizeHighlightLines(settings.current.highlightLines,model.getLineCount());
+    // A content edit may move tracked decorations without changing the bound
+    // line numbers. Include the model version so the authored range is restored;
+    // empty/identical updates otherwise need no decoration event at all.
+    const nextKey=ranges.length?JSON.stringify([model.getVersionId(),ranges]):'';
+    if(nextKey!==decorationKey){
+     decorationKey=nextKey;
+     decorations.set(ranges.map(range=>({range:new monaco.Range(range.startLineNumber,1,range.endLineNumber,model.getLineMaxColumn(range.endLineNumber)),options:{isWholeLine:true,className:'pptx-code-active-line',linesDecorationsClassName:'pptx-code-active-gutter',stickiness:monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges}})));
+    }
+    if(shouldReveal&&ranges.length)instance.revealLineInCenterIfOutsideViewport(ranges[0].startLineNumber,monaco.editor.ScrollType.Immediate);
+   });
+  };
+  let contentQueued=false,publishedSource=instance.getValue();
+  const changed=instance.onDidChangeModelContent(()=>{
+   if(contentQueued)return;
+   contentQueued=true;
+   queueMicrotask(()=>{
+    contentQueued=false;if(!live)return;
+    const value=instance.getValue();
+    // Automatic indentation can emit thousands of model notifications during
+    // one edit. Publish its final buffer once, outside Monaco's event delivery,
+    // rather than exhausting the runtime's action-transaction safety budget.
+    if(value!==publishedSource){publishedSource=value;if(settings.current.valuePath)runtime.store.set(settings.current.valuePath,value);emitFeature(runtime,nodeId,'codeChange',value);}
+    highlight.current?.();
+   });
+  });
   const controller:Controller={getCode:()=>instance.getValue(),setCode:value=>instance.setValue(value),run:async()=>{setOutput({stdout:'',stderr:''});const props=settings.current;const result=await code.run({language:props.language??'javascript',code:instance.getValue(),stdin:props.stdin??[],timeoutMs:props.timeoutMs,outputLimit:props.outputLimit});if(live){if(props.resultPath)runtime.store.set(props.resultPath,result);emitFeature(runtime,nodeId,'codeResult',result);}return result;},stop:()=>code.stop(),reset:()=>{code.stop();instance.setValue(initial.current);setOutput({stdout:'',stderr:''});setStatus('ready');if(settings.current.resultPath)runtime.store.set(settings.current.resultPath,null);emitFeature(runtime,nodeId,'codeReset',null);}};
   entries(runtime).set(nodeId,controller);return()=>{live=false;entries(runtime).delete(nodeId);code.dispose();changed.dispose();highlight.current=undefined;decorations.clear();instance.getModel()?.dispose();instance.dispose();};
  },[runtime,nodeId]);

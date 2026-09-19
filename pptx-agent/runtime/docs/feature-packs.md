@@ -10,6 +10,8 @@ Each component uses the normal `{ "type": "component", "component": "CodeEditor"
 
 For guided walkthroughs, `highlightLines` accepts a 1-based line number or an array of numbers and inclusive `[start,end]` pairs, e.g. `[2,[4,6]]`. Bind it with `"highlightLines":{"expr":"state.lesson.codeLine"}`. Monaco displays actual whole-line and gutter decorations; duplicate/adjacent ranges merge, invalid/out-of-range entries are ignored, and at most 128 references are processed. `revealHighlightedLine: true` scrolls the first highlighted line into view when the binding changes. Source edits revalidate line bounds. These are authored teaching highlights, not runtime breakpoints or a Python debugger; invalidate a source map when learner edits make it stale.
 
+Monaco content notifications from one edit are coalesced before publishing the final `valuePath`/`codeChange` value. Highlight decorations refresh after those notifications, and identical ranges and model versions do not cause another decoration update. This keeps large multiline edits and automatic indentation outside reentrant editor events and preserves the runtime's action limit. A following `code.setCode` → `code.run` action sequence observes the edited program; Reset restores the original source and its mapped highlights. Use an actual clipboard paste for complete Python programs: synthetic composition-style multiline typing can invoke Monaco's automatic indentation and change whitespace.
+
 Each run gets a new dedicated worker. JavaScript supports `input()`, `print()`, `console.log/error`, top-level `await` and `return`. Python uses local Pyodide and standard-library imports, `input()` and normal stdout/stderr. Reset restores original source and clears output; it does not reuse interpreter globals. Python's separate cold-start limit is 60 seconds, after which the execution timeout begins. Installing extra Python packages at runtime is intentionally unavailable: package dependencies must be made local and explicitly supported before execution.
 
 The worker response has its own restrictive CSP. Only this isolated code worker permits `unsafe-eval`; the slide and expression evaluator do not. Browser networking APIs, nested workers and importscripts are disabled before user code runs; CSP permits only local bootstrap resources and blocks arbitrary Internet imports. Source, input and output sizes are bounded and termination enforces a wall-clock limit. Browsers do not offer a portable hard memory quota for workers, so very large allocations can still exhaust a tab. This is a teaching-code execution boundary, not a replacement for a process-level hostile-code service.
@@ -52,3 +54,32 @@ export default {
 Functions are namespaced as `teaching_twice` for the bounded expression language; actions/components/data adapters use `teaching.update` / `teaching.Badge` / `teaching.rows`. A custom source is `{"type":"plugin","adapter":"teaching.rows",...}`. API state writes and event emission require the `actions` capability. Registration rejects undeclared capabilities and duplicate names. Approved plugins execute in the slide realm and must be reviewed as executable code: capability declarations constrain the supported registration API, not arbitrary malicious JavaScript. They must never be auto-approved from a fetched brief or uploaded document.
 
 Official reference APIs: [Pyodide JS API](https://pyodide.org/en/stable/usage/api/js-api.html), [ONNX runtime flags](https://onnxruntime.ai/docs/tutorials/web/env-flags-and-session-options.html), [MapLibre API](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/), [Three GLTFLoader](https://threejs.org/docs/#examples/en/loaders/GLTFLoader), [Monaco editor](https://microsoft.github.io/monaco-editor/docs.html), [KaTeX options](https://katex.org/docs/options.html).
+
+## Multiline editing regression — 2026-09-20
+
+The real 2,781-character commented convolution program is retained in
+`tests/feature-packs/fixtures/highlighted-convolution.py` (SHA-256
+`fcd27b4538cb20db86a8d5aa0306f1594b32fa84c27c473ca0bd4493ed69d539`).
+With line 28 highlighted, composition-style multiline `insertText` invokes
+automatic indentation. The previous production build failed on this fixture:
+decoration changes reentered Monaco's content event delivery; its content-change
+burst also exhausted the unchanged 2,000-action transaction limit.
+
+The regression now verifies one final `codeChange` for that edit, zero page
+errors, an exact real clipboard paste followed by Python execution, an ordinary
+single-character coefficient edit, contained syntax errors, a combined
+`code.setCode` → `code.run` action sequence, and Reset restoring source, result
+and highlights. The production test checks the actual server CSP: `unsafe-eval`
+remains confined to the isolated teaching-code worker.
+
+The single production build completed at **2026-09-19 23:01:52 UTC**, with runtime
+fingerprint `be097a482201dd70ecdc8755b2a1c4aee5f0f54402878c42b43caa42365cf5fd`.
+TypeScript/build, all **79 unit tests**, **24 main browser tests**, **9 production
+pack tests**, and **3 production diagnostic/performance tests** passed. An
+independent replay against immutable draft scenes passed 197 learner UI/numeric
+assertions and recorded 24 captures, including JavaScript and Python editing,
+error/Stop/Reset, zero-epoch CNN training, and a compact reduced-motion viewport.
+The exact formerly failing auto-indented buffer was reproduced with zero page
+errors; real paste preserved the source byte for byte. These draft checks are
+runtime regression evidence, not final CNN content/visual acceptance or native
+PowerPoint playback.
