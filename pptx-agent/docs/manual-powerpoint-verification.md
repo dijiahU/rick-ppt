@@ -35,7 +35,17 @@ Microsoft setup references:
 ## Persistence and failure cases
 
 - [ ] Save a fresh copy; close PowerPoint completely and reopen it.
-- [ ] Verify settings identity and declared saved state after reopening.
+- [ ] Verify the five persisted identity settings (`deckId`, `sceneId`,
+  `instanceId`, numeric `schemaVersion`, `specHash`) after reopening. These values
+  were written into the PPTX during attachment; startup only reads them.
+- [ ] If explicitly testing a settings change, call `Settings.set` followed by
+  `Settings.saveAsync`, check its success callback, then save the document copy
+  before closing it. Merely calling `set` does not persist the change.
+- [ ] Distinguish identity from scene session state. Slider values, editable code
+  and uploaded inputs are not automatically saved into the PPTX. Do not claim
+  they survive reopening unless a separately implemented persistence adapter was
+  explicitly used and tested. Authoring interruption/recovery uses the workflow
+  journal and is a separate mechanism.
 - [ ] Confirm new state does not replace the lesson's explicit Reset defaults.
 - [ ] Confirm the native fallback remains readable when the runtime is stopped.
 - [ ] Restart the runtime and confirm the scene reconnects correctly.

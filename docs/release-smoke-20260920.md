@@ -4,7 +4,7 @@ The functionality gate passed before either teaching case was admitted. This
 record distinguishes actual model execution, deterministic regressions, browser
 execution, native rendering and the still-unverified PowerPoint desktop host.
 
-## Frozen runtime
+## Baseline frozen runtime
 
 - Source fixes: `a2f1bce`; runtime built at 2026-09-19 21:11:48 UTC.
 - Runtime SHA-256: `1f4b66baaf34bfd80dbf77dc29969cf43c8bfe1cb599d0b1644f6659e0575ae3`
@@ -86,6 +86,22 @@ The expanded workflow suite passes **70 checks**, plus runner trajectory six,
 recovery seven and conversation 34. Damaged histories still fail closed. This
 repair is recorded in the same new case's history and does not rewrite the prior
 user task. The final Office identity patch receives its own runtime gate.
+
+The final Office patch preserves already-deserialized Settings strings instead
+of parsing them a second time; legal IDs such as `null` and `false` now retain
+their identity. This changes no session-persistence promise. The new frozen
+build at 21:37:39.673 UTC has fingerprint
+`fd43ec226d321db43f884afa598bc9f1ae2d2f34e20cafbf24fbc1d00a7c79de`
+(96 files, unchanged configuration hash) and core gzip **126,663 bytes**.
+It passes **79 unit, 23 combined browser, three production diagnostics and eight
+production pack checks**, plus TypeScript/build/size. Details are in
+`pptx-agent/runtime/docs/office-identity-verification.md`.
+
+Fresh exact-candidate host verification on this build passes eight checks in
+`workflow-live-office-bundle-proof-03.json`. All six scene captures and both
+native page PNGs are byte-identical to the previously reviewed version. Existing
+full-workflow and showcase proofs remain bound to their recorded builds; they
+are not relabeled as new model reviews or new-runtime receipts.
 
 Website version 23 is published successfully with conversation, attachments,
 recovery, interactive outline metadata and an atomic late-revision delivery
