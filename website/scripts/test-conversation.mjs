@@ -7,9 +7,9 @@ const modules={};
 function load(path){const code=ts.transpileModule(readFileSync(new URL('../'+path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const exports={};new Function('require','exports',code)(name=>{assert.ok(modules[name],name);return modules[name];},exports);return exports;}
 const db=new DatabaseSync(':memory:');db.exec("CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,status TEXT,lease TEXT,result_key TEXT,summary TEXT,updated_at INTEGER);CREATE TABLE worker(id TEXT PRIMARY KEY,heartbeat INTEGER)");
 const id=crypto.randomUUID(),lease=crypto.randomUUID();db.prepare("INSERT INTO jobs VALUES (?,'owner','running',?,NULL,NULL,100)").run(id,lease);
-let user='owner',loseInsertResponse=false,failUpload=false;const objects=new Map();
+let user='owner',loseInsertResponse=false,failUpload=false,afterPut=null;const objects=new Map();
 const binding={prepare(sql){let args=[];const s={bind(...v){args=v;return s;},async first(){const value=db.prepare(sql).get(...args)??null;if(loseInsertResponse&&sql.startsWith('INSERT INTO task_messages')){loseInsertResponse=false;throw Error('lost response');}return value;},async all(){return {results:db.prepare(sql).all(...args)};},async run(){return {meta:{changes:Number(db.prepare(sql).run(...args).changes)}};}};return s;},async batch(statements){const out=[];for(const s of statements)out.push(await s.run());return out;}};
-modules['@/lib/server']={database:()=>binding,files:()=>({async put(key,bytes){if(failUpload)throw Error('R2 offline');objects.set(key,new Uint8Array(bytes));},async get(key){return objects.has(key)?{body:new Response(objects.get(key)).body}:null;},async head(key){return objects.has(key)?{size:objects.get(key).length}:null;}}),json:(v,status=200)=>Response.json(v,{status}),userId:async()=>user,sameOrigin:r=>r.headers.get('Origin')===new URL(r.url).origin,workerAuthorized:async r=>r.headers.get('Authorization')==='Bearer synthetic-worker'};
+modules['@/lib/server']={database:()=>binding,files:()=>({async put(key,bytes){if(failUpload)throw Error('R2 offline');objects.set(key,new Uint8Array(bytes));if(afterPut){const callback=afterPut;afterPut=null;callback();}},async get(key){return objects.has(key)?{body:new Response(objects.get(key)).body}:null;},async head(key){return objects.has(key)?{size:objects.get(key).length}:null;}}),json:(v,status=200)=>Response.json(v,{status}),userId:async()=>user,sameOrigin:r=>r.headers.get('Origin')===new URL(r.url).origin,workerAuthorized:async r=>r.headers.get('Authorization')==='Bearer synthetic-worker'};
 modules['@/lib/attachments']=load('lib/attachments.ts');modules['@/lib/conversation']=load('lib/conversation.ts');
 const {POST:send,GET:read}=load('app/api/jobs/[id]/conversation/route.ts');const worker=load('app/api/worker/[id]/conversation/route.ts').POST,resume=load('app/api/jobs/[id]/resume/route.ts').POST,download=load('app/api/jobs/[id]/versions/[version]/route.ts').GET;
 const params={params:Promise.resolve({id})};
@@ -46,4 +46,23 @@ assert.equal((await wr('ack',{ids:[parallelId]})).status,409);
 const resultKey=`results/${id}/${lease}.pptx`;db.prepare("UPDATE jobs SET status='complete',lease=?,result_key=?").run(lease,resultKey);objects.set(resultKey,new Uint8Array([80,75,3,4]));objects.set(`bundles/${id}/${lease}.zip`,new Uint8Array([80,75,3,4]));
 assert.equal((await wr('version',{revision:first.seq})).status,200);assert.equal((await wr('version',{revision:first.seq})).status,200);assert.equal(db.prepare('SELECT COUNT(*) n FROM task_versions').get().n,1);
 const versionParams={params:Promise.resolve({id,version:lease})};assert.equal((await download(new Request('https://test.local?kind=bundle'),versionParams)).headers.get('Content-Type'),'application/zip');user='other';assert.equal((await download(plain,versionParams)).status,404);user='owner';
-console.log('PASS: owner/CSRF isolation, bounded uploads, SHA metadata, conflicting idempotency, concurrent sends, lost acknowledgements, lease fencing, message delivery/application, safe checkpoints, quota-preserving resume and retained version downloads');
+// Fence the last upload against input accepted while R2 is storing the candidate.
+db.exec('ALTER TABLE jobs ADD COLUMN attachments TEXT');
+modules['@/lib/slide-limits.mjs']={MAX_SLIDES:50,MAX_PROGRESS_BYTES:1000000};
+modules['@/lib/progress']={parseProgress:()=>null};modules['@/lib/queries']={RETRY_JOB:'SELECT 1'};modules['@/lib/admin-trace']={storeTrace:()=>Response.json({ok:true})};
+const complete=load('app/api/worker/[id]/route.ts').POST;
+const second=crypto.randomUUID(),secondLease=crypto.randomUUID(),lateMessage=crypto.randomUUID();
+db.prepare("INSERT INTO jobs(id,user_id,status,lease,updated_at) VALUES (?,'owner','running',?,100)").run(second,secondLease);
+function finish(revision,givenLease=secondLease){return complete(new Request(`https://test.local/api/worker/${second}?action=complete&revision=${revision}`,{method:'POST',headers:{Authorization:'Bearer synthetic-worker','X-Job-Lease':givenLease,'Content-Length':'4'},body:new Uint8Array([80,75,3,4])}),{params:Promise.resolve({id:second})});}
+assert.equal((await finish(-1)).status,400);assert.equal((await finish(0,'old-lease')).status,409);
+afterPut=()=>db.prepare("INSERT INTO task_messages(id,job_id,user_id,role,kind,body,attachments,status,created_at,updated_at) VALUES (?,?,'owner','user','revision','Change the title','[]','pending',1,1)").run(lateMessage,second);
+assert.equal((await finish(0)).status,412);assert.equal(db.prepare('SELECT status FROM jobs WHERE id=?').get(second).status,'running');
+assert.ok(objects.has(`results/${second}/${secondLease}.pptx`));
+const lateSeq=db.prepare('SELECT seq FROM task_messages WHERE id=?').get(lateMessage).seq;
+db.prepare("UPDATE task_messages SET status='applied' WHERE id=?").run(lateMessage);
+assert.equal((await finish(lateSeq-1)).status,412);
+objects.set(`bundles/${second}/${secondLease}.zip`,new Uint8Array([80,75,3,4]));
+assert.equal((await finish(lateSeq)).status,200);assert.equal((await finish(lateSeq)).status,200);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM task_versions WHERE job_id=?').get(second).n,1);
+assert.equal(db.prepare('SELECT bundle_key FROM task_versions WHERE job_id=?').get(second).bundle_key,`bundles/${second}/${secondLease}.zip`);
+console.log('PASS: owner/CSRF isolation, bounded uploads, SHA metadata, conflicting idempotency, concurrent sends, lost acknowledgements, lease fencing, message delivery/application, safe checkpoints, quota-preserving resume, retained versions and atomic late-input delivery fence');

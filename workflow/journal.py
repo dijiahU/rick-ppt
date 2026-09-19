@@ -485,7 +485,8 @@ class Journal:
         return result
 
     def complete_phase(self, name: str, workspace: Path | str, *, artifacts: list[str],
-                       next_phase: str | None = None, revision: int | None = None) -> dict:
+                       next_phase: str | None = None, revision: int | None = None,
+                       require_applied: bool = True) -> dict:
         state = self.state
         phase = state["phase"]
         if not phase or phase["name"] != name or phase["status"] != "running":
@@ -493,7 +494,14 @@ class Journal:
         revision = phase["input_revision"] if revision is None else _revision(revision)
         if revision != state["input_revision"]:
             raise JournalError("Phase result is stale after a user revision")
-        if any(m["changes_input"] and m["revision"] <= revision and m["state"] != "applied" for m in state["inbox"].values()):
+        if type(require_applied) is not bool:
+            raise ValueError("require_applied must be boolean")
+        # Research/authoring boundaries certify phase artifacts. Final delivery
+        # keeps the strict default: only validated requested edits are complete.
+        pending_states = {"accepted", "delivering", "uncertain"}
+        if any(m["changes_input"] and m["revision"] <= revision and
+               (m["state"] != "applied" if require_applied else m["state"] in pending_states)
+               for m in state["inbox"].values()):
             raise JournalError("A requested correction has not been applied")
         receipts = self.artifacts(workspace, artifacts)
         if not receipts:
@@ -621,6 +629,7 @@ class Journal:
             _fsync_directory(Path(parent_path))
         _fsync_directory(out.parent)
         previous_run = state["run_id"]
+        previous_workspace = state["workspace"]
         state.update(run_id=str(uuid.uuid4()), workspace=str(out), status="recovered")
         if upgraded:
             state["plugin_version"] = plugin_version
@@ -646,7 +655,8 @@ class Journal:
             phase["status"] = "interrupted"
         plan = {
             "recovery_id": recovery_id, "task_id": self.task_id, "run_id": state["run_id"],
-            "previous_run_id": previous_run, "workspace": str(out), "snapshot_id": snapshot["id"],
+            "previous_run_id": previous_run, "previous_workspace": previous_workspace,
+            "workspace": str(out), "snapshot_id": snapshot["id"],
             "workspace_revision": snapshot["input_revision"], "input_revision": state["input_revision"],
             "next_phase": next_phase, "preferred_thread_id": thread_id,
             "context_rebuild_required": upgraded or not bool(thread_id),

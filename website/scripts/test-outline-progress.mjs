@@ -19,3 +19,20 @@ test('malformed outlines and reviewer states are rejected; internal properties a
  assert.equal(parseOutline({...outline,source_notes:'PRIVATE'}).source_notes,undefined);
  assert.ok(parseProgress({updatedAt:1,events:[],previews:[1]}));
 });
+
+test('interactive outline metadata is preserved as bounded public data',()=>{
+ const interaction={scene:'cnn-patch',purpose:'Move the kernel',bounds:{x:0,y:914400,width:10058400,height:4114800}};
+ const input={...outline,slides:[{...outline.slides[0],presentationMode:'hybrid',interaction:{...interaction,internal:'PRIVATE'}}]};
+ const parsed=parseOutline(input);assert.ok(parsed);
+ assert.equal(parsed.slides[0].presentationMode,'hybrid');assert.deepEqual(parsed.slides[0].interaction,interaction);
+ assert.deepEqual(parseProgress({...progress,outline:input}).outline,parsed);
+ assert.equal(pageProgress({...progress,outline:parsed},0)[0].outline.interaction.scene,'cnn-patch');
+ assert.deepEqual(parseOutline({...outline,slides:[{...outline.slides[0],interaction:{scene:'scene',purpose:'  Explain  one patch  '}}]}).slides[0].interaction,{scene:'scene',purpose:'Explain one patch'});
+});
+test('interactive outline rejects invalid modes, paths, private text and bad rectangles',()=>{
+ const valid={scene:'cnn-patch',purpose:'Move the kernel',bounds:{x:0,y:0,width:100,height:100}};
+ for(const mode of ['script',null,1,[]])assert.equal(parseOutline({...outline,slides:[{...outline.slides[0],presentationMode:mode}]}),null);
+ for(const interaction of [null,[],{}, {...valid,scene:'../scene.json'},{...valid,scene:'https://example.org/scene'}, {...valid,purpose:'/Users/rick/private.txt'},{...valid,purpose:'api_key=private-value'}, {...valid,bounds:{}},{...valid,bounds:{...valid.bounds,width:0}}, {...valid,bounds:{...valid.bounds,width:true}}, {...valid,bounds:{...valid.bounds,width:Infinity}}, {...valid,bounds:{...valid.bounds,width:1.5}}, {...valid,bounds:{...valid.bounds,x:2147483647}}]){
+  assert.equal(parseOutline({...outline,slides:[{...outline.slides[0],interaction}]}),null);
+ }
+});

@@ -5,6 +5,7 @@ import {DatabaseSync} from 'node:sqlite';
 import ts from 'typescript';
 import * as limits from '../lib/slide-limits.mjs';
 const modules={'./slide-limits.mjs':limits,'@/lib/slide-limits.mjs':limits};
+modules['@/lib/conversation']={ensureConversation:async()=>{throw Error('Legacy route must not require conversation storage without a revision fence');}};
 function load(path){const code=ts.transpileModule(readFileSync(new URL('../'+path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const exports={};new Function('require','exports',code)(name=>{assert.ok(modules[name],name);return modules[name];},exports);return exports;}
 const db=new DatabaseSync(':memory:');
 db.exec('CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,attachments TEXT,status TEXT,result_key TEXT,lease TEXT);');

@@ -1,0 +1,58 @@
+name: Interactive runtime and native regressions
+on:
+  push:
+    branches: [main, interactive-runtime]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: interactive-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: pptx-agent/runtime/package-lock.json
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.11'
+      - name: Install native and browser dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libreoffice-impress poppler-utils fonts-noto-cjk
+          python -m venv pptx-agent/.venv
+          pptx-agent/.venv/bin/python -m pip install -e 'pptx-agent[test,interactive]'
+          pptx-agent/.venv/bin/python -m playwright install --with-deps chromium
+          npm ci --prefix pptx-agent/runtime
+      - name: Declarative engine tests and production size gate
+        working-directory: pptx-agent/runtime
+        run: |
+          npm test
+          npm run build
+          npx playwright install chromium
+          npm run test:e2e
+          npx playwright test --config tests/feature-packs/production.config.ts
+      - name: Native and real bundle regressions
+        working-directory: pptx-agent
+        run: .venv/bin/python -m pytest -q --tb=short
+      - name: Durable workflow and conversation boundaries
+        run: |
+          pptx-agent/.venv/bin/python -m unittest discover -s workflow -p 'test_*.py'
+          pptx-agent/.venv/bin/python runner/test-conversation.py
+          pptx-agent/.venv/bin/python runner/test-recovery-workspace.py
+      - name: Retain browser evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: interactive-browser-evidence
+          path: |
+            pptx-agent/runtime/playwright-report/
+            pptx-agent/runtime/test-results/
+          if-no-files-found: ignore

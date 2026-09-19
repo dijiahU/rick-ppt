@@ -188,4 +188,17 @@ The real local smoke **passed** on 2026-09-20 Asia/Shanghai with
 The proof file is generated outside source control and contains booleans, timing
 and CLI version, not full conversation/session contents or credentials. The smoke
 creates and retains its own isolated artifacts; it never touches live queue jobs.
-Website/lease/broker integration is a separate acceptance gate.
+The additional `runner/test-conversational-phase-live.py --out NEW_PROOF_PATH`
+gate also passed using a synthetic lease-fenced website and the real
+`Execution.phase`: actual Codex, Docker native PPTX-to-PDF rendering, host
+Chromium scene rendering, an uploaded reference, live revision and ordinary chat,
+three interactive captures, 368 lease checks, public responses and durable
+checkpoint publication. The revision stayed acknowledged until validation, then
+became applied. This took 53 seconds and contacted no live queue.
+
+A further real recovery check restored that task into a new attempt directory
+and resumed its original Codex thread. Both reads and writes to the old attempt
+were denied, restored artifact hashes matched, old artifacts remained intact,
+and completed-stage receipts remained reusable. These transport and phase gates
+are distinct from production website deployment and complete teaching-deck
+acceptance tests.

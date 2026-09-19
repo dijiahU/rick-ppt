@@ -18,6 +18,11 @@ __pycache__/
 .pptx-agent/
 records/
 failures/
+runner/state/
+runner/worker.lock
+runner/runtime/
+runner/isolation-canary-*.txt
+trajectory/
 
 # Development artifacts are not part of this source distribution
 tests/

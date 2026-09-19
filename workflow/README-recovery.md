@@ -57,7 +57,12 @@ from phase start; an explicit current revision is necessary when live steering
 changed the input. `can_reuse(name, job)` requires both the current revision/plugin
 version and every required artifact hash/size to match. All stages are
 conservatively invalidated by an input-changing message; phase-specific selective
-invalidation can be added later without weakening this guarantee.
+invalidation can be added later without weakening this guarantee. Intermediate
+research/author boundaries may explicitly set `require_applied=False`: this
+certifies current phase artifacts while preserving a delivered correction as
+`acknowledged` until final review. It still rejects accepted, delivering or
+uncertain corrections. Final delivery uses the strict default and never presents
+mere acknowledgement as a completed edit.
 
 ## Inbox and live delivery
 
@@ -183,7 +188,7 @@ macOS/Linux host runner (`fcntl` locking); it is not a Windows worker port.
 python3.11 -m unittest discover -s workflow -p 'test_journal.py' -v
 ```
 
-37 tests cover an actual `SIGKILL` and restart, process exit between event and
+40 tests cover an actual `SIGKILL` and restart, process exit between event and
 projection commit, phase reuse, stale revisions, ambiguous message delivery,
 deduplication, idempotent recovery, hash corruption, symlinks, path traversal,
 bounds, lock exclusion, originals, public redaction, and recovery of lost edits.

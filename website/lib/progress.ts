@@ -9,11 +9,33 @@ export type ActivityCode = keyof typeof activityLabels;
 export const categories=['search','source','file','command','media','render','note','lifecycle'] as const;
 export const phases=['research','planning','design','building','rendering','review'] as const;
 export type ActivityEvent={seq:number;at:number;code:ActivityCode;detail?:string;url?:string;category?:typeof categories[number];reported?:boolean;state?:'started'|'completed'|'failed';phase?:typeof phases[number];slide?:number;next?:string};
-export type OutlinePage={id:string;title:string;summary:string;section?:string};
+export type OutlineInteraction={scene:string;purpose:string;bounds?:{x:number;y:number;width:number;height:number}};
+export type OutlinePage={id:string;title:string;summary:string;section?:string;presentationMode?:'native'|'interactive'|'hybrid';interaction?:OutlineInteraction};
 export type Outline={revision:string;title:string;purpose:string;style?:string;slides:OutlinePage[]};
 export type ReviewState='pending'|'reviewing'|'changes_requested'|'passed'|'unverified';
 export type Progress = {updatedAt:number;events:ActivityEvent[];previews:number[];notes?:ActivityEvent[];previewVersions?:Record<string,string>;outline?:Outline;reviews?:{content:ReviewState;visual:ReviewState}};
 function text(value:unknown,limit:number):value is string{return typeof value==='string'&&value.trim().length>0&&value.length<=limit;}
+function parseOutlineInteraction(value:unknown):OutlineInteraction|null{
+ if(!value||typeof value!=='object'||Array.isArray(value))return null;
+ const item=value as Record<string,unknown>;
+ if(typeof item.scene!=='string'||!/^[A-Za-z][A-Za-z0-9_-]{0,95}$/.test(item.scene)||!text(item.purpose,1600))return null;
+ const purpose=item.purpose.trim().replace(/\s+/g,' ');
+ if(/(?:\/Users\/|\/private\/|\/tmp\/|[A-Z]:\\)|(?:bearer\s+\S+|sk-[\w-]{10,}|(?:password|api[_-]?key|secret)\s*[:=]\s*\S+)/i.test(purpose))return null;
+ const result:OutlineInteraction={scene:item.scene,purpose};
+ if('bounds' in item){
+  if(!item.bounds||typeof item.bounds!=='object'||Array.isArray(item.bounds))return null;
+  const input=item.bounds as Record<string,unknown>;
+  const bounds={} as NonNullable<OutlineInteraction['bounds']>;
+  for(const key of ['x','y','width','height'] as const){
+   const number=input[key];
+   if(typeof number!=='number'||!Number.isSafeInteger(number)||number<(key==='x'||key==='y'?0:1)||number>2147483647)return null;
+   bounds[key]=number;
+  }
+  if(bounds.x+bounds.width>2147483647||bounds.y+bounds.height>2147483647)return null;
+  result.bounds=bounds;
+ }
+ return result;
+}
 export function parseOutline(value:unknown):Outline|null{
  if(!value||typeof value!=='object')return null;
  const o=value as Outline;
@@ -21,7 +43,10 @@ export function parseOutline(value:unknown):Outline|null{
  const ids=new Set<string>();const slides:OutlinePage[]=[];
  for(const p of o.slides){
   if(!p||typeof p.id!=='string'||!/^[A-Za-z0-9_-]{1,64}$/.test(p.id)||ids.has(p.id)||!text(p.title,200)||!text(p.summary,2400)||(p.section!==undefined&&!text(p.section,200)))return null;
-  ids.add(p.id);slides.push({id:p.id,title:p.title,summary:p.summary,...(p.section?{section:p.section}:{})});
+  if('presentationMode' in p&&(!['native','interactive','hybrid'].includes(p.presentationMode as string)))return null;
+  const interaction='interaction' in p?parseOutlineInteraction(p.interaction):undefined;
+  if(interaction===null)return null;
+  ids.add(p.id);slides.push({id:p.id,title:p.title,summary:p.summary,...(p.section?{section:p.section}:{}),...(p.presentationMode?{presentationMode:p.presentationMode}:{}),...(interaction?{interaction}:{})});
  }
  return {revision:o.revision,title:o.title,purpose:o.purpose,...(o.style?{style:o.style}:{}),slides};
 }

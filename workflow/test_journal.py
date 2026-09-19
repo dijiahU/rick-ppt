@@ -157,6 +157,35 @@ j.bind_session('thread-committed', 'turn-committed')
         j.complete_phase("author", self.job, artifacts=["deck.json"], revision=1)
         self.assertTrue(j.can_reuse("author", self.job))
 
+    def test_intermediate_phase_receipt_can_preserve_acknowledged_correction(self):
+        j = self.start()
+        self.acknowledge()
+        j.complete_phase("author", self.job, artifacts=["deck.json"], next_phase="review",
+                         revision=1, require_applied=False)
+        self.assertTrue(j.can_reuse("author", self.job))
+        self.assertEqual(j.state["inbox"]["message-1"]["state"], "acknowledged")
+        self.assertEqual(j.state["applied_message_cursor"], 0)
+        j.begin_phase("delivery", self.job)
+        with self.assertRaises(JournalError):
+            j.complete_phase("delivery", self.job, artifacts=["deck.json"], revision=1)
+
+    def test_intermediate_phase_still_rejects_unsent_and_ambiguous_corrections(self):
+        j = self.start()
+        j.accept_message("m1", "Correction")
+        with self.assertRaises(JournalError):
+            j.complete_phase("author", self.job, artifacts=["deck.json"], revision=1, require_applied=False)
+        j.begin_delivery("m1", "rpc1", "thread-1")
+        with self.assertRaises(JournalError):
+            j.complete_phase("author", self.job, artifacts=["deck.json"], revision=1, require_applied=False)
+        j.reconcile_message("m1", outcome="unknown", evidence="Lost reply")
+        with self.assertRaises(JournalError):
+            j.complete_phase("author", self.job, artifacts=["deck.json"], revision=1, require_applied=False)
+
+    def test_intermediate_phase_flag_requires_boolean(self):
+        j = self.start()
+        with self.assertRaises(ValueError):
+            j.complete_phase("author", self.job, artifacts=["deck.json"], require_applied=0)
+
     def test_duplicate_message_does_not_advance_revision_or_append_event(self):
         j = self.open()
         first = j.accept_message("message-1", "Hello", cursor=7)

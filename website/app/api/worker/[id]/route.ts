@@ -5,10 +5,13 @@ import {parseAttachments,attachmentKey,attachmentResponse} from '@/lib/attachmen
 import {boundedBody} from '@/lib/attachments';
 import {RETRY_JOB} from '@/lib/queries';
 import {storeTrace} from '@/lib/admin-trace';
+import {ensureConversation} from '@/lib/conversation';
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}) {
   if(!await workerAuthorized(request)) return json({error:'Unauthorized'},401);
   const {id}=await params, lease=request.headers.get('X-Job-Lease');
-  const db=database(),action=new URL(request.url).searchParams.get('action');
+  const db=database(),query=new URL(request.url).searchParams,action=query.get('action');
+  const completionRevision=query.has('revision')?Number(query.get('revision')):null;
+  if(action==='complete'&&completionRevision!==null&&(!Number.isSafeInteger(completionRevision)||completionRevision<0))return json({error:'Invalid completion revision'},400);
   if(action==='retry'){
     let body;try{body=JSON.parse(new TextDecoder().decode(await boundedBody(request,1024)));}catch{return json({error:'Invalid retry request'},400);}
     if(!body||!Number.isSafeInteger(body.expectedUpdatedAt)||body.expectedUpdatedAt<=0)return json({error:'Expected failed attempt timestamp required'},400);
@@ -19,8 +22,14 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   const job=await db.prepare('SELECT id,attachments,status,result_key FROM jobs WHERE id=? AND lease=?').bind(id,lease).first<{id:string;attachments:string|null;status:string;result_key:string|null}>();
   if(!job) return json({error:'Lease expired'},409);
   const resultKey=`results/${id}/${lease}.pptx`;
+  async function recordVersion(){
+    if(completionRevision===null)return;
+    await ensureConversation();
+    const bundleKey=`bundles/${id}/${lease}.zip`,bundle=await files().head(bundleKey);
+    await db.prepare("INSERT INTO task_versions(id,job_id,result_key,bundle_key,revision,created_at) SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM jobs WHERE id=? AND lease=? AND status='complete' AND result_key=?) ON CONFLICT(id) DO NOTHING").bind(lease,id,resultKey,bundle?bundleKey:null,completionRevision,Date.now(),id,lease,resultKey).run();
+  }
   // A lost acknowledgement may be safely retried under the same lease.
-  if(action==='complete'&&job.status==='complete'&&job.result_key===resultKey)return json({ok:true});
+  if(action==='complete'&&job.status==='complete'&&job.result_key===resultKey){await recordVersion();return json({ok:true});}
   if(action==='fail'&&job.status==='failed')return json({ok:true});
   // Final upload/error records may arrive just after completion, under the same lease.
   if(action==='trace'&&['running','complete','failed'].includes(job.status))return storeTrace(request,id,lease);
@@ -58,19 +67,26 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
     return renewed.meta.changes?json({ok:true}):json({error:'Lease expired'},409);
   }
   if(action==='complete') {
+    if(completionRevision!==null)await ensureConversation();
     const length=Number(request.headers.get('Content-Length'));
     if(!length||length>30*1024*1024) return json({error:'PPTX must be at most 30 MB'},413);
     const bytes=await request.arrayBuffer(); if(bytes.byteLength!==length||new Uint8Array(bytes)[0]!==80||new Uint8Array(bytes)[1]!==75) return json({error:'Invalid PPTX upload'},400);
     const key=resultKey;
     await files().put(key,bytes,{httpMetadata:{contentType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'}});
-    const result=await db.prepare("UPDATE jobs SET status='complete',result_key=?,summary='complete',updated_at=? WHERE id=? AND lease=? AND status='running'").bind(key,Date.now(),id,lease).run();
+    const result=completionRevision===null?
+      await db.prepare("UPDATE jobs SET status='complete',result_key=?,summary='complete',updated_at=? WHERE id=? AND lease=? AND status='running'").bind(key,Date.now(),id,lease).run():
+      await db.prepare("UPDATE jobs SET status='complete',result_key=?,summary='complete',updated_at=? WHERE id=? AND lease=? AND status='running' AND NOT EXISTS(SELECT 1 FROM task_messages WHERE job_id=? AND role='user' AND (status<>'applied' OR (kind='revision' AND seq>?)))").bind(key,Date.now(),id,lease,id,completionRevision).run();
     if(!result.meta.changes){
       const completed=await db.prepare("SELECT id FROM jobs WHERE id=? AND lease=? AND status='complete' AND result_key=?").bind(id,lease,key).first();
-      if(completed)return json({ok:true});
+      if(completed){await recordVersion();return json({ok:true});}
+      if(completionRevision!==null){
+        const current=await db.prepare("SELECT id FROM jobs WHERE id=? AND lease=? AND status='running'").bind(id,lease).first();
+        if(current)return json({error:'New user input must be handled before delivery'},412);
+      }
       // Keep uncertain objects: another in-flight completion must not lose its file.
       return json({error:'Lease expired'},409);
     }
-    return json({ok:true});
+    await recordVersion();return json({ok:true});
   }
   if(action==='fail') {
     const result=await db.prepare("UPDATE jobs SET status='failed',summary='failed',updated_at=? WHERE id=? AND lease=? AND status='running'").bind(Date.now(),id,lease).run();
