@@ -11,7 +11,7 @@ from pathlib import Path
 from playwright.async_api import async_playwright
 from pptx_core.common import PptxError,atomic_json,sha256
 from pptx_core.interactive_server import start_server
-from pptx_core.interactive_validate import read_json,safe_path,validate_spec
+from pptx_core.interactive_validate import read_json,safe_path,validate_spec,runtime_fingerprint
 
 
 async def execute(page, action):
@@ -67,6 +67,7 @@ async def assertion(page,item):
 
 async def render_scene_async(spec,output,deck_root=None,deck_id=None,runtime=None):
     spec=Path(spec).resolve();scene=validate_spec(spec,deck_root or spec.parent);output=Path(output);output.mkdir(parents=True,exist_ok=False)
+    fingerprint=runtime_fingerprint(runtime)
     runner,origin=await start_server(deck_root or spec.parent,runtime)
     url=origin+'/preview.html?'+('deck='+deck_id+'&scene='+scene['id'] if deck_id else 'spec=source/'+spec.name)
     errors=[];captures=[];tests=[]
@@ -95,7 +96,8 @@ async def render_scene_async(spec,output,deck_root=None,deck_id=None,runtime=Non
     except Exception as error:
         errors.append(str(error))
     finally:await runner.cleanup()
-    report={'ok':not errors,'specHash':sha256(spec),'sceneId':scene['id'],'testCount':len(tests),'tests':tests,'errors':errors,'captures':captures,'directory':str(output),'runtime_verified':not errors and bool(tests),'powerpoint_playback_verified':False,'verification':'Standalone Chromium runtime; not desktop PowerPoint playback.'}
+    if runtime_fingerprint(runtime)!=fingerprint:errors.append('Runtime build changed during scene tests; rerun against a stable build')
+    report={'receiptVersion':1,'runtime':fingerprint,'captureHashes':{name:sha256(output/name) for name in captures},'ok':not errors,'specHash':sha256(spec),'sceneId':scene['id'],'testCount':len(tests),'tests':tests,'errors':errors,'captures':captures,'directory':str(output),'runtime_verified':not errors and bool(tests) and all(test['assertions']>0 for test in tests),'powerpoint_playback_verified':False,'verification':'Standalone Chromium runtime; not desktop PowerPoint playback.'}
     atomic_json(output/'report.json',report)
     if errors:raise PptxError('; '.join(errors))
     return report

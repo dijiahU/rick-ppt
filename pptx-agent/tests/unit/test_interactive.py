@@ -90,7 +90,7 @@ def test_sidecar_snapshot_migration_and_stale_receipt(ws,tmp_path):
     assert 'Changed' in (ws.home/'snapshots'/result['recovery_snapshot']/'interactive/deck/scenes/example.json').read_text()
     assert list(ws.home.glob('.replaced-interactive-*'))
     atomic_json(ws.home/'interactive/tests/example.json',{'ok':True,'testCount':1,'specHash':i['specHash']})
-    assert validate_interactive(ws.root,require_runtime=True)['ok']
+    assert not validate_interactive(ws.root,require_runtime=True)['ok']  # A mutable boolean claim is not rendering evidence.
     spec.write_text(spec.read_text().replace('Hello','Changed'))
     assert not validate_interactive(ws.root,require_runtime=True)['ok']
 
@@ -133,6 +133,44 @@ def test_sidecar_duplicate_keys_symlinks_and_bad_network(tmp_path):
     with pytest.raises(PptxError,match='network'):validate_spec(value,tmp_path)
     (tmp_path/'link').symlink_to(p)
     with pytest.raises(PptxError):safe_path(tmp_path,'link')
+
+
+def test_gltf_external_dependencies_are_hashed_relocated_and_originals_retained(ws,tmp_path):
+    folder=tmp_path/'model';folder.mkdir();(folder/'mesh.bin').write_bytes(b'triangle positions')
+    (folder/'texture.png').write_bytes((tmp_path/'picture.png').read_bytes())
+    gltf={'asset':{'version':'2.0'},'buffers':[{'uri':'mesh.bin','byteLength':18}],
+          'images':[{'uri':'texture.png'}]}
+    atomic_json(folder/'triangle.gltf',gltf)
+    original=manifest(folder)
+    p=scene(tmp_path);s=read_json(p);s['assets']={'triangle':{'path':'model/triangle.gltf'}};atomic_json(p,s)
+    imported,_,bundle=import_scene(ws,p)
+    model=ws.home/'interactive/deck'/imported['assets']['triangle']['path'];relocated=read_json(model)
+    for category in ('buffers','images'):
+        dep=model.parent/relocated[category][0]['uri']
+        assert dep.is_file() and dep.name.startswith(sha256(dep))
+        assert 'assets/'+dep.name in bundle['assets']
+    assert len(bundle['assets'])==3 and not changed_paths(original,manifest(folder))
+    assert sha256(model)==imported['assets']['triangle']['sha256']
+
+
+@pytest.mark.parametrize('uri',['../outside.bin','https://untrusted.test/buffer.bin','link.bin'])
+def test_gltf_dependency_cannot_escape_source_directory(ws,tmp_path,uri):
+    folder=tmp_path/'model';folder.mkdir();(tmp_path/'outside.bin').write_bytes(b'private')
+    (folder/'link.bin').symlink_to(tmp_path/'outside.bin')
+    atomic_json(folder/'bad.gltf',{'asset':{'version':'2.0'},'buffers':[{'uri':uri,'byteLength':7}]})
+    p=scene(tmp_path);s=read_json(p);s['assets']={'model':{'path':'model/bad.gltf'}};atomic_json(p,s)
+    with pytest.raises(PptxError):import_scene(ws,p)
+
+
+def test_component_local_asset_fields_are_portable(ws,tmp_path):
+    p=scene(tmp_path);s=read_json(p)
+    s['nodes']=[{'id':'comparison','type':'component','component':'imageComparison','props':{'before':'picture.png','after':'picture.png'}},
+                {'id':'carousel','type':'component','component':'carousel','props':{'items':['picture.png',{'src':'picture.png'}]}}]
+    atomic_json(p,s);result,_,bundle=import_scene(ws,p)
+    dest='assets/'+sha256(tmp_path/'picture.png')+'.png'
+    assert result['nodes'][0]['props']['before']==dest
+    assert result['nodes'][1]['props']['items']==[dest,{'src':dest}]
+    assert len(bundle['assets'])==1
 
 
 def test_runtime_server_origin_path_csp_and_websocket(tmp_path):

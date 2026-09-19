@@ -1,6 +1,7 @@
 """Scene-sidecar authoring and CLI orchestration; native export stays independent."""
 from __future__ import annotations
 import copy
+import hashlib
 import json
 import shutil
 import socket
@@ -32,12 +33,42 @@ def sync_manifest(ws,bundle=None):
 
 def import_scene(ws,source,replace=False):
     source=Path(source).resolve();spec=copy.deepcopy(validate_spec(source));deck=ws.home/'interactive/deck';bundle=deck_manifest(ws)
-    def import_file(name):
-        if urlsplit(name).scheme:return name
-        path=safe_path(source.parent,name);ext=path.suffix.lower()
-        dest='assets/'+sha256(path)+ext;target=safe_path(deck,dest,False);target.parent.mkdir(parents=True,exist_ok=True)
-        if not target.exists():shutil.copyfile(path,target)
-        bundle['assets'][dest]=sha256(target);return dest
+    imported={};imported_bytes=0
+    def import_file(name,base=None,dependency=False):
+        nonlocal imported_bytes
+        parsed=urlsplit(name)
+        if parsed.scheme or parsed.netloc:
+            origin=parsed.scheme+'://'+parsed.netloc
+            if dependency or parsed.scheme!='https' or origin not in spec.get('runtimeOptions',{}).get('networkAllowlist',[]):
+                raise PptxError('Asset dependency must be a scoped local file or explicitly allowed HTTPS asset')
+            return name
+        path=safe_path(base or source.parent,name);ext=path.suffix.lower()
+        if path in imported:return imported[path]
+        if len(imported)>=4096:raise PptxError('Scene asset count limit exceeded')
+        size=path.stat().st_size
+        if size>512*1024*1024 or imported_bytes+size>512*1024*1024:raise PptxError('Scene asset byte limit exceeded')
+        imported_bytes+=size
+        if ext=='.gltf':
+            if dependency:raise PptxError('Nested glTF dependency is not permitted')
+            gltf=read_json(path)
+            if not isinstance(gltf,dict):raise PptxError('glTF must be an object')
+            entries=[*gltf.get('buffers',[]),*gltf.get('images',[])]
+            if len(entries)>4096:raise PptxError('glTF dependency count limit exceeded')
+            for entry in entries:
+                uri=entry.get('uri') if isinstance(entry,dict) else None
+                if uri is not None:
+                    if not isinstance(uri,str):raise PptxError('Invalid glTF resource URI')
+                    if uri.startswith('data:'):continue
+                    entry['uri']=Path(import_file(uri,path.parent,True)).name
+            body=json.dumps(gltf,ensure_ascii=False,separators=(',',':')).encode()
+        else:body=path.read_bytes()
+        digest=hashlib.sha256(body).hexdigest();dest='assets/'+digest+ext
+        target=safe_path(deck,dest,False);target.parent.mkdir(parents=True,exist_ok=True)
+        if target.exists():
+            if sha256(target)!=digest:raise PptxError('Previously imported asset hash mismatch')
+        else:
+            with target.open('xb') as stream:stream.write(body)
+        imported[path]=dest;bundle['assets'][dest]=digest;return dest
     for asset in spec.get('assets',{}).values():
         asset['path']=import_file(asset['path'])
         if not urlsplit(asset['path']).scheme:
@@ -50,9 +81,18 @@ def import_scene(ws,source,replace=False):
     def nodes(items):
         for node in items:
             props=node.get('props',{})
-            for key in ('src','poster'):
+            keys=['src','poster']
+            if node.get('component')=='ModelRunner':keys.append('model')
+            if node.get('component')=='imageComparison':keys.extend(('before','after'))
+            for key in keys:
                 if isinstance(props.get(key),str) and props[key] not in spec.get('assets',{}):
                     props[key]=import_file(props[key])
+            if node.get('component')=='carousel':
+                for index,item in enumerate(props.get('items',[])):
+                    value=item.get('src') if isinstance(item,dict) else item
+                    if isinstance(value,str) and value not in spec.get('assets',{}):
+                        if isinstance(item,dict):item['src']=import_file(value)
+                        else:props['items'][index]=import_file(value)
             nodes(node.get('children',[]))
     nodes(spec['nodes'])
     relative=f'scenes/{spec["id"]}.json';path=safe_path(deck,relative,False)

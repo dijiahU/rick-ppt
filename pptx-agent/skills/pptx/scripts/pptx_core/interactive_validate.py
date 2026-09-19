@@ -1,6 +1,7 @@
 """Bounded, offline validation for untrusted scene specifications and sidecars."""
 from __future__ import annotations
 import json
+import hashlib
 import re
 from pathlib import Path, PurePosixPath
 from urllib.parse import urlsplit, unquote
@@ -14,6 +15,42 @@ MAX_JSON = 8 * 1024 * 1024
 
 def config():
     return json.loads((PLUGIN_ROOT / 'runtime/config.json').read_text())
+
+
+def runtime_fingerprint(runtime=None):
+    root=Path(runtime or PLUGIN_ROOT/'runtime/dist').resolve()
+    if not (root/'preview.html').is_file():raise PptxError('Interactive runtime build is missing')
+    inventory={}
+    for path in sorted(root.rglob('*')):
+        if path.is_symlink():raise PptxError('Runtime build contains a symlink')
+        if path.is_file():inventory[path.relative_to(root).as_posix()]=sha256(path)
+    encoded=json.dumps(inventory,sort_keys=True,separators=(',',':')).encode()
+    return {'sha256':hashlib.sha256(encoded).hexdigest(),'files':len(inventory),
+            'configuration':sha256(PLUGIN_ROOT/'runtime/config.json')}
+
+
+def verified_receipt(report,scene,spec_hash,home,runtime):
+    """Validate local evidence integrity; the website host still reruns tests."""
+    if (report.get('receiptVersion')!=1 or report.get('ok') is not True or
+        report.get('runtime_verified') is not True or report.get('errors')!=[] or
+        report.get('specHash')!=spec_hash or report.get('sceneId')!=scene['id'] or
+        report.get('runtime')!=runtime):return False
+    plan=scene.get('testPlan',[]);tests=report.get('tests',[])
+    if not plan or len(tests)!=len(plan) or report.get('testCount')!=len(plan):return False
+    for expected,actual in zip(plan,tests):
+        if not isinstance(actual,dict) or not expected.get('assertions') or actual.get('ok') is not True or actual.get('name')!=expected['name'] or actual.get('assertions')!=len(expected['assertions']):return False
+    captures=report.get('captures',[]);hashes=report.get('captureHashes',{})
+    if not isinstance(captures,list) or not {'initial.png','reset.png'}.issubset(captures) or set(captures)!=set(hashes):return False
+    directory=Path(report.get('directory',''))
+    if not directory.is_absolute() or not directory.is_relative_to(home/'interactive/renders'):return False
+    for name in captures:
+        path=safe_path(home,directory.relative_to(home).as_posix()+'/'+name)
+        if path.stat().st_size>30*1024*1024 or sha256(path)!=hashes[name]:return False
+        from PIL import Image
+        with Image.open(path) as image:
+            if image.format!='PNG' or image.width*image.height>20000000:return False
+            image.verify()
+    return True
 
 
 def safe_path(root, name, must_exist=True):
@@ -175,13 +212,15 @@ def validate_interactive(root, sidecar=None, require_runtime=False):
             if i['specHash'] != bundle['scenes'][i['sceneId']]['sha256']:
                 raise PptxError('OOXML/scene hash mismatch')
         verified = True
+        fingerprint = runtime_fingerprint()
         for scene in {i['sceneId'] for i in instances}:
             report_path = sidecar.parent/'tests'/f'{scene}.json'
             report = read_json(report_path) if report_path.exists() else {}
-            valid = report.get('ok') and report.get('specHash') == bundle['scenes'][scene]['sha256'] and report.get('testCount', 0)>0
+            specification=read_json(safe_path(sidecar,bundle['scenes'][scene]['path']))
+            valid = verified_receipt(report,specification,bundle['scenes'][scene]['sha256'],Path(root).parent,fingerprint)
             verified = bool(verified and valid)
             if require_runtime and not valid:
                 raise PptxError(f'Missing/stale runtime test: {scene}')
-    except (PptxError, OSError, KeyError) as error:
+    except (PptxError, OSError, KeyError, ValueError, TypeError) as error:
         errors.append(str(error)); verified = False
     return {'ok':not errors,'errors':errors,'instances':instances,'runtime_verified':verified,'powerpoint_playback_verified':False}

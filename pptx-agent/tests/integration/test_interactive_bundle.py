@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from playwright.async_api import async_playwright
 from pptx_core.common import PptxError,atomic_json,sha256
-from pptx_core.interactive import attach
+from pptx_core.interactive import attach,scene_render
 from pptx_core.interactive_bundle import assemble_bundle
 from pptx_core.interactive_validate import PLUGIN_ROOT,read_json,validate_interactive
 from pptx_core.manifest import manifest,changed_paths
@@ -39,6 +39,8 @@ def completed_bundle(tmp_path_factory):
     reopened=unpack(first,base/'reopened')
     assert validate(reopened.root).ok
     shutil.copytree(ws.home/'interactive',reopened.home/'interactive')
+    assert not validate_interactive(reopened.root,require_runtime=True)['ok']  # Copied receipts still name the old render directory.
+    scene_render(reopened,'bundle-example')
     assert validate_interactive(reopened.root,require_runtime=True)['ok']
     native_before=manifest(ws.root);sidecar_before=manifest(ws.home/'interactive/deck')
     result=assemble_bundle(ws,base/'review bundle v1',zip_output=True);bundle=Path(result['bundle'])
@@ -140,3 +142,21 @@ def test_stop_finalizes_dirty_interactive_workspace_outside_its_home(completed_b
     assert str(bundle/'presentation.pptx') in message
     assert json.loads(run_control(bundle,'verify').stdout)['ok']
     assert not reopened.state['dirty'] and sha256(source)==before
+
+
+@pytest.mark.parametrize('damage',['runtime','capture-hash','assertions','capture-bytes','missing-capture'])
+def test_local_receipt_rejects_stale_or_incomplete_evidence(completed_bundle,damage):
+    ws=completed_bundle['ws'];path=ws.home/'interactive/tests/bundle-example.json'
+    original=path.read_bytes();report=read_json(path)
+    capture=Path(report['directory'])/'initial.png';before=capture.read_bytes()
+    try:
+        if damage=='runtime':report['runtime']['sha256']='0'*64
+        elif damage=='capture-hash':report['captureHashes']['initial.png']='0'*64
+        elif damage=='assertions':report['tests'][0]['assertions']=0
+        elif damage=='capture-bytes':capture.write_bytes(b'changed image')
+        elif damage=='missing-capture':report['directory']=str(ws.home/'interactive/renders/missing')
+        atomic_json(path,report)
+        assert not validate_interactive(ws.root,require_runtime=True)['ok']
+    finally:
+        path.write_bytes(original);capture.write_bytes(before)
+    assert validate_interactive(ws.root,require_runtime=True)['ok']
