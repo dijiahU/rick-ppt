@@ -158,11 +158,14 @@ Primary sources:
   Publish the validated site and drain/handoff workers without interrupting old
   tasks. Acceptance: deployment success and new-worker capability checks.
   Evidence: website v23 deployed successfully; installed and staged plugin
-  `0.1.0+codex.20260919212441` preserves all 16 previous cache versions. Installed
+  `0.1.0+codex.20260919214127` preserves all 17 previous cache versions. Installed
   doctor and filesystem/network isolation checks passed; actual native Docker
   rendering passed on the same frozen runtime. With no queued/running jobs, old
-  worker 12123 drained normally and new worker 82331 reported ready at
-  2026-09-19 21:25 UTC. Private `worker-handoff.json` records the transition.
+  worker 12123 drained normally. After the installed-version and Office identity
+  corrections, worker 4473 passed startup checks and began the real CNN research
+  phase at 2026-09-19 21:42 UTC. Private `worker-handoff.json` and
+  `worker-handoff-office.json` preserve both transitions. Website v25 retains the
+  same new task and a visible explanation of the first pre-authoring failure.
 - [x] **15 — Full smoke gate.** Python, Vitest, Playwright, production build,
   bundle-size guard, malicious input tests, native OOXML regression, LibreOffice,
   bundle boot, all optional packs, resumability and live feedback. Record exact

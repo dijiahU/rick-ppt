@@ -108,13 +108,15 @@ recovery, interactive outline metadata and an atomic late-revision delivery
 fence. Local desktop/mobile UI checks verified sending/uploading, applied status,
 reload/deduplication, normal chat and same-task resume against the actual routes.
 
-Plugin `0.1.0+codex.20260919212441` is installed and staged immutably; all 16 older
+Plugin `0.1.0+codex.20260919214127` is installed and staged immutably; all 17 older
 cache versions and the old marketplace source are preserved. Installed doctor,
 hook compatibility and narrow filesystem/network isolation checks passed. The
 native Docker render smoke passed on the identical frozen runtime. The final
 cachebuster additionally includes the evidence documents and showcase script.
-At 21:25 UTC the old idle worker drained normally, and worker 82331 reported
-ready on the new settings. `worker-handoff.json` records the transition; the
+At 21:25 UTC the old idle worker drained normally. After the startup and Office
+identity corrections, worker 4473 passed the installed-version recovery preflight
+and began CNN research at 21:42 UTC. `worker-handoff.json` and
+`worker-handoff-office.json` record both transitions; the
 private worker log contains no task credentials. A process-scoped `caffeinate`
 keeps the Mac awake only while this worker runs; no login service was installed.
 

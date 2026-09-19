@@ -13,6 +13,10 @@ Status: **in progress; no teaching artifact accepted yet**.
   worker handoff. Ordinary worker leasing and the existing owner-scoped UI apply.
 - Installed release: `0.1.0+codex.20260919212441`; initial runtime fingerprint
   `1f4b66baaf34bfd80dbf77dc29969cf43c8bfe1cb599d0b1644f6659e0575ae3`.
+- Current authoring release: **`0.1.0+codex.20260919214127`**, runtime
+  `fd43ec226d321db43f884afa598bc9f1ae2d2f34e20cafbf24fbc1d00a7c79de`.
+  Website v25 requeued this same task; the actual Codex research phase began at
+  **2026-09-19 21:42 UTC** with a persisted checkpoint and thread identity.
 
 ## Observations and repair history
 
@@ -28,7 +32,8 @@ It also distinguishes an empty failed-initialization directory from a committed
 journal, retaining the former and refusing to silently reset a damaged history.
 The actual installed cachebuster passes create/checkpoint/reopen/recover/receipt
 reuse. All 70 workflow tests and 47 related runner checks pass. The same newly
-authorized task will be retried after the final Office identity patch is staged.
+authorized task is now running with the final Office identity patch and its
+passing 79-unit/23-browser/production-pack checks.
 An exact-task/timestamp-scoped data migration records a visible explanation and
 requeues only this failed first attempt. It does not modify the original CNN,
 change quota settings or create another duplicate task.
