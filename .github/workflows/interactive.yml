@@ -50,6 +50,7 @@ jobs:
           pptx-agent/.venv/bin/python runner/test-recovery-workspace.py
           pptx-agent/.venv/bin/python runner/test-content-workflow.py
           pptx-agent/.venv/bin/python runner/test-acceptance-migration.py
+          pptx-agent/.venv/bin/python runner/test-inspect-case-artifacts.py
       - name: Retain browser evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
