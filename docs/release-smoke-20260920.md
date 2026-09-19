@@ -77,6 +77,16 @@ than inferred from test JSON.
 
 ## Deployment and limits
 
+The first real CNN claim exposed an installed-version boundary not covered by the
+initial `0.2.0` fixtures: the generic journal ID validator rejected the legitimate
+`+codex` suffix. No authoring began. A separate bounded version validator and
+installed-version startup preflight now cover create/checkpoint/reopen/recover,
+and empty failed-initialization directories can be retried without deleting them.
+The expanded workflow suite passes **70 checks**, plus runner trajectory six,
+recovery seven and conversation 34. Damaged histories still fail closed. This
+repair is recorded in the same new case's history and does not rewrite the prior
+user task. The final Office identity patch receives its own runtime gate.
+
 Website version 23 is published successfully with conversation, attachments,
 recovery, interactive outline metadata and an atomic late-revision delivery
 fence. Local desktop/mobile UI checks verified sending/uploading, applied status,

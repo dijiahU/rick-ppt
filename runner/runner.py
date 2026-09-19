@@ -169,7 +169,33 @@ def render_smoke(cfg):
     result=run_with_renderer(cfg,job,sandbox(cfg,job,[cfg['python'],script,'-w',unpacked['workspace'],'validate','--level','3']))
     print(result);print('PASS: isolated real rendering; test directory:',job)
 
+def _installed_plugin_version(cfg):
+    manifest=Path(cfg['plugin'])/'.codex-plugin/plugin.json'
+    return str(cfg.get('plugin_version') or json.loads(manifest.read_text()).get('version') or 'interactive-0.2.0')
+
+def journal_self_test(cfg):
+    """Exercise the installed version before any queue claim; synthetic files only."""
+    from durable import Journal
+    version=_installed_plugin_version(cfg)
+    root=Path(tempfile.mkdtemp(prefix='pptx-journal-preflight-')).resolve()
+    original=root/'original';original.mkdir(mode=0o700)
+    artifact='journal-self-test.txt';content=b'SYNTHETIC_JOURNAL_PREFLIGHT\n'
+    (original/artifact).write_bytes(content)
+    task_id=str(uuid.uuid4())
+    with Journal(root/'state',task_id,plugin_version=version) as journal:
+        journal.begin_phase('preflight',original)
+        journal.complete_phase('preflight',original,artifacts=[artifact])
+    restored=root/'restored'
+    with Journal(root/'state',task_id,plugin_version=version) as journal:
+        journal.recover(restored,plugin_version=version)
+        if not journal.can_reuse('preflight',restored):raise RuntimeError('Journal preflight receipt did not survive recovery')
+    if (original/artifact).read_bytes()!=content or (restored/artifact).read_bytes()!=content:
+        raise RuntimeError('Journal preflight changed artifact bytes')
+    return root
+
 def self_test(cfg):
+    proof=journal_self_test(cfg)
+    print('PASS: installed plugin journal create, reopen, and recovery; proof:',proof)
     job=prepare(cfg)
     # A synthetic canary outside the job tests denial without reading user files.
     canary=ROOT/('isolation-canary-'+uuid.uuid4().hex+'.txt')
@@ -209,9 +235,11 @@ def _run_job(cfg,task,lease):
     from durable import Journal
     state_root=Path(cfg.get('state_directory',ROOT/'state')).resolve()
     state_root.mkdir(mode=0o700,parents=True,exist_ok=True)
-    manifest=Path(cfg['plugin'])/'.codex-plugin/plugin.json'
-    version=str(cfg.get('plugin_version') or json.loads(manifest.read_text()).get('version') or 'interactive-0.2.0')
-    existing=(state_root/task['id']/'events').exists()
+    version=_installed_plugin_version(cfg)
+    # Failed initialization can leave empty directories. Only a committed first
+    # event denotes an existing version; Journal still verifies the entire chain
+    # and rejects corrupt/gapped histories or an orphan projection in either case.
+    existing=(state_root/task['id']/'events'/'00000000000000000001.json').exists()
     with Journal(state_root,task['id'],plugin_version=None if existing else version,secrets=(cfg['token'],task['lease'])) as journal:
         plan=None
         if journal.state.get('snapshot_id'):

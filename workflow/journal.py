@@ -27,6 +27,7 @@ VERSION = 1
 SCHEMA = "pptx-workflow-journal/v1"
 ZERO_HASH = "0" * 64
 IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}\Z")
+PLUGIN_VERSION = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*(?:\.[A-Za-z0-9_-]+)*(?:\+[A-Za-z0-9][A-Za-z0-9_-]*(?:\.[A-Za-z0-9_-]+)*)?\Z")
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 EXCLUDED_DIRECTORIES = frozenset({".git", ".venv", "node_modules", "__pycache__", "font-cache"})
 MESSAGE_STATES = frozenset({"accepted", "delivering", "acknowledged", "applied", "uncertain"})
@@ -79,6 +80,13 @@ def _sha(value: bytes) -> str:
 def _id(value: str, label: str = "identifier") -> str:
     if not isinstance(value, str) or not IDENTIFIER.fullmatch(value):
         raise ValueError("Invalid " + label)
+    return value
+
+
+def _plugin_version(value: str) -> str:
+    """Bounded metadata, including Codex cachebusters; never a path or an ID."""
+    if not isinstance(value, str) or len(value) > 120 or not PLUGIN_VERSION.fullmatch(value):
+        raise ValueError("Invalid plugin version")
     return value
 
 
@@ -224,6 +232,9 @@ class Journal:
                  run_id: str | None = None, input_revision: int = 0, limits: Limits | None = None,
                  secrets: tuple[str, ...] = ()):
         self.task_id = _id(task_id, "task ID")
+        # Reject invalid caller metadata before creating a partial journal tree.
+        if plugin_version is not None:
+            plugin_version = _plugin_version(plugin_version)
         self.limits = limits or Limits()
         self.secrets = tuple(secret for secret in secrets if secret)
         self.directory = _directory(Path(directory), create=True)
@@ -249,7 +260,7 @@ class Journal:
                 self._state = {
                     "version": VERSION, "task_id": self.task_id,
                     "run_id": _id(run_id or str(uuid.uuid4()), "run ID"),
-                    "plugin_version": _id(plugin_version, "plugin version"),
+                    "plugin_version": plugin_version,
                     "input_revision": _revision(input_revision), "message_cursor": 0,
                     "applied_message_cursor": 0, "status": "ready", "phase": None,
                     "next_phase": None, "workspace": None, "snapshot_id": None,
@@ -332,7 +343,9 @@ class Journal:
         try:
             _revision(state["input_revision"])
             _id(state["run_id"])
-            _id(state["plugin_version"])
+            _plugin_version(state["plugin_version"])
+            if state.get("snapshot_id") is not None:
+                _id(state["snapshot_id"], "checkpoint ID")
             if len(state["inbox"]) > self.limits.messages:
                 raise CorruptJournal("Journal inbox limit exceeded")
             for identifier, message in state["inbox"].items():
@@ -544,6 +557,10 @@ class Journal:
             raise CorruptJournal("Snapshot entry count limit exceeded")
         folded, total = set(), 0
         try:
+            _id(snapshot["id"], "checkpoint ID")
+            _id(snapshot["run_id"], "run ID")
+            _plugin_version(snapshot["plugin_version"])
+            _revision(snapshot["input_revision"])
             for path in [*files, *dirs]:
                 safe_relative(path)
                 if path.casefold() in folded:
@@ -584,7 +601,8 @@ class Journal:
         recovery_id = _id(recovery_id or str(uuid.uuid4()), "recovery ID")
         if recovery_id in state["recoveries"]:
             raise AlreadyRecovered("This recovery request has already produced a new attempt")
-        upgraded = state["plugin_version"] != _id(plugin_version, "plugin version")
+        plugin_version = _plugin_version(plugin_version)
+        upgraded = state["plugin_version"] != plugin_version
         if upgraded and not allow_plugin_upgrade:
             raise VersionMismatch("Recovery requires the recorded plugin version")
         if not state["snapshot_id"]:

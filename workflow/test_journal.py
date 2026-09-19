@@ -1,6 +1,7 @@
 """Run: python3.11 -m unittest discover -s workflow -p 'test_journal.py' -v."""
 import copy
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -17,6 +18,7 @@ from journal import (AlreadyRecovered, CorruptJournal, Journal, JournalBusy,
 
 
 HERE = Path(__file__).resolve().parent
+CACHEBUSTER = "0.1.0+codex.20260919212441"
 
 
 class JournalTests(unittest.TestCase):
@@ -49,6 +51,158 @@ class JournalTests(unittest.TestCase):
         j.accept_message(identifier, "Please clarify the diagram.", cursor=cursor, changes_input=changes_input)
         j.begin_delivery(identifier, "request-" + identifier, "thread-1", "turn-1")
         j.acknowledge_message(identifier, request_id="request-" + identifier)
+
+    def test_installed_cachebuster_create_checkpoint_reopen_and_recover(self):
+        original = (self.job / "deck.json").read_bytes()
+        with Journal(self.host, "task-123", plugin_version=CACHEBUSTER) as j:
+            j.begin_phase("author", self.job)
+            receipt = j.complete_phase("author", self.job, artifacts=["deck.json"], next_phase="review")
+            run_id = j.state["run_id"]
+            self.assertEqual(receipt["plugin_version"], CACHEBUSTER)
+        with Journal(self.host, "task-123", plugin_version=CACHEBUSTER) as j:
+            plan = j.recover(self.base / "resumed", plugin_version=CACHEBUSTER)
+            self.assertEqual(plan["previous_run_id"], run_id)
+            self.assertNotEqual(plan["run_id"], run_id)
+            self.assertEqual(plan["next_phase"], "review")
+            self.assertTrue(j.can_reuse("author", self.base / "resumed"))
+            self.assertEqual(j.state["plugin_version"], CACHEBUSTER)
+        with Journal(self.host, "task-123") as j:
+            self.assertEqual(j.state["plugin_version"], CACHEBUSTER)
+            self.assertTrue(j.can_reuse("author", self.base / "resumed"))
+        self.assertEqual((self.job / "deck.json").read_bytes(), original)
+        self.assertEqual((self.base / "resumed" / "deck.json").read_bytes(), original)
+
+    def test_cachebuster_upgrade_requires_opt_in_and_invalidates_stage(self):
+        newer = "0.1.0+codex.20260919220000"
+        with Journal(self.host, "task-123", plugin_version=CACHEBUSTER) as j:
+            j.begin_phase("author", self.job)
+            j.complete_phase("author", self.job, artifacts=["deck.json"])
+        with Journal(self.host, "task-123") as j:
+            with self.assertRaises(VersionMismatch):
+                j.recover(self.base / "refused", plugin_version=newer)
+            self.assertFalse((self.base / "refused").exists())
+            plan = j.recover(self.base / "upgraded", plugin_version=newer, allow_plugin_upgrade=True)
+            self.assertEqual(plan["input_revision"], 1)
+            self.assertTrue(plan["context_rebuild_required"])
+            self.assertFalse(j.can_reuse("author", self.base / "upgraded"))
+        with Journal(self.host, "task-123", plugin_version=newer) as j:
+            self.assertEqual(j.state["plugin_version"], newer)
+
+    def test_plugin_version_accepts_prerelease_and_legacy_labels(self):
+        for index, version in enumerate(("0.2.0-rc.1+build.7", "synthetic", "interactive-0.2.0")):
+            with self.subTest(version=version), Journal(self.host, "task-" + str(index), plugin_version=version) as j:
+                self.assertEqual(j.state["plugin_version"], version)
+
+    def test_invalid_plugin_versions_do_not_create_partial_journal_or_recovery(self):
+        j = self.start()
+        j.checkpoint(self.job)
+        invalid = ("", "../plugin", "/tmp/plugin", "a\\b", "file:plugin", "1.0+../x", "1.0+",
+                   "1.0++codex", "1..0", "1.0\n", "1.0\0", "1.0 build", "v" * 121, 1)
+        for index, version in enumerate(invalid):
+            with self.subTest(version=repr(version)):
+                host = self.base / ("invalid-host-" + str(index))
+                with self.assertRaises(ValueError):
+                    Journal(host, "new-task", plugin_version=version)
+                self.assertFalse(host.exists())
+                out = self.base / ("refused-version-" + str(index))
+                with self.assertRaises(ValueError):
+                    j.recover(out, plugin_version=version, allow_plugin_upgrade=True)
+                self.assertFalse(out.exists())
+
+    def test_cachebuster_does_not_relax_task_run_thread_or_checkpoint_ids(self):
+        with self.assertRaises(ValueError):
+            Journal(self.host, "task+bad", plugin_version=CACHEBUSTER)
+        with self.assertRaises(ValueError):
+            Journal(self.host, "task-run", run_id="run+bad", plugin_version=CACHEBUSTER)
+        j = self.start()
+        with self.assertRaises(ValueError):
+            j.bind_session("thread+bad")
+        snapshot = j.checkpoint(self.job)
+        for field in ("id", "run_id"):
+            invalid = {**snapshot, field: "id+bad"}
+            with self.subTest(field=field), self.assertRaises(CorruptJournal):
+                j._validate_snapshot(invalid)
+        with self.assertRaises(ValueError):
+            j.recover(self.base / "bad-recovery", plugin_version="0.2.0", recovery_id="recovery+bad")
+
+    def test_loader_rejects_unsafe_version_even_with_consistent_event_hashes(self):
+        import journal as implementation
+        with Journal(self.host, "task-123", plugin_version=CACHEBUSTER) as j:
+            root = j.root
+        path = root / "events" / "00000000000000000001.json"
+        original = path.read_bytes()
+        (root / "retained-original-event.json").write_bytes(original)
+        event = json.loads(original)
+        event.pop("sha256")
+        event["state"]["plugin_version"] = "../unsafe"
+        head = hashlib.sha256(implementation._encoded(event)).hexdigest()
+        path.write_bytes(implementation._encoded({**event, "sha256": head}))
+        (root / "state.json").write_bytes(implementation._encoded({"head": head, "state": event["state"]}))
+        with self.assertRaisesRegex(CorruptJournal, "Invalid journal state fields"):
+            Journal(self.host, "task-123")
+
+    def test_snapshot_rejects_unsafe_version(self):
+        j = self.start()
+        snapshot = j.checkpoint(self.job)
+        with self.assertRaises(CorruptJournal):
+            j._validate_snapshot({**snapshot, "plugin_version": "../unsafe"})
+
+    def runner_module(self):
+        source = HERE.parent / "runner" / "runner.py"
+        spec = importlib.util.spec_from_file_location("journal_test_runner", source)
+        module = importlib.util.module_from_spec(spec)
+        with patch.object(sys, "path", [str(source.parent), *sys.path]):
+            spec.loader.exec_module(module)
+            importlib.import_module("durable")
+        return module
+
+    def test_runner_retries_empty_initialization_and_retains_pending_artifacts(self):
+        runner = self.runner_module()
+        root = self.host / "task-123"
+        events = root / "events"
+        events.mkdir(parents=True, mode=0o700)
+        pending = events / ".pending-retained-failed-start"
+        pending.write_bytes(b"partial-uncommitted-state")
+        cfg = {"state_directory": str(self.host), "plugin": "unused", "plugin_version": CACHEBUSTER,
+               "token": "synthetic-test-token"}
+        with patch.object(runner, "prepare", return_value=self.job), patch.object(
+                runner, "_run_job_locked", side_effect=lambda cfg, task, lease, job, journal, plan: journal.state):
+            state = runner._run_job(cfg, {"id": "task-123", "lease": "synthetic-lease"}, None)
+        self.assertEqual(state["plugin_version"], CACHEBUSTER)
+        self.assertEqual(state["sequence"], 1)
+        self.assertEqual(pending.read_bytes(), b"partial-uncommitted-state")
+        with Journal(self.host, "task-123", plugin_version=CACHEBUSTER) as j:
+            self.assertEqual(j.state["sequence"], 1)
+
+    def test_runner_does_not_reset_a_gapped_history_without_first_event(self):
+        runner = self.runner_module()
+        j = self.start()
+        root = j.root
+        j.close()
+        first = root / "events" / "00000000000000000001.json"
+        first.rename(root / "retained-first-event.json")
+        cfg = {"state_directory": str(self.host), "plugin": "unused", "plugin_version": CACHEBUSTER,
+               "token": "synthetic-test-token"}
+        with patch.object(runner, "prepare") as prepare, self.assertRaisesRegex(RuntimeError, "sequence has a gap"):
+            runner._run_job(cfg, {"id": "task-123", "lease": "synthetic-lease"}, None)
+        prepare.assert_not_called()
+        self.assertFalse(first.exists())
+        self.assertTrue((root / "retained-first-event.json").exists())
+
+    def test_runner_preclaim_preflight_reads_actual_manifest_version(self):
+        runner = self.runner_module()
+        plugin = self.base / "plugin"
+        (plugin / ".codex-plugin").mkdir(parents=True)
+        (plugin / ".codex-plugin" / "plugin.json").write_text(json.dumps({"version": CACHEBUSTER}))
+        proof = self.base / "preflight"
+        proof.mkdir(mode=0o700)
+        with patch.object(runner.tempfile, "mkdtemp", return_value=str(proof)), patch.object(runner, "request") as request:
+            self.assertEqual(runner.journal_self_test({"plugin": str(plugin)}), proof.resolve())
+        request.assert_not_called()
+        projection = next((proof / "state").glob("*/state.json"))
+        self.assertEqual(json.loads(projection.read_text())["state"]["plugin_version"], CACHEBUSTER)
+        self.assertEqual((proof / "original" / "journal-self-test.txt").read_bytes(),
+                         (proof / "restored" / "journal-self-test.txt").read_bytes())
 
     def test_completed_stage_restores_to_new_attempt_and_preserves_original(self):
         j = self.start()

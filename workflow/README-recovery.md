@@ -157,7 +157,14 @@ silently sent a second time. The applied cursor is recomputed accordingly.
 Plugin versions must match by default. An explicit
 `allow_plugin_upgrade=True` creates a fresh-context recovery, increments the input
 revision, and prevents old stage receipts from being reused. The host is still
-responsible for validating any native/scene schema migration. Historical
+responsible for validating any native/scene schema migration. Version metadata
+accepts safe release labels and Codex cachebusters such as
+`0.1.0+codex.20260919212441` (maximum 120 ASCII characters); it is never a path or
+an identifier. Task, run, thread and checkpoint ID restrictions are unchanged.
+The runner exercises the installed manifest version through journal creation,
+checkpoint, reopen and recovery before claiming a task. An empty `events/`
+directory left by failed initialization is retained and can initialize normally;
+committed histories and orphan projections must still verify. Historical
 trajectory v2 snapshots can first be restored with the existing
 `trajectory_replay.py restore` into a new directory and inspected; then initialize
 a journal and checkpoint that verified workspace. The trajectory's replay tool

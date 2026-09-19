@@ -22,9 +22,13 @@ suffix. The smoke fixtures had used `0.2.0`, so this installed-version boundary
 had not been exercised. No slides or output were fabricated. The failure record,
 initial task and read-only fetch are retained privately.
 
-The correction must use a separate plugin-version validator, preserve strict
-task/run/checkpoint identifiers and add an installed-version startup preflight.
-The same newly authorized task will be retried after the regression passes.
+The correction now uses a separate plugin-version validator, preserves strict
+task/run/checkpoint identifiers and adds an installed-version startup preflight.
+It also distinguishes an empty failed-initialization directory from a committed
+journal, retaining the former and refusing to silently reset a damaged history.
+The actual installed cachebuster passes create/checkpoint/reopen/recover/receipt
+reuse. All 70 workflow tests and 47 related runner checks pass. The same newly
+authorized task will be retried after the final Office identity patch is staged.
 An exact-task/timestamp-scoped data migration records a visible explanation and
 requeues only this failed first attempt. It does not modify the original CNN,
 change quota settings or create another duplicate task.
