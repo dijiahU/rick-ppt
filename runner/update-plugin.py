@@ -41,6 +41,12 @@ def main():
     shutil.copytree(target,backup/'marketplace-source-before',symlinks=True)
     previous=[p for p in cache.iterdir() if p.is_dir()] if cache.is_dir() else []
     for old in previous:shutil.copytree(old,backup/'caches-before'/old.name,symlinks=True)
+    # Hashed build chunks must match the tested distribution exactly. Retain an
+    # older build under the release backup instead of mixing its stale chunks
+    # into the new runtime or deleting them.
+    old_distribution=target/'runtime/dist'
+    if old_distribution.parent.is_symlink() or old_distribution.is_symlink():raise ValueError('Unexpected marketplace distribution symlink')
+    if old_distribution.exists():old_distribution.rename(backup/'retained-runtime-dist')
     ignore={'.venv','node_modules','__pycache__','.pytest_cache','test-results','playwright-report','.git','.DS_Store','coverage'}
     def copy_tree(src,dst):
         if dst.is_symlink():raise ValueError('Refusing to write through marketplace symlink')
