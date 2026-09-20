@@ -90,6 +90,16 @@ def prepare(cfg):
         'limits':'At most 12 generated PNG assets can be imported per task, each <=20 MB. Generate only what the brief needs.',
         'limitations':'Only task-scoped assets may be read. Report tool/asset access failures honestly; never request wider permissions.'
     },indent=2))
+    profile=cfg.get('_model_profile')
+    if profile:
+        from model_backend import public_identity
+        capabilities=json.loads((job/'capabilities.json').read_text())
+        capabilities['model']=public_identity(profile)
+        capabilities['web_search']={'mode':profile.get('web_search','disabled'),'optional':True,
+                                    'use':'Use only tools actually exposed by this model profile.'}
+        capabilities['image_generation']={'mode':'built-in' if profile.get('image_generation',False) else 'disabled',
+                                          'optional':True,'use':'Use only tools actually exposed by this model profile.'}
+        (job/'capabilities.json').write_text(json.dumps(capabilities,indent=2))
     (job/'fonts.conf').write_text('<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig><dir>/System/Library/Fonts</dir><dir>/Library/Fonts</dir><cachedir>'+str(job/'font-cache')+'</cachedir></fontconfig>')
     return job
 

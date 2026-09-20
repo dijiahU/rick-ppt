@@ -18,6 +18,8 @@ from progress import read_scoped
 from web_media import WebMediaBroker
 from durable import AppServer, RPCError, JournalError, task_configuration
 from model_backend import overrides,KEY_ENV,public_identity
+from chat_proxy import provider_session
+from contextlib import ExitStack
 from conversation import Conversation, RevisionPending
 from interactive_host import InteractiveHostBroker, verify_frozen, bundle_frozen
 from review_sessions import (ReviewSessions, ReviewSessionError, candidate_identity,
@@ -128,7 +130,7 @@ class Execution:
                Path('/opt/homebrew'),Path('/Applications/LibreOffice.app'),Path('/System/Library/Fonts'),Path('/Library/Fonts')]
         profile=self.cfg.get('_model_profile')
         config=task_configuration(root,read_roots=[p for p in reads if p.exists()],tool_env=env)
-        config.update(overrides(profile))
+        # The provider session below may replace the origin with a loopback adapter.
         path=self.records/(self.task['id']+'-'+name+'-'+phase_id+'.jsonl')
         log=os.fdopen(os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'wb')
         activity=open(path,'rb');trace_stream=open(path,'rb');trajectory_stream=open(path,'rb')
@@ -168,9 +170,12 @@ class Execution:
                     except (OSError,ValueError,JournalError) as error:
                         self.trace.emit('note','Checkpoint deferred until files are stable',detail=type(error).__name__)
         try:
-            with AppServer(cwd=root,config=config,env=env,on_event=event,on_public=public_event,tick=tick,
+            with ExitStack() as resources:
+                selected,provider_env,api_calls=resources.enter_context(provider_session(profile))
+                config.update(selected)
+                server=resources.enter_context(AppServer(cwd=root,config=config,env=env,on_event=event,on_public=public_event,tick=tick,
                            secrets=tuple(x for x in (self.cfg.get('token'),self.task.get('lease')) if x),
-                           provider_env={KEY_ENV:profile['api_key']} if profile else None) as server:
+                           provider_env=provider_env))
                 try:response=server.resume_thread(thread) if thread else server.start_thread()
                 except RPCError as error:
                     if not thread or error.code not in (-32602,-32000):raise

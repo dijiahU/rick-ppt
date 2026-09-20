@@ -25,7 +25,7 @@ class Tests(unittest.TestCase):
    with self.subTest(url=url),self.assertRaises(ValueError):self.profile(base_url=url)
  def test_local_provider(self):self.assertEqual(self.profile(base_url='http://127.0.0.1:8000/v1')['model'],'sample-model')
  def test_reject_protocol(self):
-  with self.assertRaisesRegex(ValueError,'Responses'):self.profile(wire_api='chat')
+  with self.assertRaisesRegex(ValueError,'wire_api'):self.profile(wire_api='chat')
  def test_private_profile_permissions(self):
   self.profile();self.path.chmod(0o644)
   with self.assertRaises(ValueError):load_profile(self.path)

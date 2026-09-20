@@ -17,7 +17,7 @@ def load_profile(path):
     u=urlsplit(url)
     if not u.hostname or u.username or u.password or u.query or u.fragment:raise ValueError('base_url must not contain credentials, query or fragment')
     if u.scheme!='https' and not(u.scheme=='http' and u.hostname in ('localhost','127.0.0.1','::1')):raise ValueError('Use HTTPS, or HTTP for a local provider')
-    if data.get('wire_api','responses')!='responses':raise ValueError('This Codex backend requires Responses API; Chat Completions needs a separate adapter')
+    if data.get('wire_api','responses') not in ('responses','chat_completions'):raise ValueError('wire_api must be responses or chat_completions')
     if url.rstrip('/').endswith(('/responses','/chat/completions')):raise ValueError('Use the API base URL, without /responses or /chat/completions')
     if data.get('api_key') and data.get('api_key_env'):raise ValueError('Choose api_key OR api_key_env')
     if data.get('api_key') and info.st_mode&0o077:raise ValueError('Profile containing a key must be private: chmod 600 PROFILE')
@@ -29,11 +29,11 @@ def load_profile(path):
     if type(data.get('image_generation',False)) is not bool:raise ValueError('image_generation must be boolean')
     effort=data.get('reasoning_effort')
     if effort is not None and effort not in ('minimal','low','medium','high','xhigh'):raise ValueError('Invalid reasoning_effort')
-    return {**data,'model':model.strip(),'base_url':url.rstrip('/'),'api_key':key,'wire_api':'responses'}
+    return {**data,'model':model.strip(),'base_url':url.rstrip('/'),'api_key':key,'wire_api':data.get('wire_api','responses')}
 
 def public_identity(profile):
     if profile is None:return {'backend':'codex-default'}
-    return {'backend':'responses','model':profile['model'],'base_url':profile['base_url'],
+    return {'backend':profile.get('wire_api','responses'),'model':profile['model'],'base_url':profile['base_url'],
       'web_search':profile.get('web_search','disabled'),'image_generation':profile.get('image_generation',False),
       'reasoning_effort':profile.get('reasoning_effort')}
 
