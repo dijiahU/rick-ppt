@@ -148,3 +148,29 @@ correction as one labeled acceptance message, preserving existing work. The
 normal worker received it as input revision 7. This is a requested repair, not
 proof that the final artifact has applied it. There are five user edit messages;
 the other two revision increments are plugin upgrades.
+
+## Larger-kernel edit: required scene repair
+
+A single real Monaco keyboard edit on scene 06 changes only `k=3` to `k=7`,
+retaining input size 5, stride 1, padding 0 and dilation 1. Clicking Run causes
+the `taps` binding to join a nonexistent first tap row. The whole scene enters
+its generic fallback, removing the editor and Reset button. A subsequent actual
+Reset click times out. The test did not reload the page or inject state to hide
+the failure. Both initial and failure captures were independently viewed.
+
+The scene SHA-256 is
+`7abd2f883493e9ee857960389e4c5464db5d42bc0044d7b6d25ed54d6f8ba074`;
+its source SHA-256 is
+`d8bc27c02d072424a8f6d26b08a627211e301a7f64909a598fee6c575ee204f1`.
+Both match the current v009 source checked before submitting the correction.
+The failed computation is rolled back to the reference state; this evidence
+does not claim that negative dimensions were visibly rendered.
+
+Private proof `cnn-v007-sampling-k7-20260920T001534Z-81416c` preserves source,
+screenshots, the expression error, Reset timeout and unchanged runtime hashes.
+Website v31 delivers a bounded request to validate dimensions before returning
+results, explain an oversized kernel through the code error output, retain the
+reference/editor/Reset and guard the absent-tap display. The normal worker
+acknowledged it at input revision 8. The repaired invalid-input/Reset path and
+existing valid controls require a new actual check; no runtime upgrade is needed
+to make this scene correction.

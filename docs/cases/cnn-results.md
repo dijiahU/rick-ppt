@@ -102,6 +102,12 @@ v30 delivered those bounded corrections together; the author is continuing at
 input revision 7. Details and the unchanged failing diagnostic receipt are in
 the linked draft review.
 
+A subsequent C03 boundary check uses real keyboard editing to make the kernel
+larger than the image. It found a missing validation path that removes the live
+scene and its Reset button. Website v31 delivered that precise scene correction
+through the same task, now at input revision 8. The failure is retained, and
+repair/retest remains required before accepting the case.
+
 ## Pending acceptance
 
 The native deck, scene reports, actual edited-code execution, mechanism animation,
