@@ -25,6 +25,7 @@ from interactive_host import InteractiveHostBroker, verify_frozen, bundle_frozen
 from review_sessions import (ReviewSessions, ReviewSessionError, candidate_identity,
                              runtime_identity, selected_files)
 from repair_recovery import RecoveryRoute, recovery_route
+from structured_output import parse_structured_output
 
 REPORT_SCHEMA={
  'type':'object','additionalProperties':False,
@@ -213,7 +214,7 @@ class Execution:
                        'content_work':content,'thread':active_thread,'resumed':bool(thread),'log':str(path),'transport':'app-server','model':public_identity(profile),'api_calls':safe_api_calls(api_calls)}
                 self.stages.append(stage);self.trace.emit('phase',name+' completed',state='completed',detail=stage)
                 record(self.trajectory,'end',result=result)
-                return (json.loads(result) if schema else result),active_thread
+                return (parse_structured_output(result) if schema else result),active_thread
         except Exception as error:
             if public and self.journal:self.journal.interrupt(reason='phase_interrupted')
             if review_attempt:review_attempt.pending(type(error).__name__)
@@ -285,7 +286,7 @@ class Execution:
             self.trace.emit('review' if schema else 'note','Stage result',detail=result)
             self.trace.emit('phase',name,detail=stage)
             record(self.trajectory,'end',result=result)
-            return (json.loads(result) if schema else result),ident
+            return (parse_structured_output(result) if schema else result),ident
         except Exception as error:
             self.trace.emit('error',name,state='failed',detail=str(error))
             self.drain_trajectory(trajectory_stream,path)
