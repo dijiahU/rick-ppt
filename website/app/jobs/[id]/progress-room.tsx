@@ -3,6 +3,7 @@ import {useEffect,useMemo,useState} from 'react';
 import QueueStatus from '@/app/queue-status';
 import Conversation from './conversation';
 import DraftDownload from './draft-download';
+import InteractiveDownload from './interactive-download';
 import type {Draft} from '@/lib/drafts';
 import CreationStory from '@/app/creation-story';
 import PreviewLink from '@/app/preview-link';
@@ -41,6 +42,7 @@ export default function ProgressRoom({id}:{id:string}){
  <p className="eyebrow">LIVE WORKSPACE / {w[1]}</p><h1>{data?.title||w[1]}</h1>
  {denied?<section className="room-empty"><p>{denied===401?w[23]:w[24]}</p>{denied===401&&<a href={`/signin-with-chatgpt?return_to=${encodeURIComponent('/jobs/'+id)}`}>{t.signin} →</a>}</section>:<>
  <div className="room-status"><span className={`status status-${data?.status||'queued'}`}>{data?label(data.status):t.loading}</span><span>{terminal?w[18]:w[17]}</span><button onClick={()=>setRefresh(n=>n+1)}>{w[33]}</button>{data?.download&&<a className="download" href={`${base}/download`}>{w[35]} ↓</a>}</div>
+ {data?.download&&<InteractiveDownload base={base} locale={locale}/>}
  {data&&<DraftDownload draft={data.draft??null} base={base} locale={locale}/>}
  {error&&<p className="error" role="alert">{w[19]}</p>}{data?.status==='running'&&Date.now()-data.updatedAt>120000&&<p className="error">{w[32]}</p>}
  {data?.queue&&<QueueStatus queue={data.queue} position={data.queuePosition} createdAt={data.createdAt}/>}

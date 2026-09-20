@@ -47,3 +47,11 @@ No task files or prior snapshots are removed. All 51 journal tests pass,
 including checkpoint growth failure followed by successful recovery under a
 larger budget while preserving the previous snapshot. CNN alone is resumed;
 YOLO remains paused by user request.
+
+## Complete interactive delivery download (2026-09-20)
+
+- [x] Completed task results expose the complete interactive ZIP when available.
+- [x] Owner/admin routes enforce task authorization and verify the current PPTX/ZIP pair, including race cancellation. No older bundle fallback.
+- [x] Chinese/English instructions distinguish static previews, browser runtime and PowerPoint add-in setup. Browser startup uses port 0 to avoid collisions; README preview query is retained with the actual startup URL.
+- [x] Route regression tests and TypeScript validation pass.
+- [ ] Publish to the existing Site: current connector still returns project_not_found under the new account.

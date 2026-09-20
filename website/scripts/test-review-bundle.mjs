@@ -106,6 +106,42 @@ assert.ok(cancels>cancelsBefore,'opened stale body must be cancelled');afterGet=
 const moving=seed(),movingMeta=await (await call(detail,moving.id,{include:true})).json();
 afterGet=async key=>{if(key===moving.bundleKey)db.prepare("UPDATE jobs SET status='running' WHERE id=?").run(moving.id);};
 assert.equal((await call(bundle,moving.id,{headers:{'If-Match':movingMeta.bundle.etag,[header]:movingMeta.deliveryVersion}})).status,412);afterGet=null;
+// Website downloads use signed-in owner/admin authorization, not review tokens.
+let signedIn=null;
+modules['@/app/chatgpt-auth'].getChatGPTUser=async()=>signedIn;
+modules['cloudflare:workers'].env.ADMIN_USER_ID='admin';
+modules['./admin-policy']=load('lib/admin-policy.ts');
+modules['@/lib/admin']=load('lib/admin.ts');
+modules['@/lib/bundle-download']=load('lib/bundle-download.ts');
+const ownerDownload=load('app/api/jobs/[id]/bundle/route.ts').GET;
+const adminDownload=load('app/api/admin/jobs/[id]/bundle/route.ts').GET;
+const downloadable=seed();
+const webCall=(route,id=downloadable.id,info=false)=>route(new Request(`https://local.test/api/jobs/${id}/bundle${info?'?info=1':''}`),{params:Promise.resolve({id})});
+assert.equal((await webCall(ownerDownload)).status,401);
+assert.equal((await webCall(adminDownload)).status,401);
+signedIn={userId:'stranger',email:'stranger@test'};
+const blockedGets=gets;
+assert.equal((await webCall(ownerDownload)).status,404);
+assert.equal((await webCall(adminDownload)).status,403);
+assert.equal(gets,blockedGets);
+signedIn={userId:'owner',email:'owner@test'};
+assert.equal((await (await webCall(ownerDownload,downloadable.id,true)).json()).available,true);
+const zipResponse=await webCall(ownerDownload);
+assert.equal(zipResponse.status,200);
+assert.equal(zipResponse.headers.get('Content-Type'),'application/zip');
+assert.match(zipResponse.headers.get('Content-Disposition'),/presentation-interactive.zip/);
+assert.deepEqual(new Uint8Array(await zipResponse.arrayBuffer()),objects.get(downloadable.bundleKey).bytes);
+const noZip=seed({withBundle:false});
+assert.equal((await (await webCall(ownerDownload,noZip.id,true)).json()).available,false);
+assert.equal((await webCall(ownerDownload,noZip.id)).status,404);
+const unfinished=seed({status:'running'});
+assert.equal((await webCall(ownerDownload,unfinished.id)).status,404);
+afterGet=async key=>{if(key===downloadable.bundleKey)objects.get(downloadable.pptxKey).etag='"web-race"';};
+assert.equal((await webCall(ownerDownload)).status,412);afterGet=null;
+signedIn={userId:'admin',email:'admin@test'};
+assert.equal((await webCall(adminDownload)).status,200);
+console.log('PASS: website owner/admin ZIP access, metadata, missing/unfinished bundles, attachment and version race');
+
 // A legacy deployment is never migrated by a read-only review request.
 db.exec('DROP TABLE task_versions');
 assert.equal((await call(detail,fixture.id)).status,200);
