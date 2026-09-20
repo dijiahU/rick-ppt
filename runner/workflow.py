@@ -18,7 +18,7 @@ from progress import read_scoped
 from web_media import WebMediaBroker
 from durable import AppServer, RPCError, JournalError, task_configuration
 from model_backend import overrides,KEY_ENV,public_identity
-from chat_proxy import provider_session
+from chat_proxy import provider_session,safe_api_calls
 from contextlib import ExitStack
 from conversation import Conversation, RevisionPending
 from interactive_host import InteractiveHostBroker, verify_frozen, bundle_frozen
@@ -140,7 +140,7 @@ class Execution:
         if root==self.job:importer.imported=self.images
         if public:self.reporter.offset=0
         broker=self.interactive_brokers.setdefault(str(root),InteractiveHostBroker(self.cfg,root,trajectory=self.trajectory))
-        started=time.monotonic();server=None;active_thread=None;primary_turn=None;events=[]
+        started=time.monotonic();server=None;active_thread=None;primary_turn=None;events=[];api_calls=[]
         client_message_id=str(uuid.uuid4())
         if review_attempt:review_attempt.started(phase_id,path,client_message_id)
         def event(value):
@@ -210,7 +210,7 @@ class Execution:
                 self.logs.append(str(path));self.threads.append({'stage':name,'thread':active_thread})
                 if public and (name=='author' or name.startswith(('repair-','live-revision-'))):self.author_thread=active_thread
                 stage={'name':name,'seconds':round(time.monotonic()-started,3),'usage':usage_summary(events),
-                       'content_work':content,'thread':active_thread,'resumed':bool(thread),'log':str(path),'transport':'app-server','model':public_identity(profile)}
+                       'content_work':content,'thread':active_thread,'resumed':bool(thread),'log':str(path),'transport':'app-server','model':public_identity(profile),'api_calls':safe_api_calls(api_calls)}
                 self.stages.append(stage);self.trace.emit('phase',name+' completed',state='completed',detail=stage)
                 record(self.trajectory,'end',result=result)
                 return (json.loads(result) if schema else result),active_thread
@@ -218,7 +218,7 @@ class Execution:
             if public and self.journal:self.journal.interrupt(reason='phase_interrupted')
             if review_attempt:review_attempt.pending(type(error).__name__)
             self.stages.append({'name':name,'seconds':round(time.monotonic()-started,3),'usage':usage_summary(events),
-                                'content_work':content,'log':str(path),'failed':type(error).__name__,'model':public_identity(profile)})
+                                'content_work':content,'log':str(path),'failed':type(error).__name__,'model':public_identity(profile),'api_calls':safe_api_calls(api_calls)})
             self.trace.emit('error',name+' failed',state='failed',detail=type(error).__name__)
             record(self.trajectory,'end',error=error)
             raise

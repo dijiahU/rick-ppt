@@ -178,3 +178,14 @@ and blue circle at lower right. Protocol, proxy and backend tests total 43
 passing checks, with another 20 app-server and 11 content-workflow checks passing.
 The requested website job `62a7e360-810c-4275-8123-1bc74ffb0945` was then started
 with the Qwen3.8 private profile; complete PPT acceptance remains pending.
+
+The first Qwen full task completed research and reached authoring, then stopped
+on upstream HTTP 429 after approximately 494,000 prompt tokens reported by the
+app-server. This is a rate-limit failure, not a completed presentation. The
+Chat adapter now retries **HTTP 429 only**, at most three upstream attempts per
+request, waiting 30 seconds and then 60 seconds. Other HTTP and transport errors
+are not retried by this adapter. These limits apply to each adapter request;
+the Codex client may also have its own retry policy. Successful and failed phase
+records include allowlisted API status/attempt/delay/token metadata; provider
+response bodies, prompt text and credentials are excluded. Recovery still uses
+the existing task checkpoint and model identity rather than replacing the task.
