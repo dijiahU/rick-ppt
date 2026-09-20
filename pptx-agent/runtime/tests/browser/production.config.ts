@@ -5,4 +5,7 @@ const root=resolve(import.meta.dirname,'../..');
 const python=process.env.PPTX_TEST_PYTHON??(existsSync(resolve(root,'../.venv/bin/python'))?resolve(root,'../.venv/bin/python'):'python3');
 const quote=(value:string)=>"'"+value.replaceAll("'","'\\''")+"'";
 const runId=new Date().toISOString().replace(/[:.]/g,'-')+'-'+process.pid;
-export default defineConfig({testDir:'.',testMatch:'diagnostics-performance.spec.ts',timeout:45000,expect:{timeout:10000},workers:1,reporter:'list',outputDir:`../../test-results/diagnostics-production/${runId}`,projects:[{name:'production-chromium',use:{...devices['Desktop Chrome'],baseURL:'http://127.0.0.1:41978',viewport:{width:1000,height:700},trace:'retain-on-failure',screenshot:'only-on-failure'}}],webServer:{command:`${quote(python)} -m pptx_core.interactive_server --root . --runtime dist --http --port 41978`,cwd:root,url:'http://127.0.0.1:41978/api/health',reuseExistingServer:false,timeout:15000}});
+const port=Number(process.env.PPTX_DIAGNOSTIC_PORT??41978);
+if(!Number.isInteger(port)||port<1024||port>65535)throw new Error('PPTX_DIAGNOSTIC_PORT must be an integer from 1024 to 65535');
+const baseURL=`http://127.0.0.1:${port}`;
+export default defineConfig({testDir:'.',testMatch:'diagnostics-performance.spec.ts',timeout:45000,expect:{timeout:10000},workers:1,reporter:'list',outputDir:`../../test-results/diagnostics-production/${runId}`,projects:[{name:'production-chromium',use:{...devices['Desktop Chrome'],baseURL,viewport:{width:1000,height:700},trace:'retain-on-failure',screenshot:'only-on-failure'}}],webServer:{command:`${quote(python)} -m pptx_core.interactive_server --root . --runtime dist --http --port ${port}`,cwd:root,url:`${baseURL}/api/health`,reuseExistingServer:false,timeout:15000}});
