@@ -85,9 +85,16 @@ Codex steering path then delivered all three into the active resumed author turn
 | `95f3e650-f1a7-4e0c-b0ca-d2e609ac464e` | Complete C04/C05/C06/C10 experiments and nondifferentiability explanations | Acknowledged; final artifact application pending |
 | `47ad4991-89ca-4398-8bfd-c5e292ed07b3` | Correct scan highlights, manual-timeline continuation and actual source-line highlights | Acknowledged in website v28; final application pending |
 | `132c625d-e876-4412-a98e-1b0229e3b570` | Repair remaining v005 formula-subscript clipping | Acknowledged after website v29; application pending |
+| `7d383589-417a-4759-ba67-978a43da1435` | Distinguish current held-out results and baseline arithmetic; repair slight gradient-formula clipping | Received after website v30; final application pending |
 
 Ordinary chat did not increment the input revision. By website v29 there were
 four user revisions; later plugin upgrades invalidate stage receipts separately.
+Website v30 adds a fifth user revision, bringing the running input revision to 7
+after the two plugin upgrades. Its source is
+`3b572db9d72789718d0ed634454e1d29496a2fc3`. Six synthetic checks again verify
+same-owner/running-task scope, refusal conditions, idempotence and unchanged job
+rows. Its published archive changes only the new additive feedback migration;
+all prior deployed build files are byte-identical.
 The author publicly answered the ordinary chat, distinguishing the 16 training
 examples from eight separate held-out examples and limiting the accuracy claim
 to that synthetic sample. The completed content turn applied the answered chat;

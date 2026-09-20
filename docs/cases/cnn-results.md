@@ -93,6 +93,15 @@ native previews. The full-CNN derivative browser check also found a font
 packaging/CSP issue; its numerical success does not waive that finding. Current
 scene changes and the eventual delivered pair still need final acceptance.
 
+The all-twenty v007 initial-formula review on the current runtime found no font,
+CSP or page-health failure in 40 inspected captures. Targeted pixel diagnostics
+distinguish harmless typographic-bound warnings in pages 9/12 from a slight
+parenthesis crop in page 14. A source review also found fixed baseline numbers
+that should be distinguished from changed-code results in pages 4/19. Website
+v30 delivered those bounded corrections together; the author is continuing at
+input revision 7. Details and the unchanged failing diagnostic receipt are in
+the linked draft review.
+
 ## Pending acceptance
 
 The native deck, scene reports, actual edited-code execution, mechanism animation,

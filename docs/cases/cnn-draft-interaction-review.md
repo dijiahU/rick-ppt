@@ -1,4 +1,4 @@
-# CNN draft checks on the repaired editor runtime
+# CNN draft interaction, formula and content checks
 
 These are bounded checks of retained v005 draft scenes and native previews,
 not acceptance of the unfinished 20-slide delivery. They use immutable release
@@ -88,7 +88,9 @@ is readable, but this run is not a zero-CSP pass. A separate
 [build correction](../release-smoke-20260920.md#cnn-discovered-local-font-packaging-correction)
 now keeps fonts as same-origin files without loosening CSP. Its nine production
 pack checks pass, including actual Size3 loading and zero CSP violations. That
-candidate remains separate from the immutable runtime used by the running author.
+candidate was installed as release `0.1.0+codex.20260919234350`; the author
+subsequently restored the saved work under it. The earlier CSP finding remains
+part of the evidence for the older runtime.
 
 The formula-region correction has since passed 108 checks on three preserved
 v007 scenes at 1280×720, 800×600, 1280×900 and 760×560. All 12 screenshots were
@@ -104,3 +106,45 @@ The exact scene hashes are:
 That check used the retained `be097…` runtime. Font-patched release evidence is
 separate. Final acceptance must use the current delivered PPTX/ZIP and their
 exact scenes, not infer approval from these preserved drafts.
+
+## All twenty initial formulas on the font-corrected runtime
+
+An independent reviewer inspected all 40 normal captures from 20 preserved v007
+scenes at 1280×720 and 800×600, plus 12 targeted diagnostic images. The exact
+runtime is `8635c55584176218c6eadbc829d8796531bc99887469f24f6fc2345130222d37`.
+Local font loading, CSP, page health and separation from controls/footers pass
+throughout. The previously repaired summation subscripts remain complete.
+
+The original strict rectangle report remains **708/720**, with twelve failures
+covering character/element bounds in scenes 09, 12 and 14 at both viewports.
+Temporary overflow-visible diagnostics clarify the result without rewriting it:
+
+- Scene 09 and 12 diagnostic images are byte-identical to their normal captures.
+  The typographic rectangles cross a boundary, but no visible ink is clipped.
+- Scene 14 has a real, minor loss of ink at the tops of four numerator
+  parentheses: approximately 0.48/0.67 CSS px. Its formula remains readable.
+  `Math#math-rule` uses `x28/y600/450×48`, font size 21 and zero padding;
+  a small amount of top padding can use the existing lower clearance.
+
+Scene 14 SHA-256 is
+`61b6562a27065c8867119db864bdf3451e6f3c1dea825d24ab040579e2782d7d`.
+Private proof `cnn-v007-all-formulas-fonts-20260919T235232Z-a21d3e` retains
+the unchanged source/runtime hashes, all images, raw report and pixel diagnostics.
+Its review document SHA-256 is
+`8a3ee63d2608fba166ae7a6566b993f3d3821bb3084eebe7e79fc78455c794ea`.
+This initial-state check does not execute training, scene plans or animations.
+
+## Current results versus fixed examples
+
+A separate source review found that scene 19's fixed `6/8 = 75%` Math label is
+unqualified even though editable code can change the held-out predictions beside
+it. Scene 04 similarly retains the fixed dot-product example ending in 7 when
+the kernel control changes. Their baseline arithmetic is correct; the learner
+needs either a result bound to the current computation or an explicit baseline
+label and a separate current result.
+
+Website v30 submits these two content corrections and the scene 14 padding
+correction as one labeled acceptance message, preserving existing work. The
+normal worker received it as input revision 7. This is a requested repair, not
+proof that the final artifact has applied it. There are five user edit messages;
+the other two revision increments are plugin upgrades.
