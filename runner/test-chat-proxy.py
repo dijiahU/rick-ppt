@@ -37,6 +37,23 @@ class ProxyTests(unittest.TestCase):
         self.assertNotIn(PROFILE['api_key'], json.dumps(proxy.calls))
         self.assertNotIn('private test prompt', json.dumps(proxy.calls))
 
+    def test_reasoning_is_opt_in_and_profile_owned(self):
+        for effort in (None, 'low', 'high'):
+            with self.subTest(effort=effort):
+                profile = {**PROFILE, **({'reasoning_effort': effort} if effort else {})}
+                response = SimpleNamespace(returncode=0, stdout=json.dumps(completed()) + '\n200', stderr='')
+                with patch('chat_proxy.subprocess.run', return_value=response) as run:
+                    ChatProxy(profile).complete({'model': 'test-flash', 'input': 'hello',
+                                                 'reasoning': {'effort': 'xhigh'}})
+                config = run.call_args.kwargs['input']
+                data_line = next(line for line in config.splitlines() if line.startswith('data = '))
+                sent = json.loads(json.loads(data_line[len('data = '):]))
+                self.assertEqual(sent['enable_thinking'], bool(effort))
+                if effort:
+                    self.assertEqual(sent['reasoning_effort'], effort)
+                else:
+                    self.assertNotIn('reasoning_effort', sent)
+
     def test_profile_model_cannot_be_overridden_by_request(self):
         with patch('chat_proxy.subprocess.run') as run, self.assertRaises(ValueError):
             ChatProxy(PROFILE).complete({'model': 'other', 'input': 'hi'})

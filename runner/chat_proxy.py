@@ -46,7 +46,8 @@ class ChatProxy:
   if body.get('model')!=self.profile['model']:raise ValueError('Model does not match selected profile')
   request,mapping=responses_to_chat(body)
   request['model']=self.profile['model'];request['stream']=False
-  request['enable_thinking']=False
+  request['enable_thinking']=bool(self.profile.get('reasoning_effort'))
+  if self.profile.get('reasoning_effort'):request['reasoning_effort']=self.profile['reasoning_effort']
   request['max_tokens']=min(int(request.get('max_tokens',8192)),16384)
   config='header = '+json.dumps('Authorization: Bearer '+self.profile['api_key'])+'\nheader = "Content-Type: application/json"\n'+ 'data = '+json.dumps(json.dumps(request))+'\n'
   started=time.monotonic()

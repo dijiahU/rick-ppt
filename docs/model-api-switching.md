@@ -41,9 +41,14 @@ This is a bounded adapter, not a universal model compatibility layer:
 - Upstream requests are **non-streaming**. Responses SSE events are synthesized
   after the complete upstream reply arrives; there is no live upstream token
   streaming or first-token latency improvement.
-- The adapter sets `enable_thinking: false`. Prior Responses reasoning items and
-  upstream reasoning content are not forwarded or exposed. Private reasoning
-  continuity and the profile's reasoning-effort behavior are not reproduced.
+- Reasoning is opt-in through the host profile's existing `reasoning_effort`
+  field. When absent, the adapter sends `enable_thinking: false`. When present,
+  it sends `enable_thinking: true` and forwards that exact `reasoning_effort`.
+  Provider/model support and the effect on output quality require separate
+  verification. Prior Responses reasoning items and upstream reasoning content
+  are still not forwarded or exposed; private reasoning continuity is not
+  reproduced. Changing reasoning effort changes the task's bound identity, so
+  use a new comparison task instead of changing an active task's profile.
 - Built-in hosted tools such as web search and image generation are unsupported
   on this path. Keep both disabled. Custom grammar definitions become tool
   descriptions; their grammar is not enforced by the Chat endpoint.
