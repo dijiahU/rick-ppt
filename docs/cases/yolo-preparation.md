@@ -1,9 +1,12 @@
 # YOLO case preparation
 
-Status: **prepared, not submitted**. Release smoke and CNN functional/native
-checks have passed. YOLO admission can now proceed while CNN's remaining
-independent audience reviews run; both cases still require their own complete
-review and delivered-artifact verification before acceptance.
+Status: **submitted and running**. The owner-authorized
+[18-page YOLO case](https://rick-ppt.woodsy-crane-8759.chatgpt.site/jobs/39ce73ef-b37f-44f8-a050-d432b8700a2d)
+was admitted on 2026-09-20 at 01:44 UTC after release smoke and CNN
+functional/native checks. Read-only retrieval confirmed the original CNN task's
+owner, the exact submitted brief hash, English, 18 pages and running status.
+CNN's remaining independent audience reviews run alongside it; both cases
+still require complete review and delivered-artifact verification.
 
 The [18-slide brief](yolo-prompt.md) retains the selected Ultralytics v8.2.0
 implementation, numerical fixtures, commented code, partial-head optimization,
@@ -55,19 +58,31 @@ The weight checkpoint internally records `8.0.0.dev0`; the v8.2.0 release and
 exporter pin must not be presented as its training version.
 
 The independent scalar reference remains a separate 75-check result. Actual
-single-image model execution is now evidenced, but the **formal YOLO task is
-still not submitted**, and the prepared **host static asset handoff has not been
-executed**. No final lesson, native fallback, export/bundle or desktop PowerPoint
+single-image model execution is now evidenced. The **formal task is running**
+and its **host static asset handoff has completed**. No final lesson, native
+fallback, export/bundle or desktop PowerPoint
 acceptance follows from the 11+9 checks. CNN's 194 frozen-scene tests, 679
 assertions, additional 95 interaction checks and all-page native inspection
 precede YOLO admission. Running the remaining independent CNN reviews alongside
 YOLO creation changes scheduling, not either case's final acceptance criteria.
 
-The prepared private directory contains only static ONNX/image/JSON assets,
-provenance, exact hashes and declared licenses; normal import requires no
-attachment program execution. A future owner-scoped task handoff must clearly
-identify these as host-provided test assets. The website still does not allow
+The private directory contains only static ONNX/image/JSON assets, provenance,
+exact hashes and declared licenses; normal import requires no attachment program
+execution. The host copied 11 files (20,110,476 bytes) into the new task directory
+`references/host-yolo-pretrained` without overwriting existing files; 50 copy
+checks passed. The SHA256SUMS manifest is
+`eba7106f8098d51381a72f8ad314e5824f4d59ada9e517f65764bb799539e24c`.
+Normal owner-scoped revision `c5f4344e-f4c9-40c7-b7fe-25f4e7afed8f`
+identifies these as host-provided test assets and requests actual model results.
+Ordinary chat `f8fa2a71-7fe2-4b1e-bebe-835eb4d0b348` asks about confidence versus
+NMS thresholds without changing the brief. The worker accepted both in input
+revision 1; adoption and the chat answer still need follow-up verification.
+
+The website still does not allow
 `.onnx` or `.pt` uploads, and the measured ONNX size of 12,823,520 bytes exceeds
-the 10 MiB attachment limit. This preparation changes neither those rules nor
-the runtime, runner, release or website, and it does not encode or rename a model
-to evade the attachment rules.
+the 10 MiB attachment limit. The handoff changes neither those rules nor the
+runtime or plugin release. The existing website form was visible in the signed-in
+browser, but native automation failed before a submission and the user resumed
+using the browser. The two messages were therefore admitted through additive,
+idempotent owner migrations (seven cases, 14 executions), not a claimed successful
+production file-upload test. Local form/upload regressions remain separate.

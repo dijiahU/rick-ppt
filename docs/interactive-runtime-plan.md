@@ -193,6 +193,10 @@ Primary sources:
   `8635c55584176218c6eadbc829d8796531bc99887469f24f6fc2345130222d37`.
   A real HTTP/2 checkpoint interruption also led to 13 passing transport and 37
   conversation checks for nonfatal transient publication and preserved identities.
+  Installed hook dependency repair and the release preflight gate are complete:
+  31 existing regressions, 14 environment tests and five installer tests pass;
+  all 20 retained caches pass default-launcher PreToolUse startup. See
+  [the incident and release checks](installed-hook-runtime.md).
 - [ ] **16 — CNN case.** Write a reproducible prompt from the latest website
   brief, emphasizing first-principles computation, definitions, worked arithmetic,
   forward/backprop, training and annotated runnable code. Use composable scenes
@@ -205,7 +209,10 @@ Primary sources:
   source/hash correlation and targeted learner-input evidence. A 900-second
   review timeout retained the completed author receipt; the same-version worker
   restored revision 9 for review with 2700-second phase budgets. Independent
-  review approval and actual delivered-pair retrieval remain open.
+  review approval and actual delivered-pair retrieval remain open. The restored
+  first audience pass completed after a recoverable context-compaction network
+  failure; it requires a slide-17 epoch-axis label correction. Consolidated
+  content/visual review and the normal repair loop are still in progress.
 - [ ] **17 — YOLO case.** Write a comparable prompt teaching detection, boxes,
   grid/head outputs, IoU, confidence thresholds, NMS, loss/training and inference.
   Distinguish versions precisely; demonstrate editable code and intuitive animation
@@ -221,6 +228,11 @@ Primary sources:
   CNN generation, functional tests and native inspection now precede admission;
   its remaining independent audience reviews may overlap YOLO creation. Both
   final acceptance gates remain required.
+  The owner task is now running on the website. Its exact original brief and
+  owner were confirmed through read-only retrieval; all 11 real-model input
+  files were copied and hash-checked. A normal revision and ordinary chat were
+  accepted by the worker as revision 1. Final model use, chat answer and delivered
+  artifacts remain open; production browser file upload was not completed.
 - [ ] **18 — Desktop verification and final report.** Attempt real macOS
   PowerPoint open/load/click/drag/keyboard/slider/slideshow/save/reopen/settings
   persistence and code interaction. Windows/Web are only marked verified if
