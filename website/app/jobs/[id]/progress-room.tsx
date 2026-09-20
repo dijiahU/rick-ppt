@@ -2,6 +2,8 @@
 import {useEffect,useMemo,useState} from 'react';
 import QueueStatus from '@/app/queue-status';
 import Conversation from './conversation';
+import DraftDownload from './draft-download';
+import type {Draft} from '@/lib/drafts';
 import CreationStory from '@/app/creation-story';
 import PreviewLink from '@/app/preview-link';
 import {creationWords} from '@/lib/creation-i18n';
@@ -10,7 +12,7 @@ import type {QueueHealth} from '@/lib/queue-state';
 import {LanguagePicker,useLanguage} from '@/app/language';
 import {taskModeMessages} from '@/lib/task-mode-i18n';
 import type {ActivityEvent,Progress} from '@/lib/progress';
-type Data={queue:QueueHealth|null;queuePosition:number|null;title:string;brief:string;pages:number;status:string;createdAt:number;updatedAt:number;download:boolean;scope:'user'|'admin';canInspectExecution?:boolean;progress:Progress|null};
+type Data={draft:Draft|null;queue:QueueHealth|null;queuePosition:number|null;title:string;brief:string;pages:number;status:string;createdAt:number;updatedAt:number;download:boolean;scope:'user'|'admin';canInspectExecution?:boolean;progress:Progress|null};
 const words={
  en:['Back to studio','Task activity','Events','Sources','Slide previews','All','Search','Opened links','Files','Execution','Media','Render & review','Progress notes','Lifecycle','Filter activity or URL','Newest first','Oldest first','Live · refreshes every 3 seconds','Finished · saved activity','Reconnect failed. Retrying…','No recorded activity yet.','No matching activity.','Original request','Sign in to view this task','Task unavailable or access denied','Started','Completed','Failed','Updated','Recent activity (up to 500 events). Older tasks may have fewer details. Tool events and public progress notes—not a screen broadcast.','No source links recorded yet.','View full screen','Last worker update is over two minutes old.','Refresh now','Waiting in queue','Download PPTX','Recorded action','Agent progress note'],
  'zh-CN':['返回工作室','任务执行详情','活动记录','来源链接','页面预览','全部','搜索','打开的链接','文件','执行操作','素材','渲染与检查','进度说明','任务状态','搜索活动内容或网址','最新在前','最早在前','实时更新 · 每 3 秒同步','任务结束 · 已保存记录','连接失败，正在重试…','尚未收到活动记录。','没有符合条件的活动。','原始需求','登录后查看此任务','任务不存在或无权访问','已开始','已完成','失败','更新时间','最多保留最近 500 条活动。旧任务可能缺少详细记录；这里展示真实工具事件和进度说明，不是屏幕直播。','尚未记录来源链接。','全屏查看','执行端超过两分钟未更新，请留意任务是否中断。','立即刷新','正在排队','下载 PPTX','实际操作记录','Agent 进度说明'],
@@ -39,6 +41,7 @@ export default function ProgressRoom({id}:{id:string}){
  <p className="eyebrow">LIVE WORKSPACE / {w[1]}</p><h1>{data?.title||w[1]}</h1>
  {denied?<section className="room-empty"><p>{denied===401?w[23]:w[24]}</p>{denied===401&&<a href={`/signin-with-chatgpt?return_to=${encodeURIComponent('/jobs/'+id)}`}>{t.signin} →</a>}</section>:<>
  <div className="room-status"><span className={`status status-${data?.status||'queued'}`}>{data?label(data.status):t.loading}</span><span>{terminal?w[18]:w[17]}</span><button onClick={()=>setRefresh(n=>n+1)}>{w[33]}</button>{data?.download&&<a className="download" href={`${base}/download`}>{w[35]} ↓</a>}</div>
+ {data&&<DraftDownload draft={data.draft??null} base={base} locale={locale}/>}
  {error&&<p className="error" role="alert">{w[19]}</p>}{data?.status==='running'&&Date.now()-data.updatedAt>120000&&<p className="error">{w[32]}</p>}
  {data?.queue&&<QueueStatus queue={data.queue} position={data.queuePosition} createdAt={data.createdAt}/>}
  {data&&<details className="room-brief"><summary>{w[22]}</summary><p className="fineprint">{data.pages===0?taskModeMessages[locale].edit:taskModeMessages[locale].create} · {data.pages===0?taskModeMessages[locale].automatic:`${t.pages}: ${data.pages}`}</p><p>{data.brief}</p></details>}

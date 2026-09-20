@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS task_drafts (
+ job_id TEXT PRIMARY KEY, object_key TEXT NOT NULL, sha256 TEXT NOT NULL,
+ bytes INTEGER NOT NULL, pages INTEGER NOT NULL, revision INTEGER NOT NULL,
+ exported_at INTEGER NOT NULL, saved_at INTEGER NOT NULL
+);
