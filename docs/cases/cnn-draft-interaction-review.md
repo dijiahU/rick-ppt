@@ -174,3 +174,42 @@ reference/editor/Reset and guard the absent-tap display. The normal worker
 acknowledged it at input revision 8. The repaired invalid-input/Reset path and
 existing valid controls require a new actual check; no runtime upgrade is needed
 to make this scene correction.
+
+The repaired v009 sampling snapshot subsequently passed **71/71** independent
+checks. Seven screenshots were actually viewed. The same real `k=7` edit now
+explains that effective kernel 7 exceeds padded input 5, retaining the editor and
+Reset without a runtime error. Actual Reset plus Run restores side 3 and nine
+positions; real valid controls yield side/positions `2/4`, `5/25` and `1/1`.
+The repaired scene SHA-256 is
+`ee41226943537d11bb5e88fbbee46bc3a9bca367ef5666205882f5b469657ac7`,
+and its source SHA-256 is
+`51fd8aa70c4f7ca5da56ad070c89c5019ba9470682e9c7654aeb974d34e4aaf6`.
+Private proof `cnn-v009-sampling-k7-20260920T002758Z-8a184a` retains the original
+failure and the first new 70/71 report whose lone failure read `innerText` from an
+SVG group. The corrected probe reads its internal HTML. The final report SHA-256
+is `ba60fa089119b1a5b6a4cf2a52c42bd15aa29104522e7faa95eed992e4ec6e5c`.
+
+## Bounded follow-up on baseline, formula fit and current accuracy
+
+An independent check of v009 scenes 04, 14 and 19 inspected ten captures:
+
+- Scene 04 now labels the fixed arithmetic as the `K[0,0]=1` baseline. A real
+  control change to 2 produces contributions `[2,-2,8,0]` and sum 8.
+- Scene 14's normal and overflow-visible diagnostic formula captures are
+  pixel-identical at 1280×720 and 800×600. The former parenthesis crop is repaired.
+- Scene 19 correctly derives its count from the actual worker result: one real
+  Monaco learning-rate-zero run gives four correct cases out of eight, and Reset
+  restores the six-correct reference. Its new TeX binding, however, over-escapes
+  the commands. The visible equations are `6/8=75` and `4/8=50`: the percent sign
+  and held-out label disappear despite no KaTeX error. This remains a required
+  formatting correction, not a numerical-training failure.
+
+The respective scene hashes are
+`7cb99c805f1944f8b454b93a0f8e95925565ba0998f68dc80e959181f6c9c774`,
+`85a244ec32d6688da47a9e5ba3b73eba62437436062b68028631912affdbd33f` and
+`3cdf7e631d8fd9bc911d51c2eda735e465ed22486b8a50e9724bc5351c9c5123`.
+Private proof `cnn-v009-three-repairs-20260920T002920Z` retains **15/18** checks;
+all three failures describe the same missing units/label in the initial, changed
+and reset views. Website v32 requests the exact escaping correction, adequate
+percentage precision and a fresh native fallback. Final scene/artifact approval
+remains pending.

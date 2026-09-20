@@ -108,6 +108,13 @@ scene and its Reset button. Website v31 delivered that precise scene correction
 through the same task, now at input revision 8. The failure is retained, and
 repair/retest remains required before accepting the case.
 
+That larger-kernel repair now passes 71 independent checks through real keyboard
+input and controls. Separate checks confirm the baseline label and repaired
+gradient-formula margins. They also confirm that held-out numbers follow the
+changed worker run, while exposing a new TeX-escaping error that hides the percent
+sign. Website v32 requests that bounded display correction before final export;
+the preserved 15/18 diagnostic report is not presented as an all-pass result.
+
 ## Pending acceptance
 
 The native deck, scene reports, actual edited-code execution, mechanism animation,

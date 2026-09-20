@@ -87,6 +87,7 @@ Codex steering path then delivered all three into the active resumed author turn
 | `132c625d-e876-4412-a98e-1b0229e3b570` | Repair remaining v005 formula-subscript clipping | Acknowledged after website v29; application pending |
 | `7d383589-417a-4759-ba67-978a43da1435` | Distinguish current held-out results and baseline arithmetic; repair slight gradient-formula clipping | Received after website v30; final application pending |
 | `c97aacc8-b76a-4c40-b5b3-73138c3ce8b4` | Explain invalid convolution dimensions and preserve editing/Reset after a larger-kernel experiment | Acknowledged after website v31; final application pending |
+| `1f1c1853-c006-425d-b4d8-5f5ba7b033f3` | Correct over-escaped TeX hiding the current result's percent sign and label | Acknowledged after website v32; final application pending |
 
 Ordinary chat did not increment the input revision. By website v29 there were
 four user revisions; later plugin upgrades invalidate stage receipts separately.
@@ -101,6 +102,14 @@ dimension check in the sampling scene. The running revision becomes 8. Source
 `7eebf7e12f5e24042000d7d69941212283c87f5f` again changes only a scoped additive
 message migration; seven synthetic checks cover running versus failed/complete/
 queued tasks, owner/title scope, a full transcript and repeat application.
+Website v32 submits a seventh edit for an actual dynamic-formula rendering
+failure, without changing training mathematics. Its exact source is
+`89c8afa988360839223688e7156355d6b21cf2d8`; the same seven migration boundary
+checks pass. The first archive upload timed out before version creation; the
+operator reconciled version history, then retried the unchanged archive. The
+saved version deployed successfully with the existing audience unchanged.
+The normal worker acknowledged this message at input revision 9: seven user
+edits plus two prior plugin upgrades.
 The author publicly answered the ordinary chat, distinguishing the 16 training
 examples from eight separate held-out examples and limiting the accuracy claim
 to that synthetic sample. The completed content turn applied the answered chat;
