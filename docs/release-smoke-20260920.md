@@ -167,6 +167,10 @@ Artifact loading and playback still require direct checks. Browser behavior,
 native LibreOffice rendering and OOXML fixture matching do not prove those host
 behaviors. Windows and Office web are also unverified. See the separate manual
 checklist and compatibility matrix. All independent work continues.
+The later [desktop attempt](desktop-verification-20260920.md) records an actual
+helper crash during file-dialog interaction; playback remains unverified.
+The real website check also led to the separately tested and published
+[conversation scrolling correction](conversation-scroll-review.md).
 
 ## CNN-discovered local font packaging correction
 

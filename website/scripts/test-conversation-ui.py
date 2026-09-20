@@ -92,19 +92,47 @@ async def run(base, site, output):
         await page.unroute('**/api/jobs/*/conversation')
         await expect(panel.get_by_role('status')).to_have_count(0,timeout=12000)
         await expect(panel.locator('.conversation-message.user')).to_have_count(2)
+        # Real transcript overflow: reload follows the latest message, incoming
+        # long replies stay visible at the end, and reading history is respected.
+        for index in range(2):
+            await worker('assistant',{'id':str(uuid.uuid4()),'body':f'Scroll fixture {index}\n'+('A complete explanation with several readable lines.\n'*45)+f'End of explanation {index}.'})
+        await expect(panel.locator('.conversation-message.assistant')).to_have_count(3,timeout=12000)
+        await page.reload(wait_until='networkidle')
+        await expect(panel.locator('.conversation-message.assistant')).to_have_count(3,timeout=12000)
+        transcript=panel.locator('.conversation-transcript')
+        at_end="() => {const n=document.querySelector('.conversation-transcript');return n&&n.scrollHeight>n.clientHeight+200&&n.scrollHeight-n.scrollTop-n.clientHeight<5;}"
+        await page.screenshot(path=str(output/'conversation-long-reload.png'),full_page=True)
+        await page.wait_for_function(at_end,timeout=5000)
+        await transcript.hover();await page.mouse.wheel(0,-20000)
+        await page.wait_for_function("() => document.querySelector('.conversation-transcript').scrollTop<5")
+        await worker('assistant',{'id':str(uuid.uuid4()),'body':'New information arrives while the reader is viewing earlier messages.'})
+        await expect(panel.locator('.conversation-message.assistant')).to_have_count(4,timeout=12000)
+        assert await transcript.evaluate('(n)=>n.scrollTop<5'),'Incoming message interrupted reading history'
+        await transcript.hover();await page.mouse.wheel(0,20000)
+        await page.wait_for_function(at_end)
+        await worker('assistant',{'id':str(uuid.uuid4()),'body':('A long live reply must keep its current ending visible.\n'*45)+'Latest live ending.'})
+        await expect(panel.locator('.conversation-message.assistant')).to_have_count(5,timeout=12000)
+        await page.wait_for_function(at_end,timeout=5000)
+        await transcript.hover();await page.mouse.wheel(0,-20000)
+        await page.wait_for_function("() => document.querySelector('.conversation-transcript').scrollTop<5")
+        await panel.locator('textarea').fill('LOCAL UI CHECK: return to my newly sent chat message.')
+        await panel.locator('button[type=submit]').click()
+        await expect(panel.locator('.conversation-message.user')).to_have_count(3)
+        await page.wait_for_function(at_end,timeout=5000)
         await worker('checkpoint',{'checkpointId':str(uuid.uuid4()),'runId':str(uuid.uuid4()),'phase':'author','pluginVersion':'0.2.0','resumable':True,'revision':saved['seq'],'lastMessageSeq':saved['seq']})
         update("UPDATE jobs SET status='failed',updated_at=? WHERE id=?",(int(time.time()*1000),))
         await page.reload(wait_until='networkidle')
         await panel.get_by_role('button',name='Resume from checkpoint').click()
         await expect(page.locator('.room-status .status')).to_contain_text('queue',ignore_case=True,timeout=12000)
         await page.set_viewport_size({'width':390,'height':844})
+        await page.wait_for_function(at_end,timeout=5000)
         await panel.scroll_into_view_if_needed();await page.screenshot(path=str(output/'conversation-mobile.png'),full_page=True)
         assert await page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),'Horizontal overflow'
         assert not errors,errors
         # Mark only this local synthetic job terminal; leave its messages/files for review.
         update("UPDATE jobs SET status='failed',summary='local-ui-test-complete',updated_at=? WHERE id=?",(int(time.time()*1000),))
         await browser.close()
-        (output/'report.json').write_text(json.dumps({'ok':True,'jobId':ident,'checks':['real message/attachment persistence','worker acknowledgement and assistant reply','applied status','reload','normal chat','reconnect deduplication','resume same job','mobile overflow','no browser errors']},indent=2))
+        (output/'report.json').write_text(json.dumps({'ok':True,'jobId':ident,'checks':['real message/attachment persistence','worker acknowledgement and assistant reply','applied status','reload','normal chat','reconnect deduplication','long transcript reload at latest message','preserve reading history during new messages','follow long replies at transcript end','sending returns to latest message','resume same job','mobile overflow','no browser errors']},indent=2))
         print('PASS: local browser conversation, uploads, status, reload, reconnect, resume and mobile layout')
 
 

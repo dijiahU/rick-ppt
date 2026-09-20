@@ -222,6 +222,9 @@ Primary sources:
   are retained. No security settings or Office license were changed. PowerPoint
   opened in its available read-only mode after skipping subscription offers;
   artifact playback and editing/save behavior still need actual checks.
+  Subsequent official file-dialog actions exposed an independently confirmed
+  helper crash; [the attempt record](desktop-verification-20260920.md) preserves
+  the distinction between a visible native preview and actual document playback.
 
 ## Recovery semantics
 

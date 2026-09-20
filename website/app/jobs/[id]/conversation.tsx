@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {useLanguage} from '@/app/language';
 import {validFiles,extensions} from '@/lib/attachments';
 import type {Message} from '@/lib/conversation';
@@ -16,12 +16,13 @@ export default function Conversation({id,status,updatedAt,onResume}:{id:string;s
  const [text,setText]=useState(''),[kind,setKind]=useState<'chat'|'revision'>('revision'),[attachments,setAttachments]=useState<File[]>([]);
  const [sending,setSending]=useState(false),[progress,setProgress]=useState(0),[error,setError]=useState(''),[offline,setOffline]=useState(false),[resuming,setResuming]=useState(false),[refresh,setRefresh]=useState(0);
  const messageId=useRef<string|null>(null),picker=useRef<HTMLInputElement>(null),transcript=useRef<HTMLDivElement>(null),requestRef=useRef<XMLHttpRequest|null>(null);
+ const followLatest=useRef(true);
  useEffect(()=>{let active=true;const controller=new AbortController();let timer:ReturnType<typeof setTimeout>;
   async function poll(){try{const response=await fetch(`/api/jobs/${id}/conversation`,{cache:'no-store',signal:controller.signal});if(!response.ok)throw Error();const next=await response.json() as Snapshot;if(!active)return;setData(prior=>{const all=new Map(prior.messages.map(m=>[m.id,m]));for(const m of next.messages)if(!all.has(m.id)||all.get(m.id)!.updatedAt<=m.updatedAt)all.set(m.id,m);return {...next,messages:[...all.values()].sort((a,b)=>a.seq-b.seq).slice(-200)};});setOffline(false);}catch{if(active)setOffline(true);}finally{if(active)timer=setTimeout(poll,3000);}}
   void poll();return()=>{active=false;controller.abort();clearTimeout(timer);};
  },[id,refresh]);
  useEffect(()=>()=>requestRef.current?.abort(),[]);
- useEffect(()=>{const node=transcript.current;if(node&&node.scrollHeight-node.scrollTop-node.clientHeight<180)node.scrollTo({top:node.scrollHeight,behavior:'smooth'});},[data.messages]);
+ useLayoutEffect(()=>{const node=transcript.current;if(node&&followLatest.current)node.scrollTop=node.scrollHeight;},[data.messages]);
  const changed=()=>{messageId.current=null;setError('');};
  function addFiles(items:File[]){const next=[...attachments,...items];if(!validFiles(next)){setError(w[15]);return;}changed();setAttachments(next);}
  async function send(){
@@ -30,7 +31,7 @@ export default function Conversation({id,status,updatedAt,onResume}:{id:string;s
   const form=new FormData();form.set('id',clientId);form.set('kind',kind);form.set('body',text);for(const file of attachments)form.append('files',file);
   try{
    const value=await new Promise<{message:Message}>((resolve,reject)=>{const xhr=new XMLHttpRequest();requestRef.current=xhr;xhr.open('POST',`/api/jobs/${id}/conversation`);xhr.timeout=120000;xhr.upload.onprogress=event=>{if(event.lengthComputable)setProgress(Math.round(event.loaded/event.total*100));};xhr.onload=()=>{try{const value=JSON.parse(xhr.responseText);if(xhr.status<200||xhr.status>=300)reject(Error(value.error||w[14]));else resolve(value);}catch{reject(Error(w[14]));}};xhr.onerror=()=>reject(Error(w[14]));xhr.ontimeout=()=>reject(Error(w[14]));xhr.onabort=()=>reject(Error(w[14]));xhr.send(form);});
-   setData(current=>({...current,messages:[...current.messages.filter(m=>m.id!==value.message.id),value.message].sort((a,b)=>a.seq-b.seq)}));setText('');setAttachments([]);messageId.current=null;setRefresh(n=>n+1);requestAnimationFrame(()=>transcript.current?.scrollTo({top:transcript.current.scrollHeight,behavior:'smooth'}));
+   followLatest.current=true;setData(current=>({...current,messages:[...current.messages.filter(m=>m.id!==value.message.id),value.message].sort((a,b)=>a.seq-b.seq)}));setText('');setAttachments([]);messageId.current=null;setRefresh(n=>n+1);
   }catch(e){setError(e instanceof Error?e.message:w[14]);}finally{setSending(false);requestRef.current=null;}
  }
  async function resume(){setResuming(true);setError('');try{const response=await fetch(`/api/jobs/${id}/resume`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expectedUpdatedAt:updatedAt})});if(!response.ok){const value=await response.json() as {error?:string};throw Error(value.error||w[22]);}onResume();setRefresh(n=>n+1);}catch(e){setError(e instanceof Error?e.message:w[22]);}finally{setResuming(false);}}
@@ -38,7 +39,7 @@ export default function Conversation({id,status,updatedAt,onResume}:{id:string;s
  return <section className="conversation" aria-label={w[0]}>
   <div className="conversation-heading"><div><p className="eyebrow">LIVE CONVERSATION</p><h2>{w[0]}</h2></div><span className={`conversation-connection ${offline?'offline':''}`} aria-label={offline?w[13]:'Connected'}>●</span></div><p className="fineprint">{w[1]}</p>
   {offline&&<p className="error" role="status">{w[13]}</p>}
-  <div ref={transcript} className="conversation-transcript" role="log" aria-live="polite" aria-relevant="additions text">
+  <div ref={transcript} className="conversation-transcript" role="log" aria-live="polite" aria-relevant="additions text" onScroll={event=>{const node=event.currentTarget;followLatest.current=node.scrollHeight-node.scrollTop-node.clientHeight<180;}}>
    {!data.messages.length?<p className="conversation-empty">{w[12]}</p>:data.messages.map(m=><article className={`conversation-message ${m.role}`} key={m.id} data-message-id={m.id}><header><strong>{m.role==='user'?w[11]:'Codex'}</strong><time dateTime={new Date(m.createdAt).toISOString()}>{new Date(m.createdAt).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'})}</time></header><p>{m.body}</p>{m.attachments.length>0&&<ul>{m.attachments.map(file=><li key={file.id}><a href={`/api/jobs/${id}/conversation?message=${m.id}&file=${file.id}`}>{file.name} ↧</a><small>{(file.size/1024).toFixed(0)} KB</small></li>)}</ul>}{m.role==='user'&&<small className={`message-status ${m.status}`}>{m.kind==='revision'?w[2]:w[3]} · {m.status==='applied'?w[10]:m.status==='received'?w[9]:w[8]}</small>}</article>)}
   </div>{data.messages.length>=200&&<p className="fineprint">{w[25]}</p>}
   <form className="conversation-composer" onSubmit={event=>{event.preventDefault();void send();}} onDragOver={event=>event.preventDefault()} onDrop={event=>{event.preventDefault();if(!sending)addFiles([...event.dataTransfer.files]);}}>
