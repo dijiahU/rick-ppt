@@ -21,6 +21,7 @@ from conversation import Conversation, RevisionPending
 from interactive_host import InteractiveHostBroker, verify_frozen, bundle_frozen
 from review_sessions import (ReviewSessions, ReviewSessionError, candidate_identity,
                              runtime_identity, selected_files)
+from repair_recovery import RecoveryRoute, recovery_route
 
 REPORT_SCHEMA={
  'type':'object','additionalProperties':False,
@@ -387,6 +388,10 @@ class Execution:
     def reusable_author(self):
         if self.conversation:self.conversation.poll(force=True)
         if not self.journal:return False
+        self.correction_recovery=recovery_route(self.journal,self.job,
+            records=getattr(self,'records',None),task_id=getattr(self,'task',{}).get('id'))
+        if self.correction_recovery.author_thread:self.author_thread=self.correction_recovery.author_thread
+        if self.correction_recovery.block_author:return False
         candidates=sorted(self.journal.state['completed_stages'].items(),key=lambda item:item[1]['completed_at'],reverse=True)
         for name,receipt in candidates:
             if (name=='author' or name.startswith(('repair-','live-revision-'))) and self.journal.can_reuse(name,self.job):
@@ -466,7 +471,9 @@ class Execution:
         inventory=json.loads((packet/'inventory.json').read_text())
         motion=any(s.get('timing_targets') or any(any(k in r.get('type','').lower() for k in ('audio','video','media')) for r in s.get('media',[])) for s in inventory.get('slides',[]))
         self.reporter.review_state('visual','changes_requested' if any(f['severity']=='required' for f in visual['findings']) else 'unverified' if motion else 'passed');self.reporter.flush(force=True)
-        receipt={'artifact_sha256':digest,'round':round_number,'content_first_view':blind,**reports}
+        receipt={'artifact_sha256':digest,'round':round_number,
+                 'input_revision':original_identity['input_revision'],
+                 'plugin_version':original_identity['plugin_version'],'content_first_view':blind,**reports}
         record(self.trajectory,'emit','review.result',receipt)
         write_json(self.records/(self.task['id']+'-review-'+uuid.uuid4().hex+'.json'),receipt)
         return receipt
@@ -496,6 +503,25 @@ def run_workflow(bridge,cfg,task,job,payload,lease,reporter,trace=None,trajector
             if trace is None:run.trace.close()
 
 
+def _repair_candidate(run,base,author,findings,number,*,content_required=True,repair_thread=None):
+    """The ordinary correction sequence also serves a verified recovery route."""
+    if content_required:
+        content_name='content-revision-'+str(number)
+        run.phase(content_name,base+f' Read {findings.name}. Resolve content findings with genuine source reading, explanation and example improvements in source-notes.md and outline.json. Do not modify the PPT yet. Give precise content corrections for the author; publish the updated outline. Do not research or pad merely to consume budget.',content=True,timeout=1200)
+        run.complete_phase(content_name,['outline.json','source-notes.md',findings.name],'repair-'+str(number))
+    repair_name='repair-'+str(number)
+    thread=repair_thread or run.author_thread
+    plan=getattr(run,'recovery_plan',{})
+    if plan.get('next_phase')==repair_name and plan.get('preferred_thread_id'):
+        # Let phase consume the recovery plan instead of resuming the older
+        # author thread merely because its unchanged export is still reusable.
+        thread=None
+    run.phase(repair_name,author+f' This is a revision. Read {findings.name}; fix required findings and assess useful suggestions. Record specific changes/retained suggestions in review.md. Export to a fresh filename and update delivery.json; do not overwrite a previous export.',thread=thread,timeout=1800)
+    authored=run.delivery();source=Path(authored['path'])
+    relative=source.relative_to(run.job).as_posix() if source.is_absolute() else source.as_posix()
+    run.complete_phase(repair_name,['delivery.json',relative,findings.name],'review')
+
+
 def _run_workflow(run,bridge,cfg,task,job,payload,lease,reporter):
     if run.conversation:run.conversation.poll(force=True)
     if (run.journal and run.journal.can_reuse('delivery-ready',job) and
@@ -517,20 +543,28 @@ def _run_workflow(run,bridge,cfg,task,job,payload,lease,reporter):
     if payload.get('mode')=='edit':base+=' This is an existing-deck edit: inspect the original and limit research and changes to the requested scope. The outline describes existing pages plus authorized changes; preserve unrelated content, layout and native features. A mechanical edit needs only scoped verification, no external research or narrative rewrite.'
     research=base+' You are in the content stage. Prioritize understanding the subject: read supplied material deeply; research missing explanations, verify evidence, prepare useful examples and resolve source conflicts. Match depth to this audience and task; there is no fixed time/token ratio or search quota. Write source-notes.md and a complete reader-facing outline.json in the documented format, then run public-progress.py outline. Do not create slides yet. No filler to consume budget; identify remaining uncertainty honestly. Conclude with a concise content readiness summary.'
     author_reusable=run.reusable_author()
-    if not author_reusable and not run.reusable('research'):
+    recovery=getattr(run,'correction_recovery',RecoveryRoute())
+    if recovery.repair_round is None and not author_reusable and not run.reusable('research'):
         run.phase('research',research,content=True,timeout=2700)
         validate_outline(read_json(job,'outline.json',MAX_OUTLINE_BYTES),task.get('pages'))
         run.complete_phase('research',['outline.json','source-notes.md'],'author')
-    outline=validate_outline(read_json(job,'outline.json',MAX_OUTLINE_BYTES),task.get('pages'));reporter.set_outline(outline);reporter.flush(force=True)
+    if recovery.repair_round is None:
+        outline=validate_outline(read_json(job,'outline.json',MAX_OUTLINE_BYTES),task.get('pages'));reporter.set_outline(outline);reporter.flush(force=True)
     author=base+' Content research and outline are ready: read source-notes.md and outline.json. Build native editable pages in order and publish each actual rendered preview before proceeding. Plan semantic click groups on live multi-idea pages, preserve static exceptions and check native timing. The host review packet automatically renders representative static states for simple Appear builds; do not spend authoring time duplicating those snapshots. Inspect other important states when the supported helper cannot represent them. The host will run independent reviews afterward; do not spawn or impersonate those reviewers here. Export through the native CLI and write delivery.json containing {"path": "the exact returned exported PPTX path"}. Keep outline.json synchronized and republish it after content changes. Preserve original inputs. Finish with an author check; do not claim the independent reviews have already happened.'
     author+=' Read INTERACTIVE.md when available. Choose declarative interactive scenes for mechanisms that benefit from learner input or live code. Build through the shared runtime, with meaningful testPlan assertions and legible native fallback. Do not replace the runtime with topic-specific React. Include the native workspace path as delivery.json.workspace, besides the exported PPTX path. Scene tests use the host automatically; do not start your own network server. Native controls, code/three/ml/math/map packs and local assets are available. Native text, formulas and diagrams outside the interactive regions must remain editable.'
-    if not author_reusable:
+    author+=' After completing and checking each page, export a new independent progress PPTX through the native CLI into a fresh filename under exports/ and update delivery.json to that export and its native workspace. A progress export may contain fewer than the requested pages, so an interrupted task has a downloadable last progress version. Keep every earlier export. The final delivered export must still contain the exact requested page count and pass all final checks; a partial export is never a completed delivery.'
+    if recovery.repair_round is not None:
+        findings=job/recovery.findings_path if recovery.findings_path else job/('review-findings-'+str(recovery.repair_round)+'-'+uuid.uuid4().hex[:8]+'.json')
+        if recovery.findings_path is None:write_json(findings,recovery.findings)
+        _repair_candidate(run,base,author,findings,recovery.repair_round,
+                          content_required=recovery.content_required,repair_thread=recovery.repair_thread)
+    elif not author_reusable:
         run.phase('author',author,timeout=2700)
         authored=run.delivery()
         source=Path(authored['path']);relative=source.relative_to(job).as_posix() if source.is_absolute() else source.as_posix()
         run.complete_phase('author',['delivery.json',relative],'review')
     receipt=None;artifact=None;rendered=None;frozen=None
-    round_number=1;live_round=0
+    round_number=recovery.review_round;live_round=0
     while round_number<=3:
         try:
             run.review_tick()
@@ -557,14 +591,7 @@ def _run_workflow(run,bridge,cfg,task,job,payload,lease,reporter):
         if not required:break
         if round_number==3:raise RuntimeError('Independent reviews still found required corrections; draft preserved without delivery')
         findings=job/('review-findings-'+str(round_number)+'-'+uuid.uuid4().hex[:8]+'.json');write_json(findings,receipt)
-        content_name='content-revision-'+str(round_number)
-        run.phase(content_name,base+f' Read {findings.name}. Resolve content findings with genuine source reading, explanation and example improvements in source-notes.md and outline.json. Do not modify the PPT yet. Give precise content corrections for the author; publish the updated outline. Do not research or pad merely to consume budget.',content=True,timeout=1200)
-        run.complete_phase(content_name,['outline.json','source-notes.md'],'repair-'+str(round_number))
-        repair_name='repair-'+str(round_number)
-        run.phase(repair_name,author+f' This is a revision. Read {findings.name}; fix required findings and assess useful suggestions. Record specific changes/retained suggestions in review.md. Export to a fresh filename and update delivery.json; do not overwrite a previous export.',thread=run.author_thread,timeout=1800)
-        authored=run.delivery();source=Path(authored['path'])
-        relative=source.relative_to(job).as_posix() if source.is_absolute() else source.as_posix()
-        run.complete_phase(repair_name,['delivery.json',relative],'review')
+        _repair_candidate(run,base,author,findings,round_number)
         round_number+=1
     write_json(job/('review-receipt-'+uuid.uuid4().hex+'.json'),receipt)
     review_folder=run.records/(task['id']+'-audience-'+uuid.uuid4().hex)
