@@ -356,6 +356,7 @@ def _run_job_locked(cfg,task,lease,job,journal,recovery_plan):
         record(trajectory,'emit','task.failed',{'type':type(error).__name__,'error':str(error)})
         raise
     finally:
+        if 'reporter' in locals():reporter.finish_drafts(timeout=2)
         folder=record(trajectory,'finish',outcome,job)
         if folder:trace.emit('note','Local trajectory saved',detail={'taskId':task['id'],'runId':trajectory.run_id,'captureGaps':len(trajectory.gaps)})
         trace.stage='finished';trace.emit('phase','Execution finished');trace.close()

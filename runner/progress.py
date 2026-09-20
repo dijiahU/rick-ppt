@@ -8,6 +8,7 @@ import stat
 import time
 from urllib.parse import urlsplit, urlunsplit,parse_qsl,urlencode
 from outline import validate_outline, page_version, MAX_SLIDES, MAX_OUTLINE_BYTES, MAX_JOURNAL_BYTES
+from draft_progress import DraftProgress
 
 def public_text(value, limit=800):
     if not isinstance(value,str):return ''
@@ -62,6 +63,7 @@ class Reporter:
         self.journal_offset=0;self.journal_identity=None;self.notes=[];self.urgent=False
         self.outline=None;self.preview_content={};self.pending_content={}
         self.reviews={'content':'pending','visual':'pending'}
+        self.drafts=DraftProgress(cfg,task,job,lambda *args:self.send(*args))
         self.event('started')
 
     def set_outline(self,value):
@@ -227,6 +229,9 @@ class Reporter:
         except (OSError,ValueError):pass
 
     def flush(self,force=False,tick=None):
+        # Scan/validate/upload in one background thread, including restored jobs
+        # that enter private review and only call flush rather than public poll.
+        self.drafts.poll()
         if not force and time.monotonic()-self.last_sent<(1 if self.urgent else 5):return
         self.last_sent=time.monotonic()
         base=f'/api/worker/{self.task["id"]}'
@@ -261,3 +266,7 @@ class Reporter:
                 self.send(self.cfg,base+'?action=progress',json.dumps(body).encode(),self.task['lease'])
                 self.dirty=False;self.urgent=bool(self.pending)
             except Exception:pass
+
+    def finish_drafts(self,timeout=2):
+        """Best-effort final synchronization; never an unbounded worker shutdown."""
+        self.drafts.finish(timeout)
