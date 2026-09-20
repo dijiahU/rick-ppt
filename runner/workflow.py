@@ -17,6 +17,7 @@ from outline import validate_outline, page_version, MAX_OUTLINE_BYTES
 from progress import read_scoped
 from web_media import WebMediaBroker
 from durable import AppServer, RPCError, JournalError, task_configuration
+from model_backend import overrides,KEY_ENV,public_identity
 from conversation import Conversation, RevisionPending
 from interactive_host import InteractiveHostBroker, verify_frozen, bundle_frozen
 from review_sessions import (ReviewSessions, ReviewSessionError, candidate_identity,
@@ -125,7 +126,9 @@ class Execution:
         env=self.bridge.environment(root)
         reads=[Path(self.cfg['plugin']).resolve(),Path(self.cfg['python']).parent.parent.resolve(),
                Path('/opt/homebrew'),Path('/Applications/LibreOffice.app'),Path('/System/Library/Fonts'),Path('/Library/Fonts')]
+        profile=self.cfg.get('_model_profile')
         config=task_configuration(root,read_roots=[p for p in reads if p.exists()],tool_env=env)
+        config.update(overrides(profile))
         path=self.records/(self.task['id']+'-'+name+'-'+phase_id+'.jsonl')
         log=os.fdopen(os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'wb')
         activity=open(path,'rb');trace_stream=open(path,'rb');trajectory_stream=open(path,'rb')
@@ -139,6 +142,8 @@ class Execution:
         client_message_id=str(uuid.uuid4())
         if review_attempt:review_attempt.started(phase_id,path,client_message_id)
         def event(value):
+            if profile:
+                value=json.loads(json.dumps(value,ensure_ascii=False).replace(json.dumps(profile['api_key'],ensure_ascii=False)[1:-1],'[credential redacted]'))
             events.append(value);log.write((json.dumps(value,ensure_ascii=False)+'\n').encode());log.flush()
             if public and self.journal and value.get('type') in ('thread.started','turn.started'):
                 self.journal.bind_session(value['thread_id'],value.get('turn_id'))
@@ -164,7 +169,8 @@ class Execution:
                         self.trace.emit('note','Checkpoint deferred until files are stable',detail=type(error).__name__)
         try:
             with AppServer(cwd=root,config=config,env=env,on_event=event,on_public=public_event,tick=tick,
-                           secrets=tuple(x for x in (self.cfg.get('token'),self.task.get('lease')) if x)) as server:
+                           secrets=tuple(x for x in (self.cfg.get('token'),self.task.get('lease')) if x),
+                           provider_env={KEY_ENV:profile['api_key']} if profile else None) as server:
                 try:response=server.resume_thread(thread) if thread else server.start_thread()
                 except RPCError as error:
                     if not thread or error.code not in (-32602,-32000):raise
@@ -199,7 +205,7 @@ class Execution:
                 self.logs.append(str(path));self.threads.append({'stage':name,'thread':active_thread})
                 if public and (name=='author' or name.startswith(('repair-','live-revision-'))):self.author_thread=active_thread
                 stage={'name':name,'seconds':round(time.monotonic()-started,3),'usage':usage_summary(events),
-                       'content_work':content,'thread':active_thread,'resumed':bool(thread),'log':str(path),'transport':'app-server'}
+                       'content_work':content,'thread':active_thread,'resumed':bool(thread),'log':str(path),'transport':'app-server','model':public_identity(profile)}
                 self.stages.append(stage);self.trace.emit('phase',name+' completed',state='completed',detail=stage)
                 record(self.trajectory,'end',result=result)
                 return (json.loads(result) if schema else result),active_thread
@@ -207,7 +213,7 @@ class Execution:
             if public and self.journal:self.journal.interrupt(reason='phase_interrupted')
             if review_attempt:review_attempt.pending(type(error).__name__)
             self.stages.append({'name':name,'seconds':round(time.monotonic()-started,3),'usage':usage_summary(events),
-                                'content_work':content,'log':str(path),'failed':type(error).__name__})
+                                'content_work':content,'log':str(path),'failed':type(error).__name__,'model':public_identity(profile)})
             self.trace.emit('error',name+' failed',state='failed',detail=type(error).__name__)
             record(self.trajectory,'end',error=error)
             raise

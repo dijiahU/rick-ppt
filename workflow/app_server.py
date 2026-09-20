@@ -222,10 +222,18 @@ class AppServer:
     def __init__(self, *, cwd: Path | str, config: dict, env: dict | None = None,
                  command: list[str] | None = None, on_event: Callable[[dict], None] | None = None,
                  on_public: Callable[[dict], None] | None = None, tick: Callable[[], None] | None = None,
-                 secrets: tuple[str, ...] = (), request_timeout: float = 30, max_line: int = MAX_LINE):
+                 secrets: tuple[str, ...] = (), request_timeout: float = 30, max_line: int = MAX_LINE,
+                 provider_env: dict | None = None):
         self.cwd = Path(cwd).resolve(strict=True)
         self.config = copy.deepcopy(config)
         self.env = child_environment(self.cwd, env)
+        if provider_env:
+            if set(provider_env) != {'PPTX_MODEL_API_KEY'} or not isinstance(provider_env['PPTX_MODEL_API_KEY'],str):
+                raise ValueError('Only the selected model API key may enter the provider process')
+            if self.config.get('shell_environment_policy',{}).get('inherit')!='none':
+                raise ValueError('Provider authentication requires isolated tool environments')
+            self.env.update(provider_env)
+            secrets=(*secrets,provider_env['PPTX_MODEL_API_KEY'])
         self.command = command or command_for(self.config)
         self.on_event, self.on_public, self.tick = on_event, on_public, tick
         self.secrets, self.request_timeout, self.max_line = secrets, request_timeout, max_line

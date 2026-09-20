@@ -1,0 +1,8 @@
+{
+  "model": "REPLACE_WITH_PROVIDER_MODEL_ID",
+  "base_url": "https://api.example.com/v1",
+  "wire_api": "responses",
+  "api_key_env": "PPTX_MODEL_API_KEY",
+  "web_search": "disabled",
+  "image_generation": false
+}

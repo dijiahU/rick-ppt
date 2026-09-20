@@ -241,6 +241,8 @@ def _run_job(cfg,task,lease):
     # and rejects corrupt/gapped histories or an orphan projection in either case.
     existing=(state_root/task['id']/'events'/'00000000000000000001.json').exists()
     from durable import HOST_JOURNAL_LIMITS
+    from model_backend import bind_task
+    bind_task(state_root,task['id'],cfg.get('_model_profile'),existing)
     with Journal(state_root,task['id'],plugin_version=None if existing else version,secrets=(cfg['token'],task['lease']),limits=HOST_JOURNAL_LIMITS) as journal:
         plan=None
         if journal.state.get('snapshot_id'):
@@ -382,9 +384,19 @@ def execute_task(cfg,task):
         except Exception as notify_error:print('Failure notification pending:',task['id'],type(notify_error).__name__,public_text(str(notify_error)),flush=True)
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--self-test',action='store_true');parser.add_argument('--codex-smoke',action='store_true');parser.add_argument('--render-smoke',action='store_true');parser.add_argument('--once',action='store_true');parser.add_argument('--wait-for-worker',action='store_true',help='Wait for a draining supervisor to release its lock');args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--self-test',action='store_true');parser.add_argument('--codex-smoke',action='store_true');parser.add_argument('--render-smoke',action='store_true');parser.add_argument('--model-profile',type=Path);parser.add_argument('--model-smoke',action='store_true');parser.add_argument('--once',action='store_true');parser.add_argument('--wait-for-worker',action='store_true',help='Wait for a draining supervisor to release its lock');args=parser.parse_args()
     if sys.platform!='darwin': raise SystemExit('This runner is validated only for macOS.')
     cfg=settings()
+    profile_path=args.model_profile or cfg.get('model_profile')
+    if profile_path:
+        from model_backend import load_profile
+        cfg['_model_profile']=load_profile(profile_path)
+    if args.model_smoke:
+        from model_smoke import smoke
+        return smoke(cfg)
+    if args.codex_smoke and profile_path:
+        from model_smoke import smoke
+        return smoke(cfg)
     if args.self_test:return self_test(cfg)
     if args.codex_smoke:return codex_smoke(cfg)
     if args.render_smoke:return render_smoke(cfg)

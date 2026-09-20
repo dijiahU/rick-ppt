@@ -55,6 +55,7 @@ jobs:
           pptx-agent/.venv/bin/python runner/test-review-sessions.py
           pptx-agent/.venv/bin/python runner/test-repair-recovery.py
           pptx-agent/.venv/bin/python runner/test-draft-progress.py
+          pptx-agent/.venv/bin/python runner/test-model-backend.py
           pptx-agent/.venv/bin/python runner/test-installed-hooks.py
           pptx-agent/.venv/bin/python runner/test-update-plugin.py
           pptx-agent/.venv/bin/python runner/test-acceptance-migration.py
