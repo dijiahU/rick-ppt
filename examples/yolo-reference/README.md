@@ -8,6 +8,11 @@ They pin **Ultralytics YOLOv8 detection 8.2.0**, commit
 detector, pretrained weights, a browser, or the future website task. No benchmark
 metrics or final scene/deck acceptance are established.
 
+A separate [pinned pretrained-model compatibility probe](real-model.md) now
+records real CPU and browser WASM inference, with 11 browser checks and 9 formal
+import checks passing. It has its own provenance and hashes; it does not change
+the scope of these scalar scripts or certify the future website presentation.
+
 Python 3.11+ is sufficient; no packages, network, credentials or datasets are
 needed. From the repository root, print the calculated fixtures or run checks:
 

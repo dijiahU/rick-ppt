@@ -1,7 +1,9 @@
 # YOLO case preparation
 
-Status: **prepared, not submitted**. The CNN delivery and acceptance gate remains
-required before creating the second website task.
+Status: **prepared, not submitted**. Release smoke and CNN functional/native
+checks have passed. YOLO admission can now proceed while CNN's remaining
+independent audience reviews run; both cases still require their own complete
+review and delivered-artifact verification before acceptance.
 
 The [18-slide brief](yolo-prompt.md) retains the selected Ultralytics v8.2.0
 implementation, numerical fixtures, commented code, partial-head optimization,
@@ -38,3 +40,34 @@ deployment must be followed by an exact task/owner/brief/status readback.
 The separate [numerical reference](../../examples/yolo-reference/README.md)
 passes 75 checks. Neither preparation result certifies a finished presentation,
 a real pretrained detector or PowerPoint execution.
+
+## Separate real-model feasibility result
+
+The [pinned model compatibility probe](../../examples/yolo-reference/real-model.md)
+completed on 2026-09-20: official YOLOv8n release weights were exported with the
+verified Ultralytics v8.2.0 commit, executed with CPU ONNX Runtime, and run through
+the existing production `ModelRunner` using its actual browser button and WASM
+provider. **11/11 browser checks and 9/9 formal scene/asset import checks passed**;
+both browser screenshots were reviewed. Precise source, original weight, exported
+ONNX, input/output and evidence hashes are in the
+[non-executable evidence manifest](../../examples/yolo-reference/real-model-observed.json).
+The weight checkpoint internally records `8.0.0.dev0`; the v8.2.0 release and
+exporter pin must not be presented as its training version.
+
+The independent scalar reference remains a separate 75-check result. Actual
+single-image model execution is now evidenced, but the **formal YOLO task is
+still not submitted**, and the prepared **host static asset handoff has not been
+executed**. No final lesson, native fallback, export/bundle or desktop PowerPoint
+acceptance follows from the 11+9 checks. CNN's 194 frozen-scene tests, 679
+assertions, additional 95 interaction checks and all-page native inspection
+precede YOLO admission. Running the remaining independent CNN reviews alongside
+YOLO creation changes scheduling, not either case's final acceptance criteria.
+
+The prepared private directory contains only static ONNX/image/JSON assets,
+provenance, exact hashes and declared licenses; normal import requires no
+attachment program execution. A future owner-scoped task handoff must clearly
+identify these as host-provided test assets. The website still does not allow
+`.onnx` or `.pt` uploads, and the measured ONNX size of 12,823,520 bytes exceeds
+the 10 MiB attachment limit. This preparation changes neither those rules nor
+the runtime, runner, release or website, and it does not encode or rename a model
+to evade the attachment rules.

@@ -212,11 +212,15 @@ Primary sources:
   through the shared DSL/runtime/ML adapter. Test, independently review, export and
   verify the second bundle. Do not build a separate YOLO runtime. Preparation:
   the [pinned independent numerical reference](../examples/yolo-reference/README.md)
-  passes 75 checks, including IoU/NMS/DFL, CIoU and toy-logit optimization. This
-  does not submit the task or approve a full model, ONNX execution or teaching deck.
+  passes 75 checks, including IoU/NMS/DFL, CIoU and toy-logit optimization. A
+  [separate real-model probe](../examples/yolo-reference/real-model.md) passes
+  11 browser and nine import checks with genuine pretrained YOLOv8n weights.
+  Neither probe accepts a finished teaching deck.
   The [v003 admission preparation](cases/yolo-preparation.md) adds lessons from
   actual CNN edits and passes 14 executions over seven queue/identity boundaries;
-  submission remains gated on the CNN acceptance result.
+  CNN generation, functional tests and native inspection now precede admission;
+  its remaining independent audience reviews may overlap YOLO creation. Both
+  final acceptance gates remain required.
 - [ ] **18 — Desktop verification and final report.** Attempt real macOS
   PowerPoint open/load/click/drag/keyboard/slider/slideshow/save/reopen/settings
   persistence and code interaction. Windows/Web are only marked verified if

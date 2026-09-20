@@ -15,6 +15,9 @@ by preparing these files. Case execution begins only after the release smoke gat
    account owner, exact prompt, outline revision and timestamps without credentials.
 3. Review CNN's native and interactive artifacts, then submit YOLO using its
    [brief](yolo-prompt.md), English and 18 slides. Reuse the release under test.
+   After CNN's actual functional tests and native inspection pass, its remaining
+   independent audience reviews may continue alongside YOLO creation. Neither
+   case is accepted until its own reviews and delivered-pair checks pass.
 4. Retain native `.pptx`, matching interactive workspace, portable bundle,
    commented code, model/data provenance when applicable, testPlan reports and
    initial/intermediate/reset captures. Record failures and fixes against the

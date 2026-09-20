@@ -1,0 +1,441 @@
+{
+  "schema": "yolo-real-model-observed/v1",
+  "scope": "One actual official pretrained model and one public-domain image in private CPU/browser compatibility checks; no task submission, task handoff, final deck or desktop Office approval.",
+  "private_proof_id": "yolo-real-model-20260920T010045Z-a1f4a5",
+  "observed_utc": {
+    "cpu_export_started": "2026-09-20T01:07:34.296917+00:00",
+    "cpu_export_finished": "2026-09-20T01:07:48.355371+00:00",
+    "browser_started": "2026-09-20T01:13:32.210789+00:00",
+    "browser_finished": "2026-09-20T01:13:35.120428+00:00"
+  },
+  "status_at_preparation": {
+    "actual_cpu_inference": "passed",
+    "actual_browser_inference": {
+      "passed": 11,
+      "total": 11
+    },
+    "formal_scene_and_asset_import": {
+      "passed": 9,
+      "total": 9
+    },
+    "formal_yolo_task_submitted": false,
+    "host_asset_handoff_to_task_executed": false,
+    "native_export_bundle_verified": false,
+    "desktop_powerpoint_verified": false
+  },
+  "exporter": {
+    "repository": "https://github.com/ultralytics/ultralytics",
+    "tag": "v8.2.0",
+    "commit": "27836d34fa7b19d38af22200805aa5d25dddaedf",
+    "tag_verification_url": "https://api.github.com/repos/ultralytics/ultralytics/git/ref/tags/v8.2.0",
+    "source_archive_sha256": "49c9e09609b01acd70f6548361a08166c2e2ca7118d2bdcbe49de3e441d686d9"
+  },
+  "weight_release": {
+    "tag": "v8.2.0",
+    "asset_id": 178977528,
+    "asset_created_at": "2024-07-11T12:43:02Z",
+    "checkpoint_metadata": {
+      "date": "2022-12-30T00:12:08.084698",
+      "version": "8.0.0.dev0",
+      "license": "AGPL-3.0 License (https://ultralytics.com/license)",
+      "docs": "https://docs.ultralytics.com",
+      "epoch": -1,
+      "best_fitness": null
+    },
+    "version_caution": "Release tag and exporter version do not establish the original training version."
+  },
+  "artifacts": {
+    "exporter_source_zip": {
+      "bytes": 1637624,
+      "sha256": "49c9e09609b01acd70f6548361a08166c2e2ca7118d2bdcbe49de3e441d686d9",
+      "url": "https://codeload.github.com/ultralytics/ultralytics/zip/27836d34fa7b19d38af22200805aa5d25dddaedf"
+    },
+    "official_weights": {
+      "bytes": 6549796,
+      "sha256": "f59b3d833e2ff32e194b5bb8e08d211dc7c5bdf144b90d2c8412c47ccfc83b36",
+      "url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8n.pt"
+    },
+    "exported_onnx": {
+      "bytes": 12823520,
+      "sha256": "2b0f061c461283adafe0706e484af8651e9fea625e616f9bcbf542f9020ebbe3"
+    },
+    "original_image": {
+      "bytes": 791555,
+      "sha256": "88431cd9653ccd539741b555fb0a46b61558b301d4110412b5bc28b5e3ea6cb5",
+      "url": "https://raw.githubusercontent.com/scikit-image/scikit-image/v0.19.3/skimage/data/astronaut.png"
+    },
+    "resized_input_png": {
+      "bytes": 647739,
+      "sha256": "c055d078281d8af080bed7480d872e39e66790efc67acb95109bdee7b95dd8c1"
+    },
+    "input_rgba_bytes": {
+      "bytes": 1638400,
+      "sha256": "d0a94b3656382f4a787b7be0bad31c1e679f40b7895cc5a43f3628cc01b735b6"
+    },
+    "input_rgba_json": {
+      "bytes": 5796573,
+      "sha256": "55cbdd711cbeb1d77437db8d42e99c5b42b09339bc8b70b60538d24d7d08a1c9"
+    },
+    "input_nchw_float32_npy": {
+      "bytes": 4915328,
+      "sha256": "82c76718ebbce158a6645fb030bf77cf9d6f9e2f72207aaa71b337f6311a80cd"
+    },
+    "output0_float32_npy": {
+      "bytes": 2822528,
+      "sha256": "8035d774e35088023928529b0299f42a5ab42a7ef7d38bad99fa91df30ee01ca"
+    },
+    "tested_scene": {
+      "bytes": 1451,
+      "sha256": "7e2fb915fa1be6d4a730da3daee6733b845ab6071c9f3344cf479df9abe16313"
+    },
+    "coco_labels": {
+      "bytes": 1494,
+      "sha256": "01ff2802ec46c52d5eb521def1f4309354f499eea4fcd44ad4b3f93d3f08a121"
+    },
+    "agpl_license": {
+      "bytes": 34523,
+      "sha256": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0"
+    },
+    "image_license_source": {
+      "bytes": 38933,
+      "sha256": "e5eed57009b9cf54911e286d194a66a706768d9c46e4c9479854e2d9968d97cd",
+      "url": "https://raw.githubusercontent.com/scikit-image/scikit-image/v0.19.3/skimage/data/_fetchers.py"
+    }
+  },
+  "license": {
+    "source_and_checkpoint_declared": "AGPL-3.0",
+    "source_url": "https://github.com/ultralytics/ultralytics/blob/27836d34fa7b19d38af22200805aa5d25dddaedf/LICENSE",
+    "assets_repository_license_url": "https://raw.githubusercontent.com/ultralytics/assets/main/LICENSE",
+    "image_declared": "Public domain",
+    "image_credit": "NASA / Eileen Collins; scikit-image data.astronaut",
+    "image_evidence_section": "pinned _fetchers.py astronaut(), lines 405-424",
+    "asset_distribution_by_this_commit": false
+  },
+  "environment": {
+    "platform": "macOS-26.2-arm64-arm-64bit",
+    "python": "3.11.14 (main, Oct  9 2025, 16:16:55) [Clang 17.0.0 (clang-1700.6.3.2)]",
+    "installed_python_distributions": {
+      "certifi": "2026.7.22",
+      "charset-normalizer": "3.5.1",
+      "coloredlogs": "15.0.1",
+      "contourpy": "1.3.3",
+      "cycler": "0.12.1",
+      "filelock": "4.0.1",
+      "flatbuffers": "25.12.19",
+      "fonttools": "4.65.0",
+      "fsspec": "2026.9.0",
+      "humanfriendly": "10.0",
+      "idna": "3.20",
+      "Jinja2": "3.1.6",
+      "kiwisolver": "1.5.1",
+      "MarkupSafe": "3.0.3",
+      "matplotlib": "3.11.2",
+      "mpmath": "1.3.0",
+      "networkx": "3.6.1",
+      "numpy": "1.26.4",
+      "onnx": "1.16.2",
+      "onnxruntime": "1.18.1",
+      "opencv-python": "4.10.0.84",
+      "packaging": "26.3",
+      "pandas": "3.0.6",
+      "pillow": "12.3.0",
+      "pip": "26.0",
+      "protobuf": "7.36.2",
+      "psutil": "7.2.2",
+      "py-cpuinfo": "9.0.0",
+      "pyparsing": "3.3.2",
+      "python-dateutil": "2.9.0.post0",
+      "PyYAML": "6.0.3",
+      "requests": "2.34.2",
+      "scipy": "1.17.1",
+      "seaborn": "0.13.2",
+      "setuptools": "80.10.2",
+      "six": "1.17.0",
+      "sympy": "1.14.0",
+      "thop": "0.1.1.post2209072238",
+      "torch": "2.2.2",
+      "torchvision": "0.17.2",
+      "tqdm": "4.70.1",
+      "typing_extensions": "4.16.0",
+      "ultralytics": "8.2.0 (pinned source archive above)",
+      "urllib3": "2.8.0"
+    },
+    "onnxruntime_web": "1.30.0",
+    "playwright_python": "1.63.0",
+    "browser": "bundled Chromium headless",
+    "browser_version_note": "The browser run used default launch; browser.version was not recorded in its receipt. The installed Playwright catalog lists Chromium 153.0.8010.12, revision 1243."
+  },
+  "export_options": {
+    "format": "onnx",
+    "imgsz": 640,
+    "opset": 12,
+    "dynamic": false,
+    "simplify": false,
+    "batch": 1,
+    "device": "cpu",
+    "half": false
+  },
+  "onnx": {
+    "ir_version": 7,
+    "opsets": [
+      {
+        "domain": "",
+        "version": 12
+      }
+    ],
+    "external_data": false,
+    "operators": {
+      "Conv": 64,
+      "Sigmoid": 58,
+      "Mul": 60,
+      "Split": 9,
+      "Add": 9,
+      "Concat": 19,
+      "MaxPool": 3,
+      "Constant": 19,
+      "Resize": 2,
+      "Reshape": 5,
+      "Transpose": 2,
+      "Softmax": 1,
+      "Shape": 1,
+      "Gather": 1,
+      "Div": 2,
+      "Slice": 2,
+      "Sub": 2
+    },
+    "export_metadata_date": "2026-09-20T09:07:47.890517",
+    "exported_binary_note": "Export date and source filename are included in metadata; a fresh export need not be byte-identical to this artifact."
+  },
+  "preprocessing": {
+    "sourceSha256": "88431cd9653ccd539741b555fb0a46b61558b301d4110412b5bc28b5e3ea6cb5",
+    "sourceSize": [
+      512,
+      512
+    ],
+    "destinationSize": [
+      640,
+      640
+    ],
+    "resize": "OpenCV INTER_LINEAR",
+    "letterbox": {
+      "scale": 1.25,
+      "left": 0,
+      "top": 0,
+      "right": 0,
+      "bottom": 0
+    },
+    "channels": "RGB",
+    "layout": "NCHW",
+    "normalization": "float32 pixel /255",
+    "inputShape": [
+      1,
+      3,
+      640,
+      640
+    ],
+    "inputTensorSha256": "82c76718ebbce158a6645fb030bf77cf9d6f9e2f72207aaa71b337f6311a80cd",
+    "rgbaBytesSha256": "d0a94b3656382f4a787b7be0bad31c1e679f40b7895cc5a43f3628cc01b735b6"
+  },
+  "cpu_ort": {
+    "providers": [
+      "CPUExecutionProvider"
+    ],
+    "inputs": [
+      {
+        "name": "images",
+        "type": "tensor(float)",
+        "shape": [
+          1,
+          3,
+          640,
+          640
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output0",
+        "type": "tensor(float)",
+        "shape": [
+          1,
+          84,
+          8400
+        ]
+      }
+    ],
+    "firstRunSeconds": 0.05456241616047919,
+    "outputSha256": "8035d774e35088023928529b0299f42a5ab42a7ef7d38bad99fa91df30ee01ca",
+    "allFinite": true,
+    "classProbabilityRange": [
+      -1.1920928955078125e-07,
+      0.714219331741333
+    ]
+  },
+  "pytorch_comparison": {
+    "sameShape": true,
+    "maxAbsoluteError": 0.002685546875,
+    "classScoresMaxAbsoluteError": 1.3828277587890625e-05,
+    "boxCoordinatesMaxAbsoluteError": 0.002685546875
+  },
+  "cpu_postprocessing": {
+    "adapter": "current ml yolo adapter equivalent",
+    "confidence": 0.25,
+    "confidenceBoundary": "inclusive >=, matching current adapter; upstream teaching oracle uses strict >. No score here equals0.25.",
+    "iouThreshold": 0.45,
+    "classAware": true,
+    "coordinates": "xyxy input pixels; divide1.25 for original image pixels",
+    "candidateCount": 10,
+    "detections": [
+      {
+        "index": 8188,
+        "classId": 0,
+        "label": "person",
+        "score": 0.714219331741333,
+        "box": [
+          6.562347412109375,
+          17.1497802734375,
+          454.348388671875,
+          639.257080078125
+        ],
+        "originalImageBoxUnclipped": [
+          5.2498779296875,
+          13.71982421875,
+          363.4787109375,
+          511.4056640625
+        ],
+        "originalImageBoxClipped": [
+          5.2498779296875,
+          13.71982421875,
+          363.4787109375,
+          511.4056640625
+        ]
+      }
+    ]
+  },
+  "browser": {
+    "plugin_version": "0.1.0+codex.20260919234350",
+    "runtime_before": {
+      "sha256": "8635c55584176218c6eadbc829d8796531bc99887469f24f6fc2345130222d37",
+      "files": 97,
+      "configuration": "7653f243bdd5d4dc6f1b4ba6f4f3d2f7ebbddf009a759299ad15d1a6a779716a"
+    },
+    "runtime_after": {
+      "sha256": "8635c55584176218c6eadbc829d8796531bc99887469f24f6fc2345130222d37",
+      "files": 97,
+      "configuration": "7653f243bdd5d4dc6f1b4ba6f4f3d2f7ebbddf009a759299ad15d1a6a779716a"
+    },
+    "copied_runtime_before": {
+      "sha256": "8635c55584176218c6eadbc829d8796531bc99887469f24f6fc2345130222d37",
+      "files": 97,
+      "configuration": "7653f243bdd5d4dc6f1b4ba6f4f3d2f7ebbddf009a759299ad15d1a6a779716a"
+    },
+    "copied_runtime_after": {
+      "sha256": "8635c55584176218c6eadbc829d8796531bc99887469f24f6fc2345130222d37",
+      "files": 97,
+      "configuration": "7653f243bdd5d4dc6f1b4ba6f4f3d2f7ebbddf009a759299ad15d1a6a779716a"
+    },
+    "provider": "wasm",
+    "wasm_threads": 1,
+    "real_ui_action": "Run model button click",
+    "route_mocking": false,
+    "runtime_state_injection": false,
+    "csp_relaxed": false,
+    "load_seconds": 1.4400294998195022,
+    "run_seconds": 0.4292732090689242,
+    "result": [
+      {
+        "box": [
+          6.562347412109375,
+          17.1497802734375,
+          454.34832763671875,
+          639.257080078125
+        ],
+        "score": 0.7142198085784912,
+        "classId": 0
+      }
+    ],
+    "page_errors": [],
+    "console_errors": [],
+    "failed_requests": [],
+    "cpu_score_max_absolute_difference": 4.76837158203125e-07,
+    "cpu_box_max_absolute_difference_input_pixels": 6.103515625e-05,
+    "comparison_tolerances": {
+      "score_absolute": 0.0001,
+      "box_absolute_input_pixels": 0.02
+    },
+    "reviewed_capture_count": 2
+  },
+  "formal_import": {
+    "native_workspace": "new copy of trusted blank.pptx",
+    "operations": [
+      "validate_spec",
+      "import_scene"
+    ],
+    "passed": 9,
+    "total": 9,
+    "source_scene_sha256": "7e2fb915fa1be6d4a730da3daee6733b845ab6071c9f3344cf479df9abe16313",
+    "imported_scene_sha256": "3fa7ff1b48a925788211652a2dd86e04e0f26452b9913caec7513ee0af959e49",
+    "source_original_and_native_parts_preserved": true,
+    "no_attachment_program_executed": true,
+    "native_attach_render_export_bundle_in_scope": false
+  },
+  "retained_failure": {
+    "stage": "first scene fixture validation",
+    "cause": "RGBA array embedded in props exceeds formal schema maxItems=10000",
+    "fix": "Use existing same-origin local JSON dataSource and bind inputs; no schema/data/upload limit changes",
+    "successful_input_json_bytes": 5796573
+  },
+  "private_evidence_records": {
+    "cpu_export_and_inference": {
+      "private_relative_path": "evidence/export-inference.json",
+      "sha256": "59daa7f274f816bde35e91f0557784969cc929631e80c63f6ded9f00b98fb0d4"
+    },
+    "first_inline_array_rejection": {
+      "private_relative_path": "evidence/browser-inference.json",
+      "sha256": "2857bfc12530023aea89b4be45fa3b7cf8813835c84f96590c6c86383f477e88"
+    },
+    "successful_browser_inference": {
+      "private_relative_path": "evidence/browser-data-inference.json",
+      "sha256": "670afc036a0a636ac160141cc4015d0d4d859b8ca72c26533c818c31cecc11c6"
+    },
+    "formal_import": {
+      "private_relative_path": "evidence/formal-import.json",
+      "sha256": "99e2c116a913b8c8f7d7306200b24cbf4cff32d21c29f6f44e02487882ef9cd3"
+    },
+    "reviewed_ready_capture": {
+      "private_relative_path": "evidence/browser-data-ready.png",
+      "sha256": "c61d901b82a7bb9ad4d70569bdb0205722289df5c360ffdadcbd54f96abcfaf0"
+    },
+    "reviewed_result_capture": {
+      "private_relative_path": "evidence/browser-data-result.png",
+      "sha256": "e46e3a02e5878646da3b87f3782499b003d0b17cd52528d1166171790af7080e"
+    },
+    "host_static_asset_manifest": {
+      "private_relative_path": "host-handoff/SHA256SUMS.json",
+      "sha256": "eba7106f8098d51381a72f8ad314e5824f4d59ada9e517f65764bb799539e24c"
+    },
+    "private_file_inventory": {
+      "private_relative_path": "evidence/sha256-manifest.json",
+      "sha256": "df2ea145fc89893c9cade3cb60892a71e484f091dc958290233cf206918c8d14"
+    },
+    "export_and_cpu_probe_source": {
+      "private_relative_path": "export_and_infer.py",
+      "sha256": "18b307724613aa9cbb8f82fe9a48b1a801c67eff82332b3c785e1e7dfdd4c9e9"
+    },
+    "browser_probe_source": {
+      "private_relative_path": "browser_verify_data.py",
+      "sha256": "a7675e379e41ac26a9b3147853ea735183599b30383147f1e38560d38797740e"
+    },
+    "formal_import_probe_source": {
+      "private_relative_path": "verify_import.py",
+      "sha256": "168049178bcaba38053a6310d590cb0d5bea1e76782003e3dcb273458068df93"
+    }
+  },
+  "limitations": [
+    "Single-image inference is not dataset evaluation or general performance measurement.",
+    "Current adapter uses inclusive score >= confidence; the teaching scalar oracle and upstream postprocessing use strict >. No candidate here equals0.25.",
+    "Adapter receives already resized RGBA and returns input-pixel coordinates; arbitrary images need correct resize/letterbox and inverse mapping.",
+    "The website rejects ONNX/PT types and the model exceeds its 10 MiB attachment limit; host static assets are prepared but not handed to a task.",
+    "No author task, final scene/deck, native fallback/export/bundle or desktop Office acceptance follows from this probe."
+  ]
+}
