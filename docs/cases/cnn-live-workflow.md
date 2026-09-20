@@ -147,10 +147,15 @@ desktop/mobile conversation/upload/reconnect/resume check passed. This local UI
 test used synthetic fixtures and does not change the production-browser limitation.
 
 Production message admission here used an owner-authorized data migration,
-not browser form clicks. The production browser connection is unavailable: the
-installed Edge automation extension is disabled. Upload/UI behavior has separate
+not browser form clicks. At that stage the production browser connection was
+unavailable: the installed Edge automation extension was disabled. Upload/UI behavior has separate
 local route/browser and live isolated-phase evidence; this exercise does not
 claim production form or file-upload interaction.
+
+Later official Computer Use access reached the signed-in production page and
+verified the v33 initial-scroll repair, Connected status and recovery point;
+see [the exact UI scope](../conversation-scroll-review.md). That does not turn
+the earlier migration-based submissions into browser-form submissions.
 
 ## Actual delivery retrieval
 

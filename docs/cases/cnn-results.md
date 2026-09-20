@@ -118,12 +118,24 @@ the preserved 15/18 diagnostic report is not presented as an all-pass result.
 The corrected result scene then passed 61 independent checks, including one
 actual learning-rate-zero edit/run, all eight returned examples and Reset.
 Both 75% and 50% retain their visible percent sign and held-out label. The
-author reports 194 scene tests with 679 assertions across all 20 scenes; those
-authoring receipts still need the host's frozen-artifact validation and review.
+author reports 194 scene tests with 679 assertions across all 20 scenes. The
+host independently reran the frozen candidate with the same passing counts;
+[frozen-candidate evidence](cnn-frozen-review.md) also records source correlation
+and 95 additional scoped interaction checks. Audience approval is still pending.
+
+The first independent audience phase exceeded its default 900-second limit after
+inspecting all 234 interactive captures. No review verdict or final delivery was
+produced. The completed author receipt and exported files remained intact. The
+host increased the nine named review-phase limits to 2700 seconds, retained the
+10800-second overall limit and the exact plugin version, drained its idle worker,
+and conditionally requeued the same failed task at **2026-09-20 01:25 UTC**.
+The new journal points to the recovered workspace at input revision 9 with
+`next_phase=review`; authoring remains recorded as completed. The pending review
+is restarted from the preserved export rather than rebuilding the 20 pages.
 
 ## Pending acceptance
 
-The native deck, scene reports, actual edited-code execution, mechanism animation,
-independent content/visual reviews, matching portable bundle and delivered file
-hashes remain pending. This document is a progress record, not a pass certificate.
+Independent content/visual approval, matching portable bundle and delivered-file
+retrieval remain pending. The exact completed authoring and scoped interaction
+checks above are not yet an accepted website delivery.
 Desktop PowerPoint playback remains separately unverified.

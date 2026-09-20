@@ -31,3 +31,11 @@ The validated archive has 142 files, SHA-256
 `36c17ea9961f8c35f4436ac2f51fb875456ee029b7524f240b0531c865e404ee`.
 Its public audience is unchanged. This release changes no schema or worker
 protocol and does not certify either teaching case.
+
+An actual signed-in Edge visit after deployment confirmed the initial-scroll
+repair: the CNN page opened with its latest 08:52 author completion visible in
+the conversation, Connected status and the saved 09:26 recovery point. The task
+was running again. Private `proof/site-v33-live-recovery` preserves the screenshot.
+This is production initial-load evidence only; sending, uploading and following
+a subsequent reply still have the separate local-route evidence above. A later
+Computer Use scroll returned `noWindowsAvailable` without providing a new view.

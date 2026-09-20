@@ -200,6 +200,12 @@ Primary sources:
   gradients and learning; editable code runs inside the slide. Choose enough pages
   for depth. Test interactions, review content/visuals independently, export and
   verify an actual bundle. Keep the original website task unchanged.
+  Progress: all 20 pages exported; the host independently passed 194 scene tests
+  and 679 assertions. [Frozen-candidate checks](cases/cnn-frozen-review.md) add
+  source/hash correlation and targeted learner-input evidence. A 900-second
+  review timeout retained the completed author receipt; the same-version worker
+  restored revision 9 for review with 2700-second phase budgets. Independent
+  review approval and actual delivered-pair retrieval remain open.
 - [ ] **17 — YOLO case.** Write a comparable prompt teaching detection, boxes,
   grid/head outputs, IoU, confidence thresholds, NMS, loss/training and inference.
   Distinguish versions precisely; demonstrate editable code and intuitive animation

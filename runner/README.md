@@ -37,8 +37,17 @@ arguments or website client code.
 
 For a complex interactive lesson, the host can set `job_timeout_seconds` up to
 10800 and `phase_timeout_seconds` to an object such as `{"author":7200}`. The
-authoring override is still bounded by the remaining overall task deadline;
+phase override is still bounded by the remaining overall task deadline;
 ordinary jobs retain the existing 45-minute authoring and 90-minute total defaults.
+Independent reviews default to 900 seconds each. Lessons with many interactive
+captures may need explicit overrides for `content-first-1`, `content-evidence-1`
+and `visual-1`; set the corresponding `-2` and `-3` names for repair rounds too.
+The production 20-page CNN case uses 2700 seconds for each of these nine phases
+after its first review exceeded 900 seconds while inspecting 234 captures.
+Keep these limits in the private host settings, not the task prompt. Settings are
+read when the supervisor starts: drain and hand off the worker before retrying.
+Retain the exact plugin version when resuming unchanged completed authoring;
+verified revision/artifact receipts allow the workflow to restart at review.
 
 ## Isolation and workflow
 
