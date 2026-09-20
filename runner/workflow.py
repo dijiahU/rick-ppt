@@ -13,7 +13,7 @@ import uuid
 from admin_trace import AdminTrace
 from trajectory import record
 from assets import AssetImporter
-from outline import validate_outline, MAX_OUTLINE_BYTES
+from outline import validate_outline, page_version, MAX_OUTLINE_BYTES
 from progress import read_scoped
 from web_media import WebMediaBroker
 from durable import AppServer, RPCError, JournalError, task_configuration
@@ -486,6 +486,13 @@ def _run_workflow(run,bridge,cfg,task,job,payload,lease,reporter):
             run.review_tick()
             reporter.set_outline(validate_outline(read_json(job,'outline.json',MAX_OUTLINE_BYTES),task.get('pages')))
             artifact,frozen,rendered,packet=run.freeze()
+            # A recovered author may skip every public phase. Publish this
+            # validated frozen candidate before review, without reusing verdicts.
+            for slide,path in enumerate(rendered['pages'],1):
+                reporter.pending[slide]=(frozen,Path(path))
+                reporter.pending_content[slide]=page_version(reporter.outline,slide)
+            for kind in ('content','visual'):reporter.review_state(kind,'pending')
+            reporter.flush(force=True,tick=run.review_tick)
             receipt=run.review(artifact,rendered,packet,payload,round_number)
             run.review_tick()
         except RevisionPending:
@@ -523,7 +530,9 @@ def _run_workflow(run,bridge,cfg,task,job,payload,lease,reporter):
     review_summary=review_folder/'review.md'
     with review_summary.open('x') as stream:stream.write('\n'.join(lines))
     # The reviewed frozen bytes, not a mutable author file, are delivered.
-    for slide,path in enumerate(rendered['pages'],1):reporter.pending[slide]=(frozen,Path(path))
+    for slide,path in enumerate(rendered['pages'],1):
+        reporter.pending[slide]=(frozen,Path(path))
+        reporter.pending_content[slide]=page_version(reporter.outline,slide)
     # Keep authoritative delivery/review bytes inside the recoverable task, not
     # only inside disposable reviewer roots. Each successful version is immutable.
     version_dir=job/'delivery-versions'/uuid.uuid4().hex;version_dir.mkdir(parents=True,mode=0o700)

@@ -1,3 +1,4 @@
+import base64
 import importlib.util
 import io
 import json
@@ -6,12 +7,14 @@ import sys
 import tempfile
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock,patch
 import zipfile
 
 from outline import validate_outline,page_version
 from progress import Reporter
-from workflow import Execution,validate_report,budget_summary,usage_summary,phase_time_limit
+from workflow import Execution,validate_report,budget_summary,usage_summary,phase_time_limit,_run_workflow
+from conversation import RevisionPending
+from durable import Journal
 from office_policy import validate_delivery,validate_workbook
 
 
@@ -113,6 +116,101 @@ class ContentWorkflowTests(unittest.TestCase):
         for malicious in (zip_bytes({'xl/workbook.xml':'<workbook/>','[Content_Types].xml':'<Types/>','xl/vbaProject.bin':b'x'}),zip_bytes({'xl/workbook.xml':'<workbook/>','[Content_Types].xml':'<Types/>','xl/_rels/workbook.xml.rels':'<Relationships><Relationship TargetMode="External" Target="https://example.com"/></Relationships>'})):
             with self.assertRaises(ValueError):validate_workbook(malicious)
         with self.assertRaises(ValueError):validate_delivery(zip_bytes({'ppt/embeddings/data.xlsx':workbook}))
+
+
+class RecoveryPreviewTests(unittest.TestCase):
+    def setUp(self):
+        temp=tempfile.TemporaryDirectory(prefix='pptx-recovered-preview-');self.addCleanup(temp.cleanup)
+        self.root=Path(temp.name).resolve();self.job=self.root/'author';self.job.mkdir()
+        self.frozen=self.root/'frozen';self.frozen.mkdir()
+        self.task={'id':'preview-recovery','lease':'synthetic','title':'Search','brief':'Explain binary search',
+                   'pages':2,'style':'Clear','language':'en'}
+        self.cfg={'plugin':str(self.root/'plugin'),'python':sys.executable}
+        (self.job/'outline.json').write_text(json.dumps(outline()))
+        self.artifact=b'FROZEN NATIVE TEST FIXTURE'
+        (self.job/'authored.pptx').write_bytes(self.artifact)
+        (self.job/'delivery.json').write_text(json.dumps({'path':'authored.pptx'}))
+        # Real durable author receipt: reuse does not depend on a mocked verdict.
+        self.journal=Journal(self.root/'state',self.task['id'],plugin_version='0.2.0')
+        self.addCleanup(self.journal.close)
+        self.journal.begin_phase('author',self.job,thread_id='saved-author-thread')
+        self.journal.complete_phase('author',self.job,artifacts=['delivery.json','authored.pptx'],next_phase='review')
+        self.journal_before=self.journal.state
+        png=base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=')
+        self.pages=[]
+        for number in (1,2):
+            page=self.frozen/f'page-{number}.png';page.write_bytes(png);self.pages.append(str(page))
+        self.sent=[]
+        self.reporter=Reporter(self.cfg,self.task,self.job,lambda *args:self.sent.append(args),explicit_previews=True)
+        self.run=SimpleNamespace(conversation=None,journal=self.journal,job=self.job,author_thread=None,
+            phase=Mock(side_effect=AssertionError('Completed author must not run again')),
+            reusable=Mock(side_effect=AssertionError('Completed author bypasses stale research')),
+            review_tick=Mock(),freeze=Mock(return_value=(self.artifact,self.frozen,{'pages':self.pages},self.frozen/'packet')),
+            review=Mock(side_effect=TimeoutError('Synthetic independent review timeout')))
+        self.run.reusable_author=lambda:Execution.reusable_author(self.run)
+
+    def execute(self):
+        return _run_workflow(self.run,SimpleNamespace(),self.cfg,self.task,self.job,{'mode':'create'},
+                             SimpleNamespace(check=lambda:None),self.reporter)
+
+    def previews(self):
+        return [call for call in self.sent if 'action=preview' in call[1]]
+
+    def test_recovered_candidates_are_visible_before_review_without_restoring_passed(self):
+        self.reporter.set_outline(outline())
+        self.reporter.reviews={'content':'passed','visual':'passed'}
+        def review(*args):
+            self.assertEqual(len(self.previews()),2)
+            self.assertEqual([call[2] for call in self.previews()],[Path(p).read_bytes() for p in self.pages])
+            self.assertEqual(self.reporter.preview_content,{n:page_version(self.reporter.outline,n) for n in (1,2)})
+            body=json.loads(self.sent[-1][2]);self.assertEqual(body['previews'],[1,2])
+            self.assertEqual(body['reviews'],{'content':'pending','visual':'pending'})
+            self.reporter.review_state('content','reviewing');self.reporter.flush(force=True)
+            raise TimeoutError('Synthetic independent review timeout')
+        self.run.review.side_effect=review
+        with self.assertRaisesRegex(TimeoutError,'Synthetic independent review timeout'):self.execute()
+        self.run.phase.assert_not_called();self.run.reusable.assert_not_called()
+        self.assertEqual(self.run.author_thread,'saved-author-thread')
+        self.assertEqual(self.journal.state,self.journal_before)
+        self.assertEqual((self.job/'authored.pptx').read_bytes(),self.artifact)
+        self.assertEqual(sorted(self.reporter.previews),[1,2])
+        self.assertEqual(self.reporter.reviews,{'content':'reviewing','visual':'pending'})
+        self.assertFalse((self.job/'delivery-versions').exists())
+
+    def test_failed_freeze_does_not_publish_candidates_or_enter_review(self):
+        self.run.freeze.side_effect=ValueError('Synthetic native validation failure')
+        with self.assertRaisesRegex(ValueError,'Synthetic native validation failure'):self.execute()
+        self.assertEqual(self.previews(),[]);self.assertEqual(self.reporter.pending,{})
+        self.run.review.assert_not_called();self.run.phase.assert_not_called()
+        self.assertEqual(self.journal.state,self.journal_before)
+
+    def test_input_during_candidate_publication_returns_to_revision_before_review(self):
+        self.run.review_tick.side_effect=[None,RevisionPending('New input')]
+        self.run.phase.side_effect=RuntimeError('Synthetic revision entry')
+        with self.assertRaisesRegex(RuntimeError,'Synthetic revision entry'):self.execute()
+        self.assertEqual(self.previews(),[]);self.run.review.assert_not_called()
+        self.run.phase.assert_called_once()
+        self.assertTrue(self.run.phase.call_args.args[0].startswith('live-revision-'))
+        self.assertEqual(self.run.phase.call_args.kwargs['thread'],'saved-author-thread')
+        self.assertEqual(self.journal.state,self.journal_before)
+
+    def test_deferred_candidates_keep_content_version_and_drop_changed_pages(self):
+        def send(*args):
+            if 'action=preview' in args[1]:raise RuntimeError('Synthetic temporary upload failure')
+            self.sent.append(args)
+        self.reporter.send=send
+        with self.assertRaisesRegex(TimeoutError,'Synthetic independent review timeout'):self.execute()
+        self.run.review.assert_called_once()
+        self.assertEqual(sorted(self.reporter.pending),[1,2])
+        self.assertEqual(self.reporter.pending_content,{n:page_version(self.reporter.outline,n) for n in (1,2)})
+        changed=outline();changed['slides'][1]['summary']='增加未找到时的停止例子。'
+        self.reporter.set_outline(changed)
+        self.assertEqual(sorted(self.reporter.pending),[1])
+        self.reporter.send=lambda *args:self.sent.append(args)
+        self.reporter.flush(force=True)
+        self.assertEqual(len(self.previews()),1)
+        self.assertTrue(self.previews()[0][1].endswith('slide=1'))
+        self.assertEqual(self.journal.state,self.journal_before)
 
 
 if __name__=='__main__':unittest.main()
