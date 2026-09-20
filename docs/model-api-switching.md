@@ -194,3 +194,37 @@ the Codex client may also have its own retry policy. Successful and failed phase
 records include allowlisted API status/attempt/delay/token metadata; provider
 response bodies, prompt text and credentials are excluded. Recovery still uses
 the existing task checkpoint and model identity rather than replacing the task.
+
+
+## DeepSeek official comparison (2026-09-20)
+
+The tested API model ID is `deepseek-flash` at `https://api.deepseek.com`,
+using native `responses` and `reasoning_effort: "high"`. This is a separate
+provider/model selection from SiliconFlow's `deepseek-ai/DeepSeek-V4-Flash`.
+No key or private model profile is committed.
+
+Live probes passed: actual reference-image reading; a Responses function call;
+and AppServer image-tool, shell calculation, file-writing and key-isolation
+checks. The model produced a one-slide 3:2 native editable reference redraw,
+then corrected concrete omissions using independent review feedback.
+The v2 export contains 342 shapes, 53 connectors and 23 CT pictures; equations
+are editable text/shapes, not rasterized formulas or equation-editor objects.
+Two independent final reviews found no required content correction or clear
+obstructive overlap. Strict one-to-one visual fidelity **did not pass**:
+typography, spacing, gradients, chart silhouettes and geometry still differ.
+PowerPoint interactive editing/font substitution was not manually tested.
+
+The initial automated run stopped during content-evidence review because the
+provider returned prose plus a JSON code fence despite structured-output
+instructions. `structured_output.parse_structured_output()` now accepts a bare
+object or one unambiguous explicit JSON fence, without repairing report content.
+Duplicate keys, invalid constants and ambiguous extra payloads are rejected;
+`validate_report()` remains authoritative. The actual saved failure response
+was recovered and validated; 43 parser/workflow/review-session tests passed.
+The complete automatic review chain was **not rerun from start to finish** after
+this fix. The final candidate instead received a focused DeepSeek repair and
+two independent reviews orchestrated outside that failed run. Do not label this
+a clean unattended end-to-end pass.
+
+Candidate v2 SHA-256:
+`25750cd74fe658a16ccf1e9f8370c14dc5d8d8c98f91e3d29eaf4b026063d6f0`.
