@@ -2,6 +2,8 @@
 
 Run only after the source/build gates pass. No marketplace/config file is edited.
 The next Codex thread picks up the installed version; existing threads retain theirs.
+Installed default-launcher hooks must pass configure-installed-hooks.py before
+success is reported. Its diagnostic receipt is retained with the release backup.
 """
 import argparse
 import json
@@ -12,6 +14,36 @@ import subprocess
 import tempfile
 
 
+HOOK_PREFLIGHT=Path(__file__).with_name('configure-installed-hooks.py')
+
+
+def check_installed_hooks(python,installed,backup):
+    """Require the actual default-launcher path, retaining failures for diagnosis."""
+    command=[str(python),str(HOOK_PREFLIGHT),'--plugin',str(installed),'--python',str(python)]
+    receipt=backup/'installed-hook-preflight.json'
+    record={'command':command,'installed':str(installed),'ok':False}
+    try:
+        result=subprocess.run(command,capture_output=True,text=True,timeout=120)
+        record.update(returncode=result.returncode,stderr=result.stderr)
+        try:
+            report=json.loads(result.stdout)
+        except (ValueError,TypeError):
+            report=None
+            record['stdout']=result.stdout
+        record['report']=report
+        record['ok']=result.returncode==0 and isinstance(report,dict) and report.get('ok') is True
+        if not record['ok']:
+            record['error']=(report.get('error') if isinstance(report,dict) else None) or result.stderr.strip() or 'Preflight did not return a successful JSON report'
+    except (OSError,subprocess.TimeoutExpired) as exc:
+        record['error']=f'{type(exc).__name__}: {exc}'
+    # The backup is newly reserved by this invocation. Never overwrite a receipt.
+    with receipt.open('x') as output:
+        json.dump(record,output,ensure_ascii=False,indent=2);output.write('\n')
+    if not record['ok']:
+        raise RuntimeError(f"Installed default-launcher hook preflight failed: {record['error']}. Cache retained: {installed}; diagnostics and backups: {backup}")
+    return receipt
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source',type=Path,default=Path(__file__).resolve().parents[1]/'pptx-agent')
@@ -19,6 +51,7 @@ def main():
     parser.add_argument('--backup-root',type=Path)
     args=parser.parse_args()
     source=args.source.resolve(strict=True);python=(args.python or source/'.venv/bin/python').absolute()
+    if not HOOK_PREFLIGHT.is_file():raise RuntimeError('Missing required installed-hook preflight: '+str(HOOK_PREFLIGHT))
     codex_root=Path(os.environ.get('CODEX_HOME',str(Path.home()/'.codex'))).expanduser()
     helpers=codex_root/'skills/.system/plugin-creator/scripts'
     market=subprocess.check_output([str(python),str(helpers/'read_marketplace_name.py')],text=True).strip()
@@ -69,8 +102,7 @@ def main():
             if not old.exists():shutil.copytree(backup/'caches-before'/old.name,old,symlinks=True)
     installed=cache/version
     if not installed.is_dir():raise RuntimeError('Installed release cache was not created')
-    environment=installed/'.venv'
-    if not environment.exists() and not environment.is_symlink():environment.symlink_to(python.parent.parent,target_is_directory=True)
+    hook_preflight=check_installed_hooks(python,installed,backup)
     # The installed release has its own version; mirror that exact manifest into Git.
     shutil.copy2(target/'.codex-plugin/plugin.json',source/'.codex-plugin/plugin.json')
     for top in ('skills','hooks','.codex-plugin','runtime/dist','runtime/manifests'):
@@ -84,7 +116,7 @@ def main():
                 if not hook.is_file():continue
                 result=subprocess.run([str(python),str(hook)],input=json.dumps({'cwd':task,'tool_name':'Bash','tool_input':{'command':'pwd'}}),capture_output=True,text=True,timeout=10)
                 if result.returncode or result.stdout.strip():raise RuntimeError('Release hook smoke failed: '+str(hook))
-    print(json.dumps({'version':version,'installed':str(installed),'backup':str(backup),'preserved_caches':len(previous),'hook_checks':'passed'}))
+    print(json.dumps({'version':version,'installed':str(installed),'backup':str(backup),'preserved_caches':len(previous),'hook_checks':'passed','installed_default_hook_checks':'passed','hook_preflight':str(hook_preflight)}))
 
 
 if __name__=='__main__':main()

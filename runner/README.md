@@ -35,6 +35,13 @@ The token must match WORKER_TOKEN in Sites. The bridge uses curl to respect this
 host's proxy setup. The credential is not passed to Codex, the renderer, command
 arguments or website client code.
 
+After every plugin installation/cachebuster, run the
+[installed hook Python preflight](../docs/installed-hook-runtime.md) against that
+exact installed directory and the retained dependency venv, then repeat with
+`--check` before activation. Worker success with an explicit Python path does not
+verify the cached hooks' default `python3` startup. The tool adds only a missing
+`.venv` link and never replaces an existing environment.
+
 For a complex interactive lesson, the host can set `job_timeout_seconds` up to
 10800 and `phase_timeout_seconds` to an object such as `{"author":7200}`. The
 phase override is still bounded by the remaining overall task deadline;
