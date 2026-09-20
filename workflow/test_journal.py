@@ -560,6 +560,23 @@ j.bind_session('thread-committed', 'turn-committed')
         with self.assertRaises(CorruptJournal):
             j.checkpoint(self.job)
 
+    def test_larger_budget_recovers_after_growth_without_losing_previous_snapshot(self):
+        j = self.open(limits=Limits(total_bytes=32))
+        previous = j.checkpoint(self.job)
+        (self.job / "new-render").write_bytes(b"x" * 40)
+        with self.assertRaises(CorruptJournal):
+            j.checkpoint(self.job)
+        self.assertEqual(j.state["snapshot_id"], previous["id"])
+        j.close()
+        j = self.open(limits=Limits(total_bytes=128))
+        latest = j.checkpoint(self.job)
+        self.assertTrue((j.root / "snapshots" / (previous["id"] + ".json")).exists())
+        destination = self.base / "larger-budget-recovery"
+        j.recover(destination, plugin_version="0.2.0")
+        self.assertEqual((destination / "new-render").read_bytes(), b"x" * 40)
+        self.assertEqual((destination / "deck.json").read_bytes(), (self.job / "deck.json").read_bytes())
+        self.assertEqual(latest["bytes"], 54)
+
     def test_count_and_message_limits_are_enforced(self):
         j = self.open(limits=Limits(files=1, messages=1, message_bytes=10))
         (self.job / "second").write_bytes(b"more")

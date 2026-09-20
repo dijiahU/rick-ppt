@@ -240,7 +240,8 @@ def _run_job(cfg,task,lease):
     # event denotes an existing version; Journal still verifies the entire chain
     # and rejects corrupt/gapped histories or an orphan projection in either case.
     existing=(state_root/task['id']/'events'/'00000000000000000001.json').exists()
-    with Journal(state_root,task['id'],plugin_version=None if existing else version,secrets=(cfg['token'],task['lease'])) as journal:
+    from durable import HOST_JOURNAL_LIMITS
+    with Journal(state_root,task['id'],plugin_version=None if existing else version,secrets=(cfg['token'],task['lease']),limits=HOST_JOURNAL_LIMITS) as journal:
         plan=None
         if journal.state.get('snapshot_id'):
             from recovery_workspace import relocate_task

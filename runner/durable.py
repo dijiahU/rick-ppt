@@ -20,6 +20,10 @@ def _load(name, filename):
 journal_module = _load('pptx_host_journal', 'journal.py')
 transport_module = _load('pptx_host_app_server', 'app_server.py')
 Journal = journal_module.Journal
+# Interactive decks retain native renders, scene captures and earlier versions.
+# Keep bounded host budgets large enough to checkpoint those complete histories.
+# Individual file, record and integrity checks remain the journal defaults.
+HOST_JOURNAL_LIMITS = journal_module.Limits(total_bytes=4 * 1024**3, files=100000)
 JournalError = journal_module.JournalError
 AppServer = transport_module.AppServer
 RPCError = transport_module.RPCError

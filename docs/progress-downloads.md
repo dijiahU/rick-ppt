@@ -35,3 +35,15 @@ project or access change was created. GitHub preserves the implementation. Exist
 website worker routes remain usable. The latest CNN progress file is also retained
 locally under the user's project delivery folder. YOLO is paused by the user's
 instruction and is not retried.
+
+## CNN recovery capacity fix (2026-09-20)
+
+The resumed CNN task reached 1,353,369,952 checkpoint bytes across 22,477 files,
+mostly retained interactive/native rendering history. The generic 1 GiB journal
+budget stopped the worker during checkpointing; a subsequent user retry remained
+queued after the one-shot worker exited. The host now uses a bounded 4 GiB /
+100,000-entry budget, retaining per-file limits and all integrity validation.
+No task files or prior snapshots are removed. All 51 journal tests pass,
+including checkpoint growth failure followed by successful recovery under a
+larger budget while preserving the previous snapshot. CNN alone is resumed;
+YOLO remains paused by user request.
