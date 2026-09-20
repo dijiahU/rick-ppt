@@ -212,7 +212,11 @@ Primary sources:
   review approval and actual delivered-pair retrieval remain open. The restored
   first audience pass completed after a recoverable context-compaction network
   failure; it requires a slide-17 epoch-axis label correction. Consolidated
-  content/visual review and the normal repair loop are still in progress.
+  content/visual review also requires numerical input/readout clarity on pages
+  8/9/12/13/14 and class-score contributions on page 11. The first review round
+  and content revision finished; the normal author repair is running. Eight
+  unchanged native previews were recovered through the public journal and their
+  exact image versions confirmed on the website. Changed pages await fresh renders.
 - [ ] **17 — YOLO case.** Write a comparable prompt teaching detection, boxes,
   grid/head outputs, IoU, confidence thresholds, NMS, loss/training and inference.
   Distinguish versions precisely; demonstrate editable code and intuitive animation
@@ -231,8 +235,10 @@ Primary sources:
   The owner task is now running on the website. Its exact original brief and
   owner were confirmed through read-only retrieval; all 11 real-model input
   files were copied and hash-checked. A normal revision and ordinary chat were
-  accepted by the worker as revision 1. Final model use, chat answer and delivered
-  artifacts remain open; production browser file upload was not completed.
+  accepted by the worker as revision 1. The public chat answer and applied chat
+  state are verified; research verified the assets and adopted real-model
+  inference. Authoring is running. Final model use and delivered artifacts remain
+  open; production browser file upload was not completed.
 - [ ] **18 — Desktop verification and final report.** Attempt real macOS
   PowerPoint open/load/click/drag/keyboard/slider/slideshow/save/reopen/settings
   persistence and code interaction. Windows/Web are only marked verified if

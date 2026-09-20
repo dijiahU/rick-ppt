@@ -37,3 +37,8 @@ Pending direct checks remain load/interaction, slideshow focus, code editing,
 drag/slider controls, save/reopen and Office setting persistence. Windows and
 Office Web are also unverified. See the
 [actual-host checklist](manual-powerpoint-verification.md).
+
+Microsoft's [current platform support table](https://learn.microsoft.com/en-us/javascript/api/requirement-sets#powerpoint),
+checked 2026-09-20, lists Content add-ins for PowerPoint on Mac. That documented
+support does not establish successful playback of these artifacts, and the
+automation failure above is not evidence that the extension point is unsupported.

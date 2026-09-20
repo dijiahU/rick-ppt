@@ -1,7 +1,8 @@
 # CNN frozen-candidate evidence
 
-Status: the exported candidate has passed the checks below; independent workflow
-reviews and delivery retrieval remain pending. This is not a final acceptance.
+Status: the exported candidate passed the checks below. The first independent
+review round has finished and requested corrections; the normal author repair
+phase is running. Final review and delivery retrieval remain pending.
 
 The 20-page v009 candidate SHA-256 is
 `1eeb578add645ca7fc208f432e8231e47d4eab7f5a57d1b60f0e8a8920c5d518`.
@@ -46,3 +47,32 @@ without counting repeated assertions as new coverage.
 Reuse of this evidence requires exact scene, source, asset and runtime hashes
 in the eventually delivered pair. Browser captures and native rendering do not
 verify PowerPoint desktop playback.
+
+## First review round and restored website previews
+
+The three independent passes completed on 2026-09-20. The required corrections
+are an accurately positioned epoch axis on page 17, visible numerical inputs
+and pending-versus-computed input state on pages 8/9/12/13/14, and selected-feature
+weights and class-score contributions on page 11. Content revision completed;
+the original author thread began applying the changes at 02:19 UTC. Earlier
+automated and manual checks do not override these audience findings.
+
+The consolidated review receipt SHA-256 is
+`e14d6795fe7d249d59de73b6177de13050ea6a65765b55630d4b0eb4cdb88ee4`.
+The first-pass transient error was a context-compaction transport failure;
+the original reviewer continued through HTTP fallback and produced a complete
+report. It was not an observed hook failure.
+
+The recovered public preview records retained absolute paths into the previous
+attempt. The current reporter correctly refused those out-of-scope paths, which
+left the website preview list empty. Future executions publish the validated
+frozen pages before review (`8a58301`). For this already running attempt, the
+host appended new receipts for eight unchanged pages through the ordinary public
+journal. Every image matched both its restored file and frozen reviewer image;
+the outline page version also matched. The worker published all eight image
+hashes, confirmed by read-only website retrieval at 02:26 UTC. Pages whose
+outline changed await fresh author renders. Existing records were retained;
+no worker restart, direct API mutation or final-review approval was involved.
+
+Private proof: `proof/cnn-preview-resync-o2bnjnlg`. A recovered preview is a
+visible work-in-progress page, not acceptance of the corrected final deck.

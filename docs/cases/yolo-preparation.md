@@ -76,7 +76,12 @@ Normal owner-scoped revision `c5f4344e-f4c9-40c7-b7fe-25f4e7afed8f`
 identifies these as host-provided test assets and requests actual model results.
 Ordinary chat `f8fa2a71-7fe2-4b1e-bebe-835eb4d0b348` asks about confidence versus
 NMS thresholds without changing the brief. The worker accepted both in input
-revision 1; adoption and the chat answer still need follow-up verification.
+revision 1. The research phase subsequently verified all 11 asset hashes and
+adopted real-model inference for lesson 17. The public reply correctly
+distinguished confidence filtering from NMS overlap suppression and explained
+why a single prediction score is not detector accuracy. Ordinary chat is marked
+applied in the durable inbox; the revision remains acknowledged while authoring
+continues. Actual final model use still requires rendered and delivered evidence.
 
 The website still does not allow
 `.onnx` or `.pt` uploads, and the measured ONNX size of 12,823,520 bytes exceeds
