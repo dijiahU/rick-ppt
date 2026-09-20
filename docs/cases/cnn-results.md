@@ -115,6 +115,12 @@ changed worker run, while exposing a new TeX-escaping error that hides the perce
 sign. Website v32 requests that bounded display correction before final export;
 the preserved 15/18 diagnostic report is not presented as an all-pass result.
 
+The corrected result scene then passed 61 independent checks, including one
+actual learning-rate-zero edit/run, all eight returned examples and Reset.
+Both 75% and 50% retain their visible percent sign and held-out label. The
+author reports 194 scene tests with 679 assertions across all 20 scenes; those
+authoring receipts still need the host's frozen-artifact validation and review.
+
 ## Pending acceptance
 
 The native deck, scene reports, actual edited-code execution, mechanism animation,

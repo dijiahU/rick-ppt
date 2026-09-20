@@ -213,3 +213,22 @@ all three failures describe the same missing units/label in the initial, changed
 and reset views. Website v32 requests the exact escaping correction, adequate
 percentage precision and a fresh native fallback. Final scene/artifact approval
 remains pending.
+
+The corrected scene 19 snapshot subsequently passed **61/61** independent checks
+with three actually inspected screenshots. The initial formula displays
+`6/8 = 75% held out`. One real Monaco edit to `LEARNING_RATE=0` and one Run
+produce `4/8 = 50% held out`; all eight selected examples match their returned
+class, probability, feature value and 36 pixels. Reset restores the complete
+original source and reference result. The percent sign and label remain visible
+at 800×600. No page, console, CSP or network failure occurred.
+
+The repaired scene SHA-256 is
+`ef1c806d7732cdbc7178c2bd0f16b045ac36eeda3f01d65af3c9e2a96bcd8f50`.
+Private proof `cnn-v009-scene19-repaired-20260920T004420Z` retains the unchanged
+source and runtime fingerprints. Its review SHA-256 is
+`b9aaa545e947f70a3a05ba1cf3f5779213e77c5126e3d270b9d03c5debea5495`;
+the raw report SHA-256 is
+`b34b2c50e13674572b3c94bcf48795df03597bf787ff4cfee980f06cae7b75cd`.
+The preceding 15/18 report remains unchanged. Scenes 04 and 14 were not rerun.
+This scoped success still requires correspondence with the eventual frozen
+and website-delivered artifacts.

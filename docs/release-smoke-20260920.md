@@ -158,8 +158,12 @@ keeps the Mac awake only while this worker runs; no login service was installed.
 Teaching cases run only after that handoff. Their prompts and acceptance
 contracts are in `docs/cases/`; preparing a prompt does not pass a case.
 
-PowerPoint desktop startup, slideshow focus and Office settings persistence are
-**NOT RUN**: the desktop automation connection is unavailable. Browser behavior,
+PowerPoint slideshow focus and Office settings persistence remain **NOT RUN**.
+The initially unavailable desktop automation connection recovered on September
+20 at 00:52 UTC after a verified official helper update, with its original signed
+application preserved. An actual accessibility tree and screenshot show Office
+startup; subscription offers were skipped, leaving the available read-only mode.
+Artifact loading and playback still require direct checks. Browser behavior,
 native LibreOffice rendering and OOXML fixture matching do not prove those host
 behaviors. Windows and Office web are also unverified. See the separate manual
 checklist and compatibility matrix. All independent work continues.

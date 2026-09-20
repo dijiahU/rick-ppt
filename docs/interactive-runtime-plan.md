@@ -208,11 +208,20 @@ Primary sources:
   the [pinned independent numerical reference](../examples/yolo-reference/README.md)
   passes 75 checks, including IoU/NMS/DFL, CIoU and toy-logit optimization. This
   does not submit the task or approve a full model, ONNX execution or teaching deck.
+  The [v003 admission preparation](cases/yolo-preparation.md) adds lessons from
+  actual CNN edits and passes 14 executions over seven queue/identity boundaries;
+  submission remains gated on the CNN acceptance result.
 - [ ] **18 — Desktop verification and final report.** Attempt real macOS
   PowerPoint open/load/click/drag/keyboard/slider/slideshow/save/reopen/settings
   persistence and code interaction. Windows/Web are only marked verified if
   actually tested. Report architecture, changed files, security, tests, sizes,
   limitations, exact setup/authoring/presentation commands and both case links.
+  At 2026-09-20 00:52 UTC, replacing the standalone Computer Use helper with the
+  newer, verified official bundled version restored its accessibility tree and
+  screenshot API. The original signed application and all 167 inventory entries
+  are retained. No security settings or Office license were changed. PowerPoint
+  opened in its available read-only mode after skipping subscription offers;
+  artifact playback and editing/save behavior still need actual checks.
 
 ## Recovery semantics
 

@@ -20,21 +20,19 @@ complete training/inference distinction and version-specific mathematics.
 
 ## Prompt to submit
 
-Create an English presentation titled **YOLOv8 Detection: From Pixels to Boxes**.
-Teach first principles, explain every symbol and tensor dimension, and connect
-each inference/training stage to a runnable, commented experiment. Use exactly
-18 native slides with the common interactive scene DSL and existing feature
-packs. Keep native editable titles, mathematical definitions, context and summary
-outside the live widgets. Use `core`, `code` and `math`; use `ml` only for genuine
-local ONNX model execution with documented input/output semantics. Do not create
-a topic-specific React application or add a new runtime.
+Create **YOLOv8 Detection: From Pixels to Boxes** in English. Teach first principles,
+define every symbol/tensor dimension, and connect each inference/training stage to
+a runnable, commented experiment. Use exactly 18 native slides, the common scene
+DSL and existing packs. Keep editable native titles, mathematical definitions,
+context and summary outside live widgets. Use `core`, `code`, `math`; use `ml` only
+for genuine local ONNX execution with documented input/output semantics. No
+topic-specific React application or new runtime.
 
-Clearly distinguish historical intuition from the selected implementation.
+Distinguish historical intuition from v8.2.0.
 The [original YOLO paper](https://www.cv-foundation.org/openaccess/content_cvpr_2016/html/Redmon_You_Only_Look_CVPR_2016_paper.html)
-introduces joint detection with one network. Its grid/objectness parameterization
-is historical context, not the head to implement here. Pin architecture, head,
-assignment and loss claims to the selected v8.2.0 source. Avoid blending v1, v5,
-YOLO11 or newer NMS-free families into an imaginary universal YOLO algorithm.
+introduces one-network detection; its grid/objectness is historical, not this head.
+Pin architecture/head/assignment/loss to the selected v8.2.0 source. Do not mix v1,
+v5, YOLO11 or newer NMS-free families into a universal YOLO algorithm.
 
 | Slide | Teaching question and required content | Learner experiment |
 | --- | --- | --- |
@@ -166,7 +164,10 @@ Use stable state names `lesson.step`, `lesson.codeLine`, `letterbox.box`,
 `decode.xyxy`, `overlap.iou`, `nms.keptIds`, `loss.total`, and `headTraining.result`.
 Bind Monaco line highlighting to the walkthrough's source line and show the
 current statement/explanation. This is a guided walkthrough, not a Python debugger.
-Results and box overlays must derive from current inputs or actual worker output.
+Label fixed examples as baselines. Bind changing values, units, formulas and box
+overlays to the same current inputs/worker result. Visually inspect dynamic KaTeX
+percentages/text after edits. Invalid parameter combinations from reasonable edits
+must show clear errors; verify the editor and Reset remain usable.
 All sliders, drag operations, NMS steps, code edits/runs and reset behavior need
 real `testPlan` assertions and captures under [acceptance checks](acceptance-checks.md).
 Keep readable native fallbacks, source citations and a version-specific glossary.
