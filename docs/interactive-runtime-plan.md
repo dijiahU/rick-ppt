@@ -217,7 +217,7 @@ Primary sources:
   and content revision finished; the normal author repair is running. Eight
   unchanged native previews were recovered through the public journal and their
   exact image versions confirmed on the website. Changed pages await fresh renders.
-- [ ] **17 — YOLO case.** Write a comparable prompt teaching detection, boxes,
+- [ ] **17 — YOLO case (paused at Rick’s request).** Write a comparable prompt teaching detection, boxes,
   grid/head outputs, IoU, confidence thresholds, NMS, loss/training and inference.
   Distinguish versions precisely; demonstrate editable code and intuitive animation
   through the shared DSL/runtime/ML adapter. Test, independently review, export and
@@ -282,3 +282,13 @@ workers until the matching website protocol is deployed. Retain rollback source,
 previous installed runtime, old manifests, trajectory originals and delivered
 files. A real environment blocker is marked NOT RUN with a reason while all
 independent work continues. No claims of desktop verification from browser PNGs.
+
+## Added requirement: downloadable progress after interruption
+
+- [x] Validate and asynchronously retain the last successfully exported native PPTX; preserve older files and retry transient uploads. Partial exports are explicitly unreviewed.
+- [x] Add owner/admin download access and timestamp/page-count UI, independent of final task status. Local routes, five languages, typecheck and production build pass.
+- [x] Repair continuation now takes priority over an old reusable author export; 12 real-Journal recovery tests pass and the actual CNN selects repair-1 on its original thread.
+- [ ] Publish the download feature and verify CNN download on the live site. Current Sites connection cannot find the existing project and lists no accessible sites. No replacement site was created.
+- [ ] Finish CNN repair, independent review and final paired PPTX/ZIP delivery. CNN alone was requeued after actual model connectivity passed. YOLO is retained and not requeued.
+
+See [progress download details](progress-downloads.md). Code availability is not a production acceptance claim.
