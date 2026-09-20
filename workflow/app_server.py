@@ -31,6 +31,14 @@ SAFE_TOOL_ENV = frozenset({"PATH", "LANG", "LC_ALL", "TMPDIR", "FONTCONFIG_FILE"
 DISABLED_FEATURES = ("apps", "plugins", "hooks", "browser_use", "browser_use_external",
                      "computer_use", "chronicle", "memories", "shell_snapshot", "multi_agent")
 REASONING_NOTIFICATIONS = ["item/reasoning/summaryTextDelta", "item/reasoning/summaryPartAdded", "item/reasoning/textDelta"]
+# CodexErrorInfo in the locally generated 0.155.1 ErrorNotification schema.
+# Unknown future variants require an explicit projection update, never raw text.
+ERROR_CODES = frozenset({"contextWindowExceeded", "sessionBudgetExceeded", "usageLimitExceeded",
+                         "rateLimitExceeded", "serverOverloaded", "cyberPolicy",
+                         "misalignmentPolicyViolation", "internalServerError", "unauthorized",
+                         "badRequest", "threadRollbackFailed", "sandboxError", "other"})
+HTTP_ERROR_CODES = frozenset({"httpConnectionFailed", "responseStreamConnectionFailed",
+                              "responseStreamDisconnected", "responseTooManyFailedAttempts"})
 
 
 class TransportError(RuntimeError):
@@ -183,6 +191,31 @@ def normalize_item(item: dict) -> dict | None:
         return {**base, "type": "plan", "items": item.get("items", [])}
     # User content goes through the durable inbox; reasoning is never recorded.
     return None
+
+
+def error_metadata(error: object) -> dict:
+    """Project only fixed codes and HTTP status; never retain error prose/details."""
+    if not isinstance(error, dict):
+        return {}
+    info = error.get("codexErrorInfo")
+    if isinstance(info, str):
+        return {"code": info} if info in ERROR_CODES else {}
+    if not isinstance(info, dict) or len(info) != 1:
+        return {}
+    code, detail = next(iter(info.items()))
+    if not isinstance(detail, dict):
+        return {}
+    if code == "activeTurnNotSteerable" and detail.get("turnKind") in ("review", "compact"):
+        return {"code": code}
+    if code not in HTTP_ERROR_CODES:
+        return {}
+    result = {"code": code}
+    status = detail.get("httpStatusCode")
+    # Protocol uint16 is broader than a legal HTTP status; bool is an int in
+    # Python and must be rejected explicitly, as must strings and floats.
+    if type(status) is int and 100 <= status <= 599:
+        result["http_status_code"] = status
+    return result
 
 
 class AppServer:
@@ -364,6 +397,8 @@ class AppServer:
         self._public({"type": "host.request_declined", "method": method})
 
     def _notification(self, method: str, params: dict):
+        if method == "error" and not isinstance(params, dict):
+            params = {}
         thread_id, turn_id = params.get("threadId"), params.get("turnId")
         if method == "thread/started":
             thread = params.get("thread", {})
@@ -390,7 +425,7 @@ class AppServer:
                 event = {"type": typ, "thread_id": thread_id, "turn_id": turn_id, "status": status,
                          "usage": copy.deepcopy(self.usage.get(key))}
                 if turn.get("error"):
-                    event["error"] = {"message": "Codex turn failed", "code": turn["error"].get("codexErrorInfo")}
+                    event["error"] = {"message": "Codex turn failed", **error_metadata(turn["error"])}
                 self._emit(event)
         elif method == "thread/tokenUsage/updated":
             key = (thread_id, turn_id)
@@ -422,8 +457,17 @@ class AppServer:
             self._emit({"type": "item.updated", "thread_id": thread_id, "turn_id": turn_id,
                         "item": {"id": "plan-" + str(turn_id), "type": "plan", "items": params.get("plan", [])}})
         elif method == "error":
-            self._emit({"type": "error", "thread_id": thread_id, "turn_id": turn_id,
-                        "message": "Codex reported an execution error"})
+            event = {"type": "error", "thread_id": thread_id if isinstance(thread_id, str) else None,
+                     "turn_id": turn_id if isinstance(turn_id, str) else None,
+                     "message": "Codex reported an execution error"}
+            metadata = error_metadata(params.get("error"))
+            if type(params.get("willRetry")) is bool:
+                metadata["will_retry"] = params["willRetry"]
+            if metadata:
+                event["error"] = metadata
+            # Even willRetry=false is not a completion receipt. Keep waiting for
+            # turn/completed; recoverable transport errors can precede success.
+            self._emit(event)
         # All reasoning/delta/tool stderr/session metadata outside the explicit
         # compatibility projection is intentionally neither archived nor public.
 
