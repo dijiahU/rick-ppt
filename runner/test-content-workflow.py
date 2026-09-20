@@ -90,9 +90,15 @@ class ContentWorkflowTests(unittest.TestCase):
             for n in (1,2):p=root/f'page-{n}.png';p.write_bytes(b'PNG');images.append(str(p))
             def prepare(cfg):
                 p=Path(tempfile.mkdtemp(dir=root));return p
+            plugin=root/'plugin'
+            for name,body in {'runtime/dist/main.js':'runtime','runtime/config.json':'{}',
+                'runtime/manifests/content.xml':'manifest','.codex-plugin/plugin.json':'{"version":"test"}',
+                'skills/pptx/references/content-review.md':'Content review',
+                'skills/pptx/references/visual-review.md':'Visual review'}.items():
+                p=plugin/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(body)
             bridge=SimpleNamespace(ROOT=root,prepare=prepare)
             reporter=Reporter({}, {'id':'test','lease':'test','pages':2},job,lambda *a:None,explicit_previews=True)
-            execute=Execution(bridge,{'plugin':str(root),'python':sys.executable},{'id':'test'},job,SimpleNamespace(check=lambda:None),reporter)
+            execute=Execution(bridge,{'plugin':str(plugin),'python':sys.executable},{'id':'test'},job,SimpleNamespace(check=lambda:None),reporter)
             self.addCleanup(execute.trace.close)
             calls=[]
             def phase(name,prompt,**kwargs):
@@ -101,6 +107,9 @@ class ContentWorkflowTests(unittest.TestCase):
                 self.assertTrue((p/'page-1.png').exists())
                 if 'first' in name:self.assertFalse((p/'request.json').exists())
                 if 'evidence' in name:self.assertEqual((p/'references/source.txt').read_text(),'Actual source')
+                attempt=kwargs['review_attempt'];attempt.bind('independent-'+name,'turn-'+name)
+                attempt.observe({'type':'turn.completed','thread_id':'independent-'+name,
+                                 'turn_id':'turn-'+name,'status':'completed'})
                 return report(),'independent-'+name
             execute.phase=phase
             result=execute.review(b'FROZEN',{'pages':images},packet,{'attachments':[{'path':'references/source.txt'}]},1)
