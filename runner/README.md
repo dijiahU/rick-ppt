@@ -161,12 +161,30 @@ The capability manifest distinguishes search, actual acquisition, native embeddi
 Public HTTPS images/GIF/video/audio can now be imported with the task-local web-media-proxy.py.
 See WEB-MEDIA.md for formats, explicit conversion/fallback, limits and native embedding.
 Build the isolated decoder with `docker build -t pptx-lab-media:1 media-container`.
-The host validates and DNS-pins each redirect, sends no credentials/proxy configuration, and
-decodes media in a no-network container. The task never receives shell network or Docker access.
+The host validates and IP-pins each redirect, uses a configured unauthenticated
+loopback HTTP proxy when present, and decodes media in a no-network container.
+Proxy transport resolves through a fixed public HTTPS DNS service and pins the
+CONNECT address while preserving TLS hostname verification. Direct transport
+remains available without a local proxy. Requests have a shared 65-second download
+budget and bounded transient retries; structured errors distinguish DNS, TLS,
+connection, HTTP, size and non-media failures. The task never receives proxy
+configuration, shell network or Docker access.
 Native timing XML and embedded clips are available, but static render/export is not evidence
 of verified PowerPoint playback. This does not change website reference-upload formats.
 Tests: test-web-media.py (policy), test-web-media.py --live (real downloads through sandbox,
 native embed/render/export), test-media-formats.py (real isolated format conversions).
+
+The compatibility launcher `production-entry.py` reads the staged runtime from
+the production runner's private settings rather than embedding a version path.
+Copy it to the existing local bridge's `runner.py`, and copy `start-worker.py`
+beside it. Existing bridge credentials stay in that bridge's private settings.
+`start-worker.py --reload` stops new claims in the verified current worker,
+allows active tasks to finish, and starts one configured successor waiting for
+the singleton lock. Repeated reloads do not create duplicate successors.
+Each worker writes a private `runtime-PID.local.json` receipt with the runtime it
+actually loaded, branch-file availability and default model/effort. `waiting`
+is a prepared handoff; only `ready` proves activation after isolation self-test.
+Tests: `test-production-bridge.py`.
 
 ## Uploaded reference files
 

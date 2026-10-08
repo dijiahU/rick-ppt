@@ -1,4 +1,4 @@
-"""Host broker for public HTTPS media. No credentials, proxies or private network.
+"""Host broker for public HTTPS media through direct or trusted local transport.
 
 DNS is validated AND pinned for each redirect; decoding is isolated in Docker.
 Task-controlled paths are never used as host output or executable paths.
@@ -21,40 +21,111 @@ from trajectory import record as capture
 import mimetypes
 
 MAX_DOWNLOAD=30*1024*1024
+DOWNLOAD_BUDGET=65
 
-def resolve_url(value):
+class MediaError(ValueError):
+    def __init__(self,code,message,**details):
+        super().__init__(message);self.code=code;self.details=details
+
+def local_proxy(environ=None):
+    """Only host-owned, unauthenticated loopback HTTP proxies are supported."""
+    env=os.environ if environ is None else environ
+    value=next((env[k] for k in ('HTTPS_PROXY','https_proxy','HTTP_PROXY','http_proxy') if env.get(k)),None)
+    if value is None:return None
+    try:
+        u=urlsplit(value);host=u.hostname
+        if host=='localhost':host='127.0.0.1'
+        if (u.scheme!='http' or not host or not ipaddress.ip_address(host).is_loopback
+            or not u.port or u.username is not None or u.password is not None
+            or u.path not in ('','/') or u.query or u.fragment):raise ValueError()
+    except ValueError:
+        raise MediaError('proxy_configuration','Media proxy must be an unauthenticated loopback HTTP endpoint') from None
+    return f'http://{"["+host+"]" if ":" in host else host}:{u.port}'
+
+def proxy_args(proxy):
+    return ['--proxy',proxy or '', '--noproxy','' if proxy else '*']
+
+def dns_addresses(host,proxy,timeout=8):
+    # Use a fixed external resolver over the trusted proxy. Local VPN fake-IP
+    # DNS and the old direct resolver can disagree with the destination network.
+    resolver='https://dns.google/resolve' if proxy else 'https://dns.alidns.com/resolve'
+    endpoint=resolver+'?'+urlencode({'name':host,'type':'A'})
+    command=['/usr/bin/curl','-q',*proxy_args(proxy),'--silent','--show-error','--fail',
+             '--connect-timeout',str(min(8,timeout)),'--max-time',str(timeout),
+             '--max-filesize','65536','--url',endpoint]
+    try:response=subprocess.run(command,capture_output=True,timeout=timeout+2,env={'PATH':'/usr/bin:/bin'})
+    except subprocess.TimeoutExpired:
+        raise MediaError('dns_timeout','Public DNS verification timed out',host=host) from None
+    if response.returncode:
+        raise MediaError('dns_unavailable','Public DNS verification unavailable',host=host,curl_exit=response.returncode)
+    try:
+        answer=json.loads(response.stdout)
+        if answer.get('Status',0)!=0:raise ValueError()
+        return [a['data'] for a in answer.get('Answer',[]) if a.get('type')==1]
+    except (ValueError,KeyError,TypeError,AttributeError):
+        raise MediaError('dns_response','Public DNS returned an invalid response',host=host) from None
+
+def resolve_url(value,proxy=None,timeout=8):
     if not isinstance(value,str) or len(value)>3000 or any(ord(c)<33 for c in value):raise ValueError('Invalid URL')
     u=urlsplit(value)
     if u.scheme!='https' or not u.hostname or u.username or u.password or u.port not in (None,443):raise ValueError('Only public HTTPS on port 443, without credentials')
     host=u.hostname.encode('idna').decode('ascii').lower()
     if '.' not in host or host.endswith(('.localhost','.local','.internal')):raise ValueError('Local host forbidden')
-    try:addresses=sorted({x[4][0] for x in socket.getaddrinfo(host,443,type=socket.SOCK_STREAM)})
-    except socket.gaierror:addresses=[]
-    if not addresses or any(not ipaddress.ip_address(a).is_global for a in addresses):
+    try:literal=ipaddress.ip_address(host)
+    except ValueError:literal=None
+    if literal and not literal.is_global:raise MediaError('non_public_address','Non-public address forbidden',host=host)
+    if literal:addresses=[str(literal)]
+    elif proxy:addresses=dns_addresses(host,proxy,timeout)
+    else:
+        try:addresses=sorted({x[4][0] for x in socket.getaddrinfo(host,443,type=socket.SOCK_STREAM)})
+        except socket.gaierror:addresses=[]
+    if not proxy and (not addresses or any(not ipaddress.ip_address(a).is_global for a in addresses)):
         # Some VPN DNS proxies return 198.18/15 fake IPs. Never allow those as
         # media targets. Ask a fixed HTTPS resolver and still pin the real IP.
-        endpoint='https://dns.alidns.com/resolve?'+urlencode({'name':host,'type':'A'})
-        response=subprocess.run(['/usr/bin/curl','-q','--proxy','','--noproxy','*','--silent','--show-error','--fail','--max-time','8','--max-filesize','65536','--url',endpoint],capture_output=True,timeout=10,env={'PATH':'/usr/bin:/bin'})
-        if response.returncode:raise ValueError('Public DNS verification unavailable')
-        answer=json.loads(response.stdout)
-        addresses=[a['data'] for a in answer.get('Answer',[]) if a.get('type')==1]
-    if not addresses:raise ValueError('Public DNS returned no usable A records')
-    if any(not ipaddress.ip_address(a).is_global for a in addresses):raise ValueError('Non-public address forbidden')
+        addresses=dns_addresses(host,None,timeout)
+    if not addresses:raise MediaError('dns_no_address','Public DNS returned no usable A records',host=host)
+    if any(not ipaddress.ip_address(a).is_global for a in addresses):raise MediaError('non_public_address','Non-public address forbidden',host=host)
     # Prefer IPv4 when both are valid. curl keeps TLS hostname verification.
     ip=next((a for a in addresses if ':' not in a),addresses[0])
     pinned=f'[{ip}]' if ':' in ip else ip
     return urlunsplit(('https',host,u.path or '/',u.query,'')),f'{host}:443:{pinned}'
 
 def download(url):
+    proxy=local_proxy();route='local_proxy' if proxy else 'direct'
+    deadline=time.monotonic()+DOWNLOAD_BUDGET
     for _ in range(4):
-        url,pin=resolve_url(url)
+        remaining=deadline-time.monotonic()
+        if remaining<=0:raise MediaError('download_timeout','Media download time budget exhausted',route=route)
+        url,pin=resolve_url(url,proxy,timeout=min(8,remaining))
+        host=urlsplit(url).hostname
+        remaining=deadline-time.monotonic()
+        if remaining<=0:raise MediaError('download_timeout','Media download time budget exhausted',host=host,route=route)
         with tempfile.NamedTemporaryFile(prefix='pptx-media-headers-') as headers:
-            command=['/usr/bin/curl','-q','--silent','--show-error','--proxy','','--noproxy','*',
-                '--proto','=https','--proto-redir','=https','--connect-timeout','8','--max-time','25',
-                '--max-filesize',str(MAX_DOWNLOAD),'--resolve',pin,'--dump-header',headers.name,
+            # --resolve alone does not pin the CONNECT target of an HTTP proxy.
+            # --connect-to pins that target while retaining the URL's TLS/SNI name.
+            pin_args=['--connect-to',pin+':443'] if proxy else ['--resolve',pin]
+            command=['/usr/bin/curl','-q','--silent','--show-error',*proxy_args(proxy),
+                '--proto','=https','--proto-redir','=https','--connect-timeout','8','--max-time',str(min(50,remaining)),
+                '--max-filesize',str(MAX_DOWNLOAD),*pin_args,'--dump-header',headers.name,
                 '--user-agent','PPTX-Lab-Media/1.0','--url',url]
-            run=subprocess.run(command,capture_output=True,timeout=30,env={'PATH':'/usr/bin:/bin'})
-            if run.returncode:raise ValueError('Public media download failed (HTTP/network/size limit)')
+            for attempt in range(2):
+                remaining=deadline-time.monotonic()
+                if remaining<=0:raise MediaError('download_timeout','Media download time budget exhausted',host=host,route=route)
+                command[command.index('--max-time')+1]=str(min(50,remaining))
+                try:run=subprocess.run(command,capture_output=True,timeout=min(50,remaining)+2,env={'PATH':'/usr/bin:/bin'})
+                except subprocess.TimeoutExpired:
+                    raise MediaError('download_timeout','Media download timed out',host=host,route=route) from None
+                # One retry for an empty, transient transport failure. Never retry
+                # HTTP rejections, certificate/size failures or partial downloads.
+                if attempt==0 and run.returncode in (7,28,35,52,55,56) and not run.stdout:continue
+                break
+            if run.returncode:
+                codes={5:('proxy_dns','Media proxy address could not be resolved'),6:('dns_unavailable','Media host could not be resolved'),
+                       7:('connection_failed','Media connection failed'),18:('incomplete_download','Media transfer ended before the file was complete'),
+                       28:('download_timeout','Media connection or download timed out'),35:('tls_handshake','Media TLS handshake failed'),
+                       60:('tls_certificate','Media TLS certificate verification failed'),63:('download_too_large','Media exceeds the download size limit')}
+                code,message=codes.get(run.returncode,('download_failed','Media transport failed'))
+                raise MediaError(code,message,host=host,route=route,curl_exit=run.returncode,attempts=attempt+1)
             if len(run.stdout)>MAX_DOWNLOAD:raise ValueError('Download too large')
             raw=headers.read(65537)
         if len(raw)>65536:raise ValueError('Headers too large')
@@ -67,9 +138,9 @@ def download(url):
         if status in (301,302,303,307,308):
             if not fields.get('location'):raise ValueError('Invalid redirect')
             url=urljoin(url,fields['location']);continue
-        if status!=200:raise ValueError('Media URL must return HTTP 200')
+        if status!=200:raise MediaError('http_status',f'Media URL returned HTTP {status}',host=host,route=route,http_status=status)
         content_type=fields.get('content-type','').split(';')[0].lower()
-        if content_type in ('text/html','application/json') or not run.stdout:raise ValueError('URL is a page, not a downloadable media file')
+        if content_type in ('text/html','application/json') or not run.stdout:raise MediaError('not_media','URL is a page, not a downloadable media file',host=host)
         return run.stdout,url,content_type
     raise ValueError('Too many redirects')
 
@@ -110,6 +181,7 @@ class WebMediaBroker:
             total=sum(map(len,files.values()))
             if self.bytes+total>60*1024*1024:raise ValueError('Task media total exceeds 60 MB')
             self.result=(metadata,files,dict(url=final_url,sourcePage=public_url(data.get('source_page')),purpose=public_text(data['purpose']),sourceSha256=hashlib.sha256(blob).hexdigest(),contentType=mime))
+        except MediaError as error:self.result={'ok':False,'error':str(error),'error_code':error.code,'details':error.details}
         except Exception as error:self.result={'ok':False,'error':public_text(str(error)) or type(error).__name__}
 
     @staticmethod

@@ -490,6 +490,8 @@ def main():
     if args.codex_smoke:return codex_smoke(cfg)
     if args.render_smoke:return render_smoke(cfg)
     worker_lock=(ROOT/'worker.lock').open('a+')
+    from production_bridge import write_runtime_receipt
+    write_runtime_receipt(ROOT,cfg,'waiting' if args.wait_for_worker else 'starting')
     if args.wait_for_worker:print('Waiting for previous worker to finish; automatic handoff enabled.',flush=True)
     try:fcntl.flock(worker_lock,fcntl.LOCK_EX|(0 if args.wait_for_worker else fcntl.LOCK_NB))
     except BlockingIOError:raise SystemExit('Another queue worker is already running')
@@ -501,6 +503,7 @@ def main():
     signal.signal(signal.SIGTERM,drain)
     signal.signal(signal.SIGINT,drain)
     self_test(cfg)
+    write_runtime_receipt(ROOT,cfg,'ready')
     print('Bridge ready; up to 3 tasks run concurrently.',flush=True)
     serve(lambda:request(cfg,'/api/worker').get('job'),lambda task:execute_task(cfg,task),stopping,
           lambda error:print('Bridge error:',type(error).__name__,public_text(str(error)),flush=True),once=args.once)

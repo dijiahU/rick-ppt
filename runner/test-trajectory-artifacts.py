@@ -67,8 +67,8 @@ class ArtifactTests(unittest.TestCase):
         (queue/('b'*32+'.request.json')).write_text(json.dumps(request))
         def convert(*args,**kwargs):
             (dest/'draft.pdf').write_bytes(b'%PDF-captured')
-            return SimpleNamespace(returncode=0,stdout='render output',stderr='')
-        with patch.object(runner.subprocess,'run',side_effect=convert):runner.render_requests(self.job,trajectory=self.run)
+            return SimpleNamespace(returncode=0,communicate=lambda timeout:('render output',''),poll=lambda:0)
+        with patch.object(runner.subprocess,'Popen',side_effect=convert):runner.render_requests(self.job,trajectory=self.run)
         (dest/'draft.pdf').unlink();pptx.unlink()
         roles={a['role'] for a in list_artifacts(self.run.root)}
         self.assertIn('render-input',roles);self.assertIn('render-output',roles)

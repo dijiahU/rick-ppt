@@ -20,6 +20,21 @@ assets for identifiable games, films, products, characters and objects; do not
 substitute invented artwork merely because it is easier to obtain. Use generated
 imagery for an actual original-illustration need, not as a counterfeit screenshot.
 
+The host uses its configured local HTTP proxy when available. Public addresses
+and every redirect are checked; the proxy CONNECT target is pinned to the
+verified IP and TLS still verifies the original hostname. Task code cannot
+select a proxy or change network permissions. Without a local proxy the host
+uses direct transport. Downloads have a shared 65-second budget, including
+redirects, and at most one retry per transfer for an empty transient failure.
+
+On failure read `error_code` and `details`: DNS, connection, TLS, HTTP status,
+size and non-media responses are distinct. Do not keep swapping URLs or
+repeating a request for the same transport problem. The host already performs
+the bounded transient retry. A page/404/non-media response needs a verified
+direct-file URL; a size or partial-download failure needs an appropriate smaller
+source. Record a DNS/proxy/TLS outage and follow the selected asset branch's
+alternative or unmet-requirement action without inventing documentary evidence.
+
 For original concept imagery, use the exposed built-in generator with
 imagegen-skill.md when that fits the task; it does not require a failed search first.
 Inspect the scoped file in assets/index.json and distinguish illustration from

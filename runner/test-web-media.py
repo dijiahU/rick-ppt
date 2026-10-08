@@ -2,6 +2,7 @@
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import socket
 import subprocess
@@ -15,6 +16,75 @@ from PIL import Image
 import web_media as m
 
 class Policy(unittest.TestCase):
+    def setUp(self):
+        self.env=patch.dict(os.environ,{},clear=True);self.env.start();self.addCleanup(self.env.stop)
+
+    def test_only_host_loopback_proxy_is_accepted(self):
+        self.assertIsNone(m.local_proxy({}))
+        self.assertEqual(m.local_proxy({'HTTPS_PROXY':'http://localhost:7890'}),'http://127.0.0.1:7890')
+        self.assertEqual(m.local_proxy({'https_proxy':'http://[::1]:7890'}),'http://[::1]:7890')
+        for value in ('http://proxy.example:7890','http://127.0.0.1:7890/private','http://user:secret@127.0.0.1:7890','socks5://127.0.0.1:7890','http://127.0.0.1:0'):
+            with self.subTest(value=value),self.assertRaises(m.MediaError) as raised:m.local_proxy({'HTTPS_PROXY':value})
+            self.assertNotIn('secret',str(raised.exception))
+
+    def proxy_fetch(self,command,**kwargs):
+        self.assertEqual(command[command.index('--proxy')+1],'http://127.0.0.1:7890')
+        self.assertEqual(kwargs['env'],{'PATH':'/usr/bin:/bin'})
+        url=command[command.index('--url')+1]
+        if url.startswith('https://dns.google/resolve?'):
+            return subprocess.CompletedProcess(command,0,json.dumps({'Status':0,'Answer':[{'type':1,'data':'93.184.216.34'}]}).encode(),b'')
+        self.assertEqual(command[command.index('--connect-to')+1],'example.com:443:93.184.216.34:443')
+        self.assertEqual(url,'https://example.com/a.png')
+        self.assertNotIn('--insecure',command);self.assertNotIn('-L',command)
+        Path(command[command.index('--dump-header')+1]).write_bytes(b'HTTP/1.1 200 Connection established\r\n\r\nHTTP/2 200\r\nContent-Type: image/png\r\n\r\n')
+        return subprocess.CompletedProcess(command,0,b'image-bytes',b'')
+
+    def test_proxy_uses_public_doh_and_pins_connect_target(self):
+        with patch.dict(os.environ,{'HTTPS_PROXY':'http://127.0.0.1:7890'}),patch.object(socket,'getaddrinfo',side_effect=AssertionError('local fake-IP DNS must not be used')),patch.object(subprocess,'run',side_effect=self.proxy_fetch) as run:
+            self.assertEqual(m.download('https://example.com/a.png'),(b'image-bytes','https://example.com/a.png','image/png'))
+            self.assertEqual(run.call_count,2)
+
+    def test_proxy_cannot_fetch_private_dns_answer(self):
+        answer=subprocess.CompletedProcess([],0,b'{"Answer":[{"type":1,"data":"10.0.0.7"}]}',b'')
+        with patch.dict(os.environ,{'HTTPS_PROXY':'http://127.0.0.1:7890'}),patch.object(subprocess,'run',return_value=answer) as run,self.assertRaises(m.MediaError) as raised:m.download('https://example.com/a')
+        self.assertEqual(raised.exception.code,'non_public_address');self.assertEqual(run.call_count,1)
+
+    def test_proxy_redirect_is_revalidated(self):
+        def fetch(command,**kwargs):
+            if '--dump-header' not in command:return self.proxy_fetch(command,**kwargs)
+            Path(command[command.index('--dump-header')+1]).write_bytes(b'HTTP/2 302\r\nLocation: https://127.0.0.1/private\r\n\r\n')
+            return subprocess.CompletedProcess(command,0,b'',b'')
+        with patch.dict(os.environ,{'HTTPS_PROXY':'http://127.0.0.1:7890'}),patch.object(subprocess,'run',side_effect=fetch) as run,self.assertRaises(ValueError):m.download('https://example.com/a.png')
+        self.assertEqual(run.call_count,2)
+
+    def test_transient_transport_has_one_retry_and_safe_diagnostics(self):
+        failed=subprocess.CompletedProcess([],35,b'',b'sensitive query and host file path should not escape')
+        with patch.object(socket,'getaddrinfo',return_value=[(2,1,6,'',('93.184.216.34',443))]),patch.object(subprocess,'run',return_value=failed) as run,self.assertRaises(m.MediaError) as raised:m.download('https://example.com/a?token=secret')
+        self.assertEqual(run.call_count,2);self.assertEqual(raised.exception.code,'tls_handshake')
+        self.assertEqual(raised.exception.details,{'host':'example.com','route':'direct','curl_exit':35,'attempts':2})
+        self.assertNotIn('secret',str(raised.exception))
+
+    def test_partial_size_and_certificate_errors_are_not_retried(self):
+        for code,body,expected in [(28,b'partial','download_timeout'),(60,b'','tls_certificate'),(63,b'','download_too_large')]:
+            with self.subTest(code=code),patch.object(socket,'getaddrinfo',return_value=[(2,1,6,'',('93.184.216.34',443))]),patch.object(subprocess,'run',return_value=subprocess.CompletedProcess([],code,body,b'')) as run,self.assertRaises(m.MediaError) as raised:m.download('https://example.com/a')
+            self.assertEqual(run.call_count,1);self.assertEqual(raised.exception.code,expected)
+
+    def test_http_status_is_reported_without_retry(self):
+        def rejected(command,**kwargs):
+            Path(command[command.index('--dump-header')+1]).write_bytes(b'HTTP/2 403\r\nContent-Type: text/html\r\n\r\n')
+            return subprocess.CompletedProcess(command,0,b'denied',b'')
+        with patch.object(socket,'getaddrinfo',return_value=[(2,1,6,'',('93.184.216.34',443))]),patch.object(subprocess,'run',side_effect=rejected) as run,self.assertRaises(m.MediaError) as raised:m.download('https://example.com/a')
+        self.assertEqual(run.call_count,1);self.assertEqual(raised.exception.details['http_status'],403)
+
+    def test_shared_budget_prevents_unbounded_retry(self):
+        with patch.object(time,'monotonic',side_effect=[0,0,0,0,66]),patch.object(socket,'getaddrinfo',return_value=[(2,1,6,'',('93.184.216.34',443))]),patch.object(subprocess,'run',return_value=subprocess.CompletedProcess([],35,b'',b'')) as run,self.assertRaises(m.MediaError) as raised:m.download('https://example.com/a')
+        self.assertEqual(run.call_count,1);self.assertEqual(raised.exception.code,'download_timeout')
+
+    def test_broker_preserves_structured_error(self):
+        with tempfile.TemporaryDirectory() as d,patch.object(m,'download',side_effect=m.MediaError('tls_handshake','Media TLS handshake failed',curl_exit=35,route='local_proxy')):
+            broker=m.WebMediaBroker(Path(d));broker.fetch({'url':'https://example.com/a','purpose':'illustrate'})
+        self.assertEqual(broker.result,{'ok':False,'error':'Media TLS handshake failed','error_code':'tls_handshake','details':{'curl_exit':35,'route':'local_proxy'}})
+
     def test_forbidden_urls(self):
         for url in ('file:///etc/passwd','http://example.com/a','https://user:pass@example.com/a','https://localhost/a','https://foo.internal/a','https://example.com:8443/a','https://example.com/\nfoo'):
             with self.subTest(url=url),self.assertRaises(ValueError):m.resolve_url(url)
