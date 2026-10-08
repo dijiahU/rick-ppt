@@ -100,6 +100,8 @@ class ReviewRecoveryTests(unittest.TestCase):
         self.assertFalse((first/'design-references.json').exists());self.assertFalse((first/'audience-notes.json').exists())
         self.assertFalse((evidence/'design-references.json').exists());self.assertTrue((evidence/'audience-notes.json').is_file())
         self.assertTrue((visual/'design-reference-images/R1.png').is_file());self.assertTrue((visual/'design-references.json').is_file())
+        evidence_prompt=next(prompt for name,_,prompt in self.calls if name.startswith('content-evidence'))
+        self.assertIn('read the actual exported notes',evidence_prompt)
 
     def test_v3_visual_review_requires_actual_design_assessment(self):
         catalog=self.plugin/'skills/pptx/assets/workflow-choices.json';catalog.parent.mkdir();catalog.write_text('{"version":3}')
