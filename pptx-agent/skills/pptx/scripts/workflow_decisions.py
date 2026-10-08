@@ -213,13 +213,21 @@ def _page_evidence(data):
                 if item.get('Type', '').endswith('/slide'):
                     navigation = True
             timing = tree.find(f'{{{p}}}timing')
-            reveal = timing is not None and any(node.get('evt') == 'onNext' for node in timing.iter(f'{{{p}}}cond')) and next(timing.iter(f'{{{p}}}spTgt'), None) is not None
-            evidence.append({'assets': hashes, 'playable': playable, 'click_reveal': reveal, 'internal_navigation': navigation,'notes':notes})
+            shape_ids={node.get('id') for node in tree.iter(f'{{{p}}}cNvPr')}
+            reveal_steps=[]
+            if timing is not None and any(node.get('evt')=='onNext' for node in timing.iter(f'{{{p}}}cond')):
+                for effect in timing.iter(f'{{{p}}}cTn'):
+                    if effect.get('nodeType')!='clickEffect':continue
+                    step_targets=[node.get('spid') for node in effect.iter(f'{{{p}}}spTgt')]
+                    entrance=any(node.get('presetClass')=='entr' for node in effect.iter(f'{{{p}}}cTn'))
+                    behavior=any(node.tag in {f'{{{p}}}'+kind for kind in ('set','anim','animEffect','animMotion','animScale','animRot')} for node in effect.iter())
+                    if entrance and behavior and step_targets and all(ident in shape_ids for ident in step_targets):reveal_steps.append(step_targets)
+            evidence.append({'assets': hashes, 'playable': playable, 'click_reveal': bool(reveal_steps), 'reveal_steps':reveal_steps,'internal_navigation': navigation,'notes':notes})
     return evidence
 
 
 def validate_plan(plan, outline, *, stage='planning', root=None, artifact=None,
-                  generation_enabled=True, search_enabled=True, mode='create', require_variation=None, allow_legacy=True):
+                  generation_enabled=True, search_enabled=True, mode='create', require_variation=None, allow_legacy=True, require_click_reveal=None):
     catalog = load_catalog()
     if stage not in ('planning', 'authored'):
         raise ValueError('Unknown decision validation stage')
@@ -237,6 +245,9 @@ def validate_plan(plan, outline, *, stage='planning', root=None, artifact=None,
         _enum(task[field], options, 'task.' + field)
     if task['operation'] != mode:
         raise ValueError('Operation must match the existing create/edit task entry')
+    if require_click_reveal is None:
+        require_click_reveal=bool(catalog.get('requirements',{}).get('new_deck_click_reveal')) and not legacy
+    require_click_reveal=bool(require_click_reveal) and mode=='create' and require_variation is not False
     if not search_enabled and (task['research'] != 'supplied_only' or task['references'] == 'targeted_search'):
         raise ValueError('Search is unavailable; select permitted supplied/available branches')
     if task['style'] == 'supplied_system' and task['references'] != 'preserve_supplied':
@@ -255,6 +266,8 @@ def validate_plan(plan, outline, *, stage='planning', root=None, artifact=None,
         if len(evidence) != len(pages):
             raise ValueError('Artifact page order/count differs from the decision plan')
     signatures = set()
+    if require_click_reveal and not any(page.get('behavior')=='click_reveal' for page in pages):
+        raise ValueError('New presentations require content-led native click reveals; an entirely static deck cannot be delivered')
     asset_hashes = {}
     for index, page in enumerate(pages):
         _keys(page, ('id', 'intent', 'strategy','form', 'support', 'composition', 'behavior', 'assets', 'role','visual_action','reference_ids'))
@@ -344,7 +357,7 @@ def validate_plan(plan, outline, *, stage='planning', root=None, artifact=None,
         raise ValueError('New multi-page decks cannot select one form/composition throughout')
     return {'version': plan['version'], 'pages': len(pages), 'distinct_form_layouts': len(signatures),
             'stage': stage, 'embedded_assets_checked': evidence is not None,'legacy_record':legacy,
-            'references_recorded':len(references),'artistic_transfer_requires_visual_review':True}
+            'references_recorded':len(references),'artistic_transfer_requires_visual_review':True,'click_reveal_required':require_click_reveal}
 
 
 def main():
@@ -368,7 +381,8 @@ def main():
         task_mode = json.loads(request.read_text()).get('mode') if request.is_file() and request.stat().st_size <= MAX_PLAN_BYTES else None
         mode = args.mode or task_mode or plan.get('task', {}).get('operation') or 'create'
         result = validate_plan(plan, json.loads(args.outline.read_text()),
-                               stage=args.stage, root=Path.cwd(), artifact=args.artifact, mode=mode,allow_legacy=args.allow_legacy)
+                               stage=args.stage, root=Path.cwd(), artifact=args.artifact, mode=mode,allow_legacy=args.allow_legacy,
+                               require_click_reveal=False if args.allow_legacy else None)
         print(json.dumps({'ok': True, **result}))
     except (OSError, ValueError, KeyError, ET.ParseError, zipfile.BadZipFile) as error:
         print(json.dumps({'ok': False, 'error': str(error)}))

@@ -51,6 +51,7 @@ def write_runtime_receipt(root,cfg,status):
           'default_reasoning_effort':cfg.get('default_reasoning_effort',DEFAULT_TASK_REASONING_EFFORT)}
     catalog=plugin/'skills/pptx/assets/workflow-choices.json'
     body['decision_contract_version']=json.loads(catalog.read_text()).get('version') if catalog.is_file() else None
+    body['new_deck_click_reveal_required']=bool(catalog.is_file() and json.loads(catalog.read_text()).get('requirements',{}).get('new_deck_click_reveal'))
     body['native_canvas_available']=(plugin/'skills/pptx/scripts/native_canvas.py').is_file()
     body['reference_notes_available']=(plugin/'skills/pptx/scripts/design_references.py').is_file()
     target=Path(root)/('runtime-'+str(os.getpid())+'.local.json')

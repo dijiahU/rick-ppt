@@ -90,8 +90,11 @@ data and analytical diagrams remain editable; do not flatten whole slides.
 
 Execute the selected behavior branch: static, click_reveal, internal_navigation
 or embedded_playback. Follow its conditions/checks in workflow-branches.md; for
-click_reveal, read [Animations](references/animations.md). No implicit animation
-from multiple ideas or a website task.
+click_reveal, read [Animations](references/animations.md). New presentations must
+include meaningful native click reveals; staged processes/arguments/examples need
+an entry→click-groups→final-view plan. Static cover/single-message pages are allowed;
+an entirely static new deck or decorative title entrance is insufficient. Preserve
+existing behavior during faithful conversions/scoped edits and historical recovery.
 
 Read [Research and assets](references/research-and-assets.md) for imagery/media and
 check actual host capabilities. Inspect and import real assets. Reference evidence

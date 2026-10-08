@@ -121,6 +121,7 @@ def prepare(cfg):
         if json.loads(catalog.read_text())['version']>=3:
             skill=Path(cfg['plugin'])/'skills/pptx'
             capabilities['workflow_decisions'].update(version=3,
+                new_deck_click_reveal_required=cfg.get('_native_reveal_required',bool(json.loads(catalog.read_text()).get('requirements',{}).get('new_deck_click_reveal'))),
                 reference_register='decision-plan.json.references',reference_notes=str(skill/'scripts/design_references.py'),
                 use='Choose audience strategy and actual canvas composition. Record work/title/creator/source/inspection/observed/borrowed/page applications; write applied references into final slide notes. Choice counts do not establish design quality.')
             capabilities['native_canvas']={'guide':str(skill/'references/native-canvas.md'),
@@ -302,8 +303,9 @@ def _run_job(cfg,task,lease):
     if not cfg.get('_model_profile'):
         cfg['_task_default_model']=task_default_model(state_root,task['id'],existing,cfg.get('default_model',DEFAULT_TASK_MODEL),cfg.get('default_reasoning_effort',DEFAULT_TASK_REASONING_EFFORT))
         cfg['_task_default_reasoning_effort']=task_default_reasoning_effort(state_root,task['id'])
-    from decision_routing import pin_decision_contract
+    from decision_routing import pin_decision_contract,admitted_click_requirement
     cfg['_choice_min_version']=pin_decision_contract(cfg,state_root,task['id'],existing)
+    cfg['_native_reveal_required']=admitted_click_requirement(state_root,task['id'])
     with Journal(state_root,task['id'],plugin_version=None if existing else version,secrets=(cfg['token'],task['lease']),limits=HOST_JOURNAL_LIMITS) as journal:
         plan=None
         if journal.state.get('snapshot_id'):

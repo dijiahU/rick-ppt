@@ -107,3 +107,15 @@ placement/native behavior without new content research; retain_suggestion for a
 nonblocking refinement. Classify by the action needed, not your reviewer role.
 A required finding cannot select retain_suggestion. Existing bounded review and
 source-fidelity rules still apply; no additional review pass.
+
+## Required presentation pacing
+
+For newly admitted presentations under the click-reveal policy, check actual native
+entrance targets and provided initial/intermediate/final state previews. A wholly
+static deck, transition-only timing or cosmetic title appearance is a missing
+required presentation feature. Require a concrete native repair, not another design
+research stage. On staged explanation pages, check the meaningful order, persistent
+orientation, premature conclusions, labels/connectors entering together and the
+readable final state. Cover/single-message pages may be static. Preserve faithful
+conversions/scoped edits and historical task contracts. Static previews and timing
+inspection remain distinct from actual PowerPoint slideshow playback.

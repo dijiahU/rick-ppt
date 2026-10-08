@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 from PIL import Image
 
-from decision_routing import choice_policy, check_decisions, needs_content_revision, pin_decision_contract, write_design_packet
+from decision_routing import choice_policy, check_decisions, needs_content_revision, pin_decision_contract, write_design_packet,admitted_click_requirement,click_reveal_required
 from workflow import validate_report, _run_workflow
 
 PLUGIN = Path(__file__).resolve().parents[1] / 'pptx-agent'
@@ -52,8 +52,9 @@ def deck(data=b'IMAGE', used_page=1, clicks=False):
         archive.writestr('ppt/_rels/presentation.xml.rels', '<Relationships><Relationship Id="r1" Target="slides/slide9.xml"/><Relationship Id="r2" Target="/ppt/slides/slide4.xml"/></Relationships>')
         for page, number in ((1, 9), (2, 4)):
             image = '<a:blip r:embed="img"/>' if page == used_page else ''
-            timing = '<p:timing><p:cond evt="onNext"/><p:spTgt spid="2"/></p:timing>' if clicks and page == 1 else ''
-            archive.writestr(f'ppt/slides/slide{number}.xml', f'<p:sld xmlns:p="{P}" xmlns:a="{A}" xmlns:r="{R}">{image}{timing}</p:sld>')
+            timing = '<p:timing><p:cond evt="onNext"/><p:cTn nodeType="clickEffect" presetClass="entr"><p:childTnLst><p:set><p:cBhvr><p:tgtEl><p:spTgt spid="2"/></p:tgtEl></p:cBhvr></p:set></p:childTnLst></p:cTn></p:timing>' if clicks and page == 1 else ''
+            shape='<p:sp><p:nvSpPr><p:cNvPr id="2" name="Explanation"/></p:nvSpPr></p:sp>'
+            archive.writestr(f'ppt/slides/slide{number}.xml', f'<p:sld xmlns:p="{P}" xmlns:a="{A}" xmlns:r="{R}">{shape}{image}{timing}</p:sld>')
             archive.writestr(f'ppt/slides/_rels/slide{number}.xml.rels', f'<Relationships><Relationship Id="img" Type="{R}/image" Target="../media/asset.png"/></Relationships>')
         archive.writestr('ppt/media/asset.png', data)
     return stream.getvalue()
@@ -61,7 +62,36 @@ def deck(data=b'IMAGE', used_page=1, clicks=False):
 
 class DecisionTests(unittest.TestCase):
     def check(self, value, **kwargs):
+        kwargs.setdefault('require_click_reveal',False)
         return POLICY.validate_plan(value, outline(), **kwargs)
+
+    def test_new_presentation_requires_actual_native_entrance(self):
+        value=plan()
+        with self.assertRaisesRegex(ValueError,'entirely static'):self.check(value,require_click_reveal=True)
+        value['pages'][0]['behavior']='click_reveal'
+        self.check(value,require_click_reveal=True)
+        self.check(value,require_click_reveal=True,stage='authored',artifact=deck(clicks=True))
+        for old,new in ((b'presetClass="entr"',b'presetClass="emph"'),(b'spid="2"',b'spid="999"'),(b'evt="onNext"',b'evt="onBegin"')):
+            stream=io.BytesIO()
+            with zipfile.ZipFile(io.BytesIO(deck(clicks=True))) as before,zipfile.ZipFile(stream,'w') as after:
+                for name in before.namelist():after.writestr(name,before.read(name).replace(old,new))
+            with self.assertRaisesRegex(ValueError,'native behavior'):self.check(value,require_click_reveal=True,stage='authored',artifact=stream.getvalue())
+        self.check(plan(),require_click_reveal=True,require_variation=False)
+        value=plan();value['task']['operation']='edit';self.check(value,mode='edit',require_click_reveal=True)
+
+    def test_click_requirement_is_pinned_and_old_admissions_do_not_change(self):
+        cfg={'plugin':str(PLUGIN)}
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);pin_decision_contract(cfg,root,'new',False)
+            self.assertTrue(admitted_click_requirement(root,'new'))
+            old=root/'old';old.mkdir();(old/'decision-contract.json').write_text('{"version":3}')
+            pin_decision_contract(cfg,root,'old',True)
+            self.assertFalse(admitted_click_requirement(root,'old'))
+            self.assertFalse(click_reveal_required({**cfg,'_native_reveal_required':False}))
+            self.assertFalse(click_reveal_required(cfg,mode='edit'))
+            job=root/'job';job.mkdir();(job/'decision-plan.json').write_text(json.dumps(plan()))
+            with self.assertRaisesRegex(ValueError,'entirely static'):check_decisions(cfg,job,outline(),stage='planning')
+            check_decisions({**cfg,'_native_reveal_required':False},job,outline(),stage='planning')
 
     def test_complete_choices_and_exact_coverage(self):
         result = self.check(plan())
@@ -244,7 +274,7 @@ class DecisionTests(unittest.TestCase):
             self.check(value,stage='authored',root=root,artifact=deck(data=body))
 
     def test_host_requires_record_for_new_work_and_keeps_legacy_receipts(self):
-        cfg = {'plugin': str(PLUGIN)}
+        cfg = {'plugin': str(PLUGIN),'_native_reveal_required':False}
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             self.assertIsNone(check_decisions(cfg, root, outline(), stage='planning', required=False))

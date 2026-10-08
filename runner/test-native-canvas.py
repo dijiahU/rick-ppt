@@ -87,12 +87,12 @@ class NativeCanvasTests(unittest.TestCase):
 
     def test_artwork_record_written_once_and_verified_in_actual_pptx_notes(self):
         value=self.plan();outline={'slides':[{'id':'intro'}]}
-        with self.assertRaisesRegex(ValueError,'Final slide notes'):decisions.validate_plan(value,outline,root=self.root,stage='authored',artifact=self.pack())
+        with self.assertRaisesRegex(ValueError,'Final slide notes'):decisions.validate_plan(value,outline,root=self.root,stage='authored',artifact=self.pack(),require_click_reveal=False)
         notes.apply(self.workspace,value,outline,root=self.root,language='zh-CN')
         first=self.pack();notes.apply(self.workspace,value,outline,root=self.root,language='zh-CN')
         evidence=decisions._page_evidence(self.pack())[0]['notes']
         self.assertEqual(evidence.count(notes.BEGIN),1);self.assertIn('设计参考',evidence);self.assertIn('汲取',evidence)
-        decisions.validate_plan(value,outline,root=self.root,stage='authored',artifact=self.pack())
+        decisions.validate_plan(value,outline,root=self.root,stage='authored',artifact=self.pack(),require_click_reveal=False)
         record=decisions.design_report(value,self.pack());self.assertEqual(record['references'][0]['creator'],'Fixture creator')
 
     def test_existing_notes_and_nonapplying_pages_are_preserved(self):

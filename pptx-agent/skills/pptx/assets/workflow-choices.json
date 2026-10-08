@@ -1,5 +1,6 @@
 {
   "version": 3,
+  "requirements": {"new_deck_click_reveal": true},
   "task": {
     "operation": [
       "create",

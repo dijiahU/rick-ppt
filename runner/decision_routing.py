@@ -36,6 +36,8 @@ def check_decisions(cfg, job, outline, *, stage, artifact=None, required=True, m
         minimum=cfg.get('_choice_min_version',version)
         if minimum is not None and (type(plan.get('version')) is not int or plan['version']<minimum):raise ValueError('New work cannot bypass its pinned design contract')
         extra['allow_legacy']=minimum is None or minimum<version
+        if 'requirements' in policy.load_catalog():
+            extra['require_click_reveal']=click_reveal_required(cfg,mode=mode,require_variation=require_variation)
     result = policy.validate_plan(plan, outline, stage=stage, root=job,
                                   artifact=artifact, mode=mode,
                                   require_variation=require_variation,
@@ -51,8 +53,21 @@ def pin_decision_contract(cfg,state_root,task_id,existing):
     policy=choice_policy(cfg)
     if policy is None:return None
     version=policy.load_catalog()['version'];path.parent.mkdir(parents=True,exist_ok=True)
-    with os.fdopen(os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'w') as stream:json.dump({'version':version},stream)
+    with os.fdopen(os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'w') as stream:
+        json.dump({'version':version,'click_reveal_required':bool(policy.load_catalog().get('requirements',{}).get('new_deck_click_reveal'))},stream)
     return version
+
+
+def admitted_click_requirement(state_root,task_id):
+    path=Path(state_root)/task_id/'decision-contract.json'
+    return bool(json.loads(path.read_text()).get('click_reveal_required',False)) if path.is_file() else False
+
+
+def click_reveal_required(cfg,*,mode='create',require_variation=None):
+    catalog=Path(cfg['plugin'])/'skills/pptx/assets/workflow-choices.json'
+    current=bool(catalog.is_file() and json.loads(catalog.read_text()).get('requirements',{}).get('new_deck_click_reveal'))
+    pinned=cfg.get('_native_reveal_required',current and cfg.get('_choice_min_version',3) is not None)
+    return bool(pinned) and mode=='create' and require_variation is not False
 
 
 def write_design_packet(cfg,job,packet,artifact):

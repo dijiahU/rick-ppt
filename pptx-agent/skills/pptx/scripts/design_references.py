@@ -58,7 +58,7 @@ def paragraphs(entry,page_id,language='en'):
 
 
 def apply(workspace,plan,outline,*,root,language='en',allow_legacy=False):
-    decisions.validate_plan(plan,outline,root=root,mode=plan['task']['operation'],allow_legacy=allow_legacy)
+    decisions.validate_plan(plan,outline,root=root,mode=plan['task']['operation'],allow_legacy=allow_legacy,require_click_reveal=False)
     if plan['version']!=3:return {'pages_updated':[],'reason':'Historical provenance was not invented'}
     workspace=Path(workspace).resolve(strict=True)
     if not workspace.is_relative_to(Path(root).resolve()):raise ValueError('Notes workspace must remain inside the task')

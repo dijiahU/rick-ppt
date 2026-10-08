@@ -133,7 +133,13 @@ no outside artwork was applied. Never present unviewed attempts as inspiration.
 ## Behavior, implementation and existing review
 
 Behavior choices remain `static`, `click_reveal`, `internal_navigation`,
-`embedded_playback`. Select for the actual viewing task, not number of ideas.
+`embedded_playback`. New presentations require content-led `click_reveal`; choose
+it for staged processes, arguments, examples and layered explanations. In
+source-notes.md record entry context, each click's group, persistent context and
+the final complete view. Static cover/single-message pages remain available;
+internal navigation/playback or slide transitions alone do not replace this
+requirement. Do not fake it with only a decorative title entrance. Preserve
+faithful-source/scoped-edit behavior and protected historically admitted contracts.
 Use animations.md for meaningful native builds; verify internal destinations and
 actual embedded files, and distinguish static inspection from player verification.
 

@@ -11,8 +11,13 @@ order, seek relevant design knowledge/material when the task benefits, and run
 independent content/visual reviews in parallel on the same frozen candidate.
 The visual review checks style against content, purpose, audience and viewing mode.
 Expression is chosen from the actual content, evidence, audience, purpose, viewing
-mode and supplied constraints. No default medium, layout, density, style, animation
-or asset-acquisition sequence. Search, generation and native authoring are available
+mode and supplied constraints. New presentations require meaningful native click
+reveals; multi-step explanation uses an entry/click/final-view plan. Static covers
+and single-message pages are allowed. The host pins this requirement outside the
+task, rejects all-static new plans and checks actual entrance targets on the
+exported pages. Transition-only and cosmetic title effects are insufficient in
+visual review. Faithful conversions, scoped edits and older admitted tasks preserve
+their behavior contract. No default medium, layout, density, style or asset-acquisition sequence. Search, generation and native authoring are available
 when they help; inspect and embed selected assets, preserve required editability
 and distinguish original illustration from documentary evidence. Reviews judge
 actual task fit, not adherence to a preferred visual recipe.

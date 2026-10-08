@@ -1,13 +1,19 @@
 # Native staged explanation
 
-Decide whether static presentation or native behavior fits the actual request,
-audience and explanation. Neither live use nor multiple ideas makes animation
-mandatory. When choosing staged reveals, plan what is visible on entry, what each
-presenter click introduces, what stays as context, and the final readable view.
-Group by meaning: an object with its label/connector, a reasoning step with its
-evidence. Keep orientation visible. Avoid word-by-word clicks, long automatic
-sequences and premature answers. A complete static view is equally available when
-it serves the task; no animation quota or exceptions paperwork.
+New presentations must include content-led native click reveals. Entirely static
+output, slide transitions alone or a decorative title entrance do not fulfill
+Rick's presentation requirement. Cover/single-message pages may be static; preserve
+existing source behavior for faithful conversions and scoped edits. Historically
+admitted tasks retain their protected behavior contract.
+
+For multi-step processes, arguments, worked examples and layered diagrams, select
+click_reveal and write a compact speaking sequence in source-notes.md: entry
+context → each presenter click's meaningful group → persistent context → final
+complete readable view. Group an object with its label/connector, or a reasoning
+step with its evidence. Keep orientation and essential conditions visible. Avoid
+word-by-word clicks, long automatic sequences, premature answers or hiding the
+whole page until one click. The number and effect follow the explanation, not a
+fixed click count. All required content remains readable in the final view.
 
 For simple entrance groups, inspect target IDs with `pptx.py inspect N`, then use:
 
