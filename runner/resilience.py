@@ -15,13 +15,16 @@ class WorkerHTTPError(RuntimeError):
 class HeartbeatLost(RuntimeError):
     pass
 
+class TaskPaused(RuntimeError):
+    """Owner stopped this attempt; preserve it without reporting a failure."""
+
 def request(cfg,path,body=b'{}',lease=None,raw=False):
     action=parse_qs(urlsplit(path).query).get('action',['claim'])[0]
     headers={'Authorization':'Bearer '+cfg['token'],'Content-Type':'application/json'}
     if lease:headers['X-Job-Lease']=lease
     if isinstance(body,bytes) and body[:2]==b'PK':headers['Content-Type']='application/vnd.openxmlformats-officedocument.presentationml.presentation'
     if isinstance(body,bytes) and body[:8]==b'\x89PNG\r\n\x1a\n':headers['Content-Type']='image/png'
-    limit=10 if action in ('heartbeat','progress','preview','trace') else 180 if action=='bundle' else 20 if action=='claim' else 45
+    limit=5 if action=='poll' else 10 if action in ('heartbeat','progress','preview','trace') else 180 if action=='bundle' else 20 if action=='claim' else 45
     maximum=10*1024*1024 if raw else 1024*1024
     # Claim can assign a different job if its response is lost. Retry/requeue is
     # version-conditional and requires an explicit operator decision on ambiguity.
@@ -72,6 +75,9 @@ class LeaseKeeper:
         try:
             response=self.send()
             if response.get('ok') is not True:raise WorkerHTTPError('heartbeat',reason='invalid acknowledgement',retryable=True)
+            if response.get('stop') is True:
+                self.fatal=TaskPaused('Task paused by its owner')
+                return False
             self.last_success=self.clock()
             if self.error:self.log('Heartbeat recovered')
             self.error=None

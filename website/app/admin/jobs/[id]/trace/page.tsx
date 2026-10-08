@@ -3,7 +3,7 @@ import {isAdmin} from '@/lib/admin';
 import TraceRoom from './trace-room';
 import './trace.css';
 export const dynamic='force-dynamic';
-export const metadata={title:'PPTX LAB · 执行记录',robots:{index:false,follow:false},openGraph:{images:[]},twitter:{images:[]}};
+export const metadata={title:'rickppt · 执行记录',robots:{index:false,follow:false},openGraph:{images:[]},twitter:{images:[]}};
 export default async function TracePage({params}:{params:Promise<{id:string}>}){
  const {id}=await params;
  if(!await getChatGPTUser())return <main><h1>管理员执行记录</h1><a href={chatGPTSignInPath(`/admin/jobs/${encodeURIComponent(id)}/trace`)}>登录后查看 →</a></main>;

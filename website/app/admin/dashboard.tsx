@@ -9,6 +9,7 @@ import {useEffect,useState} from 'react';
 import {LanguagePicker,useLanguage} from '@/app/language';
 import {displaySummary,languages,isLocale,type Locale} from '@/lib/i18n';
 import type {Progress} from '@/lib/progress';
+import AdminManager from './admin-manager';
 type Job={id:string;user_id:string;title:string;status:string;pages:number;language:string;created_at:number;updated_at:number;activity:Progress['events'][number]|null;previewCount:number;queuePosition:number|null};
 type Detail=Job&{queue:QueueHealth|null;brief:string;style:string;summary:string|null;download:boolean;progress:Progress|null;attachments:{id:string;name:string}[]};
 type Data={counts:Record<string,number>;jobs:Job[];page:number;limit:number;total:number;online:boolean;checkedAt:number;queue:QueueHealth};
@@ -40,10 +41,11 @@ export default function Dashboard(){
  const label=(value:string)=>Object.hasOwn(t.statuses,value)?t.statuses[value as keyof typeof t.statuses]:t.unknownStatus;
  const activity=(job:Job)=>['complete','failed','queued'].includes(job.status)?label(job.status):job.activity?(job.activity.detail||t.activities[job.activity.code]):w[23];
  if(denied)return <main className="admin"><h1>{w[30]}</h1><a href="/signin-with-chatgpt?return_to=/admin">{w[31]} →</a></main>;
- return <main className="admin"><header><a className="brand" href="/">PPTX LAB <span>/ {w[0]}</span></a><div className="header-actions"><a href="/">{w[24]} ↗</a><LanguagePicker/></div></header>
+ return <main className="admin"><header><a className="brand" href="/">rickppt <span>/ {w[0]}</span></a><div className="header-actions"><a href="/">{w[24]} ↗</a><LanguagePicker/></div></header>
  <section className="admin-intro"><div><p className="eyebrow">RICK’S CONTROL ROOM</p><h1>{w[1]}</h1><p>{w[19]}</p></div><div className={`worker-indicator ${data?.online?'online':''}`}>{data?(data.online?w[17]:w[18]):t.loading}{data&&<small>{date(data.checkedAt)}</small>}</div></section>
+ <AdminManager/>
  {data&&<QueueStatus queue={data.queue}/>}
- <section className="admin-counts" aria-label={w[0]}>{[['total',w[2]],['users',w[3]],['queued',t.statuses.queued],['running',t.statuses.running],['complete',t.statuses.complete],['failed',t.statuses.failed]].map(([key,title])=><article key={key}><span>{title}</span><strong>{data?.counts[key]??'—'}</strong></article>)}</section>
+ <section className="admin-counts" aria-label={w[0]}>{[['total',w[2]],['users',w[3]],['queued',t.statuses.queued],['running',t.statuses.running],['complete',t.statuses.complete],['failed',t.statuses.failed],['delivery_pending',t.statuses.delivery_pending]].map(([key,title])=><article key={key}><span>{title}</span><strong>{data?.counts[key]??'—'}</strong></article>)}</section>
  <div className="admin-filters"><label><span>{w[5]}</span><input type="search" value={search} maxLength={200} onChange={e=>setSearch(e.target.value)} placeholder={w[5]}/></label><label><span>{w[4]}</span><select value={status} onChange={e=>{setStatus(e.target.value);setPage(1);}}><option value="">{w[4]}</option>{['queued','running','complete','failed'].map(s=><option value={s} key={s}>{label(s)}</option>)}</select></label></div>
  {error&&<p role="alert" className="error">{w[20]}</p>}<p className="fineprint">{w[28]}</p>
  <div className="admin-columns"><section aria-label={w[2]}><div className="admin-table-wrap"><table><thead><tr>{[w[6],w[7],w[8],w[9]].map(x=><th key={x} scope="col">{x}</th>)}</tr></thead><tbody>{data?.jobs.map(job=><tr key={job.id} className={selected===job.id?'selected':''}><td><button className="request-title" onClick={()=>setSelected(job.id)} aria-label={`${w[10]}: ${job.title}`} aria-pressed={selected===job.id}>{job.title}</button><small>{scope(job.pages)} · {isLocale(job.language)?languages[job.language]:'—'}</small></td><td><button className="user-id" title={job.user_id} onClick={()=>setSearch(job.user_id)}>{job.user_id}</button></td><td><span className={`status status-${job.status}`}>{label(job.status)}</span><small>{activity(job)}</small>{job.queuePosition!==null&&<small>{qw.position} #{job.queuePosition} · {qw.waited} {Math.max(0,Math.floor(((data?.checkedAt??job.created_at)-job.created_at)/60000))} {qw.minutes}</small>}{job.previewCount>0&&<small>{t.previews}: {job.previewCount}{job.pages>0?`/${job.pages}`:''}</small>}</td><td><time>{date(job.created_at)}</time></td></tr>)}</tbody></table></div>{!data?<p role="status">{t.loading}</p>:!data.jobs.length?<p>{w[21]}</p>:null}
@@ -54,5 +56,5 @@ export default function Dashboard(){
  <h3>{w[15]}</h3><p className="original-brief">{detail.brief}</p>{!!detail.attachments.length&&<><h3>{w[29]}</h3><ul>{detail.attachments.map(a=><li key={a.id}>{a.name}</li>)}</ul></>}
  {detail.summary&&<p>{displaySummary(detail.summary,t)}</p>}<p><a className="admin-link" href={`/jobs/${detail.id}`}>{t.details} →</a></p><p><a className="admin-link" href={`/admin/jobs/${detail.id}/trace`}>执行记录 · 命令、输出与审核 →</a></p><CreationStory key={detail.id} progress={detail.progress} pages={detail.pages} status={detail.status} base={`/api/admin/jobs/${detail.id}`}/>
  {!!detail.progress?.events.length&&<details><summary>{w[8]} · {detail.progress.events.length}</summary><ActivityTimeline events={detail.progress.events}/></details>}
- {detail.download&&<a className="admin-link" href={`/api/admin/jobs/${detail.id}/download`}>{t.download} ↓</a>}</>}</>}</aside></div><footer><span>PPTX LAB / PRIVATE ADMINISTRATION</span><span>{w[19]}</span></footer></main>;
+ {detail.download&&<a className="admin-link" href={`/api/admin/jobs/${detail.id}/download`}>{t.download} ↓</a>}</>}</>}</aside></div><footer><span>rickppt / PRIVATE ADMINISTRATION</span><span>{w[19]}</span></footer></main>;
 }

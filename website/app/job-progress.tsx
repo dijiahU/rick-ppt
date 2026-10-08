@@ -8,7 +8,7 @@ export default function JobProgress({id,status}:{id:string;status:string}) {
  const {locale,t}=useLanguage();
  const [data,setData]=useState<State|null>(null),[error,setError]=useState(false);
  useEffect(()=>{let active=true;let timer:ReturnType<typeof setTimeout>;
-  async function poll(){try{const r=await fetch(`/api/jobs/${id}/progress`,{cache:'no-store'});if(!r.ok)throw Error();const value=await r.json() as State;if(!active)return;setData(value);setError(false);if(!['complete','failed'].includes(value.status))timer=setTimeout(poll,5000);}catch{if(active){setError(true);timer=setTimeout(poll,10000);}}}
+  async function poll(){try{const r=await fetch(`/api/jobs/${id}/progress`,{cache:'no-store'});if(!r.ok)throw Error();const value=await r.json() as State;if(!active)return;setData(value);setError(false);if(!['complete','failed','paused','delivery_pending'].includes(value.status))timer=setTimeout(poll,5000);}catch{if(active){setError(true);timer=setTimeout(poll,10000);}}}
   void poll();return()=>{active=false;clearTimeout(timer);};
  },[id,status]);
  const progress=data?.progress;

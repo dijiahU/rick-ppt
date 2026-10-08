@@ -118,6 +118,8 @@ def _run(argv: list[str], *, cwd: Path, env: dict[str, str], payload: str | None
 
 def _requirements(plugin: Path) -> list[dict]:
     project = tomllib.loads((plugin / "pyproject.toml").read_text())["project"]
+    native=(plugin/"skills/pptx/assets/single-file-policy.json").is_file()
+    expected=DEPENDENCIES-{"aiohttp","playwright"} if native else DEPENDENCIES
     declared = project["dependencies"] + project.get("optional-dependencies", {}).get("interactive", [])
     result = []
     for requirement in declared:
@@ -129,8 +131,8 @@ def _requirements(plugin: Path) -> list[dict]:
             raise PreflightError(f"No import smoke for new runtime dependency {name}; update this preflight")
         bounds = re.findall(r"(>=|<=|==|>|<)(\d+(?:\.\d+)*)", match[2])
         result.append({"name": name, "requirement": requirement, "bounds": bounds})
-    if {item["name"] for item in result} != DEPENDENCIES:
-        raise PreflightError("Plugin must declare its four core dependencies and interactive Playwright extra")
+    if {item["name"] for item in result} != expected:
+        raise PreflightError("Plugin dependencies do not match its declared native/interactive delivery profile")
     return result
 
 

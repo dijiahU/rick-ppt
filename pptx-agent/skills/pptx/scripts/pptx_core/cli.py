@@ -68,8 +68,10 @@ def parser():
     rb.add_argument("snapshot")
     e = commands.add_parser("export")
     e.add_argument("output", nargs="?")
-    from .interactive import add_parser
-    add_parser(commands)
+    from .interactive_validate import native_only
+    if not native_only():
+        from .interactive import add_parser
+        add_parser(commands)
     return p
 
 

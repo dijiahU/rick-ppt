@@ -1,4 +1,4 @@
-export const statuses=['queued','running','complete','failed'] as const;
+export const statuses=['queued','running','complete','failed','paused','delivery_pending'] as const;
 export function adminQuery(url:URL) {
   const status=url.searchParams.get('status')||'';
   if(status && !statuses.includes(status as typeof statuses[number])) throw Error('Invalid status');
@@ -8,7 +8,9 @@ export function adminQuery(url:URL) {
   if(!/^[1-9]\d{0,5}$/.test(raw)) throw Error('Invalid page');
   const page=Number(raw),limit=25;
   const clauses:string[]=[],args:(string|number)[]=[];
-  if(status){clauses.push('status=?');args.push(status);}
+  if(status==='delivery_pending')clauses.push("status='failed' AND summary='delivery_pending'");
+  else if(status==='failed')clauses.push("status='failed' AND COALESCE(summary,'')<>'delivery_pending'");
+  else if(status){clauses.push('status=?');args.push(status);}
   // Literal substring search avoids D1's restricted LIKE pattern complexity.
   if(search){clauses.push('(instr(lower(title),lower(?))>0 OR instr(lower(brief),lower(?))>0 OR instr(user_id,?)>0 OR instr(id,?)>0)');args.push(search,search,search,search);}
   return {where:clauses.length?'WHERE '+clauses.join(' AND '):'',args,page,limit,offset:(page-1)*limit};

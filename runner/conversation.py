@@ -12,7 +12,7 @@ import uuid
 from attachments import metadata, validate_content
 from durable import RPCError, redact_text
 from progress import read_scoped
-from resilience import WorkerHTTPError
+from resilience import WorkerHTTPError, TaskPaused
 
 
 class RevisionPending(RuntimeError):
@@ -122,24 +122,27 @@ class Conversation:
         return path
 
     def poll(self, *, server=None, thread_id=None, allow_steer=True, force=False):
-        if not allow_steer and any(m['state'] in ('accepted','delivering','uncertain') for m in self.journal.state['inbox'].values()):
+        if not allow_steer and any(m['changes_input'] and m['state'] in ('accepted','delivering','uncertain') for m in self.journal.state['inbox'].values()):
             raise RevisionPending('Pending user input must return to the author')
         if not force and self.clock() < self.next_poll: return False
         self.next_poll = self.clock() + 3
         response = self._network(lambda:self.api('poll'))
         if response is None: return False
+        if response.get('stop') is True:raise TaskPaused('Task paused by its owner')
         if not isinstance(response.get('messages'), list) or len(response['messages']) > 100:
             raise ValueError('Invalid website inbox response')
-        changed = False
+        changed = False; revision_changed = False
         for row in sorted(response['messages'], key=lambda row:row['seq']):
             _, new = self.accept(row); changed = changed or new
+            revision_changed = revision_changed or new and row['kind']=='revision'
         self.server_revision = max(self.server_revision, int(response.get('revision', 0)))
         if changed:
             self.context()
             if self.reporter:
                 self.reporter.event('working', 'New user message received', category='note')
-                for kind in ('content', 'visual'): self.reporter.review_state(kind, 'pending')
-        if changed and not allow_steer:
+                if revision_changed:
+                    for kind in ('content', 'visual'): self.reporter.review_state(kind, 'pending')
+        if revision_changed and not allow_steer:
             raise RevisionPending('User input arrived during isolated review')
         if allow_steer and server is not None and thread_id:
             for message in self.journal.state['inbox'].values():
@@ -203,11 +206,9 @@ class Conversation:
 
     def validated(self, artifacts):
         messages = self.journal.state['inbox']
-        if any(m['state'] not in ('acknowledged','applied') for m in messages.values()):
+        if any(m['changes_input'] and m['state'] not in ('acknowledged','applied') for m in messages.values()):
             raise RevisionPending('Accepted user input still awaits model delivery')
-        if any(not m['changes_input'] and m['state']!='applied' for m in messages.values()):
-            raise RevisionPending('A user chat still awaits a completed response')
-        ids = [m['id'] for m in messages.values() if m['state'] == 'acknowledged']
+        ids = [m['id'] for m in messages.values() if m['changes_input'] and m['state'] == 'acknowledged']
         if ids: self.journal.mark_applied(ids, self.job, artifacts=artifacts)
         self.flush(force=True)
 

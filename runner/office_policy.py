@@ -42,17 +42,22 @@ def validate_workbook(data):
                 if any(etree.QName(n).localname in ('ddeLink','oleLink') for n in tree.iter() if isinstance(n.tag,str)):raise ValueError('Active workbook link rejected')
 
 
-def validate_delivery(data):
+def validate_delivery(data, *, single_file=False):
     with archive(data) as z:
         embedded={n for n in z.namelist() if '/embeddings/' in n.lower() and not n.endswith('/')}
         chart_targets=set()
         for name in z.namelist():
             low=name.lower()
+            if single_file and ('webextension' in low or 'taskpane' in low):
+                raise ValueError('Only a standalone PPTX is supported; content add-ins and external runtimes are disabled')
             if any(t in low for t in ('vbaproject','activex/')):raise ValueError('Active presentation content rejected')
             if low.endswith('.rels'):
                 tree=xml(z.read(name))
                 for rel in tree:
                     typ=rel.get('Type','').rsplit('/',1)[-1]
+                    if single_file and (typ.lower() in ('webextension','webextensiontaskpanes') or
+                        (rel.get('TargetMode','').lower()=='external' and typ in ('image','audio','video','media','oleObject','package','hyperlink'))):
+                        raise ValueError('The presentation requires an external runtime or linked media; embed native content in the PPTX')
                     if typ in ('oleObject','control','vbaProject'):raise ValueError('Executable/active embedding rejected')
                     if name.startswith('ppt/charts/_rels/') and typ=='package' and rel.get('TargetMode','Internal')=='Internal':
                         target=posixpath.normpath(posixpath.join('ppt/charts',rel.get('Target','')))

@@ -52,7 +52,7 @@ class InstalledHookTests(unittest.TestCase):
         self.assertEqual(process.returncode, 1)
         self.assertEqual(report["environmentState"], "missing")
         self.assertEqual(report["stage"], "environment")
-        self.assertEqual(len(report["runtime"]["checks"]), 6)
+        self.assertEqual(len(report["runtime"]["checks"]), 4)
         self.assertTrue(all(item["ok"] for item in report["runtime"]["checks"]))
         self.assertFalse(os.path.lexists(self.plugin / ".venv"))
         self.assertEqual(before, self.own_files())
@@ -119,7 +119,7 @@ class InstalledHookTests(unittest.TestCase):
         self.assertEqual(process.returncode, 1)
         self.assertEqual(report["stage"], "dependencies")
         failed = {item["name"] for item in report["runtime"]["checks"] if not item["ok"]}
-        self.assertEqual(failed, preflight.DEPENDENCIES)
+        self.assertEqual(failed, {"lxml","pillow","jsonschema"})
         self.assertIn("lxml", report["error"])
         self.assertFalse(os.path.lexists(self.plugin / ".venv"))
 

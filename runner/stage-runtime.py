@@ -21,7 +21,10 @@ cfg=json.loads((root/'settings.local.json').read_text())
 if not target.exists():
     target.parent.mkdir(parents=True,exist_ok=True)
     shutil.copytree(source,target,ignore=shutil.ignore_patterns('.venv','node_modules','__pycache__','.pytest_cache','test-results'))
-for relative in ('skills/pptx/SKILL.md','skills/pptx/references/content.md','skills/pptx/references/interactive-authoring.md','skills/pptx/references/content-review.md','skills/pptx/references/visual-review.md','skills/pptx/scripts/native_builds.py','skills/pptx/scripts/review_packet.py','skills/pptx/assets/blank.pptx','runtime/dist/preview.html','runtime/dist/content.html','runtime/config.json','runtime/manifests/manifest.addin.xml'):
+required=('skills/pptx/SKILL.md','skills/pptx/references/content.md','skills/pptx/references/research-and-assets.md','skills/pptx/references/content-review.md','skills/pptx/references/visual-review.md','skills/pptx/scripts/native_builds.py','skills/pptx/scripts/review_packet.py','skills/pptx/assets/blank.pptx')
+if not (source/'skills/pptx/assets/single-file-policy.json').is_file():
+    required+=('skills/pptx/references/interactive-authoring.md','runtime/dist/preview.html','runtime/dist/content.html','runtime/config.json','runtime/manifests/manifest.addin.xml')
+for relative in required:
     if (source/relative).read_bytes()!=(target/relative).read_bytes():raise RuntimeError('Runtime mismatch: '+relative)
 cfg['plugin']=str(target)
 cfg['blank']=str(target/'skills/pptx/assets/blank.pptx')

@@ -11,6 +11,13 @@ export const jobs = sqliteTable('jobs', {
   attachments: text('attachments'),
 }, (t) => [uniqueIndex('jobs_user_request').on(t.userId, t.requestKey), index('jobs_user').on(t.userId), index('jobs_status_created').on(t.status,t.createdAt)]);
 export const worker = sqliteTable('worker', { id: text('id').primaryKey(), heartbeat: integer('heartbeat').notNull() });
+export const siteAdmins = sqliteTable('site_admins', {
+  email: text('email').primaryKey(),
+  userId: text('user_id'),
+  displayName: text('display_name'),
+  createdAt: integer('created_at').notNull(),
+  createdBy: text('created_by').notNull(),
+}, (t) => [uniqueIndex('site_admins_user_id').on(t.userId)]);
 export const taskMessages = sqliteTable('task_messages', {
   seq: integer('seq').primaryKey({autoIncrement:true}), id:text('id').notNull(),
   jobId:text('job_id').notNull(), userId:text('user_id').notNull(),
@@ -27,3 +34,8 @@ export const taskVersions = sqliteTable('task_versions', {
   id:text('id').primaryKey(),jobId:text('job_id').notNull(),resultKey:text('result_key'),
   bundleKey:text('bundle_key'),revision:integer('revision').notNull().default(0),createdAt:integer('created_at').notNull(),
 },t=>[index('task_versions_job_created').on(t.jobId,t.createdAt)]);
+export const taskDrafts = sqliteTable('task_drafts', {
+  jobId:text('job_id').primaryKey(),objectKey:text('object_key').notNull(),sha256:text('sha256').notNull(),
+  bytes:integer('bytes').notNull(),pages:integer('pages').notNull(),revision:integer('revision').notNull(),
+  exportedAt:integer('exported_at').notNull(),savedAt:integer('saved_at').notNull(),
+});

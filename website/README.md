@@ -1,8 +1,8 @@
-# PPTX LAB
+# rickppt
 
-[![PPTX LAB · 点击进入网站](public/og.png)](https://rick-ppt.woodsy-crane-8759.chatgpt.site)
+[![rickppt · 点击进入网站](public/og.png)](https://rickppt.aaarickmorty.chatgpt.site)
 
-**[进入网站 · 在线制作 PPT →](https://rick-ppt.woodsy-crane-8759.chatgpt.site)**
+**[进入网站 · 在线制作 PPT →](https://rickppt.aaarickmorty.chatgpt.site)**
 
 Public landing page; Sign in with ChatGPT before submitting. No invite code.
 Each site-scoped account has ten lifetime queue admissions. Failed executions still count.
@@ -54,6 +54,14 @@ in local .env only while running this test, then restore it. Passing a completed
 path replays its real render events through the local bridge sanitizer and checks five previews.
 No production quota is used. The runner's six unit tests cover scoped file reads and sync failures.
 # Administrator dashboard
+
+The primary administrator can add or remove additional administrator accounts
+by verified sign-in email from `/admin`. Managed administrators are stored in
+D1, receive the same server-side dashboard authorization, and may manage the
+list in turn. The primary `ADMIN_EMAIL` or `ADMIN_USER_ID` remains a non-removable
+recovery identity so the application cannot lose every administrator.
+These are application administrators. Give a backup account the Sites `editor`
+role separately when it must also publish new versions.
 
 `/admin` is a read-only owner dashboard: all requests and distinct user counts,
 status filters, literal search, 25-row pagination, original briefs, safe activity,

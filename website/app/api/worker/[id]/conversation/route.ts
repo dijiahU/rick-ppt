@@ -6,7 +6,9 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
  const {id}=await params,lease=request.headers.get('X-Job-Lease'),action=new URL(request.url).searchParams.get('action');
  if(!lease)return json({error:'Lease required'},400);
  const db=database();const job=await db.prepare('SELECT id,user_id,status,result_key FROM jobs WHERE id=? AND lease=?').bind(id,lease).first<{id:string;user_id:string;status:string;result_key:string|null}>();
- if(!job||!(job.status==='running'||(action==='version'&&job.status==='complete')))return json({error:'Lease expired'},409);
+ if(!job)return json({error:'Lease expired'},409);
+ if(job.status==='paused'&&action==='poll')return json({messages:[],revision:0,stop:true});
+ if(!(job.status==='running'||(action==='checkpoint'&&job.status==='paused')||(action==='version'&&job.status==='complete')))return json({error:'Lease expired'},409);
  await ensureConversation();const now=Date.now();
  if(action==='poll'){
   const rows=await db.prepare("SELECT * FROM task_messages WHERE job_id=? AND role='user' AND status IN ('pending','received') ORDER BY seq LIMIT 100").bind(id).all<MessageRow>();
@@ -38,7 +40,8 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
  }
  if(action==='checkpoint'){
   const value=checkpointValue(body);if(!value)return json({error:'Invalid checkpoint metadata'},400);
-  const changed=await db.prepare("INSERT INTO task_recovery(job_id,checkpoint,revision,last_message_seq,resumable,updated_at) SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM jobs WHERE id=? AND lease=? AND status='running') ON CONFLICT(job_id) DO UPDATE SET checkpoint=excluded.checkpoint,revision=excluded.revision,last_message_seq=excluded.last_message_seq,resumable=excluded.resumable,updated_at=excluded.updated_at WHERE excluded.revision>=task_recovery.revision AND excluded.last_message_seq>=task_recovery.last_message_seq").bind(id,JSON.stringify(value),value.revision,value.lastMessageSeq,value.resumable?1:0,now,id,lease).run();
+  const changed=await db.prepare("INSERT INTO task_recovery(job_id,checkpoint,revision,last_message_seq,resumable,updated_at) SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM jobs WHERE id=? AND lease=? AND status IN ('running','paused')) ON CONFLICT(job_id) DO UPDATE SET checkpoint=excluded.checkpoint,revision=excluded.revision,last_message_seq=excluded.last_message_seq,resumable=excluded.resumable,updated_at=excluded.updated_at WHERE excluded.revision>=task_recovery.revision AND excluded.last_message_seq>=task_recovery.last_message_seq AND EXISTS(SELECT 1 FROM jobs WHERE id=? AND lease=? AND status IN ('running','paused'))").bind(id,JSON.stringify(value),value.revision,value.lastMessageSeq,value.resumable?1:0,now,id,lease,id,lease).run();
+  if(changed.meta.changes&&job.status==='paused'&&value.phase==='paused')await db.prepare("UPDATE jobs SET summary='paused',updated_at=? WHERE id=? AND lease=? AND status='paused'").bind(now,id,lease).run();
   return changed.meta.changes?json({ok:true}):json({error:'Stale checkpoint or lease'},409);
  }
  if(action==='version'){

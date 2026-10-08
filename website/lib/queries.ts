@@ -7,7 +7,7 @@ ON CONFLICT(user_id,request_key) DO NOTHING RETURNING id`;
 export const CLAIM_JOB = `UPDATE jobs SET status='running',lease=?,updated_at=?
 WHERE id=(SELECT id FROM jobs WHERE status='queued' ORDER BY created_at,id LIMIT 1)
 AND (SELECT COUNT(*) FROM jobs WHERE status='running') < 3
-RETURNING id,title,brief,pages,style,language,attachments,lease`;
+RETURNING id,title,brief,pages,style,language,attachments,lease,summary`;
 
 // Explicit operator retry of one unchanged failed attempt. Reuses its row/quota.
 export const RETRY_JOB = `UPDATE jobs SET status='queued',lease=NULL,progress=NULL,summary=NULL,updated_at=?

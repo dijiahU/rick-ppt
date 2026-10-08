@@ -51,8 +51,9 @@ class ChatProxy:
   request['max_tokens']=min(int(request.get('max_tokens',8192)),16384)
   config='header = '+json.dumps('Authorization: Bearer '+self.profile['api_key'])+'\nheader = "Content-Type: application/json"\n'+ 'data = '+json.dumps(json.dumps(request))+'\n'
   started=time.monotonic()
+  request_timeout=600 if self.profile.get('reasoning_effort') else 180
   for attempt in range(1,4):
-   process=subprocess.run(['curl','--disable','--config','-','--silent','--show-error','--max-time','180','--max-filesize',str(MAX_BODY),'--write-out','\n%{http_code}',self.profile['base_url']+'/chat/completions'],input=config,text=True,capture_output=True,timeout=190)
+   process=subprocess.run(['curl','--disable','--config','-','--silent','--show-error','--max-time',str(request_timeout),'--max-filesize',str(MAX_BODY),'--write-out','\n%{http_code}',self.profile['base_url']+'/chat/completions'],input=config,text=True,capture_output=True,timeout=request_timeout+10)
    if process.returncode:
     self.calls.append({'ok':False,'attempt':attempt,'transport_code':process.returncode})
     raise UpstreamError(502,'Upstream transport failed (curl '+str(process.returncode)+')')

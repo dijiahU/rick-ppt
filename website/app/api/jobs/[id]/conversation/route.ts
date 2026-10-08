@@ -33,7 +33,10 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
  try{
   for(const {meta,data} of payloads)await files().put(messageFileKey(id,body.id,meta.id),data,{httpMetadata:{contentType:'application/octet-stream'}});
   const now=Date.now();const row=await db.prepare("INSERT INTO task_messages(id,job_id,user_id,role,kind,body,attachments,status,created_at,updated_at) SELECT ?,?,?,'user',?,?,?,'pending',?,? WHERE (SELECT COUNT(*) FROM task_messages WHERE job_id=?)<? ON CONFLICT(job_id,id) DO NOTHING RETURNING *").bind(body.id,id,user,body.kind,body.body.trim(),JSON.stringify(attachments),now,now,id,MAX_MESSAGES).first<MessageRow>();
-  if(row)return json({message:message(row)},201);
+  if(row){
+   if(row.kind==='revision')await db.prepare("UPDATE jobs SET summary=NULL WHERE id=? AND summary='delivery_pending' AND EXISTS(SELECT 1 FROM task_messages WHERE job_id=? AND role='user' AND kind='revision' AND status<>'applied')").bind(id,id).run();
+   return json({message:message(row)},201);
+  }
   const accepted=await db.prepare('SELECT * FROM task_messages WHERE job_id=? AND id=?').bind(id,body.id).first<MessageRow>();
   return accepted?repeated(accepted):json({error:'此任务已达到消息数量限制。'},429);
  }catch{

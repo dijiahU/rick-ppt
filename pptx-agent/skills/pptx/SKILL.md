@@ -1,6 +1,6 @@
 ---
 name: pptx
-description: Research, create and edit native PowerPoint with composable interactive scenes, editable code labs, actual rendering and independent content and visual reviews.
+description: Research, create and edit standalone native PowerPoint with editable content, native animation, actual rendering and independent reviews.
 ---
 
 # Native PowerPoint
@@ -30,6 +30,16 @@ reach a ratio; code and passive rendering are not content work.
 Keep useful evidence and uncertainties in source-notes.md. Distinguish source facts,
 quotations, interpretation and illustrative examples. No invented data/citations.
 Respect supplied-only/offline instructions.
+
+Use [Research and assets](references/research-and-assets.md) to judge visual needs
+from the content, audience, purpose and viewing mode. For new decks or substantial
+redesigns needing visual expression, proactively gather and inspect high-quality
+references before committing the visual direction and making pages. Inspiration
+may come from any relevant art form; the named sources are search starting points.
+Record a short direction, references and concrete applications in source-notes.md,
+then reuse them while authoring. Straightforward, sober information delivery can
+use the simplest adequate typography, layout or diagram without an inspiration
+hunt; mechanical edits preserve supplied design. No fixed library or search quota.
 
 ## 2. Write page content
 
@@ -66,17 +76,16 @@ Build, render and inspect each page; repair defects and publish native previews
 where available. Return to content when a visual exposes a missing explanation.
 Essential self-reading meaning must be visible without inaccessible notes.
 
-For interactive lessons, simulations, editable runnable code or exploratory views,
-read [Interactive authoring](references/interactive-authoring.md). Use native OOXML
-for the slide and versioned JSON scenes for its Content Add-in regions. Choose
-native versus interactive treatment during the outline stage; never replace the
-whole deck with screenshots or write a new topic-specific React application.
-Use the shared runtime components, state, actions and optional packs. Retain native
-titles, context, equations and readable fallback meaning around the live region.
-Every scene needs meaningful input/result test assertions and real browser captures.
-When the host exposes INTERACTIVE.md, its file broker performs scene rendering
-without broadening the author's permissions. Export both the PPTX and its portable
-bundle; a PPTX by itself retains static fallbacks but not the complete runtime.
+While finalizing the current page's wording and composition, return to targeted
+design search when a new question needs it. Apply the reference to the current
+content and verify the rendered result, keeping sequential authoring and the
+agreed visual direction. Reuse prior findings for equivalent problems.
+
+Deliver a single standalone PPTX. Use native objects, click-controlled builds,
+trigger animations, internal slide links and embedded media. Do not create Content
+Add-ins, JSON browser scenes, runnable code labs, local servers, runtime bundles,
+installers, macros, external website controls or externally linked media. Present
+code as editable explanatory text. Keep essential content readable in PowerPoint.
 
 In a resumable host workflow, inspect restored artifacts before continuing. Respect
 ordered user corrections supplied by the host and answer live chat. Refresh affected
@@ -102,11 +111,23 @@ required-media failures. Style suggestions may be retained with reasons. Recheck
 revisions, context and final order. No finding quotas or repeated taste-score loops.
 Static render/timing inspection is not playback verification. Report exactly what
 was tested; do not silently downgrade an essential requirement and declare completion.
-Review interactive initial, intermediate, changed-input and reset captures as well
-as native pages. Distinguish scene-runtime tests, static PowerPoint fallback and
-actual PowerPoint slideshow/settings round-trip verification.
+For image recreation and scoped edits, evaluate fidelity and authorized changes.
+Inherited source ambiguities and unrelated improvements are suggestions, not
+delivery blockers. Content and visual reviews can run independently in parallel;
+source conversion can compare directly with the original without a blind pass.
 
 ## Native operations
+
+Plan content and layout together in source-notes.md, then author in page order.
+Record the takeaway, evidence, must-preserve qualifiers/units/operation order,
+visual hierarchy and suitable arrangement. Keep this compact and internal;
+no separate design stage or pilot pages are required. Preserve source meaning
+when simplifying visuals. Name movable semantic groups and use anchored native
+connectors for linked nodes; see groups.md and scripts/native_structure.py.
+The review packet adds 900-pixel reading previews and factual structure inventory.
+Check formulas, labels, captions, wrapping and collisions at that scale as well
+as full size. Concrete defects require correction; taste preferences remain
+suggestions.
 
 1. Unpack using scripts/pptx.py and retain its workspace path.
 2. Put --workspace PATH before commands: list slides, inspect N, find TEXT, refs PART.

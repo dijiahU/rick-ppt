@@ -51,6 +51,12 @@ def selected_files(root, names):
 
 def runtime_identity(cfg):
     """Hash actual installed files, not a caller-supplied version label alone."""
+    if cfg.get('single_file_pptx'):
+        plugin=Path(cfg['plugin']).resolve(strict=True)
+        return {'plugin':str(plugin),'plugin_manifest':file_receipt(_read(plugin,'.codex-plugin/plugin.json')),
+                'delivery_policy':selected_files(plugin,['skills/pptx/assets/single-file-policy.json']) if (plugin/'skills/pptx/assets/single-file-policy.json').is_file() else {},
+                'native_scripts':selected_files(plugin,[p.relative_to(plugin).as_posix() for p in (plugin/'skills/pptx/scripts').rglob('*.py')]),
+                'review_references':selected_files(plugin,['skills/pptx/references/content-review.md','skills/pptx/references/visual-review.md'])}
     value = _runtime_inventory(cfg)
     plugin = Path(value['plugin'])
     value['plugin_manifest'] = file_receipt(_read(plugin, '.codex-plugin/plugin.json'))

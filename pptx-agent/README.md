@@ -1,16 +1,16 @@
 # PPTX Agent for Codex
 
-[![PPTX LAB · 点击进入网站](https://rick-ppt.woodsy-crane-8759.chatgpt.site/og.png)](https://rick-ppt.woodsy-crane-8759.chatgpt.site)
+[![PPTX LAB · 点击进入网站](https://rickppt.aaarickmorty.chatgpt.site/og.png)](https://rickppt.aaarickmorty.chatgpt.site)
 
-**[进入网站 · 在线制作 PPT →](https://rick-ppt.woodsy-crane-8759.chatgpt.site)**
+**[进入网站 · 在线制作 PPT →](https://rickppt.aaarickmorty.chatgpt.site)**
 
-当前流程：研究与理解内容 → 逐页内容大纲 → 选择原生/交互/混合呈现 → OOXML 与声明式场景制作 → 实际渲染和交互测试 → 独立内容与视觉审核 → 导出。
-先决定说什么，再决定怎么呈现。主技能保留必要规则，细节按需读取。
+当前流程：研究内容并按需搜集设计参考 → 逐页内容与视觉计划 → 按顺序制作原生页面 → 实际渲染 → 独立内容与视觉并行审核 → 交付单个 PPTX。
+需要视觉表达时先查看高质量参考，逐页让文字与构图共同定稿；简洁的信息传达选择足够清楚的表达。主技能保留必要规则，细节按需读取。
 内容参考：[内容研究](skills/pptx/references/content.md)；公式采用
 [公式保真](skills/pptx/references/technical/formula-fidelity.md) 的专项核对，可运行只读 `inspect_formulas.py`。
 搜索可用于事实、文学解读与视觉/模板参考；搜索不等于获得素材下载或复用权限。
 
-原生页面使用 Direct OOXML。只有明确的 Content Add-in 区域使用共享的 JSON 场景运行时；页面上的原生文字、公式、图表和其他对象继续可编辑。普通页面不需要 Web 场景，用户文件不通过 python-pptx 重写。
+原生页面使用 Direct OOXML，文字、公式、图表和图示保持可编辑。当前单文件政策不启用 Content Add-in、浏览器场景、可运行代码实验或外部交互环境。支持原生点击/触发动画、内部导航和内嵌媒体；用户文件不通过 python-pptx 重写。仓库保留的交互运行时及其说明服务于历史版本分析。
 
 ## 安装与运行
 

@@ -31,7 +31,7 @@ export default function TraceRoom({id}:{id:string}){
  const pages=Math.max(1,Math.ceil(visible.length/50)),current=Math.min(page,pages),shown=visible.slice((current-1)*50,current*50);
  const reset=()=>setPage(1);
  function download(){const blob=new Blob(events.map(e=>JSON.stringify(e)+'\n'),{type:'application/x-ndjson;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`execution-${id}.jsonl`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
- return <main className="trace-room"><header><a className="brand" href="/admin">PPTX LAB / RICK’S CONTROL ROOM</a><a href={`/jobs/${id}`}>返回任务与页面预览 →</a></header>
+ return <main className="trace-room"><header><a className="brand" href="/admin">rickppt / RICK’S CONTROL ROOM</a><a href={`/jobs/${id}`}>返回任务与页面预览 →</a></header>
  <p className="eyebrow">ADMINISTRATOR / EXECUTION RECORD</p><h1>{title}</h1><p className="trace-intro">查看实际命令、工具输入与输出、工作说明和独立审核结果。按发生顺序保留，支持检索和导出。</p>
  <div className="trace-status"><strong>{snapshot?(['complete','failed'].includes(snapshot.status)?'任务已结束':'实时同步 · 每 3 秒更新'):'正在连接…'}</strong><span>已加载 {events.length} / {snapshot?.totalEvents??0} 条</span><button onClick={()=>setRefresh(n=>n+1)}>立即刷新</button><button disabled={!events.length} onClick={download}>{events.length<(snapshot?.totalEvents??0)?'导出已加载记录':'导出执行记录'}</button></div>
  <p className="fineprint">说明来自助手的可见工作摘要，不展示内部思维链。凭证会隐藏；过长输出会标注截断。命令执行中先显示开始记录，输出返回后补充完成记录。</p>

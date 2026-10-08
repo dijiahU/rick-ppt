@@ -4,6 +4,26 @@ from urllib.parse import urlsplit
 import hashlib,json,os,stat
 
 KEY_ENV='PPTX_MODEL_API_KEY'
+DEFAULT_TASK_MODEL='gpt-6.1-sol'
+DEFAULT_TASK_REASONING_EFFORT='high'
+
+def task_default_model(state_root,task_id,existing,configured=DEFAULT_TASK_MODEL,reasoning_effort=DEFAULT_TASK_REASONING_EFFORT):
+    """Pin new default-provider tasks without changing legacy or external jobs."""
+    folder=Path(state_root)/task_id;folder.mkdir(parents=True,exist_ok=True)
+    path=folder/'default-model.json'
+    if path.exists():return json.loads(path.read_text())['model']
+    if existing:return None
+    if not isinstance(configured,str) or not configured.strip():raise ValueError('Default task model is required')
+    if reasoning_effort not in ('low','medium','high','xhigh','max','ultra'):raise ValueError('Invalid default task reasoning effort')
+    model=configured.strip()
+    fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+    with os.fdopen(fd,'w') as out:json.dump({'model':model,'reasoning_effort':reasoning_effort},out)
+    return model
+
+def task_default_reasoning_effort(state_root,task_id):
+    """Old model-only receipts retain their original implicit effort."""
+    path=Path(state_root)/task_id/'default-model.json'
+    return json.loads(path.read_text()).get('reasoning_effort') if path.exists() else None
 
 def load_profile(path):
     path=Path(path).resolve(strict=True);info=path.stat()

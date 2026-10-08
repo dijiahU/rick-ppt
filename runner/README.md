@@ -1,10 +1,29 @@
 # PPTX LAB local execution bridge
 
-[![PPTX LAB · 点击进入网站](https://rick-ppt.woodsy-crane-8759.chatgpt.site/og.png)](https://rick-ppt.woodsy-crane-8759.chatgpt.site)
+[![PPTX LAB · 点击进入网站](https://rickppt.aaarickmorty.chatgpt.site/og.png)](https://rickppt.aaarickmorty.chatgpt.site)
 
-**[进入网站 · 在线制作 PPT →](https://rick-ppt.woodsy-crane-8759.chatgpt.site)**
+**[进入网站 · 在线制作 PPT →](https://rickppt.aaarickmorty.chatgpt.site)**
 
-Website: https://rick-ppt.woodsy-crane-8759.chatgpt.site
+Website: https://rickppt.aaarickmorty.chatgpt.site
+
+Current production policy delivers one standalone native PPTX. Author pages in
+order, gather suitable design references before an expressive design, and run
+independent content/visual reviews in parallel on the same frozen candidate.
+The visual review checks style against content, purpose, audience and viewing mode.
+Ordinary chat preserves reviews; actual revisions invalidate them. Owner pause
+stops authoring/rendering/reviews and retains recovery checkpoints. Reviewed files
+can be retransmitted after exact hash/revision checks, including across upgrades.
+Source conversions and scoped edits prioritize fidelity. Native semantic groups,
+anchored connectors and scaled reading previews support editing and review.
+Historical browser-scene/portable-bundle instructions below describe older versions;
+the single-file production profile disables those paths. Native runtime staging
+does not require building their browser assets.
+
+New default-provider tasks use `gpt-6.1-sol` with `high` reasoning. Both values are
+pinned in each task's private model receipt and reused on recovery. Existing
+model-only receipts retain their model and implicit effort. Explicit external
+provider profiles retain their own model and reasoning settings. Optional private
+settings `default_model` and `default_reasoning_effort` control newly admitted tasks.
 
 The public site uses ChatGPT account login, with ten lifetime queue admissions per account.
 Administrators retain their existing unlimited admission policy. This local bridge

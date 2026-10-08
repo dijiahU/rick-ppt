@@ -10,6 +10,7 @@ from pptx_core.common import parse, NS, local, atomic_json, sha256, PptxError
 from pptx_core.package import select,pack
 from pptx_core.relationships import slide_parts, relationships
 from pptx_core.renderer import render_package
+from native_structure import identity, bounds
 
 
 def scene_inventory(scene):
@@ -185,8 +186,16 @@ def collect(workspace, render, destination):
         shapes=[]
         for node in tree.iter():
             if local(node) not in ('sp','pic','graphicFrame','grpSp','cxnSp'):continue
-            prop=next((x for x in node.iter() if local(x)=='cNvPr'),None)
+            prop=identity(node)
+            owner=identity(node.getparent()) if local(node.getparent())=='grpSp' else None
+            sizes=sorted({int(x.get('sz'))/100 for x in node.iter() if x.get('sz') is not None and local(x) in ('rPr','defRPr','endParaRPr')})
+            try:geometry=list(bounds(node))
+            except PptxError:geometry=None
             shapes.append({'id':prop.get('id') if prop is not None else None,'kind':local(node),
+                           'name':prop.get('name') if prop is not None else None,
+                           'group_id':owner.get('id') if owner is not None else None,
+                           'bounds_in_parent_emu':geometry,'explicit_font_points':sizes,
+                           'connections':[{'end':local(x),**dict(x.attrib)} for x in node.iter() if local(x) in ('stCxn','endCxn')],
                            'text':' '.join(x.text or '' for x in node.iter() if local(x)=='t')})
         timing=tree.find('p:timing',NS)
         targets=[] if timing is None else [x.get('spid') for x in timing.iter() if local(x)=='spTgt']
@@ -196,8 +205,14 @@ def collect(workspace, render, destination):
                 'shapes':shapes,'timing_targets':targets,'effect_nodes':clicks,
                 'media':[r for r in rels if any(k in r.get('type','').lower() for k in ('image','audio','video','media'))],
                 'playback_verified':False}
+        record['editability']={'groups':sum(s['kind']=='grpSp' for s in shapes),
+            'connectors':sum(s['kind']=='cxnSp' for s in shapes),
+            'unanchored_connector_ids':[s['id'] for s in shapes if s['kind']=='cxnSp' and len(s['connections'])<2]}
         records.append(record)
         with Image.open(png) as im:
+            reading=ImageOps.contain(im.convert('RGB'),(900,900))
+            name=f'reading-page-{number}.png';reading.save(destination/name)
+            record['reading_preview']={'file':name,'width':reading.width,'height':reading.height,'purpose':'Scaled reading check; inspect the full-size render for detail. No automatic readability verdict.'}
             tile=Image.new('RGB',(420,260),'white'); im=ImageOps.contain(im.convert('RGB'),(410,231))
             tile.paste(im,((420-im.width)//2,5));ImageDraw.Draw(tile).text((10,241),str(number),fill='black');tiles.append(tile)
     # Bounded contact sheets; actual PNGs remain the full-size review source.

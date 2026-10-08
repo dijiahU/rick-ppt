@@ -30,6 +30,23 @@ class AttachmentsTests(unittest.TestCase):
     def test_hash_rejection(self):
         with tempfile.TemporaryDirectory() as root:
             with self.assertRaises(ValueError):receive({}, {'id':str(uuid.uuid4()),'lease':'l','attachments':[self.item]},Path(root),lambda *a,**k:b'bad' if k.get('raw') else {})
+    def test_recovery_downloads_missing_original_and_reuses_verified_file(self):
+        with tempfile.TemporaryDirectory() as root:
+            task={'id':str(uuid.uuid4()),'lease':'new-lease','attachments':[self.item]};calls=[]
+            def request(*args,**kwargs):calls.append((args,kwargs));return self.data if kwargs.get('raw') else {}
+            (Path(root)/'references').mkdir()
+            restored=receive({},task,Path(root),request,recover=True)
+            self.assertEqual(len(calls),2)
+            calls.clear();again=receive({},task,Path(root),request,recover=True)
+            self.assertEqual(restored,again);self.assertEqual(calls,[])
+    def test_recovery_does_not_replace_corrupt_or_symlinked_inputs(self):
+        for symlink in (False,True):
+            with tempfile.TemporaryDirectory() as root:
+                path=Path(root)/'references';path.mkdir();file=path/(self.item['id']+'.txt')
+                if symlink:file.symlink_to(Path(root)/'outside.txt');(Path(root)/'outside.txt').write_bytes(self.data)
+                else:file.write_bytes(b'corrupt')
+                with self.assertRaises((OSError,ValueError)):
+                    receive({}, {'id':str(uuid.uuid4()),'lease':'l','attachments':[self.item]},Path(root),lambda *a,**k:self.fail('Must not overwrite a bad existing input'),recover=True)
     def test_limits_and_ids(self):
         for change in [{'id':'../../x'},{'ext':'exe'},{'size':11*1024*1024},{'sha256':'bad'},{'size':True}]:
             with self.assertRaises((ValueError,TypeError)):metadata([{**self.item,**change}])

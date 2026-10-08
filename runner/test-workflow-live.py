@@ -159,7 +159,7 @@ class SyntheticSite:
             if revision != self.revision or any(row["id"] not in self.applied for row in self.rows):
                 raise WorkerHTTPError("complete", status=412, reason="New user input arrived before completion")
             self.completed.append({"revision": revision, "sha256": digest(body)})
-        elif action not in ("trace", "heartbeat", "version"):
+        elif action not in ("trace", "heartbeat", "version", "delivery-ready", "delivery-reset"):
             raise AssertionError("Unexpected synthetic API action: " + action)
         return {"ok": True}
 

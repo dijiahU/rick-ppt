@@ -1,5 +1,12 @@
 # Independent content review
 
+For faithful image recreation and scoped edits, prioritize source fidelity and the
+authorized change. Compare directly with the original when supplied. Inherited
+source ambiguities, experimental gaps and unrelated scientific/style improvements
+are suggestions, not delivery blockers. Required findings must identify introduced
+errors, missing requested content, unreadability or broken requested native behavior.
+Do not turn a conversion into an unrequested rewrite. Keep the report concise.
+
 Use a fresh context without the author's conversation, outline, research notes,
 rationale or self-assessment. Do not edit the deck.
 
@@ -27,4 +34,7 @@ corrections versus suggestions. State actual coverage and unreadable/untested pa
 No finding quota or numerical taste score. Text/thumbnails alone are insufficient.
 Follow the host JSON schema where supplied. Recheck actual revised pages and their
 context; an author's resolution claim is not verification.
+# Source meaning during visual simplification
+
+Compare source evidence directly before calling a mismatch required. Check example labels, scope and conditions, units, numerical qualifiers, symbols, operation order, actors, and input/output direction. A cleaner diagram must retain “example” and “e.g.” when the source uses illustrative values. Missing qualifiers can turn a correct example into a false general claim. Identify the source location and affected slide text/connection in the finding. For faithful conversion or scoped edits, inherited scientific ambiguities remain suggestions; do not require rewriting the supplied source.
 

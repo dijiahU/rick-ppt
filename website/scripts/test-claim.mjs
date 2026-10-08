@@ -5,7 +5,7 @@ import {CLAIM_JOB} from '../lib/queries.ts';
 test('atomic claim admits three, blocks fourth, refills FIFO and leases stay distinct',()=>{
  const db=new DatabaseSync(':memory:');
  try{
- db.exec('CREATE TABLE jobs(id TEXT,status TEXT,lease TEXT,updated_at INTEGER,created_at INTEGER,title TEXT,brief TEXT,pages INTEGER,style TEXT,language TEXT,attachments TEXT)');
+ db.exec('CREATE TABLE jobs(id TEXT,status TEXT,lease TEXT,updated_at INTEGER,created_at INTEGER,title TEXT,brief TEXT,pages INTEGER,style TEXT,language TEXT,attachments TEXT,summary TEXT)');
  for(let i=0;i<5;i++)db.prepare("INSERT INTO jobs(id,status,created_at) VALUES (?,'queued',?)").run(String(i),i);
  const claim=()=>db.prepare(CLAIM_JOB).get(crypto.randomUUID(),Date.now());
  const rows=[claim(),claim(),claim()];assert.deepEqual(rows.map(x=>x.id),['0','1','2']);

@@ -5,7 +5,7 @@ import {DatabaseSync} from 'node:sqlite';
 import ts from 'typescript';
 const modules={};
 function load(path){const code=ts.transpileModule(readFileSync(new URL('../'+path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const exports={};new Function('require','exports',code)(name=>{assert.ok(modules[name],name);return modules[name];},exports);return exports;}
-const db=new DatabaseSync(':memory:');db.exec("CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,status TEXT,lease TEXT,result_key TEXT,summary TEXT,updated_at INTEGER);CREATE TABLE worker(id TEXT PRIMARY KEY,heartbeat INTEGER)");
+const db=new DatabaseSync(':memory:');db.exec("CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,status TEXT,lease TEXT,result_key TEXT,summary TEXT,updated_at INTEGER);CREATE TABLE worker(id TEXT PRIMARY KEY,heartbeat INTEGER);CREATE TABLE task_drafts(job_id TEXT PRIMARY KEY)");
 const id=crypto.randomUUID(),lease=crypto.randomUUID();db.prepare("INSERT INTO jobs VALUES (?,'owner','running',?,NULL,NULL,100)").run(id,lease);
 let user='owner',loseInsertResponse=false,failUpload=false,afterPut=null;const objects=new Map();
 const binding={prepare(sql){let args=[];const s={bind(...v){args=v;return s;},async first(){const value=db.prepare(sql).get(...args)??null;if(loseInsertResponse&&sql.startsWith('INSERT INTO task_messages')){loseInsertResponse=false;throw Error('lost response');}return value;},async all(){return {results:db.prepare(sql).all(...args)};},async run(){return {meta:{changes:Number(db.prepare(sql).run(...args).changes)}};}};return s;},async batch(statements){const out=[];for(const s of statements)out.push(await s.run());return out;}};
@@ -42,6 +42,8 @@ const snapshot=await (await read(plain,params)).json();assert.equal(snapshot.rec
 function resumeRequest(at=100){return new Request(`https://test.local/api/jobs/${id}/resume`,{method:'POST',headers:{Origin:'https://test.local','Content-Type':'application/json'},body:JSON.stringify({expectedUpdatedAt:at})});}
 db.prepare("UPDATE jobs SET status='failed'").run();user='other';assert.equal((await resume(resumeRequest(),params)).status,404);user='owner';assert.equal((await resume(resumeRequest(99),params)).status,409);
 const resumed=await Promise.all(Array.from({length:5},()=>resume(resumeRequest(),params)));assert.equal(resumed.filter(r=>r.status===200).length>=1,true);assert.equal(db.prepare('SELECT COUNT(*) n FROM jobs').get().n,1);assert.equal(db.prepare('SELECT status FROM jobs').get().status,'queued');
+db.prepare("UPDATE jobs SET status='failed',summary='failed',updated_at=200 WHERE id=?").run(id);db.prepare('DELETE FROM task_recovery WHERE job_id=?').run(id);db.prepare('INSERT INTO task_drafts(job_id) VALUES (?)').run(id);
+const fromDraft=await resume(resumeRequest(200),params);assert.equal(fromDraft.status,200);assert.equal(db.prepare('SELECT summary FROM jobs WHERE id=?').get(id).summary,'resume_from_draft');
 assert.equal((await wr('ack',{ids:[parallelId]})).status,409);
 const resultKey=`results/${id}/${lease}.pptx`;db.prepare("UPDATE jobs SET status='complete',lease=?,result_key=?").run(lease,resultKey);objects.set(resultKey,new Uint8Array([80,75,3,4]));objects.set(`bundles/${id}/${lease}.zip`,new Uint8Array([80,75,3,4]));
 assert.equal((await wr('version',{revision:first.seq})).status,200);assert.equal((await wr('version',{revision:first.seq})).status,200);assert.equal(db.prepare('SELECT COUNT(*) n FROM task_versions').get().n,1);

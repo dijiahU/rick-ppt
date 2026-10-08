@@ -13,6 +13,10 @@ FORBIDDEN = {'__proto__', 'prototype', 'constructor', 'caller', 'callee', 'argum
 MAX_JSON = 8 * 1024 * 1024
 
 
+def native_only():
+    return (PLUGIN_ROOT/'skills/pptx/assets/single-file-policy.json').is_file()
+
+
 def config():
     return json.loads((PLUGIN_ROOT / 'runtime/config.json').read_text())
 
@@ -199,6 +203,10 @@ def validate_bundle_manifest(value, root=None):
 
 def validate_interactive(root, sidecar=None, require_runtime=False):
     from .interactive_ooxml import discover_content_addins, validate_ooxml
+    if native_only():
+        instances=discover_content_addins(root)
+        errors=['Single-file PPTX policy rejects Content Add-ins'] if instances else []
+        return {'ok':not errors,'errors':errors,'instances':instances,'runtime_verified':False,'powerpoint_playback_verified':False}
     errors = validate_ooxml(root)
     instances = [i for i in discover_content_addins(root) if i.get('addinId') == config()['addinId']]
     if not instances:

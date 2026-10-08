@@ -11,7 +11,7 @@ export default function CreationStory({progress,pages,status,base}:{progress:Pro
  const {locale,t}=useLanguage(),w=creationWords[locale],c=contentWords(locale);
  const [all,setAll]=useState(false);
  const notes=progressNotes(progress),latest=notes.at(-1),direction=notes.findLast(e=>(e.phase==='design'||e.phase==='planning')&&!e.slide);
- const cards=pageProgress(progress,pages),terminal=['complete','failed'].includes(status);
+ const cards=pageProgress(progress,pages),terminal=['complete','failed','paused'].includes(status);
  const visible=all?notes:notes.slice(-8);
  return <section className="creation-story" aria-label={w.overview}>
   {progress?.outline?<div className="creation-direction creation-outline"><h3>{c.outline}</h3><strong>{progress.outline.title}</strong><p>{progress.outline.purpose}</p>{progress.outline.style&&<details><summary>{c.style}</summary><p>{progress.outline.style}</p></details>}</div>:direction&&<div className="creation-direction"><h3>{w.design}</h3><p>{direction.detail}</p></div>}

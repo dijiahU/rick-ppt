@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {adminAllowed} from '../lib/admin-policy.ts';
 import {adminQuery} from '../lib/admin-query.ts';
+import {normalizeAdminEmail} from '../lib/admin-accounts.ts';
 const owner={userId:'owner-site-id',email:'owner@example.test'};
 test('missing configuration and anonymous callers fail closed',()=>{
  assert.equal(adminAllowed(null,{ADMIN_EMAIL:owner.email}),false);
@@ -26,4 +27,8 @@ test('search is bound and SQL wildcard characters are literal',()=>{
  const q=adminQuery(new URL('http://localhost/?q='+encodeURIComponent("50%_\\' OR 1=1 --")));
  assert.equal(q.where.includes('1=1'),false);
  assert.equal(q.args[0],"50%_\\' OR 1=1 --");
+});
+test('administrator email input is normalized and bounded',()=>{
+ assert.equal(normalizeAdminEmail(' NEW.ADMIN@Example.COM '),'new.admin@example.com');
+ for(const value of [null,'','invalid','a@b','a b@example.com','a'.repeat(255)+'@example.com'])assert.equal(normalizeAdminEmail(value),null);
 });

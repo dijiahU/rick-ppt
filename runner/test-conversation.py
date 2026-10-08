@@ -215,6 +215,17 @@ class ConversationTests(unittest.TestCase):
         self.assertEqual(self.server.deliveries, [])
         self.assertEqual(self.journal.state["inbox"][row["id"]]["state"], "accepted")
 
+    def test_chat_during_review_preserves_candidate_and_review_state(self):
+        row=self.row(kind='chat',body='How long will this take?')
+        self.website.rows=[row]
+        revision=self.journal.state['input_revision']
+        self.poll(allow_steer=False)
+        self.poll(allow_steer=False)
+        self.assertEqual(self.journal.state['input_revision'],revision)
+        self.assertEqual(self.server.deliveries,[])
+        self.assertEqual(self.reporter.reviews,[])
+        self.assertEqual(self.journal.state['inbox'][row['id']]['state'],'accepted')
+
     def test_previously_accepted_input_cannot_be_steered_into_a_reviewer(self):
         row = self.row()
         self.website.rows = [row]
@@ -459,7 +470,7 @@ class ConversationTests(unittest.TestCase):
         row = self.row(kind="chat", body="How far along are you?")
         self.website.rows = [row]
         self.poll()
-        with self.assertRaises(RevisionPending): self.conversation.validated(["deck.json"])
+        self.conversation.validated(["deck.json"])
         self.assertEqual(self.journal.state["inbox"][row["id"]]["state"], "acknowledged")
         self.assertFalse(self.website.applied)
 

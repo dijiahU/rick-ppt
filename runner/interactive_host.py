@@ -498,6 +498,9 @@ class InteractiveHostBroker:
         self.result = None
 
     def _execute(self, data):
+        if self.cfg.get('single_file_pptx'):
+            self.result={'ok':False,'error':'This workflow delivers one standalone PPTX. Content add-ins, code labs, browser scenes and runtime bundles are disabled. Use native objects, click builds and internal slide links.','kind':'SingleFilePolicy'}
+            return
         private = _private_root()
         try:
             if not isinstance(data, dict) or data.get('version') != 1 or data.get('operation') != 'render':

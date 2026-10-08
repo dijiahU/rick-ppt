@@ -1,7 +1,7 @@
 import json,os,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
-from model_backend import load_profile,overrides,bind_task,public_identity,KEY_ENV
+from model_backend import load_profile,overrides,bind_task,public_identity,KEY_ENV,task_default_model,task_default_reasoning_effort
 from durable import AppServer,task_configuration
 class Tests(unittest.TestCase):
  def setUp(self):
@@ -14,6 +14,23 @@ class Tests(unittest.TestCase):
   server=AppServer(cwd=self.root,config=config,provider_env={KEY_ENV:p['api_key']})
   self.assertEqual(server.env[KEY_ENV],p['api_key']);self.assertNotIn(p['api_key'],json.dumps(config));self.assertNotIn(KEY_ENV,config['shell_environment_policy']['set']);self.assertEqual(config['shell_environment_policy']['inherit'],'none');self.assertIn(p['api_key'],server.secrets)
  def test_default_unchanged(self):self.assertEqual(overrides(None),{});self.assertEqual(public_identity(None),{'backend':'codex-default'})
+ def test_new_default_is_61_high_and_persists_on_resume(self):
+  self.assertEqual(task_default_model(self.root,'new',False),'gpt-6.1-sol')
+  self.assertEqual(task_default_reasoning_effort(self.root,'new'),'high')
+  self.assertEqual(task_default_model(self.root,'new',True,'gpt-6-astra','low'),'gpt-6.1-sol')
+  self.assertEqual(task_default_reasoning_effort(self.root,'new'),'high')
+ def test_model_only_legacy_receipt_keeps_model_and_implicit_effort(self):
+  path=self.root/'legacy/default-model.json';path.parent.mkdir();original=b'{"model":"gpt-6-sol"}\n';path.write_bytes(original)
+  self.assertEqual(task_default_model(self.root,'legacy',True),'gpt-6-sol')
+  self.assertIsNone(task_default_reasoning_effort(self.root,'legacy'))
+  self.assertEqual(path.read_bytes(),original)
+ def test_invalid_default_effort_does_not_publish_receipt(self):
+  with self.assertRaises(ValueError):task_default_model(self.root,'invalid',False,reasoning_effort='unsupported')
+  self.assertFalse((self.root/'invalid/default-model.json').exists())
+ def test_legacy_task_keeps_its_original_default(self):
+  self.assertIsNone(task_default_model(self.root,'legacy',True))
+  self.assertFalse((self.root/'legacy/default-model.json').exists())
+  self.assertIsNone(task_default_reasoning_effort(self.root,'legacy'))
  def test_environment_key(self):
   self.data.pop('api_key')
   with patch.dict(os.environ,{KEY_ENV:'from-environment'}):self.assertEqual(self.profile()['api_key'],'from-environment')
