@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 from PIL import Image
 
-from decision_routing import choice_policy, check_decisions, needs_content_revision
+from decision_routing import choice_policy, check_decisions, needs_content_revision, pin_decision_contract, write_design_packet
 from workflow import validate_report, _run_workflow
 
 PLUGIN = Path(__file__).resolve().parents[1] / 'pptx-agent'
@@ -21,15 +21,23 @@ A = 'http://schemas.openxmlformats.org/drawingml/2006/main'
 
 
 def plan():
-    return {'version': 2, 'task': {'operation':'create', 'viewing': 'dual_use',
+    return {'version': 3, 'design_direction':'Use a concise typographic question and a native spatial relation; no outside artwork is needed for this supplied fixture.', 'references':[], 'task': {'operation':'create', 'viewing': 'dual_use',
         'research': 'supplied_only', 'references': 'use_available', 'style': 'analytical',
         'palette': 'semantic', 'typography': 'installed_role_system'}, 'pages': [
         {'id': 'intro', 'intent': 'introduce', 'form': 'typography', 'support': [],
-         'layout': 'focus', 'density': 'sparse', 'behavior': 'static',
+         'strategy':'read', 'composition':'type_statement', 'visual_action':'Large main question with ample empty space.', 'reference_ids':[], 'behavior': 'static',
          'assets': [{'route': 'none'}], 'role': 'Introduce the actual question.'},
         {'id': 'space', 'intent': 'show_space', 'form': 'diagram', 'support': ['typography'],
-         'layout': 'spatial', 'density': 'balanced', 'behavior': 'static',
+         'strategy':'relate', 'composition':'relational_map', 'visual_action':'Positions and anchored links show the shared route.', 'reference_ids':[], 'behavior': 'static',
          'assets': [{'route': 'source_grounded_native'}], 'role': 'Show the shared route.'}]}
+
+
+def legacy_plan():
+    value=plan();value['version']=2;value.pop('design_direction');value.pop('references')
+    for i,page in enumerate(value['pages']):
+        for key in ('strategy','composition','visual_action','reference_ids'):page.pop(key)
+        page.update(layout='focus' if i==0 else 'spatial',density='balanced')
+    return value
 
 
 def outline():
@@ -64,6 +72,78 @@ class DecisionTests(unittest.TestCase):
             value = plan(); mutate(value)
             with self.assertRaises(ValueError): self.check(value)
 
+    def test_observation_and_image_composition_need_real_visual_material(self):
+        value=plan();value['pages'][0]['strategy']='observe'
+        with self.assertRaisesRegex(ValueError,'real visual evidence'):self.check(value)
+        value=plan();value['pages'][0]['composition']='image_with_type'
+        with self.assertRaisesRegex(ValueError,'actual file asset'):self.check(value)
+        value['pages'][0].update(form='original_illustration',assets=[{'route':'generate','kind':'illustrative','status':'planned','file':None,'origin':'Original concept'}])
+        self.check(value)
+
+    def reference(self,root):
+        Image.new('RGB',(20,12),'blue').save(root/'reference.png')
+        return {'id':'R1','kind':'artwork','title':'A fixture composition','creator':'Fixture designer',
+                'source':'https://museum.example/work','inspection':'local_image','evidence':'reference.png',
+                'observed':'A large blue field establishes one focus.','borrowed':'Scale contrast between focal type and the surrounding field.',
+                'applications':[{'pages':['intro'],'action':'Use one large phrase and an open surrounding field.'}]}
+
+    def reference_deck(self,value,*,notes=True,omit=None):
+        stream=io.BytesIO()
+        entry=value['references'][0]
+        content=[entry['id'],entry['title'],entry['creator'],entry['source'],entry['observed'],entry['borrowed'],entry['applications'][0]['action']]
+        if omit is not None:content.remove(entry[omit])
+        from xml.sax.saxutils import escape
+        with zipfile.ZipFile(io.BytesIO(deck())) as before,zipfile.ZipFile(stream,'w') as after:
+            for item in before.infolist():
+                body=before.read(item.filename)
+                if notes and item.filename=='ppt/slides/_rels/slide9.xml.rels':body=body.replace(b'</Relationships>',f'<Relationship Id="n" Type="{R}/notesSlide" Target="../notesSlides/notes1.xml"/></Relationships>'.encode())
+                after.writestr(item.filename,body)
+            if notes:after.writestr('ppt/notesSlides/notes1.xml',f'<p:notes xmlns:p="{P}" xmlns:a="{A}"><a:t>{escape(" | ".join(content))}</a:t></p:notes>')
+        return stream.getvalue()
+
+    def test_inspected_work_and_application_must_survive_in_final_notes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);value=plan();value['references']=[self.reference(root)];value['pages'][0]['reference_ids']=['R1']
+            self.check(value,root=root)
+            self.check(value,root=root,stage='authored',artifact=self.reference_deck(value))
+            for artifact in [self.reference_deck(value,notes=False),self.reference_deck(value,omit='creator'),self.reference_deck(value,omit='observed'),self.reference_deck(value,omit='borrowed')]:
+                with self.assertRaisesRegex(ValueError,'Final slide notes'):self.check(value,root=root,stage='authored',artifact=artifact)
+            packet=root/'packet';packet.mkdir();(root/'decision-plan.json').write_text(json.dumps(value))
+            write_design_packet({'plugin':str(PLUGIN)},root,packet,self.reference_deck(value))
+            self.assertEqual((packet/'design-reference-images/R1.png').read_bytes(),(root/'reference.png').read_bytes())
+            self.assertIn('A fixture composition',(packet/'audience-notes.json').read_text())
+
+    def test_unviewed_artwork_unknown_pages_and_false_applications_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            for change in ('not_viewed','bad_page','nonstring_page','missing_id','fake_borrow','unsafe_source'):
+                value=plan();entry=self.reference(root);value['references']=[entry];value['pages'][0]['reference_ids']=['R1']
+                if change=='not_viewed':entry.update(inspection='read_text',evidence='Only a prose description')
+                if change=='bad_page':entry['applications'][0]['pages']=['missing']
+                if change=='nonstring_page':entry['applications'][0]['pages']=[{}]
+                if change=='missing_id':value['pages'][0]['reference_ids']=[]
+                if change=='fake_borrow':entry.update(inspection='unavailable',evidence=None)
+                if change=='unsafe_source':entry['source']='https://user:secret@museum.example/work'
+                with self.subTest(change=change),self.assertRaises(ValueError):self.check(value,root=root)
+
+    def test_failed_reference_is_recorded_without_invented_inspiration(self):
+        value=plan();value['task']['references']='targeted_search'
+        with self.assertRaises(ValueError):self.check(value)
+        value['references']=[{'id':'R1','kind':'artwork','title':'Unavailable fixture work','creator':'Fixture artist','source':'https://museum.example/work','inspection':'unavailable','evidence':None,'observed':'The image source returned HTTP 403; it was not viewed.','borrowed':None,'applications':[]}]
+        self.check(value)
+
+    def test_new_contract_is_pinned_outside_task_and_historical_tasks_are_preserved(self):
+        cfg={'plugin':str(PLUGIN)}
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            self.assertEqual(pin_decision_contract(cfg,root,'new',False),3)
+            self.assertEqual(pin_decision_contract(cfg,root,'new',True),3)
+            self.assertIsNone(pin_decision_contract(cfg,root,'historical',True))
+            job=root/'job';job.mkdir();(job/'decision-plan.json').write_text(json.dumps(legacy_plan()))
+            with self.assertRaisesRegex(ValueError,'pinned design contract'):check_decisions(cfg,job,outline(),stage='planning')
+            result=check_decisions({**cfg,'_choice_min_version':None},job,outline(),stage='planning')
+            self.assertTrue(result['legacy_record'])
+
     def test_scaffold_has_exact_ids_and_no_preselected_task_or_page_choices(self):
         value = POLICY.plan_template(outline())
         self.assertEqual([page['id'] for page in value['pages']], ['intro', 'space'])
@@ -86,10 +166,10 @@ class DecisionTests(unittest.TestCase):
         self.check(value)  # Normal asset acquisition does not block planning.
 
     def test_legacy_records_migrate_without_modifying_original_bytes(self):
-        value = plan(); value['version'] = 1
+        value = legacy_plan(); value['version'] = 1
         value['task'].pop('operation'); value['task'].update(scope='new_deck', inputs='missing_essential')
         original = copy.deepcopy(value)
-        self.assertEqual(self.check(value)['version'], 2)
+        self.assertEqual(self.check(value)['version'], 3)
         self.assertEqual(value, original)
         value['task']['scope'] = 'faithful_conversion'
         self.check(value, mode='edit', require_variation=False)

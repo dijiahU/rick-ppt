@@ -9,7 +9,7 @@ Read supplied sources before searching. Use primary sources for technical or fac
 ## Execute the selected research, reference and material routes
 
 Use [workflow-branches.md](workflow-branches.md) and the choice catalog to select
-task research/reference branches and page intent/form/composition/asset branches.
+task research/reference branches and page intent/strategy/form/composition/asset branches.
 Record those IDs in decision-plan.json; do not replace selection with a free-form
 list of possibilities. Source constraints and actual tool availability determine
 which routes are eligible. Within that route, inspect relevant evidence/work,
@@ -21,8 +21,11 @@ specific missing design/material question. File routes are `supplied`, `web_impo
 or `generate`; choose `none` when the selected native expression needs no file, or
 `source_grounded_native` for a verified analytical schematic. Follow the branch's
 failure/unmet-requirement action, update the plan and avoid redundant searches.
-The primary form and composition come from the page's intent branch; generation
-creates original illustration, never counterfeit documentary evidence.
+The primary form follows the intent, while the audience strategy and concrete
+canvas composition identify what must become visible. Generation creates original
+illustration, never counterfeit documentary evidence. Let image, type, diagram
+and data roles combine on one page; a full-field/side/detail image can work with
+native explanation. Long prose should not decide the geometry before these choices.
 
 Inspiration can come from any relevant art form: photography, painting,
 illustration, graphic design, film, architecture, sculpture, textiles, music,
@@ -63,6 +66,16 @@ the design question, source URL and relevant section/figure, the useful observat
 and its concrete application. These are reference observations and decisions,
 not a private reasoning transcript or copied textbook. Inspiration does not
 establish factual evidence or permission to embed source artwork.
+
+Also fill the v3 artwork/reference register defined in workflow-branches.md:
+exact work title, verified creator, source, actual inspection evidence, observed
+properties, the idea borrowed and concrete page actions. Link applying pages by
+reference_ids. A search result or text account of a poster cannot certify seeing
+its composition. Unavailable works have no claimed borrowed idea/application.
+Write actual applied entries into final slide notes with design_references.py;
+the host checks those notes and supplies scoped visual reference evidence to the
+existing visual reviewer after the initial audience judgment. Records do not
+prove transfer: the specified operation must be visible and useful in the page.
 
 Reuse selected references and the resulting deck-wide decisions across pages.
 Search again when a materially different problem or inadequate result warrants

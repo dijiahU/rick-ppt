@@ -26,6 +26,9 @@ verified IP and TLS still verifies the original hostname. Task code cannot
 select a proxy or change network permissions. Without a local proxy the host
 uses direct transport. Downloads have a shared 65-second budget, including
 redirects, and at most one retry per transfer for an empty transient failure.
+HTTPS DNS uses one bounded retry within its existing time budget and briefly
+caches only verified public answers within their TTL (at most 60 seconds), so
+multiple images from one source do not repeatedly depend on a fresh resolver call.
 
 On failure read `error_code` and `details`: DNS, connection, TLS, HTTP status,
 size and non-media responses are distinct. Do not keep swapping URLs or

@@ -1,157 +1,150 @@
 # Workflow branches
 
-Use this routing protocol for planning, authoring, revision and review. The finite
-choice IDs live in [workflow-choices.json](../assets/workflow-choices.json); select
-those IDs, not an invented category or an unfilled "consider X". Creative treatment
-happens within the selected branches. Selection is required; no choice is preselected.
-Explicit user requirements, supplied templates, permitted tools and factual fidelity
-restrict eligibility. The existing four stages and sequential page order remain.
+The finite IDs are in [workflow-choices.json](../assets/workflow-choices.json).
+They control consequential communication decisions, evidence, behavior and delivery.
+The author owns visual direction and its concrete implementation. Branch labels,
+artist names and object counts do not certify design quality. Keep content research
+first, author in page order, and use the existing independent bounded reviews.
 
-## 1. Task route
+## Task entry and direction
 
-| Decision | Choices and entry conditions | Result |
-| --- | --- | --- |
-| Task entry | `create`: make a new presentation; `edit`: change a supplied presentation | Copy the existing host task mode. There are no additional input-state task types. Within edit, follow the requested scope; within create, preserve supplied evidence/templates where required. |
-| Viewing | `live`, `self_reading`, `dual_use`: explicitly stated or established by supplied use; `unspecified`: evidence does not establish it | Do not invent live use. Essential meaning remains accessible; choose behavior at page level. |
-| Research | `supplied_only`: supplied/offline constraints or no permitted search; `targeted_verification`: sources exist but a specific gap/current claim needs checking; `topic_research`: the requested topic needs substantive research | Read the relevant sources; stop when the actual gaps are resolved. Do not repeat a research branch after a geometry fix. |
-| Design references | `preserve_supplied`: required source/template style; `use_available`: inspected supplied/task knowledge supports the choice; `targeted_search`: a specific design/material question needs outside reference | Record relevant applications. Search references can come from any relevant art; no compulsory book list. |
-| Style system | `editorial`: reading/type hierarchy is central; `analytical`: evidence/relationships dominate; `image_led`: visual recognition/experience dominates; `expressive`: a requested idea/feeling needs artistic treatment; `supplied_system`: source style must be retained | Define concrete type/color/composition for this task within that family. These are systems, not page templates. |
-| Palette | `inherited`, `neutral`, `semantic`, `expressive` | Respect source color when required; otherwise select color roles for reading, distinctions or experience. No prescribed colors. |
-| Typography | `inherited`, `installed_role_system` | Preserve required source type or assign roles using available fonts. No prescribed font family. |
+Task entry is only `create` or `edit`, copied from the host. Preserve templates,
+source fidelity, small editing scopes, offline instructions and installed capability
+limits. Handle ordinary missing material inside the research/asset route. There is
+no mandatory completeness/conflict classification or extra task type.
 
-Missing ordinary material is handled inside its research/asset branch: search,
-use supplied material, generate an appropriate concept or qualify an unknown.
-There is no mandatory completeness/conflict classification before every task.
-Only an explicit required attachment that is absent, or mutually incompatible
-mandatory requirements that prevent progress, needs a concrete clarification.
-Preserve work in that exceptional case; do not invent facts or repeatedly repair
-contradictory assumptions. Host-resolved input is shared by author and reviewer.
-
-## 2. Page route: intent → eligible primary form
-
-Select one intent and one primary form from its catalog branch. Add zero or more
-distinct supporting forms from the form menu. Supporting text may accompany any
-image/diagram. The primary form describes the main explanatory work, not the title.
-
-| Intent | Eligible primary forms |
+| Decision | Choose and execute |
 | --- | --- |
-| `introduce` | typography, documentary_image, original_illustration, worked_example, storyboard |
-| `explain` | typography, diagram, worked_example, storyboard, documentary_image, embedded_media |
-| `compare` | table, data_chart, diagram, documentary_image, worked_example, typography |
-| `quantify` | data_chart, table, worked_example, diagram |
-| `show_space` | diagram, documentary_image, original_illustration, storyboard, embedded_media |
-| `demonstrate` | worked_example, storyboard, documentary_image, diagram, embedded_media |
-| `envision` | original_illustration, documentary_image, typography, storyboard, diagram |
-| `summarize` | typography, table, diagram, data_chart, worked_example |
-| `sequence` | diagram, storyboard, worked_example, table, embedded_media |
-| `decide` | table, data_chart, diagram, worked_example, typography |
+| Viewing | `live`, `self_reading`, `dual_use`, `unspecified`: use established purpose; do not invent live use. Essential explanations remain visible. |
+| Research | `supplied_only`, `targeted_verification`, `topic_research`: read actual material and resolve the corresponding evidence gaps. |
+| References | `preserve_supplied`: retain required source design; `use_available`: reuse inspected material or task-specific knowledge, explain the basis; `targeted_search`: inspect relevant actual works/teaching before settling direction, recording successes or unavailable access. |
+| Style family | `editorial`, `analytical`, `image_led`, `expressive`, `supplied_system`: choose for purpose. This family does not prescribe page geometry or exclude images, expressive typography or another page's analytical needs. |
+| Palette roles | `inherited`, `neutral`, `semantic`, `expressive`: select relationships and emphasis; no default low-saturation scheme or mandated vividness. |
+| Typography basis | `inherited`, `installed_role_system`: retain required type or choose available fonts for real roles. Font sizes/weights/line breaks remain design decisions. |
 
-The intent identifies the reader's task: recognition, understanding, comparison,
-quantity, spatial relationships, actual use, a proposed vision, synthesis, ordered
-progression or a decision. Choose from that branch according to evidence and use.
-Real-product demonstration and documentary imagery require real sources; generation
-can express an original vision but cannot counterfeit an actual screen or case.
+Write a short `design_direction`: this subject's visual premise, intended emphasis,
+and sequence rhythm. Decide deliberately instead of averaging references into a
+safe generic component system. Serious content still needs hierarchy and composition;
+a simple treatment is appropriate when it serves that specific purpose.
 
-Next select a composition family: `focus` (one main field), `split` (complementary
-fields), `sequence` (ordered steps), `layered` (nested/overlapping levels), `spatial`
-(location/adjacency), `comparison` (shared dimensions), or `multipanel` (related
-examples/views). Choose density `sparse`, `balanced` or `dense` for this content and
-viewing distance; these labels do not impose a word count or object count.
+## Content → audience task → strategy
 
-For new multi-page decks and requested whole-deck redesigns, the complete plan must not use one primary-form/
-composition pair throughout. The local validator catches that omission; actual
-visual review checks that variation is meaningful, not just changed labels/colors.
-Related comparisons keep consistent encoding. Preserve supplied templates and
-bounded edits; do not mechanically rotate all menu items.
+Research notes retain the detailed evidence. The outline identifies useful meaning,
+conditions and reader questions; do not lock long paragraphs into boxes before
+choosing how to explain. Select the existing intent and eligible primary/support
+forms, then the strategy below. The `role` names the audience question/benefit.
 
-## 3. Asset route, selected for each material need
-
-| Route | Condition | Required action / fallback |
-| --- | --- | --- |
-| `none` | Selected native text/data/diagram explains the page without an external bitmap/media asset | Record the explicit route; it cannot be combined with another asset route. |
-| `supplied` | Suitable material is in the authorized inputs | Inspect it and embed the selected bytes with attribution/context. |
-| `web_import` | Real or reusable material is needed and a permitted source is available | Search/open/inspect; acquire via WEB-MEDIA.md; inspect and embed the local file. A search thumbnail is not acquisition. |
-| `generate` | An original raster concept/illustration serves the page and the built-in tool is exposed | Use imagegen-skill.md; inspect the task-local result; embed and label it illustrative. No failed-search prerequisite. |
-| `source_grounded_native` | A faithful analytical/technical schematic is the selected expression | Read the evidence and draw native editable relationships; do not pretend it is a real photo/screenshot. |
-
-File routes also select `kind`: `documentary`, `illustrative`, or `media`, and
-`status`: `planned`, `ready`, or `unavailable`. Before author completion, selected
-file assets must be `ready`, with a task-relative `file` and an `origin` source/credit
-or generation reference. When normalizing/converting, record the actual file bytes
-that are embedded. The host checks use on the planned page, not merely existence
-in the task directory or unused placement under ppt/media.
-
-If acquisition/generation fails, select a supported alternative route/form and
-update the plan, keeping the actual limitation in source notes. If a requested
-essential visual cannot be met, report that unresolved requirement; do not declare
-a placeholder complete. Explicit offline/supplied-only/no-generation constraints
-and tool availability remove ineligible routes. No API/install/permission fallback.
-
-## 4. Behavior route
-
-| Choice | Entry condition | Execution/check |
-| --- | --- | --- |
-| `static` | A complete view serves reading/comparison or interaction is unnecessary | Keep the page complete and readable. |
-| `click_reveal` | Requested/appropriate stepwise explanation benefits from presenter control | Use animations.md; reveal related objects together and inspect states/targets. |
-| `internal_navigation` | The task needs nonlinear movement within this deck | Use native internal slide links; verify destinations. |
-| `embedded_playback` | An explanation needs an actual embedded clip/audio | Select embedded_media and embed the actual file; distinguish static inspection from target-player playback. |
-
-Multiple ideas alone do not select animation. External sites/runtimes are not a
-delivery branch. Unsupported essential behavior is reported, never simulated as
-verified playback.
-
-## 5. Execution / review / repair routes
-
-| Observed result | Route and next action |
+| Strategy | Entry condition and action |
 | --- | --- |
-| Plan incomplete, unknown choice, incompatible intent/form or stale page IDs | Correct decision-plan.json locally before native authoring; do not invent a fallback choice. |
-| Render unreadable, clipped, incorrect crop/group/connector/timing, or chosen material absent | Repair the affected native page/asset; rerender that page and refresh its preview. |
-| Source facts, explanation, required example or operation order wrong/missing | Re-enter the affected content branch, then implement its native correction. |
-| Native package validation fails | Fix the package/native operation using the actual error, preserving original and previous exports. |
-| Draft ready | Freeze/validate/render; independent content and visual contexts review that exact candidate in parallel. |
-| Review finding needs new facts/explanation | Select finding route `content_revision`. |
-| Review finding needs implementation only (layout, fonts, captions, asset placement, native behavior) | Select `native_repair`; do not start a full content-research pass. |
-| Optional refinement or inherited out-of-scope issue | Select `retain_suggestion`; it does not block delivery. |
-| User chat only | Answer in the existing separate chat path; preserve the frozen review. |
-| Actual user modification | Update affected choices/content/native pages and review the new candidate. |
-| Temporary transport error, bytes/revision unchanged | Use existing bounded retry/checkpoint recovery; retain candidate and receipts, do not regenerate. |
-| User stop | Stop active work through the existing stop path and retain checkpoints. |
-| Reviewed hash/revision matches delivery input | Upload those exact standalone PPTX bytes. |
-| Hash/revision changed or required correction unresolved | Return to the affected correction/review branch; never upload as reviewed. |
+| `observe` | Readers must recognize an actual object, interface, place, state or output. Acquire/inspect real images, official demonstration frames or embedded media; use native short annotations as needed. A prose feature map or invented image does not satisfy observation. Faithful native source recreation preserves its authorized conversion scope. |
+| `relate` | Readers must understand mechanism, direction, adjacency or dependencies. Use evidence-grounded native relationships with short labels; add real/contextual imagery when it supplies a different useful role. |
+| `compare` | Readers must judge quantities, evidence or alternatives. Use accurate native charts, essential tables, direct labels or comparable views. Do not turn paragraphs into a grid and call it a visual comparison. |
+| `envision` | Readers must understand an original proposed scene, possibility or idea. Select appropriate original illustration, sourced contextual imagery, native concept relationships or a purposeful typographic statement. Mark concepts as concepts; do not counterfeit real cases/screens. |
+| `read` | Wording itself carries the argument, definition, quote or conclusion. Edit to essential visible meaning and create type hierarchy, scale, alignment and whitespace. This is not an automatic card grid. |
+| `act` | Readers must follow a sequence or make a decision. Make actions, outputs, gates and responsibility visible in a suitable sequence/comparison; keep labels short and preserve necessary conditions. |
 
-Repair routes do not create extra reviewers or unlimited loops; the existing bounded
-repair budget remains. Conflicting requirements must be resolved as input, not hidden
-by repeated content/native repairs. Reviewer context excludes the author's decision
-rationale. Review actual pages and the request using the same branch criteria.
+Do not infer that every page about a product/place needs a photograph. Determine
+which question requires seeing its real form/use, which needs relationships, and
+which needs quantitative evidence. One page can combine these roles. A budget chart
+may need no image; a real-case page must not hide its visual evidence behind prose
+when recognizing that case is part of the explanation.
 
-## Decision record and local checks
+## Select a canvas composition and implement it
 
-Write task-local decision-plan.json beside outline.json, with root keys version,
-task and pages. Copy the task fields and their IDs from the
-catalog. Each page has `id`, `intent`, `form`, `support` (array), `layout`, `density`,
-`behavior`, `assets` (array), and a short observable `role`; IDs/order match outline.
-Each file asset has route/kind/status/file/origin; a no-file route is just
-`{"route":"none"}` or `{"route":"source_grounded_native"}`. This is a concise
-execution record, not private reasoning or a public outline replacement.
-After writing outline.json, the checker can emit an unselected scaffold with the
-exact page IDs: use --template and save its output as decision-plan.json. Null
-values are deliberately unselected and invalid until filled from the catalog.
+| Composition | Actual treatment and check |
+| --- | --- |
+| `image_field` | A selected image occupies the main field or background. Choose focal crop, supporting editable text and contrast; preserve the subject and provenance. |
+| `image_with_type` | Integrate image and editable type through deliberate scale/position: beside, below, partly overlapping or visually interwoven. Specify the relationship; avoid a default boxed split. |
+| `type_statement` | A concise main phrase/number/quote establishes focus through scale, weight, meaningful breaks and whitespace. Remove duplicate headlines and conclusions. |
+| `editorial` | Organize short argument/evidence through columns, margins, side notes and a clear reading path. Avoid equal visual weight for unequal claims. |
+| `annotated_visual` | Use an actual selected image/detail with short native callouts to make relevant evidence inspectable. A caption cannot substitute for an unrecognizable or tiny subject. |
+| `relational_map` | Native positions/connections express actual relations. Do not wrap every label in a filled rectangle; choose enclosure only for a real grouping/boundary. |
+| `data_display` | Accurate native chart/table with direct units, comparison and emphasis. Paragraph-filled cells still require editing. Keep comparable variables consistently encoded. |
+| `sequence` | Order, progression or meaningful state change is visible; use native steps, frames or typographic pacing. Avoid long explanatory panels repeating the title. |
+| `independent_panels` | Distinct, equally important items genuinely need separable fields. Define this benefit; panels are not the default container for arbitrary paragraphs. |
 
-Example page (not a prescribed layout):
+`visual_action` describes the actual dominant element, reading path and treatment.
+Choose type scale, color, image crop, overlap, proportions and whitespace within
+that strategy yourself. No universal font/palette, template rotation, image quota
+or demand that all pages look different. Keep comparisons and the deck's identity
+coherent, while varying emphasis and reading task as content requires.
 
-```json
-{"id":"space","intent":"show_space","form":"diagram","support":["typography"],"layout":"spatial","density":"balanced","behavior":"static","assets":[{"route":"source_grounded_native"}],"role":"Show which functions share a circulation spine."}
+New multi-page plans must have more than one form/composition, but this minimal
+structural check is not evidence of successful visual variety. Review actual pages
+and the sequence for repeated card/box language even when their branch IDs differ.
+
+## Material and failure branches
+
+| Asset route | Execute |
+| --- | --- |
+| `none` | The chosen native expression needs no external bitmap/media. Explicitly record this; do not combine it with another asset route. |
+| `supplied` | Inspect appropriate authorized material and embed the selected bytes. |
+| `web_import` | Acquire the required real/reusable material via WEB-MEDIA.md, inspect the returned file and embed it in its planned role. |
+| `generate` | Use the exposed built-in tool for an original raster concept/illustration, inspect and embed it. No failed-search prerequisite. |
+| `source_grounded_native` | Draw faithful editable analytical/technical relationships from actual evidence. Do not claim a photo/screenshot or spatial experience has been provided. |
+
+File routes record `kind` (`documentary`, `illustrative`, `media`), `status`
+(`planned`, `ready`, `unavailable`), `file` and `origin`. Planning can retain work
+still to acquire. Before authored completion, selected files must be ready and
+actually used on the planned page; native media bytes are not proof of playback.
+
+| Observed failure | Action |
+| --- | --- |
+| DNS/connection/TLS outage | The host uses bounded transport/DNS recovery. Record its actual result; do not repeat blind URL swaps. Preserve the intended visual question and use an accessible same-evidence source when possible. |
+| Page/404/403/non-media response | Find an actual supported direct-file source or a legitimate reusable alternative. Do not pretend an error page or search thumbnail is acquired media. |
+| Size/partial transfer | Select an appropriate smaller source or clip within limits, preserving meaning and documenting conversion. |
+| Tool/source genuinely unavailable | Reconsider representation against the same audience need. If essential real visual evidence remains absent, record the unmet requirement; changing a label to `relate` or adding a card does not resolve it. |
+
+## Artwork and design-reference register
+
+Record every actually applied outside work/teaching in `decision-plan.json.references`:
+
+```
+{"id":"R1","kind":"artwork","title":"Exact work/photograph/frame title",
+ "creator":"Verified creator; explicitly record unknown attribution if necessary",
+ "source":"https://original.source/work","inspection":"local_image",
+ "evidence":"references/work.png","observed":"What is actually visible in this work",
+ "borrowed":"The useful principle/relationship taken from it",
+ "applications":[{"pages":["vision"],"action":"Concrete type/image/scale/color operation on this page"}]}
 ```
 
-Run with the provided interpreter and plugin path:
+Kinds: `artwork`, `design_work`, `teaching`, `supplied_system`. Inspection modes:
+`local_image` (actual task-scoped visual file), `hosted_visual` (actual displayed
+image/frame, record its observable source/tool locator), `read_text` (an inspected
+teaching passage), `unavailable` (no inspected evidence; borrowed=null,
+applications=[], evidence=null). Text about an artwork cannot certify observing
+its composition. A museum/award/designer name alone is not a work reference.
 
-```
-python PLUGIN/skills/pptx/scripts/workflow_decisions.py --stage planning
-python PLUGIN/skills/pptx/scripts/workflow_decisions.py --stage authored --artifact exports/final.pptx
-```
+Use actual title, creator, source, observation and principle; distinguish creator
+intent from your interpretation. Reference study does not grant embedding rights
+or establish factual evidence about this project. Explore any relevant art form
+and high-quality source; there is no fixed corpus or artist quota. Preserve a
+supplied system or a simple task-appropriate direction without invented references.
 
-The host repeats these structural checks before accepting new planning/author output
-and before frozen review. It rejects missing/invalid choices and missing selected
-asset/native behavior. These checks do not certify aesthetics, factual provenance
-or playback; existing audience reviews still do. Old verified exports/recovery
-receipts without a decision record retain their existing recovery path.
+Each applying page lists its `reference_ids`; application page IDs must agree.
+Record observations and adaptations concisely in source-notes.md. Before final
+export, run `design_references.py --workspace WORKSPACE` to preserve existing notes
+and write work/creator/source/observation/borrowed idea/page action into the affected
+slide notes. Core explanation remains on the audience canvas; the provenance
+record need not add pages or overload visible text. In the user-facing completion
+summary, briefly name the applied works and the ideas used, or state honestly that
+no outside artwork was applied. Never present unviewed attempts as inspiration.
+
+## Behavior, implementation and existing review
+
+Behavior choices remain `static`, `click_reveal`, `internal_navigation`,
+`embedded_playback`. Select for the actual viewing task, not number of ideas.
+Use animations.md for meaningful native builds; verify internal destinations and
+actual embedded files, and distinguish static inspection from player verification.
+
+Use [native-canvas.md](native-canvas.md) to measure text, crop/layer images and
+make editable one-unit bars without writing repeated low-level XML. These helpers
+implement object capabilities, not a page style. Snapshot first, author in order,
+inspect actual full-size and reading previews and preserve source meaning.
+
+Run `workflow_decisions.py --stage planning`, then `--stage authored --artifact
+YOUR_EXPORT`. Host checks choices, actual asset embedding and final artwork notes.
+Fresh tasks require v3; historical v1/v2 records remain readable through protected
+recovery/explicit --allow-legacy without inventing provenance or modifying old bytes.
+The existing visual review evaluates audience fit, actual sequence and reference
+transfer; neither decision counts nor the artist register establish design quality.

@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 from progress import Reporter
 from review_sessions import (ReviewRole, ReviewSessionError, _load_attempt, _publish,
                              _read_record, encoded)
-from workflow import Execution
+from workflow import Execution,validate_report
 
 
 def report():
@@ -89,6 +89,32 @@ class ReviewRecoveryTests(unittest.TestCase):
 
     def review(self,run=None):
         return (run or self.run).review(self.artifact,{'pages':self.pages},self.packet,self.payload,1)
+
+    def test_design_reference_evidence_does_not_taint_blind_content_pass(self):
+        (self.packet/'design-references.json').write_text('{"available":true,"author_application":"Do not use this as a verdict"}')
+        (self.packet/'design-reference-images').mkdir();(self.packet/'design-reference-images/R1.png').write_bytes(b'ACTUAL REFERENCE IMAGE')
+        (self.packet/'audience-notes.json').write_text('{"pages":[{"text":"Design source and actual speaker notes"}]}')
+        self.review()
+        roots={name.split('-1')[0]:root for name,root,_ in self.calls}
+        first=roots['content-first'];evidence=roots['content-evidence'];visual=roots['visual']
+        self.assertFalse((first/'design-references.json').exists());self.assertFalse((first/'audience-notes.json').exists())
+        self.assertFalse((evidence/'design-references.json').exists());self.assertTrue((evidence/'audience-notes.json').is_file())
+        self.assertTrue((visual/'design-reference-images/R1.png').is_file());self.assertTrue((visual/'design-references.json').is_file())
+
+    def test_v3_visual_review_requires_actual_design_assessment(self):
+        catalog=self.plugin/'skills/pptx/assets/workflow-choices.json';catalog.parent.mkdir();catalog.write_text('{"version":3}')
+        with self.assertRaisesRegex(ValueError,'audience fit'):self.review()
+        value=report();value['design_assessment']={'audience_fit':'Page 1 makes the main relation visible.','sequence':'Pages 1 and 2 use related but distinct reading tasks.','reference_transfer':'No outside artwork was applied in this supplied fixture.'}
+        validate_report(value,2,require_design=True)
+        value['design_assessment']['sequence']=''
+        with self.assertRaises(ValueError):validate_report(value,2,require_design=True)
+
+    def test_reviewers_share_the_saved_output_language_with_author(self):
+        self.task['language']='fr';self.payload['language']='fr'
+        self.review()
+        for _,_,prompt in self.calls:
+            self.assertIn('French (fr)',prompt)
+            self.assertIn('saved selection governs output language',prompt)
 
     def attempts(self):
         return [_load_attempt(path.parent)[0] for path in (self.root/'records/review-sessions').rglob('00000000-*.json')]

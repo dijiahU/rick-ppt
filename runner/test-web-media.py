@@ -18,6 +18,32 @@ import web_media as m
 class Policy(unittest.TestCase):
     def setUp(self):
         self.env=patch.dict(os.environ,{},clear=True);self.env.start();self.addCleanup(self.env.stop)
+        m.DNS_CACHE.clear()
+
+    def test_dns_transient_retry_and_public_cache_are_bounded(self):
+        answer=subprocess.CompletedProcess([],0,b'{"Answer":[{"type":1,"data":"93.184.216.34","TTL":30}]}',b'')
+        failed=subprocess.CompletedProcess([],28,b'',b'')
+        with patch.object(subprocess,'run',side_effect=[failed,answer]) as run:
+            self.assertEqual(m.dns_addresses('example.com','http://127.0.0.1:7890'),['93.184.216.34'])
+            self.assertEqual(m.dns_addresses('example.com','http://127.0.0.1:7890'),['93.184.216.34'])
+            self.assertEqual(run.call_count,2)
+
+    def test_dns_failure_and_private_answers_are_not_cached(self):
+        failed=subprocess.CompletedProcess([],28,b'',b'')
+        with patch.object(subprocess,'run',return_value=failed) as run,self.assertRaises(m.MediaError) as error:m.dns_addresses('example.com','http://127.0.0.1:7890')
+        self.assertEqual(run.call_count,2);self.assertEqual(error.exception.details['attempts'],2);self.assertFalse(m.DNS_CACHE)
+        answer=subprocess.CompletedProcess([],0,b'{"Answer":[{"type":1,"data":"127.0.0.1","TTL":30}]}',b'')
+        with patch.object(subprocess,'run',return_value=answer):m.dns_addresses('example.com',None)
+        self.assertFalse(m.DNS_CACHE)
+
+    def test_dns_cache_respects_ttl_and_proxy_route(self):
+        answer=subprocess.CompletedProcess([],0,b'{"Answer":[{"type":1,"data":"93.184.216.34","TTL":1}]}',b'')
+        with patch.object(subprocess,'run',return_value=answer) as run:
+            m.dns_addresses('example.com','http://127.0.0.1:7890')
+            m.dns_addresses('example.com','http://127.0.0.1:7891')
+            m.DNS_CACHE[('example.com','http://127.0.0.1:7890')]=(0,('93.184.216.34',))
+            m.dns_addresses('example.com','http://127.0.0.1:7890')
+            self.assertEqual(run.call_count,3)
 
     def test_only_host_loopback_proxy_is_accepted(self):
         self.assertIsNone(m.local_proxy({}))

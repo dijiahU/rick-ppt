@@ -118,6 +118,14 @@ def prepare(cfg):
             'validator':str(Path(cfg['plugin'])/'skills/pptx/scripts/workflow_decisions.py'),
             'record':'decision-plan.json',
             'use':'Select listed task/page/asset/behavior branch IDs and execute their actions. Validate planning, then selected assets/behavior against the authored PPTX. No blank choices, invented category or automatic template rotation.'}
+        if json.loads(catalog.read_text())['version']>=3:
+            skill=Path(cfg['plugin'])/'skills/pptx'
+            capabilities['workflow_decisions'].update(version=3,
+                reference_register='decision-plan.json.references',reference_notes=str(skill/'scripts/design_references.py'),
+                use='Choose audience strategy and actual canvas composition. Record work/title/creator/source/inspection/observed/borrowed/page applications; write applied references into final slide notes. Choice counts do not establish design quality.')
+            capabilities['native_canvas']={'guide':str(skill/'references/native-canvas.md'),
+                'helper':str(skill/'scripts/native_canvas.py'),
+                'use':'Measure text using an installed font; create editable type without default card backgrounds; crop and layer actual task images; create editable one-unit bars. Choose typography/color/geometry yourself and inspect the actual render.'}
         (job/'capabilities.json').write_text(json.dumps(capabilities,indent=2))
     (job/'fonts.conf').write_text('<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig><dir>/System/Library/Fonts</dir><dir>/Library/Fonts</dir><cachedir>'+str(job/'font-cache')+'</cachedir></fontconfig>')
     return job
@@ -294,6 +302,8 @@ def _run_job(cfg,task,lease):
     if not cfg.get('_model_profile'):
         cfg['_task_default_model']=task_default_model(state_root,task['id'],existing,cfg.get('default_model',DEFAULT_TASK_MODEL),cfg.get('default_reasoning_effort',DEFAULT_TASK_REASONING_EFFORT))
         cfg['_task_default_reasoning_effort']=task_default_reasoning_effort(state_root,task['id'])
+    from decision_routing import pin_decision_contract
+    cfg['_choice_min_version']=pin_decision_contract(cfg,state_root,task['id'],existing)
     with Journal(state_root,task['id'],plugin_version=None if existing else version,secrets=(cfg['token'],task['lease']),limits=HOST_JOURNAL_LIMITS) as journal:
         plan=None
         if journal.state.get('snapshot_id'):

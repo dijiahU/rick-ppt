@@ -32,6 +32,23 @@ review; this is an execution contract, not an aesthetic score. Review findings
 select content_revision, native_repair or retain_suggestion; implementation-only
 findings do not force full content research. Existing approved-byte recovery and
 legacy reports keep their compatibility path. No additional audience review stage.
+The v3 contract selects audience strategy and concrete canvas composition instead
+of free-form layout/density labels. Authors retain typography, color, crop, scale,
+overlap and rhythm decisions. Image/type combinations and deliberately designed
+pure-text pages are explicit; repeated prose-box language is judged on actual pages.
+Applied artistic/design/teaching references record exact work/title/creator/source,
+actual inspection, observation, borrowed principle and page action. A protected
+host admission receipt prevents new tasks bypassing v3 with historical records.
+`design_references.py` writes applied records into affected slide notes before
+export; the host verifies final notes and actual selected asset bytes. Scoped
+reference images/notes reach visual review after initial canvas judgment, while
+the blind content pass excludes author design records. V3 visual reports assess
+audience fit, sequence and reference transfer without scores or extra review rounds.
+`native_canvas.py` supplies installed-font metrics, native image crop/layering and
+editable one-unit bars, not slide templates. Authors/reviewers share the saved
+output-language contract. The media broker bounds DNS recovery and caches only
+verified public answers within their TTL. Old verified exports and admitted tasks
+retain protected historical compatibility without fabricated artistic provenance.
 Ordinary chat preserves reviews; actual revisions invalidate them. Owner pause
 stops authoring/rendering/reviews and retains recovery checkpoints. Reviewed files
 can be retransmitted after exact hash/revision checks, including across upgrades.

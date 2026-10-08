@@ -24,6 +24,8 @@ if not target.exists():
 required=('skills/pptx/SKILL.md','skills/pptx/references/content.md','skills/pptx/references/research-and-assets.md','skills/pptx/references/content-review.md','skills/pptx/references/visual-review.md','skills/pptx/scripts/native_builds.py','skills/pptx/scripts/review_packet.py','skills/pptx/assets/blank.pptx')
 if (source/'skills/pptx/assets/workflow-choices.json').is_file():
     required+=('skills/pptx/assets/workflow-choices.json','skills/pptx/references/workflow-branches.md','skills/pptx/scripts/workflow_decisions.py')
+    if json.loads((source/'skills/pptx/assets/workflow-choices.json').read_text())['version']>=3:
+        required+=('skills/pptx/references/native-canvas.md','skills/pptx/scripts/native_canvas.py','skills/pptx/scripts/design_references.py')
 if not (source/'skills/pptx/assets/single-file-policy.json').is_file():
     required+=('skills/pptx/references/interactive-authoring.md','runtime/dist/preview.html','runtime/dist/content.html','runtime/config.json','runtime/manifests/manifest.addin.xml')
 for relative in required:

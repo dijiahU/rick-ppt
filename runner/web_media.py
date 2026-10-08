@@ -14,6 +14,7 @@ import stat
 import subprocess
 import tempfile
 import time
+import threading
 from urllib.parse import urlsplit,urlunsplit,urljoin,urlencode
 import uuid
 from progress import read_scoped,public_text,public_url
@@ -22,6 +23,8 @@ import mimetypes
 
 MAX_DOWNLOAD=30*1024*1024
 DOWNLOAD_BUDGET=65
+DNS_CACHE={}
+DNS_LOCK=threading.Lock()
 
 class MediaError(ValueError):
     def __init__(self,code,message,**details):
@@ -50,18 +53,35 @@ def dns_addresses(host,proxy,timeout=8):
     # DNS and the old direct resolver can disagree with the destination network.
     resolver='https://dns.google/resolve' if proxy else 'https://dns.alidns.com/resolve'
     endpoint=resolver+'?'+urlencode({'name':host,'type':'A'})
-    command=['/usr/bin/curl','-q',*proxy_args(proxy),'--silent','--show-error','--fail',
-             '--connect-timeout',str(min(8,timeout)),'--max-time',str(timeout),
-             '--max-filesize','65536','--url',endpoint]
-    try:response=subprocess.run(command,capture_output=True,timeout=timeout+2,env={'PATH':'/usr/bin:/bin'})
-    except subprocess.TimeoutExpired:
-        raise MediaError('dns_timeout','Public DNS verification timed out',host=host) from None
+    key=(host,proxy);now=time.monotonic()
+    with DNS_LOCK:
+        cached=DNS_CACHE.get(key)
+        if cached and cached[0]>now:return list(cached[1])
+    deadline=now+timeout
+    for attempt in range(2):
+        remaining=deadline-time.monotonic()
+        if remaining<=0:raise MediaError('dns_timeout','Public DNS verification timed out',host=host,attempts=attempt)
+        limit=min(4,remaining)
+        command=['/usr/bin/curl','-q',*proxy_args(proxy),'--silent','--show-error','--fail',
+                 '--connect-timeout',str(limit),'--max-time',str(limit),
+                 '--max-filesize','65536','--url',endpoint]
+        try:response=subprocess.run(command,capture_output=True,timeout=limit+.25,env={'PATH':'/usr/bin:/bin'})
+        except subprocess.TimeoutExpired:response=subprocess.CompletedProcess(command,28,b'',b'')
+        if attempt==0 and response.returncode in (7,28,35,52,55,56):continue
+        break
     if response.returncode:
-        raise MediaError('dns_unavailable','Public DNS verification unavailable',host=host,curl_exit=response.returncode)
+        raise MediaError('dns_unavailable','Public DNS verification unavailable',host=host,curl_exit=response.returncode,attempts=attempt+1)
     try:
         answer=json.loads(response.stdout)
         if answer.get('Status',0)!=0:raise ValueError()
-        return [a['data'] for a in answer.get('Answer',[]) if a.get('type')==1]
+        records=[a for a in answer.get('Answer',[]) if a.get('type')==1]
+        addresses=[a['data'] for a in records]
+        if addresses and all(ipaddress.ip_address(a).is_global for a in addresses):
+            ttl=min(60,max(1,min(float(a.get('TTL',15)) for a in records)))
+            with DNS_LOCK:
+                if len(DNS_CACHE)>=512:DNS_CACHE.pop(next(iter(DNS_CACHE)))
+                DNS_CACHE[key]=(time.monotonic()+ttl,tuple(addresses))
+        return addresses
     except (ValueError,KeyError,TypeError,AttributeError):
         raise MediaError('dns_response','Public DNS returned an invalid response',host=host) from None
 

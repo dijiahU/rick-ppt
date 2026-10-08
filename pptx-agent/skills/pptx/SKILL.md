@@ -8,7 +8,10 @@ description: Research, create and edit standalone native PowerPoint with editabl
 Use scripts/pptx.py with Python 3.11+ and installed dependencies; prefer the plugin's
 .venv/bin/python. Paths below are relative to this skill.
 
-For new decks and substantive rewrites, follow these four stages. Small edits preserve
+For new decks and substantive rewrites, follow these four stages. Stable decisions
+protect meaning, evidence and delivery; the author owns visual direction,
+typographic expression, image/type relationships and coherent sequence rhythm.
+Small edits preserve
 the supplied style, content and unaffected pages; change, render and verify only the
 authorized scope. Do not run full research for a title change. Critique changes no files.
 
@@ -35,16 +38,21 @@ Read [Workflow branches](references/workflow-branches.md) and
 [the choice catalog](assets/workflow-choices.json). Select explicit task branches
 for the existing create/edit entry, viewing, research, references, style, palette
 and typography; select each
-page's intent, eligible primary/support forms, composition, density, behavior and
-asset route. Record decision-plan.json with exact outline IDs/order and a short
-observable role per page. No unspecified option, invented category or "consider X"
+page's intent, audience strategy, eligible primary/support forms, canvas composition,
+behavior and asset route. Record v3 decision-plan.json with exact outline IDs/order,
+the audience question/benefit, a concrete visual action, a short design direction
+and actual artwork/teaching references with page applications.
+No unspecified option, invented category or "consider X"
 in place of selection. Execute the selected route's actions and failure alternative.
-Creative composition within a route still follows the actual content and purpose.
+Creative composition within a route follows content and purpose, not a uniform
+visual template. Observation of an actual object/interface/state needs real visual
+evidence, not a prose feature map.
 
 Run scripts/workflow_decisions.py --stage planning before finishing the plan, and
 --stage authored --artifact YOUR_EXPORT before finishing native authoring. New
-multi-page decks cannot select one form/composition throughout; actual visual
-review checks that differences are meaningful. Source/template constraints and
+multi-page decks cannot select one form/composition throughout; category diversity
+does not establish visual diversity. Review actual audience fit and repeated
+component language even when choice IDs differ. Source/template constraints and
 scoped edits preserve the authorized scope. Use
 [Research and assets](references/research-and-assets.md) for source inspection and
 quality within the selected reference/material route; any relevant art form may
@@ -55,6 +63,9 @@ inform that route. No fixed template rotation or demand to use all branches.
 Before authoring, write outline.json with overall purpose, sections and each page's
 title and substantive explanation/evidence/example. Topic labels are insufficient.
 Use natural-language content, not fixed chapters or a compulsory opinion per page.
+Record meaning, evidence and what the audience needs to see before locking long
+slide paragraphs. Write concise visible copy around the chosen composition; keep
+essential qualifications accessible and detailed research in source notes.
 Include only a short overall style/viewing note.
 
 Use the requested PPT language for slides, public outline, labels and notes; preserve
@@ -66,7 +77,14 @@ Public summaries are not internal reasoning or raw source notes.
 
 Start from the user's PPTX for edits or a supplied blank; bundled fallback is
 assets/blank.pptx. Use direct OOXML only. Choose text, charts, tables, diagrams,
-images or media for the content and neighboring pages, not a quota. Consult
+images or media for the content and neighboring pages, not a quota. Image and type
+are combinable roles: background, beside, detail, overlapping or integrated.
+Pure-text pages still need purposeful scale, hierarchy, breaks and whitespace;
+filled cards are only for genuinely independent units. Choose the canvas treatment
+before creating reusable code; do not let a universal title/body/box helper decide
+every page's visual language. Use [native-canvas.md](references/native-canvas.md)
+for installed-font measurement, native image cropping/layering and editable bars.
+These are object capabilities without a prescribed slide template. Consult
 [Visual review](references/visual-review.md) as practical guidance. Essential text,
 data and analytical diagrams remain editable; do not flatten whole slides.
 
@@ -83,8 +101,9 @@ When the chosen expression uses assets, acquire/inspect/embed them and check the
 actual explanatory role, cropping and annotations. Reconsider a provisional plan
 if the available material or rendered result changes its suitability. Keep required
 analytical content editable; photographic/illustrative assets can be embedded.
-Record consequential substitutions or limitations. Neither cards nor images are
-a universal substitute for another form.
+Record consequential substitutions or limitations. Preserve the audience need
+when acquisition fails; generic cards do not resolve an essential missing real
+interface/case display. Neither cards nor images replace every other form.
 
 Build, render and inspect each page; repair defects and publish native previews
 where available. Return to content when a visual exposes a missing explanation.
@@ -120,6 +139,8 @@ unavailable, disclose it; self-critique cannot be labeled independent.
 
 [Observed examples](references/review-examples.md) clarify failures, not required layouts.
 Record findings/resolutions in review.md with reviewer and reviewed hash/version.
+The visual pass evaluates audience fit, actual sequence and reference transfer
+after judging the pages first; artist names and choice counts are not quality evidence.
 Fix factual errors, essential omissions, broken explanation, unreadability and
 required-media failures. Style suggestions may be retained with reasons. Recheck
 revisions, context and final order. No finding quotas or repeated taste-score loops.
@@ -142,6 +163,13 @@ The review packet adds 900-pixel reading previews and factual structure inventor
 Check formulas, labels, captions, wrapping and collisions at that scale as well
 as full size. Concrete defects require correction; taste preferences remain
 suggestions.
+
+Record actually applied work/title/creator/source, observed properties, borrowed
+ideas and concrete page applications in decision-plan.json and source-notes.md.
+Use scripts/design_references.py --workspace WORKSPACE before final export to write
+these records into affected slide notes; the authored check verifies the final
+notes, not just a sidecar file. Name the applied works and ideas briefly in the
+completion summary. Do not invent inspiration or overload the audience canvas.
 
 1. Unpack using scripts/pptx.py and retain its workspace path.
 2. Put --workspace PATH before commands: list slides, inspect N, find TEXT, refs PART.

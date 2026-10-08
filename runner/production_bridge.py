@@ -12,7 +12,10 @@ def launch_environment(worker,credentials,environ=None):
     manifest=json.loads((plugin/'.codex-plugin/plugin.json').read_text())
     if not manifest.get('version'):raise ValueError('Staged plugin has no version')
     if (plugin/'skills/pptx/assets/workflow-choices.json').is_file():
-        for relative in ('skills/pptx/references/workflow-branches.md','skills/pptx/scripts/workflow_decisions.py'):
+        required=['skills/pptx/references/workflow-branches.md','skills/pptx/scripts/workflow_decisions.py']
+        if json.loads((plugin/'skills/pptx/assets/workflow-choices.json').read_text()).get('version',0)>=3:
+            required+=['skills/pptx/references/native-canvas.md','skills/pptx/scripts/native_canvas.py','skills/pptx/scripts/design_references.py']
+        for relative in required:
             if not (plugin/relative).is_file():raise ValueError('Incomplete staged workflow: '+relative)
     blank=Path(cfg['blank']).resolve(strict=True)
     env=dict(os.environ if environ is None else environ)
@@ -46,6 +49,10 @@ def write_runtime_receipt(root,cfg,status):
           'workflow_choices':(plugin/'skills/pptx/assets/workflow-choices.json').is_file(),
           'default_model':cfg.get('default_model',DEFAULT_TASK_MODEL),
           'default_reasoning_effort':cfg.get('default_reasoning_effort',DEFAULT_TASK_REASONING_EFFORT)}
+    catalog=plugin/'skills/pptx/assets/workflow-choices.json'
+    body['decision_contract_version']=json.loads(catalog.read_text()).get('version') if catalog.is_file() else None
+    body['native_canvas_available']=(plugin/'skills/pptx/scripts/native_canvas.py').is_file()
+    body['reference_notes_available']=(plugin/'skills/pptx/scripts/design_references.py').is_file()
     target=Path(root)/('runtime-'+str(os.getpid())+'.local.json')
     pending=target.with_suffix('.pending')
     with os.fdopen(os.open(pending,os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600),'w') as stream:

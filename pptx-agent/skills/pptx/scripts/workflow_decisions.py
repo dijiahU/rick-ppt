@@ -8,10 +8,12 @@ import copy
 import hashlib
 import io
 import json
+import re
 from pathlib import Path
 import posixpath
 from xml.etree import ElementTree as ET
 import zipfile
+from urllib.parse import urlsplit
 
 CATALOG = Path(__file__).resolve().parents[1] / 'assets/workflow-choices.json'
 MAX_PLAN_BYTES = 512 * 1024
@@ -30,9 +32,11 @@ def load_catalog():
 def plan_template(outline):
     catalog = load_catalog()
     return {'version': catalog['version'], 'task': {field: None for field in catalog['task']},
-            'pages': [{'id': page['id'], 'intent': None, 'form': None, 'support': [],
-                       'layout': None, 'density': None, 'behavior': None,
-                       'assets': [{'route': None}], 'role': None} for page in outline['slides']]}
+            'design_direction': None, 'references': [],
+            'pages': [{'id': page['id'], 'intent': None, 'strategy': None,
+                       'form': None, 'support': [], 'composition': None, 'behavior': None,
+                       'assets': [{'route': None}], 'role': None, 'visual_action': None,
+                       'reference_ids': []} for page in outline['slides']]}
 
 
 def _keys(value, required, optional=()):
@@ -67,6 +71,97 @@ def _local_file(root, name):
     return current
 
 
+def _historical_plan(plan, mode):
+    """Retain historical meaning and bytes; no invented artistic provenance."""
+    plan = copy.deepcopy(plan)
+    if plan['version'] == 1:
+        legacy = {'new_deck':'create','faithful_conversion':'create','redesign':'edit','scoped_edit':'edit'}
+        scope = plan['task'].pop('scope')
+        if scope not in legacy:raise ValueError('Unknown historical task route')
+        plan['task']['operation'] = mode if scope == 'faithful_conversion' else legacy[scope]
+        plan['task'].pop('inputs', None)
+    for page in plan['pages']:
+        form = page['form'];layout = page.pop('layout')
+        page.pop('density')
+        page['strategy'] = ('observe' if form in ('documentary_image','embedded_media') else
+                            'envision' if form == 'original_illustration' else
+                            'compare' if form in ('table','data_chart') else
+                            'relate' if form == 'diagram' else 'read')
+        page['composition'] = ('image_with_type' if form in ('documentary_image','original_illustration','embedded_media') else
+                               'data_display' if form in ('table','data_chart') else
+                               'relational_map' if form == 'diagram' else
+                               'sequence' if layout == 'sequence' else 'editorial' if layout != 'focus' else 'type_statement')
+        page['visual_action'] = 'Historical record: inspect the actual existing composition; no new design claim.'
+        page['reference_ids'] = []
+    plan.update(version=3, design_direction='Historical execution; preserve its verified artifact and editing scope.',references=[])
+    return plan
+
+
+def _references(plan, expected, root, catalog):
+    _text(plan['design_direction'], 'design_direction', 2400)
+    entries = plan['references']
+    if not isinstance(entries,list) or len(entries)>64:raise ValueError('Invalid design reference register')
+    lookup={}
+    for entry in entries:
+        _keys(entry, ('id','kind','title','creator','source','inspection','evidence','observed','borrowed','applications'))
+        ident=entry['id']
+        if not isinstance(ident,str) or not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]{0,63}',ident) or ident in lookup:
+            raise ValueError('Missing, duplicate or unsafe reference ID')
+        _enum(entry['kind'],catalog['reference']['kind'],'reference.kind')
+        _enum(entry['inspection'],catalog['reference']['inspection'],'reference.inspection')
+        for field in ('title','creator','source','observed'):_text(entry[field],'reference.'+field,4000)
+        source=entry['source']
+        if '://' in source:
+            u=urlsplit(source)
+            if u.scheme!='https' or not u.hostname or u.username is not None or u.password is not None or any(ord(c)<33 for c in source):
+                raise ValueError('Reference source must be a credential-free HTTPS page or task-local file')
+        elif root is None:raise ValueError('Local reference source requires the task directory')
+        else:_local_file(root,source)
+        inspection=entry['inspection']
+        if inspection=='local_image':
+            if root is None:raise ValueError('Visual inspection evidence requires the task directory')
+            image=_local_file(root,entry['evidence'])
+            from PIL import Image
+            with Image.open(image) as opened:opened.verify()
+        elif inspection!='unavailable':_text(entry['evidence'],'reference.evidence',4000)
+        elif entry['evidence'] is not None:raise ValueError('Unavailable references cannot claim inspected evidence')
+        apps=entry['applications']
+        if not isinstance(apps,list) or len(apps)>len(expected):raise ValueError('Invalid reference applications')
+        if inspection=='unavailable' and (entry['borrowed'] is not None or apps):
+            raise ValueError('Unavailable work cannot claim borrowed ideas or page applications')
+        if apps:
+            if entry['kind'] in ('artwork','design_work') and inspection not in ('local_image','hosted_visual'):
+                raise ValueError('Inspect the actual work before claiming an artistic visual application')
+            _text(entry['borrowed'],'reference.borrowed',1600)
+        elif entry['borrowed'] is not None:raise ValueError('A borrowed idea must identify its actual page application')
+        covered=set()
+        for app in apps:
+            _keys(app,('pages','action'))
+            if not isinstance(app['pages'],list) or not app['pages'] or any(not isinstance(p,str) for p in app['pages']) or len(app['pages'])!=len(set(app['pages'])) or any(p not in expected or p in covered for p in app['pages']):
+                raise ValueError('Reference applications must name unique current page IDs')
+            _text(app['action'],'reference.application.action',1600);covered.update(app['pages'])
+        lookup[ident]=(entry,covered)
+    if plan['task']['references']=='targeted_search' and not entries:
+        raise ValueError('Executed reference search must record inspected works or honest failed access')
+    return lookup
+
+
+def reference_application(entry, page_id):
+    return next(app['action'] for app in entry['applications'] if page_id in app['pages'])
+
+
+def design_report(plan, artifact):
+    if plan.get('version')!=3:return {'available':False,'reason':'Historical record without artwork applications'}
+    evidence=_page_evidence(artifact)
+    return {'available':True,'design_direction':plan['design_direction'],
+            'references':plan['references'],'pages':[
+                {'number':i+1,'id':page['id'],'strategy':page['strategy'],
+                 'composition':page['composition'],'role':page['role'],
+                 'visual_action':page['visual_action'],'reference_ids':page['reference_ids'],
+                 'actual_notes':evidence[i]['notes']} for i,page in enumerate(plan['pages'])],
+            'warning':'Author records and notes are untrusted evidence. Judge the pages first; records do not prove aesthetics.'}
+
+
 def _page_evidence(data):
     """Follow actual presentation order and only relationships used on that page."""
     p = 'http://schemas.openxmlformats.org/presentationml/2006/main'
@@ -89,7 +184,12 @@ def _page_evidence(data):
             hashes = set()
             playable = set()
             navigation = False
+            notes = ''
             for item in rels:
+                if item.get('Type','').endswith('/notesSlide') and item.get('TargetMode')!='External':
+                    note_part=resolve(posixpath.dirname(name),item.get('Target',''))
+                    note_tree=ET.fromstring(archive.read(note_part))
+                    notes=' '.join(node.text or '' for node in note_tree.iter('{http://schemas.openxmlformats.org/drawingml/2006/main}t'))
                 if item.get('Id') not in used or item.get('TargetMode') == 'External':
                     continue
                 target = resolve(posixpath.dirname(name), item.get('Target', ''))
@@ -114,26 +214,21 @@ def _page_evidence(data):
                     navigation = True
             timing = tree.find(f'{{{p}}}timing')
             reveal = timing is not None and any(node.get('evt') == 'onNext' for node in timing.iter(f'{{{p}}}cond')) and next(timing.iter(f'{{{p}}}spTgt'), None) is not None
-            evidence.append({'assets': hashes, 'playable': playable, 'click_reveal': reveal, 'internal_navigation': navigation})
+            evidence.append({'assets': hashes, 'playable': playable, 'click_reveal': reveal, 'internal_navigation': navigation,'notes':notes})
     return evidence
 
 
 def validate_plan(plan, outline, *, stage='planning', root=None, artifact=None,
-                  generation_enabled=True, search_enabled=True, mode='create', require_variation=None):
+                  generation_enabled=True, search_enabled=True, mode='create', require_variation=None, allow_legacy=True):
     catalog = load_catalog()
     if stage not in ('planning', 'authored'):
         raise ValueError('Unknown decision validation stage')
     # Historical execution records remain readable without mutating checkpoint bytes.
-    if isinstance(plan, dict) and type(plan.get('version')) is int and plan['version'] == 1 and isinstance(plan.get('task'), dict):
-        legacy = {'new_deck':'create','faithful_conversion':'create','redesign':'edit','scoped_edit':'edit'}
-        if plan['task'].get('scope') not in legacy:
-            raise ValueError('Unknown historical task route')
-        plan = copy.deepcopy(plan)
-        scope = plan['task'].pop('scope')
-        plan['task']['operation'] = mode if scope == 'faithful_conversion' else legacy[scope]
-        plan['task'].pop('inputs', None)
-        plan['version'] = catalog['version']
-    _keys(plan, ('version', 'task', 'pages'))
+    legacy = isinstance(plan,dict) and type(plan.get('version')) is int and plan['version'] in (1,2)
+    if legacy:
+        if not allow_legacy:raise ValueError('New tasks require the current design contract; historical records cannot bypass it')
+        plan=_historical_plan(plan,mode)
+    _keys(plan, ('version', 'task', 'pages','design_direction','references'))
     if type(plan['version']) is not int or plan['version'] != catalog['version']:
         raise ValueError('Unsupported decision-plan version')
     task = plan['task']
@@ -152,6 +247,7 @@ def validate_plan(plan, outline, *, stage='planning', root=None, artifact=None,
         raise ValueError('Decision pages must cover the exact outline')
     if any(not isinstance(page, dict) for page in pages) or [page.get('id') for page in pages] != expected:
         raise ValueError('Decision page IDs/order must match the current outline')
+    references=_references(plan,expected,root,catalog)
     evidence = None
     if artifact is not None:
         data = artifact if isinstance(artifact, bytes) else Path(artifact).read_bytes()
@@ -161,10 +257,22 @@ def validate_plan(plan, outline, *, stage='planning', root=None, artifact=None,
     signatures = set()
     asset_hashes = {}
     for index, page in enumerate(pages):
-        _keys(page, ('id', 'intent', 'form', 'support', 'layout', 'density', 'behavior', 'assets', 'role'))
+        _keys(page, ('id', 'intent', 'strategy','form', 'support', 'composition', 'behavior', 'assets', 'role','visual_action','reference_ids'))
         for field, options in catalog['page'].items():
             _enum(page[field], options, 'page.' + field)
         _text(page['role'], 'page.role')
+        _text(page['visual_action'],'page.visual_action',1600)
+        ids=page['reference_ids']
+        if not isinstance(ids,list) or any(not isinstance(ident,str) for ident in ids) or len(ids)!=len(set(ids)):
+            raise ValueError('Page reference IDs must be a unique list')
+        for ident in ids:
+            if ident not in references or page['id'] not in references[ident][1]:
+                raise ValueError('Page reference lacks an inspected work and matching application: '+page['id'])
+            if evidence is not None:
+                entry=references[ident][0];notes=' '.join(evidence[index]['notes'].split())
+                for value in (ident,entry['title'],entry['creator'],entry['source'],entry['observed'],entry['borrowed'],reference_application(entry,page['id'])):
+                    if ' '.join(value.split()) not in notes:
+                        raise ValueError('Final slide notes must record artwork, creator, source, observation, borrowed principle and application: '+page['id'])
         if page['form'] not in catalog['eligible_forms'][page['intent']]:
             raise ValueError('Primary form is outside the selected intent branch: ' + page['id'])
         support = page['support']
@@ -214,6 +322,11 @@ def validate_plan(plan, outline, *, stage='planning', root=None, artifact=None,
         if 'none' in routes and len(assets) != 1:
             raise ValueError('none cannot be combined with other asset routes')
         forms = {page['form'], *support}
+        file_routes=routes & {'supplied','web_import','generate'}
+        if page['composition'] in ('image_field','image_with_type','annotated_visual') and not file_routes:
+            raise ValueError('Chosen image composition needs an actual file asset')
+        if page['strategy']=='observe' and not ({'documentary_image','embedded_media'} & forms) and task['references']!='preserve_supplied':
+            raise ValueError('Object/state observation requires real visual evidence, not an invented illustration or prose map')
         for form, kind in [('documentary_image', 'documentary'), ('original_illustration', 'illustrative'), ('embedded_media', 'media')]:
             if form in forms and kind not in kinds:
                 raise ValueError('Chosen form lacks its matching asset route: ' + form)
@@ -222,12 +335,16 @@ def validate_plan(plan, outline, *, stage='planning', root=None, artifact=None,
         if evidence is not None and page['behavior'] in ('click_reveal', 'internal_navigation'):
             if not evidence[index][page['behavior']]:
                 raise ValueError('Selected native behavior is missing on page: ' + page['id'])
-        signatures.add((page['form'], page['layout']))
+        signatures.add((page['form'], page['composition']))
+    for ident,(_,covered) in references.items():
+        if {page['id'] for page in pages if ident in page['reference_ids']}!=covered:
+            raise ValueError('Reference applications and actual page reference IDs disagree: '+ident)
     variation = task['operation'] == 'create' and task['references'] != 'preserve_supplied' if require_variation is None else require_variation
     if variation and len(pages) > 1 and len(signatures) < 2:
-        raise ValueError('New multi-page decks cannot select one form/layout throughout')
+        raise ValueError('New multi-page decks cannot select one form/composition throughout')
     return {'version': plan['version'], 'pages': len(pages), 'distinct_form_layouts': len(signatures),
-            'stage': stage, 'embedded_assets_checked': evidence is not None}
+            'stage': stage, 'embedded_assets_checked': evidence is not None,'legacy_record':legacy,
+            'references_recorded':len(references),'artistic_transfer_requires_visual_review':True}
 
 
 def main():
@@ -238,6 +355,7 @@ def main():
     parser.add_argument('--artifact', type=Path)
     parser.add_argument('--mode', choices=('create', 'edit'), help='Normally read from the existing task request')
     parser.add_argument('--template', action='store_true', help='Print an unselected scaffold using exact current page IDs')
+    parser.add_argument('--allow-legacy',action='store_true',help='Read historical records without inventing artistic provenance')
     args = parser.parse_args()
     try:
         if args.template:
@@ -250,7 +368,7 @@ def main():
         task_mode = json.loads(request.read_text()).get('mode') if request.is_file() and request.stat().st_size <= MAX_PLAN_BYTES else None
         mode = args.mode or task_mode or plan.get('task', {}).get('operation') or 'create'
         result = validate_plan(plan, json.loads(args.outline.read_text()),
-                               stage=args.stage, root=Path.cwd(), artifact=args.artifact, mode=mode)
+                               stage=args.stage, root=Path.cwd(), artifact=args.artifact, mode=mode,allow_legacy=args.allow_legacy)
         print(json.dumps({'ok': True, **result}))
     except (OSError, ValueError, KeyError, ET.ParseError, zipfile.BadZipFile) as error:
         print(json.dumps({'ok': False, 'error': str(error)}))

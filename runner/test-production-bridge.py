@@ -45,6 +45,16 @@ class ProductionBridge(unittest.TestCase):
         (self.plugin/'skills/pptx/scripts/workflow_decisions.py').unlink()
         with self.assertRaisesRegex(ValueError,'Incomplete staged workflow'):bridge.launch_environment(self.worker,self.credentials,{})
 
+    def test_v3_launch_requires_canvas_and_reference_helpers(self):
+        (self.plugin/'skills/pptx/assets/workflow-choices.json').write_text('{"version":3}')
+        helpers=('references/native-canvas.md','scripts/native_canvas.py','scripts/design_references.py')
+        for relative in helpers:(self.plugin/'skills/pptx'/relative).write_text('fixture')
+        bridge.launch_environment(self.worker,self.credentials,{})
+        for relative in helpers:
+            target=self.plugin/'skills/pptx'/relative;target.unlink()
+            with self.assertRaisesRegex(ValueError,'Incomplete staged workflow'):bridge.launch_environment(self.worker,self.credentials,{})
+            target.write_text('fixture')
+
     def test_receipt_records_loaded_configuration_not_current_settings(self):
         (self.worker/'settings.local.json').write_text('{"plugin":"some-later-version"}')
         receipt=bridge.write_runtime_receipt(self.worker,self.cfg,'ready')
