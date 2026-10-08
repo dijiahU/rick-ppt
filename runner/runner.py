@@ -87,9 +87,9 @@ def prepare(cfg):
     if image_skill.is_file():shutil.copyfile(image_skill,job/'imagegen-skill.md')
     (job/'capabilities.json').write_text(json.dumps({
         'progressive_authoring':{'guide':'PROGRESS.md','helper':'public-progress.py','pptx_cli':str(Path(cfg['plugin'])/'skills/pptx/scripts/pptx.py')},
-        'presentation_builds':{'guide':'ANIMATION.md','default':'presenter-controlled-native-builds','use':'Plan initial state and click-by-click reveals before authoring. Implement native PowerPoint entrance timing on multi-idea explanatory pages, review state order and exported timing. Honor explicit static briefs and preserve unaffected existing pages.'},
-        'web_search':{'mode':'live','optional':True,'use':'Hosted web search for current sources and design references; shell networking remains disabled.'},
-        'image_generation':{'mode':'built-in','optional':True,'use':'Use the built-in image generation tool when actually exposed; no API fallback or invented artwork.'},
+        'presentation_builds':{'guide':'ANIMATION.md','selection':'task-dependent','use':'Choose static presentation or native behavior from the actual request, audience and explanatory need. If using builds, inspect state order and exported timing. Honor explicit instructions and preserve unaffected existing behavior.'},
+        'web_search':{'mode':'live','optional':True,'use':'Hosted search for current evidence, relevant assets or design knowledge when the task needs them. Choose material and expression by content, purpose and audience; no preferred medium or acquisition sequence. Shell networking remains disabled.'},
+        'image_generation':{'mode':'built-in','optional':True,'guide':'imagegen-skill.md','use':'Use exposed built-in generation when an original raster illustration serves the task. It need not wait for unsuccessful image searching. Inspect/embed the scoped result and distinguish illustration from documentary evidence; never fabricate real app screenshots or case evidence. No API fallback.'},
         'web_asset_import':{'mode':'public-https-broker','guide':'WEB-MEDIA.md','use':'Run task-local web-media-proxy.py with a direct public media URL and --purpose. Images, animated GIF, common video and audio are supported through isolated validation/conversion. Inspect assets/web-index.json and embed the actual local media, not just a search result or poster. Shell networking remains disabled.'},
         'animation_playback':{'mode':'not-verified-by-static-render','use':'Native editable-object timing and GIF/video/audio embedding are available. No PowerPoint slide-show player is exposed in this task. Inspect timing and representative states; static previews do not verify playback. Report this separately without removing native builds or claiming playback was tested.'},
         'interactive_content':{'mode':'disabled-single-file-pptx','guide':'INTERACTIVE.md','runtime':str(Path(cfg['plugin'])/'runtime'),
@@ -107,8 +107,17 @@ def prepare(cfg):
         capabilities['model']=public_identity(profile)
         capabilities['web_search']={'mode':profile.get('web_search','disabled'),'optional':True,
                                     'use':'Use only tools actually exposed by this model profile.'}
-        capabilities['image_generation']={'mode':'built-in' if profile.get('image_generation',False) else 'disabled',
-                                          'optional':True,'use':'Use only tools actually exposed by this model profile.'}
+        capabilities['image_generation']={**capabilities['image_generation'],
+                                          'mode':'built-in' if profile.get('image_generation',False) else 'disabled'}
+        (job/'capabilities.json').write_text(json.dumps(capabilities,indent=2))
+    catalog=Path(cfg['plugin'])/'skills/pptx/assets/workflow-choices.json'
+    if catalog.is_file():
+        capabilities=json.loads((job/'capabilities.json').read_text())
+        capabilities['workflow_decisions']={'mode':'finite-required-choices',
+            'catalog':str(catalog),'guide':str(Path(cfg['plugin'])/'skills/pptx/references/workflow-branches.md'),
+            'validator':str(Path(cfg['plugin'])/'skills/pptx/scripts/workflow_decisions.py'),
+            'record':'decision-plan.json',
+            'use':'Select listed task/page/asset/behavior branch IDs and execute their actions. Validate planning, then selected assets/behavior against the authored PPTX. No blank choices, invented category or automatic template rotation.'}
         (job/'capabilities.json').write_text(json.dumps(capabilities,indent=2))
     (job/'fonts.conf').write_text('<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig><dir>/System/Library/Fonts</dir><dir>/Library/Fonts</dir><cachedir>'+str(job/'font-cache')+'</cachedir></fontconfig>')
     return job

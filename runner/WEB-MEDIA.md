@@ -1,5 +1,11 @@
 # Network media is available
 
+Select the asset route in decision-plan.json using the plugin's
+references/workflow-branches.md: none, supplied, web_import, generate or
+source_grounded_native. Execute its acquisition/inspection/embedding and failure
+actions. File routes record kind/status/file/origin; completed assets must be used
+on their planned page. There is no implicit search, generation or card fallback.
+
 Use this task-local broker for actual public media URLs discovered through web
 search, official pages, public asset libraries or supplied references:
 
@@ -14,6 +20,14 @@ assets for identifiable games, films, products, characters and objects; do not
 substitute invented artwork merely because it is easier to obtain. Use generated
 imagery for an actual original-illustration need, not as a counterfeit screenshot.
 
+For original concept imagery, use the exposed built-in generator with
+imagegen-skill.md when that fits the task; it does not require a failed search first.
+Inspect the scoped file in assets/index.json and distinguish illustration from
+real-product/case evidence. Keep factual analytical diagrams editable. If an asset
+or tool fails, record the observed limitation and reconsider the representation;
+no paid API fallback or personal-directory access. Record selected file, provenance
+and page/role in source-notes.md. No image quota or fixed composition.
+
 Support is by decoded content, not URL extension:
 
 - PNG/JPEG/WebP/AVIF/BMP/TIFF become PNG; SVG has a disclosed raster fallback.
@@ -26,7 +40,7 @@ Support is by decoded content, not URL extension:
 
 Only public HTTPS direct files: no sign-in, cookies, DRM, paywalls, private IPs,
 shell networking, credentials or permission changes. Respect reuse conditions
-and record source page, author/credit and usage context in source-notes.txt and
+and record source page, author/credit and usage context in source-notes.md and
 slide notes. The broker validates files, not copyright permission or factual fit.
 If blocked or unavailable, explain the exact unmet requirement; do not pretend
 an imagined character/item is a verified original. Do not infer every slide

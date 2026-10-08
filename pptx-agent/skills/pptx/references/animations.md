@@ -1,11 +1,13 @@
 # Native staged explanation
 
-For live/dual-use multi-idea explanations, plan what is visible on entry, what each
+Decide whether static presentation or native behavior fits the actual request,
+audience and explanation. Neither live use nor multiple ideas makes animation
+mandatory. When choosing staged reveals, plan what is visible on entry, what each
 presenter click introduces, what stays as context, and the final readable view.
 Group by meaning: an object with its label/connector, a reasoning step with its
 evidence. Keep orientation visible. Avoid word-by-word clicks, long automatic
-sequences and premature answers. Static briefs, simultaneous comparisons, covers
-and single-message pages can remain complete without invented exceptions paperwork.
+sequences and premature answers. A complete static view is equally available when
+it serves the task; no animation quota or exceptions paperwork.
 
 For simple entrance groups, inspect target IDs with `pptx.py inspect N`, then use:
 

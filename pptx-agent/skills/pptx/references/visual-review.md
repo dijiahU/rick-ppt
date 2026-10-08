@@ -14,12 +14,26 @@ Know the subject/viewing mode but judge pages, not the author's design claims.
   headings can obscure emphasis.
 - Sequence: understanding advances or the same demanding reading task repeats?
   Stable comparisons/derivations can be appropriate; recoloring is not real variety.
+  For new multi-page decks, check purposeful differences in representation or
+  composition across the actual sequence. Repeatedly applying one form/template
+  throughout fails the expression-selection/variation requirement; identify the
+  repeated pages and concrete content-led alternatives in the existing review.
+  For a new deck, a demonstrated violation of that requirement needs correction,
+  rather than being dismissed as a taste preference. No automatic template-count
+  score; show the actual repetitive pattern and its task-relevant correction.
+  Do not prescribe a fixed layout rotation or use every medium. Preserve consistent
+  encoding for related comparisons and explicit template/scoped-edit constraints.
 - Typography: title/body/number/label/quote/code roles, readable sizes, font availability,
   weight, line length, semantic breaks, punctuation, spacing and CJK/Latin handling.
   One family may suffice; fix content/grouping before shrinking.
 - Images: relevance, identity/date, resolution, crop, caption, size and purpose. A face
   does not prove an event. Text screenshots can increase load. Identify missing
   visual evidence/mechanisms rather than enforce a picture count.
+  Judge whether chosen imagery, text, examples or diagrams serve the actual audience
+  task; do not require a photo/screenshot merely because the subject is a product
+  or place. If an absent representation harms understanding, identify the specific
+  gap and an appropriate correction. Check documentary/illustrative distinctions
+  and embedded-asset quality when applicable. No preferred medium or picture quota.
 - Charts/diagrams: units, periods, baselines, denominators, actual relationships and
   clear labels; prose-filled tables can remain text walls. Never distort scales.
 - Style and purpose: assess whether the design fits the actual content, stated
@@ -28,8 +42,8 @@ Know the subject/viewing mode but judge pages, not the author's design claims.
   Check typography, palette, imagery, composition, density and expressive treatment
   against that use, as well as coherence across the complete deck. Purposeful
   variation in scale, density and rhythm can be coherent; identical page layouts
-  are not required. Straightforward sober delivery may be simplest; a serious
-  topic can still benefit from a clear diagram or fitting visual expression.
+  are not required. Seriousness alone does not determine simplicity or expression;
+  judge the actual content and use rather than impose either style.
   Preserve existing style for scoped edits/conversions. Corporate cards do not fit
   every lesson, artist or campaign. Do not invent a required tone when the brief
   leaves it open; note uncertainty where intended use cannot be established.
@@ -61,3 +75,12 @@ Recheck actual revisions and neighboring rhythm.
 # Reading scale and native editing evidence
 
 Read each full-size slide and its `reading-page-N.png` preview at the actual 900-pixel width. Inspect formula symbols, diagram labels, captions, long-word wrapping, margins and text collisions. Use inventory object IDs/names, parent groups and connector anchors to locate a correction. Explicit font sizes omit inherited style values and do not establish readability alone. No minimum group count or aesthetic score is a delivery gate. A required finding needs demonstrated unreadability, lost relationships, requested editability failure or another concrete defect. State the page, object/region, evidence, and action (resize/widen/move/align/reflow/group/anchor as appropriate), rather than “make the design better.” Stay within one bounded review pass.
+
+# Finding route
+
+Select one route per finding from workflow-branches.md: content_revision for facts,
+source evidence or explanation; native_repair for layout/fonts/captions/asset
+placement/native behavior without new content research; retain_suggestion for a
+nonblocking refinement. Classify by the action needed, not your reviewer role.
+A required finding cannot select retain_suggestion. Existing bounded review and
+source-fidelity rules still apply; no additional review pass.

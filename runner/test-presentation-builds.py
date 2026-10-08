@@ -88,7 +88,7 @@ def main():
     runner.request=receive
     # An ordinary brief deliberately does not request animation: exercise the default.
     task={'id':identifier,'lease':'local-build-test','title':'高效团队会议','language':'zh-CN','pages':2,'style':'清晰简洁',
-          'brief':'制作两页中文 PPT。第 1 页说明会前准备的三个步骤：明确目标、准备资料、发出议程；第 2 页说明会中的三个步骤：对齐目标、讨论选择、确定行动。每页用简洁可编辑图示和短句解释步骤。只使用这里的信息，不查资料、不用图片、视频或外部素材。采用直接 OOXML 制作。'}
+          'brief':'制作两页中文 PPT，供现场讲解。第 1 页说明会前准备的三个步骤：明确目标、准备资料、发出议程；第 2 页说明会中的三个步骤：对齐目标、讨论选择、确定行动。每页用简洁可编辑图示和短句解释步骤，两页在构图和解释方式上有符合内容的变化。两页都明确要求使用原生点击揭示，至少两个由演讲者点击控制的有意义步骤组。只使用这里的信息，不查资料、不用图片、视频或外部素材。采用直接 OOXML 制作。'}
     print('LOCAL TEST',directory,flush=True)
     try:
         result=runner.run_job(cfg,task)

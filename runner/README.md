@@ -7,9 +7,31 @@
 Website: https://rickppt.aaarickmorty.chatgpt.site
 
 Current production policy delivers one standalone native PPTX. Author pages in
-order, gather suitable design references before an expressive design, and run
+order, seek relevant design knowledge/material when the task benefits, and run
 independent content/visual reviews in parallel on the same frozen candidate.
 The visual review checks style against content, purpose, audience and viewing mode.
+Expression is chosen from the actual content, evidence, audience, purpose, viewing
+mode and supplied constraints. No default medium, layout, density, style, animation
+or asset-acquisition sequence. Search, generation and native authoring are available
+when they help; inspect and embed selected assets, preserve required editability
+and distinguish original illustration from documentary evidence. Reviews judge
+actual task fit, not adherence to a preferred visual recipe.
+Each page must have an explicit expression choice and explanatory role. New
+multi-page decks require purposeful differences across the sequence instead of
+one repeated treatment; recoloring is insufficient. Comparable material can keep
+consistent encoding. No fixed rotation or requirement to use every option.
+Critical decisions use the finite [workflow branch protocol](../pptx-agent/skills/pptx/references/workflow-branches.md)
+and its versioned choice catalog. Task entry has only create/edit and follows the
+existing host mode; ordinary missing material is handled in its source/asset branch,
+without a mandatory input-completeness gate. Agents record decision-plan.json alongside the
+public outline, selecting task/page/asset/behavior branch IDs and executing their
+entry conditions and actions. The host validates exact page coverage, eligibility,
+tool availability, planned variation and selected bytes/native behavior on the
+actual authored page. Invalid/missing selections stop acceptance before independent
+review; this is an execution contract, not an aesthetic score. Review findings
+select content_revision, native_repair or retain_suggestion; implementation-only
+findings do not force full content research. Existing approved-byte recovery and
+legacy reports keep their compatibility path. No additional audience review stage.
 Ordinary chat preserves reviews; actual revisions invalidate them. Owner pause
 stops authoring/rendering/reviews and retains recovery checkpoints. Reviewed files
 can be retransmitted after exact hash/revision checks, including across upgrades.
@@ -128,12 +150,12 @@ runs a real two-slide search/image/import/render workflow with local-only delive
 
 ## Visual material and quality policy
 
-The PPTX workflow now routes professional/technical illustrations and requested motion through
-supplied material and reliable reusable source research before generation or careful self-authoring,
-subject to the user's explicit original/offline constraints. Key complex assets are piloted before reuse.
-Quality review checks actual structure, execution and required motion, not only package validity.
-Do not deliver unapproved crude substitutes as complete. If an essential visual requirement cannot
-be met, the job should explain the gap instead of exporting a misleading final result.pptx.
+The workflow considers text, sourced media, original generation and native diagrams
+according to the task. Chosen factual illustrations must preserve verified identity,
+structure and meaning; chosen generated concepts are labeled illustrative. No
+fixed acquisition sequence, pilot-page requirement or preferred medium. Review
+checks actual explanation and requested behavior, not package validity alone.
+An unmet essential requirement is reported as a gap, not a verified completion.
 
 The capability manifest distinguishes search, actual acquisition, native embedding and playback.
 Public HTTPS images/GIF/video/audio can now be imported with the task-local web-media-proxy.py.
@@ -213,12 +235,11 @@ and checks that page 1 is published before page 2 starts and before final delive
 
 ## Presenter-controlled builds
 
-New website tasks receive `ANIMATION.md` with the progressive guide. For live or
-dual-use decks, multi-idea explanatory pages default to native click-controlled
-reveals, with initial/intermediate/final states planned before authoring. This
-requirement matches the bundled skill's content-driven native-build guidance. Explicit static/no-animation briefs and unaffected existing
-slides retain their requested behavior. Covers and single-message pages may
-remain static when that matches their role.
+New website tasks receive `ANIMATION.md` with the progressive guide. Viewing mode
+comes from the actual request; no assumed live/dual mode. Static presentation and
+native builds are chosen for the audience and explanation, with no rule that
+multiple ideas require animation. If builds are chosen, plan and inspect their
+states. Preserve explicit instructions and unaffected existing behavior.
 
 The task reviews native timing, click groups, targets and representative states
 per page, and checks that builds survive final export. Native object entrance
@@ -226,7 +247,7 @@ timing is distinct from transitions and embedded media. Native timing is authore
 The website's image previews and independent LibreOffice render remain static;
 neither certifies PowerPoint slide-show playback. No PowerPoint player is exposed
 to the task, so its public review must distinguish encoded/inspected builds from
-untested playback. `test-presentation-builds.py` exercises the default with an
+untested playback. `test-presentation-builds.py` exercises build behavior with an
 ordinary two-page brief, real isolated rendering and locally intercepted delivery.
 
 ## Connection recovery and explicit reruns

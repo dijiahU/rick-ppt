@@ -31,15 +31,24 @@ Keep useful evidence and uncertainties in source-notes.md. Distinguish source fa
 quotations, interpretation and illustrative examples. No invented data/citations.
 Respect supplied-only/offline instructions.
 
-Use [Research and assets](references/research-and-assets.md) to judge visual needs
-from the content, audience, purpose and viewing mode. For new decks or substantial
-redesigns needing visual expression, proactively gather and inspect high-quality
-references before committing the visual direction and making pages. Inspiration
-may come from any relevant art form; the named sources are search starting points.
-Record a short direction, references and concrete applications in source-notes.md,
-then reuse them while authoring. Straightforward, sober information delivery can
-use the simplest adequate typography, layout or diagram without an inspiration
-hunt; mechanical edits preserve supplied design. No fixed library or search quota.
+Read [Workflow branches](references/workflow-branches.md) and
+[the choice catalog](assets/workflow-choices.json). Select explicit task branches
+for the existing create/edit entry, viewing, research, references, style, palette
+and typography; select each
+page's intent, eligible primary/support forms, composition, density, behavior and
+asset route. Record decision-plan.json with exact outline IDs/order and a short
+observable role per page. No unspecified option, invented category or "consider X"
+in place of selection. Execute the selected route's actions and failure alternative.
+Creative composition within a route still follows the actual content and purpose.
+
+Run scripts/workflow_decisions.py --stage planning before finishing the plan, and
+--stage authored --artifact YOUR_EXPORT before finishing native authoring. New
+multi-page decks cannot select one form/composition throughout; actual visual
+review checks that differences are meaningful. Source/template constraints and
+scoped edits preserve the authorized scope. Use
+[Research and assets](references/research-and-assets.md) for source inspection and
+quality within the selected reference/material route; any relevant art form may
+inform that route. No fixed template rotation or demand to use all branches.
 
 ## 2. Write page content
 
@@ -61,16 +70,21 @@ images or media for the content and neighboring pages, not a quota. Consult
 [Visual review](references/visual-review.md) as practical guidance. Essential text,
 data and analytical diagrams remain editable; do not flatten whole slides.
 
-For live/dual-use multi-idea explanations, use presenter-controlled native builds
-in meaningful groups. Read [Animations](references/animations.md). Preserve context
-and introduce information in teaching order. Transitions/all-at-once entrance do
-not replace staged explanation. Static briefs, simultaneous comparisons and
-single-message pages can remain complete on entry.
+Execute the selected behavior branch: static, click_reveal, internal_navigation
+or embedded_playback. Follow its conditions/checks in workflow-branches.md; for
+click_reveal, read [Animations](references/animations.md). No implicit animation
+from multiple ideas or a website task.
 
 Read [Research and assets](references/research-and-assets.md) for imagery/media and
 check actual host capabilities. Inspect and import real assets. Reference evidence
 is required for technical structures; crude invented shapes are not a substitute
 for a requested illustration. Generated illustration is not documentary evidence.
+When the chosen expression uses assets, acquire/inspect/embed them and check their
+actual explanatory role, cropping and annotations. Reconsider a provisional plan
+if the available material or rendered result changes its suitability. Keep required
+analytical content editable; photographic/illustrative assets can be embedded.
+Record consequential substitutions or limitations. Neither cards nor images are
+a universal substitute for another form.
 
 Build, render and inspect each page; repair defects and publish native previews
 where available. Return to content when a visual exposes a missing explanation.
