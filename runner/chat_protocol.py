@@ -237,6 +237,14 @@ def responses_to_chat(request):
         elif fmt.get('type') == 'json_schema':
             out['response_format'] = {'type': 'json_schema', 'json_schema': {
                 k: copy.deepcopy(fmt[k]) for k in ('name', 'schema', 'strict', 'description') if k in fmt}}
+            # Some compatible gateways accept response_format but do not enforce
+            # it. Make the contract visible to the model; host validation remains
+            # authoritative and no report contents are synthesized here.
+            instruction=('FINAL OUTPUT CONTRACT: After any necessary tool use, return only one bare JSON object matching the following JSON Schema. '
+                         'No Markdown fence, introductory prose, persona dialogue or trailing explanation; do not invent alternative field names. '
+                         'Preserve the actual observations and requested language. JSON Schema: '+json.dumps(fmt.get('schema',{}),ensure_ascii=False))
+            if messages and messages[0].get('role')=='system':messages[0]['content']+='\n\n'+instruction
+            else:messages.insert(0,{'role':'system','content':instruction})
         else:
             raise ProtocolError('Unsupported output text format')
     return out, mapping

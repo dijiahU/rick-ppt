@@ -30,6 +30,7 @@ def check_decisions(cfg, job, outline, *, stage, artifact=None, required=True, m
     raw = read_scoped(job, 'decision-plan.json', policy.MAX_PLAN_BYTES)
     plan=json.loads(raw)
     profile = cfg.get('_model_profile')
+    from model_backend import retained_tools
     extra={}
     version=policy.load_catalog()['version']
     if version>=3:
@@ -41,8 +42,8 @@ def check_decisions(cfg, job, outline, *, stage, artifact=None, required=True, m
     result = policy.validate_plan(plan, outline, stage=stage, root=job,
                                   artifact=artifact, mode=mode,
                                   require_variation=require_variation,
-                                  generation_enabled=not profile or profile.get('image_generation', False),
-                                  search_enabled=not profile or profile.get('web_search', 'disabled') != 'disabled',**extra)
+                                  generation_enabled=not profile or retained_tools(profile) or profile.get('image_generation', False),
+                                  search_enabled=not profile or retained_tools(profile) or profile.get('web_search', 'disabled') != 'disabled',**extra)
     return {**result, 'decision_plan_sha256': hashlib.sha256(raw).hexdigest()}
 
 

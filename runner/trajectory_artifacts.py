@@ -21,7 +21,7 @@ class ArtifactArchive:
     def store_stream(self,stream):
         pending=self.root/'raw-blobs'/('.'+uuid.uuid4().hex+'.pending')
         sha=hashlib.sha256();size=0;tail=b'';host_secret=False
-        secrets=[v.encode() for v in (self.cfg.get('token'),self.task.get('lease')) if v]
+        secrets=[v.encode() for v in (self.cfg.get('token'),self.task.get('lease'),(self.cfg.get('_model_profile') or {}).get('api_key')) if v]
         overlap=max(map(len,secrets),default=1)
         try:
             with os.fdopen(os.open(pending,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'wb') as target:

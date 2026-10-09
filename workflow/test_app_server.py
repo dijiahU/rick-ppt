@@ -42,7 +42,7 @@ for line in sys.stdin:
  elif m=="initialized":pass
  elif m=="config/read":reply(i,{"config":{"mcp_servers":{"fake":{"command":"private","env":{"TOKEN":"never-public"}}}}})
  elif m in ("thread/start","thread/resume"):
-  reply(i,{"thread":{"id":thread,"turns":[]},"approvalPolicy":"never","cwd":os.getcwd(),"sandbox":{"type":"workspaceWrite"},"config":p.get("config",{})})
+  reply(i,{"thread":{"id":thread,"turns":[]},"approvalPolicy":"never","cwd":os.getcwd(),"sandbox":{"type":"workspaceWrite"},"config":p.get("config",{}),"dynamicTools":p.get("dynamicTools",[])})
   if m=="thread/start":event("thread/started",{"thread":{"id":thread}})
  elif m=="turn/start":
   counter+=1;active="turn-"+str(counter);text=p["input"][0]["text"]
@@ -65,7 +65,7 @@ for line in sys.stdin:
   reply(i,{});complete(active,"",status="interrupted")
  elif m=="thread/items/list":reply(i,{"data":list(reversed(users)),"nextCursor":None})
  elif m=="test/approval":
-  pending["host-request"]=i;send({"id":"host-request","method":p["method"],"params":{}})
+  pending["host-request"]=i;send({"id":"host-request","method":p["method"],"params":p.get("params",{})})
  elif m=="test/reasoning":
   event("item/reasoning/textDelta",{"delta":"HIDDEN_REASONING"})
   event("item/completed",{"threadId":thread,"turnId":"turn-x","item":{"id":"reasoning-x","type":"reasoning","text":"HIDDEN_REASONING"}})
@@ -119,6 +119,23 @@ class AppServerTests(unittest.TestCase):
         self.assertEqual(response["config"]["mcp_servers.fake.enabled"], False)
         self.assertNotIn("never-public", json.dumps(self.public))
         self.assertGreater(self.ticks, 0)
+
+    def test_dynamic_tools_are_explicit_and_host_callback_returns_real_content(self):
+        calls=[]
+        def callback(params):
+            calls.append(params);return {'success':True,'contentItems':[{'type':'inputText','text':'Actual source https://example.test/source'}]}
+        s=self.start(on_tool_call=callback)
+        spec=[{'type':'function','name':'pptx_search_sources','description':'Find sources','inputSchema':{'type':'object'}}]
+        response=s.start_thread(dynamic_tools=spec)
+        self.assertEqual(response['dynamicTools'],spec)
+        args={'tool':'pptx_search_sources','arguments':{'request':'Example evidence'}}
+        result=s.request('test/approval',{'method':'item/tool/call','params':args})
+        self.assertEqual(calls,[args]);self.assertTrue(result['success']);self.assertIn('https://example.test/source',result['contentItems'][0]['text'])
+
+    def test_unknown_dynamic_callback_stays_unavailable_without_handler(self):
+        s=self.start()
+        result=s.request('test/approval',{'method':'item/tool/call','params':{'tool':'unknown'}})
+        self.assertFalse(result['success'])
 
     def test_turn_receipts_final_answer_and_exec_jsonl_normalization(self):
         s = self.start()
@@ -297,6 +314,8 @@ class AppServerTests(unittest.TestCase):
         self.assertEqual(item["type"], "command_execution")
         self.assertEqual(item["exit_code"], 0)
         self.assertIsNone(normalize_item({"type": "reasoning", "text": "hidden"}))
+        self.assertEqual(normalize_item({'id':'image-1','type':'imageView','path':'/task/reading-page-1.png'}),
+                         {'id':'image-1','type':'image_view','path':'/task/reading-page-1.png'})
 
     def test_closed_instance_cannot_be_reused(self):
         s = self.start()

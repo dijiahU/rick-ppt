@@ -34,6 +34,7 @@ def settings():
         ('plugin','PPTX_RUNNER_PLUGIN'),
         ('blank','PPTX_RUNNER_BLANK'),
         ('state_directory','PPTX_RUNNER_STATE_DIRECTORY'),
+        ('model_profile','PPTX_RUNNER_MODEL_PROFILE'),
     ):
         if os.environ.get(environment_key):data[key]=os.environ[environment_key]
     for key in ('site','token','plugin','python','blank'):
@@ -47,7 +48,9 @@ def settings():
 def permission_args(cfg,job):
     # Exact runtime read grants only. No parent project, private home or other jobs.
     reads=[str(Path(cfg['plugin']).resolve()),str(Path(cfg['python']).parent.parent.resolve()),'/opt/homebrew','/Applications/LibreOffice.app','/System/Library/Fonts','/Library/Fonts']
-    fs={':root':'deny',':minimal':'read',':tmpdir':'deny',':slash_tmp':'deny',str(job):'write'}
+    # A :tmpdir alias resolves after TMPDIR is set to the task's own directory,
+    # and otherwise denies precisely the scratch path intended for this job.
+    fs={':root':'deny',':minimal':'read',str(Path(tempfile.gettempdir()).resolve()):'deny',':slash_tmp':'deny',str(job):'write'}
     for p in reads: fs[p]='read'
     table=','.join(json.dumps(k)+'='+json.dumps(v) for k,v in fs.items())
     permissions='permissions={pptx_job={extends=":workspace",filesystem={'+table+'},network={enabled=false}}}'
@@ -59,6 +62,7 @@ def environment(job):
     result={k:v for k,v in os.environ.items() if k in allow}
     result['PATH']='/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin'
     result['TMPDIR']=str(job/'tmp')
+    result['TMPPREFIX']=str(job/'tmp/zsh')
     result['FONTCONFIG_FILE']=str(job/'fonts.conf')
     result['PPTX_SOFFICE']=str(job/'soffice-proxy.py')
     result['PPTX_INTERACTIVE_PROXY']=str(job/'interactive-proxy.py')
@@ -102,13 +106,18 @@ def prepare(cfg):
     },indent=2))
     profile=cfg.get('_model_profile')
     if profile:
-        from model_backend import public_identity
+        from model_backend import public_identity,retained_tools
         capabilities=json.loads((job/'capabilities.json').read_text())
         capabilities['model']=public_identity(profile)
         capabilities['web_search']={'mode':profile.get('web_search','disabled'),'optional':True,
                                     'use':'Use only tools actually exposed by this model profile.'}
         capabilities['image_generation']={**capabilities['image_generation'],
                                           'mode':'built-in' if profile.get('image_generation',False) else 'disabled'}
+        if retained_tools(profile):
+            capabilities['web_search']={'mode':'retained-hosted-tool','tool':'pptx_search_sources','optional':True,
+                'use':'Use the exposed retained search tool for topic evidence, actual design references and relevant image-source pages. Inspect returned sources/material; respect supplied-only/offline constraints.'}
+            capabilities['image_generation']={**capabilities['image_generation'],'mode':'retained-built-in-tool','tool':'pptx_generate_image',
+                'use':'Use the exposed retained image tool for original raster illustration or scoped PNG edits; inspect/embed returned task-local files. Concepts are not documentary evidence.'}
         (job/'capabilities.json').write_text(json.dumps(capabilities,indent=2))
     catalog=Path(cfg['plugin'])/'skills/pptx/assets/workflow-choices.json'
     if catalog.is_file():
@@ -294,7 +303,7 @@ def self_test(cfg):
 def codex_command(cfg,job):
     command=['codex','exec','--ignore-user-config','--ignore-rules','--skip-git-repo-check','--json','-C',str(job),*permission_args(cfg,job),'-c','default_permissions="pptx_job"','-c','approval_policy="never"','-c','shell_environment_policy.inherit="none"']
     command+=['-c','web_search="live"','-c','features.image_generation=true']
-    safe_tools={k:v for k,v in environment(job).items() if k in ('PATH','TMPDIR','FONTCONFIG_FILE','PPTX_SOFFICE','PPTX_INTERACTIVE_PROXY')}
+    safe_tools={k:v for k,v in environment(job).items() if k in ('PATH','TMPDIR','TMPPREFIX','FONTCONFIG_FILE','PPTX_SOFFICE','PPTX_INTERACTIVE_PROXY')}
     command+=['-c','shell_environment_policy.set={'+','.join(json.dumps(k)+'='+json.dumps(v) for k,v in safe_tools.items())+'}']
     for feature in ('apps','plugins','hooks','browser_use','browser_use_external','computer_use','chronicle','memories','shell_snapshot','multi_agent'):
         command+=['-c',f'features.{feature}=false']
@@ -327,9 +336,12 @@ def _run_job(cfg,task,lease):
     # and rejects corrupt/gapped histories or an orphan projection in either case.
     existing=(state_root/task['id']/'events'/'00000000000000000001.json').exists()
     from durable import HOST_JOURNAL_LIMITS
-    from model_backend import bind_task,task_default_model,task_default_reasoning_effort,DEFAULT_TASK_MODEL,DEFAULT_TASK_REASONING_EFFORT
-    bind_task(state_root,task['id'],cfg.get('_model_profile'),existing)
+    from model_backend import bind_task,profile_for_task,task_default_model,task_default_reasoning_effort,DEFAULT_TASK_MODEL,DEFAULT_TASK_REASONING_EFFORT
     cfg=dict(cfg)
+    selected=profile_for_task(state_root,task['id'],cfg.get('_model_profile'),existing)
+    if selected is None:cfg.pop('_model_profile',None)
+    else:cfg['_model_profile']=selected
+    bind_task(state_root,task['id'],selected,existing)
     if not cfg.get('_model_profile'):
         cfg['_task_default_model']=task_default_model(state_root,task['id'],existing,cfg.get('default_model',DEFAULT_TASK_MODEL),cfg.get('default_reasoning_effort',DEFAULT_TASK_REASONING_EFFORT))
         cfg['_task_default_reasoning_effort']=task_default_reasoning_effort(state_root,task['id'])

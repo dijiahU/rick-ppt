@@ -7,6 +7,7 @@ MAX_BODY=16*1024*1024
 class ChatProxy:
  def __init__(self,profile):
   self.profile=profile;self.token=secrets.token_urlsafe(32);self.calls=[];self.server=None;self.thread=None
+  self.stopping=threading.Event();self.active=set();self.active_lock=threading.Lock()
  def __enter__(self):
   outer=self
   class Handler(BaseHTTPRequestHandler):
@@ -40,7 +41,25 @@ class ChatProxy:
   self.url=f'http://127.0.0.1:{self.server.server_port}/v1'
   return self
  def __exit__(self,*args):
+  self.stopping.set()
+  with self.active_lock:processes=list(self.active)
+  for process in processes:
+   if process.poll() is None:process.kill()
   self.server.shutdown();self.server.server_close();self.thread.join(timeout=2)
+ def _upstream(self,command,*,input,text,capture_output,timeout):
+  process=subprocess.Popen(command,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+  with self.active_lock:
+   self.active.add(process)
+   if self.stopping.is_set():process.kill()
+  try:
+   try:
+    stdout,stderr=process.communicate(input=input,timeout=timeout)
+    return subprocess.CompletedProcess(command,process.returncode,stdout,stderr)
+   except subprocess.TimeoutExpired:
+    process.kill();stdout,stderr=process.communicate()
+    return subprocess.CompletedProcess(command,28,stdout,stderr)
+  finally:
+   with self.active_lock:self.active.discard(process)
  def complete(self,body):
   from chat_protocol import responses_to_chat,chat_to_response
   if body.get('model')!=self.profile['model']:raise ValueError('Model does not match selected profile')
@@ -52,8 +71,16 @@ class ChatProxy:
   config='header = '+json.dumps('Authorization: Bearer '+self.profile['api_key'])+'\nheader = "Content-Type: application/json"\n'+ 'data = '+json.dumps(json.dumps(request))+'\n'
   started=time.monotonic()
   request_timeout=600 if self.profile.get('reasoning_effort') else 180
+  transport_retries=0
   for attempt in range(1,4):
-   process=subprocess.run(['curl','--disable','--config','-','--silent','--show-error','--max-time',str(request_timeout),'--max-filesize',str(MAX_BODY),'--write-out','\n%{http_code}',self.profile['base_url']+'/chat/completions'],input=config,text=True,capture_output=True,timeout=request_timeout+10)
+   deadline=time.monotonic()+request_timeout
+   while True:
+    if self.stopping.is_set():raise UpstreamError(499,'Model request interrupted')
+    remaining=max(1,math.ceil(deadline-time.monotonic()))
+    process=self._upstream(['curl','--disable','--config','-','--silent','--show-error','--max-time',str(remaining),'--max-filesize',str(MAX_BODY),'--write-out','\n%{http_code}',self.profile['base_url']+'/chat/completions'],input=config,text=True,capture_output=True,timeout=remaining+10)
+    if transport_retries==0 and process.returncode in (7,28,35,52,55,56) and process.stdout.strip() in ('','000') and time.monotonic()<deadline and not self.stopping.is_set():
+     transport_retries+=1;self.calls.append({'ok':False,'attempt':attempt,'transport_code':process.returncode,'retry_delay_seconds':0});continue
+    break
    if process.returncode:
     self.calls.append({'ok':False,'attempt':attempt,'transport_code':process.returncode})
     raise UpstreamError(502,'Upstream transport failed (curl '+str(process.returncode)+')')

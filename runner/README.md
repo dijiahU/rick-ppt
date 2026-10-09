@@ -439,3 +439,71 @@ Before submitting a new request, the form displays the resolved PPT language and
 whether it came from a manual choice, the brief or the default. Manual selection
 wins; the final literal is saved and shared by author and reviewers. This changes
 no saved historical task or quota/schema. UI updates require normal Sites publishing.
+
+## External model with retained hosted tools
+
+APINebula Opus uses the exact provider model ID `claude-opus-5-5` and the existing
+Chat Completions adapter. Configure a host-private profile, never a front-end key:
+
+```json
+{"model":"claude-opus-5-5","base_url":"https://apinebula.ai/v1",
+ "wire_api":"chat_completions","api_key_env":"PPTX_MODEL_API_KEY",
+ "web_search":"disabled","image_generation":false,
+ "auxiliary_tools":"existing_backend"}
+```
+
+The external model receives native file/vision tools plus the explicit dynamic
+`pptx_search_sources` and `pptx_generate_image` tools. The latter execute only their
+requested operation through the existing default-provider channel in a separate
+restricted context, and return source evidence or actual generated task-local PNGs.
+They do not author pages, perform another review, or receive the external API key.
+Native authoring stays sequential; content and visual review remain independent.
+Reviewers do not receive generation/search helper contexts or author reasoning.
+Source/offline constraints, original/generated distinctions and import limits remain.
+The source evidence is recorded under retained-tool-evidence; observed tool events
+and separate retained-channel usage are recorded, with no hidden reasoning.
+
+Canonical `settings.local.json` selects `model_profile`; the launcher propagates
+only its path while retaining separate website credentials. Loaded runtime receipts
+include the actual `model_backend`. Existing default-provider tasks automatically
+retain their admitted provider on resume. An external admission remains bound to
+its recorded model/URL/tool route; key rotation is allowed, silent model changes
+are rejected. Keep the profile file at mode 0600 when it contains a key. No global
+Codex or Claude settings are changed.
+
+APINebula model-list, vision/function call, real sandbox file use, schema response,
+Opus→retained search and Opus→retained generation have been exercised with isolated
+fixtures. The target's Responses probes returned convert_request_failed; use the
+verified Chat adapter, not a claimed direct Responses capability. These probes
+establish observed interface behavior, not the upstream identity behind an alias.
+
+
+The API acceptance run also exposed the prior scratch-directory alias collision:
+`:tmpdir` resolved to task TMPDIR and denied its own scratch files. Both permission
+builders now deny the concrete host temporary root, with a more specific task
+write grant, and point zsh TMPPREFIX into the task. Real sandbox tests verify
+heredoc/task scratch writes and denial of a synthetic file outside the task.
+
+
+External planning completion is followed by authoritative validation. If a provider
+stops after a failed decision CLI, the same research context receives the concrete
+error and exact scaffold, with at most two structural corrections. Facts, source
+scope, existing assets and outline are reused; no additional research or audience
+review stage is added. Invalid choices still fail rather than being auto-mapped.
+
+The Chat adapter retries one empty transient transport failure within the current
+request budget (TLS/connection/reset/timeout), never a partial response or certificate
+failure. Existing bounded 429 retries remain. Closing the provider session kills
+its active local upstream curl processes, so user pause does not leave the local
+model transport running. Static SSE replay remains a compatibility mechanism, not
+true upstream token streaming. No completion/frozen-artifact recovery policy changes.
+
+The real independent-review test exposed a gateway that accepted JSON Schema
+parameters without enforcing the report format. The adapter also states the exact
+schema in the model instruction; the original strict host parser and report checks
+remain authoritative. An external reviewer may receive one format-only correction
+in its completed independent context, with a distinct turn receipt linked to the
+original inspection. Incomplete turns or missing page coverage cannot use that
+correction. A formatting failure does not cause research or authoring to be repeated.
+Image-view events are retained in trajectories so actual page/state inspection can
+be distinguished from reading only the structural inventory.

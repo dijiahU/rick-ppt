@@ -41,6 +41,21 @@ class ProductionBridge(unittest.TestCase):
         (self.worker/'settings.local.json').write_text(json.dumps(self.cfg))
         self.assertEqual(bridge.launch_interpreter(self.worker),str(python))
 
+    def test_canonical_api_profile_path_propagates_without_credentials(self):
+        profile=self.root/'provider.local.json';profile.write_text('{"api_key":"private-provider-key"}')
+        self.cfg['model_profile']=str(profile);(self.worker/'settings.local.json').write_text(json.dumps(self.cfg))
+        env=bridge.launch_environment(self.worker,self.credentials,{'PPTX_RUNNER_MODEL_PROFILE':'old-profile'})
+        self.assertEqual(env['PPTX_RUNNER_MODEL_PROFILE'],str(profile))
+        self.assertNotIn('private-provider-key',str(env))
+        self.cfg.pop('model_profile');(self.worker/'settings.local.json').write_text(json.dumps(self.cfg))
+        self.assertNotIn('PPTX_RUNNER_MODEL_PROFILE',bridge.launch_environment(self.worker,self.credentials,env))
+
+    def test_receipt_identifies_actual_external_model_without_key(self):
+        cfg={**self.cfg,'_model_profile':{'model':'claude-opus-5-5','base_url':'https://example.test/v1','api_key':'private-provider-key','wire_api':'chat_completions'}}
+        receipt=bridge.write_runtime_receipt(self.worker,cfg,'ready');proof=json.loads(receipt.read_text())
+        self.assertEqual(proof['model_backend']['model'],'claude-opus-5-5')
+        self.assertNotIn('private-provider-key',receipt.read_text());self.assertNotIn('api_key',proof['model_backend'])
+
     def test_incomplete_branch_runtime_cannot_launch(self):
         (self.plugin/'skills/pptx/scripts/workflow_decisions.py').unlink()
         with self.assertRaisesRegex(ValueError,'Incomplete staged workflow'):bridge.launch_environment(self.worker,self.credentials,{})

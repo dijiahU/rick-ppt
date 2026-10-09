@@ -190,6 +190,8 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(out['max_tokens'], 100)
         self.assertEqual(out['tool_choice']['function']['name'], 'run')
         self.assertEqual(out['response_format']['json_schema']['name'], 'answer')
+        self.assertIn('FINAL OUTPUT CONTRACT',out['messages'][0]['content'])
+        self.assertIn('"type": "object"',out['messages'][0]['content'])
         self.assertFalse(out['parallel_tool_calls'])
 
     def test_reasoning_not_forwarded_or_returned(self):

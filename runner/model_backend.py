@@ -29,7 +29,7 @@ def load_profile(path):
     path=Path(path).resolve(strict=True);info=path.stat()
     if not stat.S_ISREG(info.st_mode) or info.st_size>65536:raise ValueError('Invalid model profile file')
     data=json.loads(path.read_text())
-    allowed={'model','base_url','api_key','api_key_env','wire_api','web_search','image_generation','reasoning_effort'}
+    allowed={'model','base_url','api_key','api_key_env','wire_api','web_search','image_generation','reasoning_effort','auxiliary_tools'}
     if not isinstance(data,dict) or set(data)-allowed:raise ValueError('Unknown model profile fields')
     model=data.get('model');url=data.get('base_url')
     if not isinstance(model,str) or not model.strip() or len(model)>200 or any(ord(c)<32 for c in model):raise ValueError('A valid model ID is required')
@@ -47,15 +47,30 @@ def load_profile(path):
     if not isinstance(key,str) or not key.strip() or any(c in key for c in '\r\n'):raise ValueError('API key is missing; configure it locally or in the named environment variable')
     if data.get('web_search','disabled') not in ('disabled','live','cached'):raise ValueError('Invalid web_search capability')
     if type(data.get('image_generation',False)) is not bool:raise ValueError('image_generation must be boolean')
+    if data.get('auxiliary_tools','disabled') not in ('disabled','existing_backend'):raise ValueError('Invalid auxiliary tool route')
     effort=data.get('reasoning_effort')
     if effort is not None and effort not in ('minimal','low','medium','high','xhigh'):raise ValueError('Invalid reasoning_effort')
     return {**data,'model':model.strip(),'base_url':url.rstrip('/'),'api_key':key,'wire_api':data.get('wire_api','responses')}
 
 def public_identity(profile):
     if profile is None:return {'backend':'codex-default'}
-    return {'backend':profile.get('wire_api','responses'),'model':profile['model'],'base_url':profile['base_url'],
+    identity={'backend':profile.get('wire_api','responses'),'model':profile['model'],'base_url':profile['base_url'],
       'web_search':profile.get('web_search','disabled'),'image_generation':profile.get('image_generation',False),
       'reasoning_effort':profile.get('reasoning_effort')}
+    if profile.get('auxiliary_tools','disabled')!='disabled':identity['auxiliary_tools']=profile['auxiliary_tools']
+    return identity
+
+def retained_tools(profile):return bool(profile and profile.get('auxiliary_tools')=='existing_backend')
+
+def profile_for_task(state_root,task_id,profile,existing):
+    path=Path(state_root)/task_id/'model-backend.json'
+    # Historical/default-provider admissions keep their original provider on resume.
+    # A backend receipt may already exist before journal initialization succeeded.
+    if not path.exists():return None if existing else profile
+    if json.loads(path.read_text()).get('backend')=='codex-default':return None
+    if json.loads(path.read_text())!=public_identity(profile):
+        raise ValueError('Restore the original external API profile to resume this task')
+    return profile
 
 def overrides(profile):
     if profile is None:return {}

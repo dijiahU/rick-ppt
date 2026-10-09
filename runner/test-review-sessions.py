@@ -121,6 +121,40 @@ class ReviewRecoveryTests(unittest.TestCase):
     def attempts(self):
         return [_load_attempt(path.parent)[0] for path in (self.root/'records/review-sessions').rglob('00000000-*.json')]
 
+    def test_external_format_correction_uses_distinct_receipt_in_same_reviewer_context(self):
+        self.cfg['_model_profile']={'model':'external'}
+        original=self.phase
+        def malformed(name,prompt,**kwargs):
+            if name=='content-first-1' and kwargs.get('thread'):
+                attempt=kwargs['review_attempt'];self.calls.append((name,kwargs['root'],prompt))
+                self.assertEqual(kwargs['thread'],'reviewer-1')
+                self.assertIn('FORMAT-ONLY CORRECTION',prompt)
+                self.assertFalse((kwargs['root']/'request.json').exists())
+                attempt.started('format-phase',self.root/'format-log.jsonl','format-client')
+                attempt.bind('reviewer-1','format-turn')
+                attempt.observe({'type':'turn.completed','thread_id':'reviewer-1','turn_id':'format-turn','status':'completed'})
+                return report(),'reviewer-1'
+            value,thread=original(name,prompt,**kwargs)
+            return ({'wrong_schema':True} if name=='content-first-1' else value),thread
+        self.run.phase=malformed
+        self.review()
+        states=[s for s in self.attempts() if s['context']['role']=='content-first']
+        self.assertEqual(len(states),2)
+        corrected=next(s for s in states if s['status']=='validated')
+        self.assertEqual(corrected['format_only_of']['turn_id'],'turn-1')
+        self.assertEqual(corrected['turn_id'],'format-turn')
+        self.assertEqual(corrected['thread_id'],'reviewer-1')
+
+    def test_incomplete_external_review_cannot_be_format_corrected(self):
+        self.cfg['_model_profile']={'model':'external'}
+        original=self.phase
+        def incomplete(name,prompt,**kwargs):
+            attempt=kwargs['review_attempt'];attempt.bind('incomplete','turn')
+            raise ValueError('Malformed partial response')
+        self.run.phase=incomplete
+        with self.assertRaisesRegex(ReviewSessionError,'completed independent inspection'):self.review()
+        self.assertEqual(len(self.attempts()),1)
+
     def assert_invalidated(self,change):
         self.review();change();self.review(self.execution())
         self.assertEqual([name for name,_,_ in self.calls],

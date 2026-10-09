@@ -243,6 +243,24 @@ class ReviewRole:
                  'restart_policy': 'fresh_independent_review', 'phase_id': None, 'log': None}
         return ReviewAttempt(directory, state)
 
+    def format_correction(self, previous, root):
+        """A distinct turn receipt for one correction of a completed report."""
+        state, _, _ = _load_attempt(previous.root)
+        if (state != previous.state or state.get('context') != self.context or
+                state.get('terminal_status') != 'completed' or
+                not state.get('thread_id') or not state.get('turn_id') or
+                state.get('status') == 'validated' or state.get('format_only_of') or
+                state.get('root') != str(_root(root))):
+            raise ReviewSessionError('Format correction requires the same completed independent inspection')
+        previous.pending('report_format')
+        attempt = self.begin(root)
+        attempt.state.update(restart_policy='completed_report_format_only',
+                             format_only_of={'attempt': previous.root.name, 'receipt_head': previous.head,
+                                             'thread_id': state['thread_id'], 'turn_id': state['turn_id']})
+        attempt.bind(state['thread_id'])
+        attempt._append('format_correction_prepared')
+        return attempt
+
 
 class ReviewAttempt:
     def __init__(self, root, state):

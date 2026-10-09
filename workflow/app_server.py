@@ -22,12 +22,13 @@ import time
 import tomllib
 from typing import Callable
 import uuid
+import tempfile
 
 
 MAX_LINE = 8 * 1024 * 1024
 SAFE_ENV = frozenset({"PATH", "LANG", "LC_ALL", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
                       "TMPDIR", "FONTCONFIG_FILE", "PPTX_SOFFICE", "PPTX_INTERACTIVE_PROXY"})
-SAFE_TOOL_ENV = frozenset({"PATH", "LANG", "LC_ALL", "TMPDIR", "FONTCONFIG_FILE", "PPTX_SOFFICE", "PPTX_INTERACTIVE_PROXY"})
+SAFE_TOOL_ENV = frozenset({"PATH", "LANG", "LC_ALL", "TMPDIR", "TMPPREFIX", "FONTCONFIG_FILE", "PPTX_SOFFICE", "PPTX_INTERACTIVE_PROXY"})
 DISABLED_FEATURES = ("apps", "plugins", "hooks", "browser_use", "browser_use_external",
                      "computer_use", "chronicle", "memories", "shell_snapshot", "multi_agent")
 REASONING_NOTIFICATIONS = ["item/reasoning/summaryTextDelta", "item/reasoning/summaryPartAdded", "item/reasoning/textDelta"]
@@ -107,7 +108,7 @@ def task_configuration(workspace: Path | str, *, read_roots: list[Path | str] = 
         raise ValueError("A task directory is required")
     if web_search not in ("live", "disabled", "cached"):
         raise ValueError("Invalid hosted web-search policy")
-    filesystem = {":root": "deny", ":minimal": "read", ":tmpdir": "deny", ":slash_tmp": "deny"}
+    filesystem = {":root": "deny", ":minimal": "read", str(Path(tempfile.gettempdir()).resolve()):"deny", ":slash_tmp": "deny"}
     for root in read_roots:
         path = Path(root).resolve(strict=True)
         if path == Path("/") or workspace.is_relative_to(path) or path == Path.home():
@@ -116,6 +117,8 @@ def task_configuration(workspace: Path | str, *, read_roots: list[Path | str] = 
     filesystem[str(workspace)] = "write"
     safe_tools = {k: str(v) for k, v in (tool_env or {}).items() if k in SAFE_TOOL_ENV}
     safe_tools.setdefault("PATH", "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+    safe_tools['TMPDIR']=str(workspace/'tmp')
+    safe_tools['TMPPREFIX']=str(workspace/'tmp/zsh')
     config = {
         "permissions": {"pptx_job": {"extends": ":workspace", "filesystem": filesystem,
                                       "network": {"enabled": False}}},
@@ -185,6 +188,10 @@ def normalize_item(item: dict) -> dict | None:
         return {**base, "type": "mcp_tool_call", "status": status, **{key: item.get(key) for key in ("server", "tool", "arguments", "result", "error")}}
     if kind == "webSearch":
         return {**base, "type": "web_search", **{key: item.get(key) for key in ("query", "action", "results")}}
+    if kind == 'dynamicToolCall':
+        return {**base,'type':'dynamic_tool_call','tool':item.get('tool'),'arguments':item.get('arguments'),'status':status,'success':item.get('success')}
+    if kind == 'imageView':
+        return {**base,'type':'image_view','path':item.get('path')}
     if kind in ("imageGeneration", "imageGenerationCall"):
         return {**base, "type": "image_generation", **{key: item.get(key) for key in ("status", "prompt", "revisedPrompt", "result") if key in item}}
     if kind == "plan":
@@ -223,7 +230,7 @@ class AppServer:
                  command: list[str] | None = None, on_event: Callable[[dict], None] | None = None,
                  on_public: Callable[[dict], None] | None = None, tick: Callable[[], None] | None = None,
                  secrets: tuple[str, ...] = (), request_timeout: float = 30, max_line: int = MAX_LINE,
-                 provider_env: dict | None = None):
+                 provider_env: dict | None = None, on_tool_call: Callable[[dict], dict] | None = None):
         self.cwd = Path(cwd).resolve(strict=True)
         self.config = copy.deepcopy(config)
         self.env = child_environment(self.cwd, env)
@@ -236,6 +243,7 @@ class AppServer:
             secrets=(*secrets,provider_env['PPTX_MODEL_API_KEY'])
         self.command = command or command_for(self.config)
         self.on_event, self.on_public, self.tick = on_event, on_public, tick
+        self.on_tool_call = on_tool_call
         self.secrets, self.request_timeout, self.max_line = secrets, request_timeout, max_line
         self.process = None
         self._queue = queue.Queue(maxsize=4096)
@@ -397,6 +405,13 @@ class AppServer:
         elif method == "mcpServer/elicitation/request":
             result = {"action": "decline"}
         elif method == "item/tool/call":
+            if self.on_tool_call:
+                result = self.on_tool_call(copy.deepcopy(message.get("params") or {}))
+                if not isinstance(result,dict) or type(result.get('success')) is not bool or not isinstance(result.get('contentItems'),list):
+                    raise TransportError('Invalid host tool response')
+                self._write({"id":message['id'],"result":result})
+                self._public({'type':'host.tool.completed','tool':(message.get('params') or {}).get('tool'),'success':result['success']})
+                return
             result = {"success": False, "contentItems": [{"type": "inputText", "text": "This host tool is unavailable"}]}
         else:
             self._write({"id": message["id"], "error": {"code": -32601, "message": "Host callback is unavailable"}})
@@ -518,12 +533,15 @@ class AppServer:
         count = min(self._event_serial - before, len(self.events))
         return list(self.events)[-count:] if count else []
 
-    def start_thread(self, *, model: str | None = None, developer_instructions: str | None = None) -> dict:
+    def start_thread(self, *, model: str | None = None, developer_instructions: str | None = None,
+                     dynamic_tools: list[dict] | None = None) -> dict:
         params = {"cwd": str(self.cwd), "approvalPolicy": "never", "ephemeral": False, "config": self.config}
         if model:
             params["model"] = model
         if developer_instructions is not None:
             params["developerInstructions"] = developer_instructions
+        if dynamic_tools:
+            params['dynamicTools']=copy.deepcopy(dynamic_tools)
         result = self.request("thread/start", params)
         if result.get("approvalPolicy") != "never" or Path(result.get("cwd", "")).resolve() != self.cwd:
             raise TransportError("App-server did not accept the required task policy")

@@ -62,11 +62,16 @@ class ArtifactTests(unittest.TestCase):
 
     def test_render_inputs_and_pdf_archived_before_reply(self):
         import runner
-        queue=self.job/'render-requests';queue.mkdir();dest=self.job/'temporary';dest.mkdir();pptx=self.job/'draft.pptx';pptx.write_bytes(b'PKdraft')
+        queue=self.job/'render-requests';queue.mkdir();dest=self.job/'temporary';dest.mkdir();pptx=self.job/'draft.pptx'
+        pptx.write_bytes((Path(__file__).resolve().parents[1]/'pptx-agent/skills/pptx/assets/blank.pptx').read_bytes())
         request={'args':['--headless','--convert-to','pdf','--outdir',str(dest),str(pptx)]}
         (queue/('b'*32+'.request.json')).write_text(json.dumps(request))
         def convert(*args,**kwargs):
-            (dest/'draft.pdf').write_bytes(b'%PDF-captured')
+            command=args[0]
+            mount=next(x for x in command if x.startswith('type=bind,') and x.endswith('target=/output'))
+            private_output=Path(mount.split('source=',1)[1].split(',target=',1)[0])
+            self.assertNotEqual(private_output,dest)
+            (private_output/'draft.pdf').write_bytes(b'%PDF-captured')
             return SimpleNamespace(returncode=0,communicate=lambda timeout:('render output',''),poll=lambda:0)
         with patch.object(runner.subprocess,'Popen',side_effect=convert):runner.render_requests(self.job,trajectory=self.run)
         (dest/'draft.pdf').unlink();pptx.unlink()
@@ -74,6 +79,12 @@ class ArtifactTests(unittest.TestCase):
         self.assertIn('render-input',roles);self.assertIn('render-output',roles)
         self.assertEqual((self.run.root/'raw-blobs'/digest(b'%PDF-captured')).read_bytes(),b'%PDF-captured')
         self.assertTrue((queue/('b'*32+'.reply.json')).exists())
+
+    def test_external_provider_key_is_removed_from_both_original_and_display_records(self):
+        key='provider-secret-without-standard-prefix';self.run.cfg['_model_profile']={'api_key':key}
+        body=('accidental output '+key).encode();record=self.run.artifact(body,'error.txt','test')
+        self.assertIsNone(record['original']['raw_sha256']);self.assertNotIn(key,self.run.clean_text(key))
+        self.assertFalse((self.run.root/'raw-blobs'/digest(body)).exists())
 
     def test_large_original_streamed_without_old_64mb_limit(self):
         path=self.job/'large.bin'

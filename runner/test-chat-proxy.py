@@ -1,6 +1,9 @@
 """Offline proxy boundary tests: no sockets, credentials or external requests."""
 import io
 import json
+import sys
+import threading
+import time
 from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
@@ -18,10 +21,30 @@ def completed():
 
 
 class ProxyTests(unittest.TestCase):
+    def test_empty_transient_tls_failure_gets_one_retry(self):
+        bad=SimpleNamespace(returncode=35,stdout='\n000',stderr='private TLS context')
+        good=SimpleNamespace(returncode=0,stdout=json.dumps(completed())+'\n200',stderr='')
+        proxy=ChatProxy(PROFILE)
+        with patch('chat_proxy.ChatProxy._upstream',side_effect=[bad,good]) as run:
+            self.assertEqual(proxy.complete({'model':'test-flash','input':'hello'})['status'],'completed')
+        self.assertEqual(run.call_count,2);self.assertEqual(proxy.calls[0]['transport_code'],35)
+        self.assertNotIn('private TLS',json.dumps(proxy.calls))
+    def test_partial_response_and_certificate_failure_are_not_replayed(self):
+        for code,body in [(56,'partial response\n000'),(60,'\n000')]:
+            with self.subTest(code=code),patch('chat_proxy.ChatProxy._upstream',return_value=SimpleNamespace(returncode=code,stdout=body,stderr='private')) as run:
+                with self.assertRaises(UpstreamError):ChatProxy(PROFILE).complete({'model':'test-flash','input':'hello'})
+                self.assertEqual(run.call_count,1)
+    def test_closing_proxy_terminates_an_active_upstream_process(self):
+        proxy=ChatProxy(PROFILE);proxy.server=Mock();proxy.thread=Mock();result=[]
+        thread=threading.Thread(target=lambda:result.append(proxy._upstream([sys.executable,'-c','import time; time.sleep(30)'],input='',text=True,capture_output=True,timeout=35)))
+        thread.start();deadline=time.monotonic()+2
+        while not proxy.active and time.monotonic()<deadline:time.sleep(.01)
+        self.assertTrue(proxy.active);proxy.__exit__();thread.join(timeout=2)
+        self.assertFalse(thread.is_alive());self.assertLess(result[0].returncode,0);self.assertTrue(proxy.stopping.is_set())
     def test_upstream_key_stays_off_argv_and_observations(self):
         proxy = ChatProxy(PROFILE)
         reply = SimpleNamespace(returncode=0, stdout=json.dumps(completed()) + '\n200', stderr='')
-        with patch('chat_proxy.subprocess.run', return_value=reply) as run:
+        with patch('chat_proxy.ChatProxy._upstream', return_value=reply) as run:
             result = proxy.complete({'model': 'test-flash', 'input': 'private test prompt', 'stream': True,
                                      'max_output_tokens': 100000})
         args, kwargs = run.call_args
@@ -42,7 +65,7 @@ class ProxyTests(unittest.TestCase):
             with self.subTest(effort=effort):
                 profile = {**PROFILE, **({'reasoning_effort': effort} if effort else {})}
                 response = SimpleNamespace(returncode=0, stdout=json.dumps(completed()) + '\n200', stderr='')
-                with patch('chat_proxy.subprocess.run', return_value=response) as run:
+                with patch('chat_proxy.ChatProxy._upstream', return_value=response) as run:
                     ChatProxy(profile).complete({'model': 'test-flash', 'input': 'hello',
                                                  'reasoning': {'effort': 'xhigh'}})
                 config = run.call_args.kwargs['input']
@@ -55,14 +78,14 @@ class ProxyTests(unittest.TestCase):
                     self.assertNotIn('reasoning_effort', sent)
 
     def test_profile_model_cannot_be_overridden_by_request(self):
-        with patch('chat_proxy.subprocess.run') as run, self.assertRaises(ValueError):
+        with patch('chat_proxy.ChatProxy._upstream') as run, self.assertRaises(ValueError):
             ChatProxy(PROFILE).complete({'model': 'other', 'input': 'hi'})
         run.assert_not_called()
 
     def test_provider_errors_do_not_echo_raw_response(self):
         proxy = ChatProxy(PROFILE)
         response = SimpleNamespace(returncode=0, stdout='private upstream details\n429', stderr='')
-        with patch('chat_proxy.subprocess.run', return_value=response), patch('chat_proxy.time.sleep'), self.assertRaises(UpstreamError) as caught:
+        with patch('chat_proxy.ChatProxy._upstream', return_value=response), patch('chat_proxy.time.sleep'), self.assertRaises(UpstreamError) as caught:
             proxy.complete({'model': 'test-flash', 'input': 'hello'})
         self.assertEqual(caught.exception.status, 429)
         self.assertNotIn('private', str(caught.exception))
@@ -72,7 +95,7 @@ class ProxyTests(unittest.TestCase):
         proxy = ChatProxy(PROFILE)
         limited = SimpleNamespace(returncode=0, stdout='private provider details\n429', stderr='')
         success = SimpleNamespace(returncode=0, stdout=json.dumps(completed()) + '\n200', stderr='')
-        with patch('chat_proxy.subprocess.run', side_effect=[limited, limited, success]) as run, patch('chat_proxy.time.sleep') as sleep:
+        with patch('chat_proxy.ChatProxy._upstream', side_effect=[limited, limited, success]) as run, patch('chat_proxy.time.sleep') as sleep:
             result = proxy.complete({'model': 'test-flash', 'input': 'hello'})
         self.assertEqual(run.call_count, 3)
         self.assertEqual([call.args[0] for call in sleep.call_args_list], [30, 60])
@@ -85,7 +108,7 @@ class ProxyTests(unittest.TestCase):
     def test_persistent_429_stops_after_three_attempts(self):
         proxy = ChatProxy(PROFILE)
         limited = SimpleNamespace(returncode=0, stdout='hidden\n429', stderr='')
-        with patch('chat_proxy.subprocess.run', return_value=limited) as run, patch('chat_proxy.time.sleep') as sleep:
+        with patch('chat_proxy.ChatProxy._upstream', return_value=limited) as run, patch('chat_proxy.time.sleep') as sleep:
             with self.assertRaises(UpstreamError) as caught:
                 proxy.complete({'model': 'test-flash', 'input': 'hello'})
         self.assertEqual(caught.exception.status, 429)
@@ -99,7 +122,7 @@ class ProxyTests(unittest.TestCase):
             with self.subTest(status=status):
                 body = json.dumps(completed()) if status == 200 else 'private failure'
                 reply = SimpleNamespace(returncode=0, stdout=body + '\n' + str(status), stderr='')
-                with patch('chat_proxy.subprocess.run', return_value=reply) as run, patch('chat_proxy.time.sleep') as sleep:
+                with patch('chat_proxy.ChatProxy._upstream', return_value=reply) as run, patch('chat_proxy.time.sleep') as sleep:
                     if status == 200:
                         ChatProxy(PROFILE).complete({'model': 'test-flash', 'input': 'hello'})
                     else:
@@ -127,7 +150,7 @@ class ProxyTests(unittest.TestCase):
 
     def test_transport_errors_do_not_echo_stderr(self):
         response = SimpleNamespace(returncode=28, stdout='', stderr='sensitive proxy settings')
-        with patch('chat_proxy.subprocess.run', return_value=response), self.assertRaises(UpstreamError) as caught:
+        with patch('chat_proxy.ChatProxy._upstream', return_value=response), self.assertRaises(UpstreamError) as caught:
             ChatProxy(PROFILE).complete({'model': 'test-flash', 'input': 'hello'})
         self.assertEqual(caught.exception.status, 502)
         self.assertNotIn('sensitive', str(caught.exception))

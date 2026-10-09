@@ -1,7 +1,7 @@
 import json,os,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
-from model_backend import load_profile,overrides,bind_task,public_identity,KEY_ENV,task_default_model,task_default_reasoning_effort
+from model_backend import load_profile,overrides,bind_task,public_identity,KEY_ENV,task_default_model,task_default_reasoning_effort,profile_for_task,retained_tools
 from durable import AppServer,task_configuration
 class Tests(unittest.TestCase):
  def setUp(self):
@@ -14,6 +14,20 @@ class Tests(unittest.TestCase):
   server=AppServer(cwd=self.root,config=config,provider_env={KEY_ENV:p['api_key']})
   self.assertEqual(server.env[KEY_ENV],p['api_key']);self.assertNotIn(p['api_key'],json.dumps(config));self.assertNotIn(KEY_ENV,config['shell_environment_policy']['set']);self.assertEqual(config['shell_environment_policy']['inherit'],'none');self.assertIn(p['api_key'],server.secrets)
  def test_default_unchanged(self):self.assertEqual(overrides(None),{});self.assertEqual(public_identity(None),{'backend':'codex-default'})
+ def test_retained_tools_are_explicit_and_recorded_without_changing_wire_protocol(self):
+  p=self.profile(wire_api='chat_completions',auxiliary_tools='existing_backend')
+  self.assertTrue(retained_tools(p));self.assertEqual(public_identity(p)['auxiliary_tools'],'existing_backend')
+  self.assertEqual(overrides(p)['web_search'],'disabled')
+  with self.assertRaises(ValueError):self.profile(auxiliary_tools='invented')
+ def test_old_default_admission_keeps_provider_after_global_api_switch(self):
+  p=self.profile();bind_task(self.root,'old',None,False)
+  self.assertIsNone(profile_for_task(self.root,'old',p,True))
+  self.assertIsNone(profile_for_task(self.root,'old',p,False))
+  self.assertIsNone(profile_for_task(self.root,'legacy',p,True))
+  self.assertEqual(profile_for_task(self.root,'new',p,False),p)
+  bind_task(self.root,'external',p,False)
+  self.assertEqual(profile_for_task(self.root,'external',p,True),p)
+  with self.assertRaises(ValueError):profile_for_task(self.root,'external',None,True)
  def test_new_default_is_61_high_and_persists_on_resume(self):
   self.assertEqual(task_default_model(self.root,'new',False),'gpt-6.1-sol')
   self.assertEqual(task_default_reasoning_effort(self.root,'new'),'high')
