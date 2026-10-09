@@ -44,7 +44,9 @@ the audience question/benefit, a concrete visual action, a short design directio
 and actual artwork/teaching references with page applications.
 No unspecified option, invented category or "consider X"
 in place of selection. Execute the selected route's actions and failure alternative.
-Creative composition within a route follows content and purpose, not a uniform
+Read [Content-led composition](references/content-led-composition.md) for linked
+audience→canvas/pacing→object decisions and actual sequence checks inside these
+stages. Creative composition within a route follows content and purpose, not a uniform
 visual template. Observation of an actual object/interface/state needs real visual
 evidence, not a prose feature map.
 

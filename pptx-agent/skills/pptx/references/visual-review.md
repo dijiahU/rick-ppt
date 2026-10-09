@@ -119,3 +119,26 @@ orientation, premature conclusions, labels/connectors entering together and the
 readable final state. Cover/single-message pages may be static. Preserve faithful
 conversions/scoped edits and historical task contracts. Static previews and timing
 inspection remain distinct from actual PowerPoint slideshow playback.
+
+## Dominant body composition and explicit design requests
+
+Compare the actual body pages across sections even when covers or image pages
+interrupt the pattern. Different form IDs, process labels, recoloring and a few
+screenshots do not establish variation in the dominant prose-box treatment.
+Identify repeated pages and the actual focus/proportion/reading path. Distinguish
+useful consistent encoding for comparable content from reuse across unrelated
+communicative tasks. Judge explicit requests against this evidence as well as
+legibility: a readable deck may still violate an explicit request to avoid
+repeated cards or use content-led expressive composition. Such a demonstrated
+violation requires a scoped concrete repair through the existing finding routes.
+Without that explicit request or a demonstrated audience defect, aesthetic
+alternatives remain suggestions. No inferred requirement to ban rectangles,
+artist quota, automatic repetition score or extra review round.
+
+Assess both audience comprehension and stated visual requirements in the existing
+sequence/audience_fit report fields. Verify reference transfer against the actual
+page operation, not only palette/creator names. Verify pacing using semantic units,
+persistent context and complete final states; semantic grouping needs no visible
+card. Renderer-specific routing differences are interoperability evidence, not
+proof that the production preview or PowerPoint playback is broken. Report the
+actual renderer/font evidence and the precise verification limit.

@@ -7,6 +7,7 @@ import argparse
 import io
 import json
 import math
+import os
 from pathlib import Path
 import posixpath
 import re
@@ -28,7 +29,11 @@ EMU=914400
 def node(parent,ns,tag,**attrs):return E.SubElement(parent,'{'+ns+'}'+tag,**{k:str(v) for k,v in attrs.items()})
 def write(path,tree):
     path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
-    path.write_bytes(E.tostring(tree,encoding='UTF-8',xml_declaration=True,standalone=True))
+    pending=path.with_name('.'+path.name+'.'+uuid.uuid4().hex+'.pending')
+    try:
+        pending.write_bytes(E.tostring(tree,encoding='UTF-8',xml_declaration=True,standalone=True))
+        os.replace(pending,path)
+    finally:pending.unlink(missing_ok=True)
 def parse(path):return E.parse(str(path),E.XMLParser(resolve_entities=False,no_network=True))
 def color(value):
     if not isinstance(value,str) or not re.fullmatch(r'[0-9A-Fa-f]{6}',value):raise ValueError('Specify a six-digit RGB color')
@@ -61,6 +66,61 @@ def transform(parent,box,ns=A):
 
 def next_id(tree):return max((int(n.get('id')) for n in tree.iter('{'+P+'}cNvPr')),default=1)+1
 
+def handle(workspace,number,ident):
+    return {'workspace':str(Path(workspace).resolve()),'slide':number,'shape_id':int(ident)}
+
+def target(workspace,number,value):
+    if isinstance(value,dict):
+        if value.get('workspace')!=str(Path(workspace).resolve()) or value.get('slide')!=number:
+            raise ValueError('Native handle belongs to a different workspace or slide')
+        value=value.get('shape_id')
+    if type(value) is not int or value<=0:raise ValueError('Use a returned native handle or positive object ID')
+    return value
+
+def add_shape(workspace,number,box,*,geometry,fill,stroke,line_width,name):
+    # Every visual choice is explicit. A semantic object need not be a card.
+    if geometry not in ('rect','roundRect','ellipse','triangle','diamond'):raise ValueError('Unsupported explicit geometry')
+    if fill is not None:color(fill)
+    if stroke is not None:color(stroke)
+    if not math.isfinite(line_width) or line_width<=0:raise ValueError('Positive line width required')
+    if not isinstance(name,str) or not name.strip():raise ValueError('Name the native object')
+    _,path,tree,shapes=page(workspace,number);ident=next_id(tree)
+    sp=node(shapes,P,'sp');nv=node(sp,P,'nvSpPr');node(nv,P,'cNvPr',id=ident,name=name);node(nv,P,'cNvSpPr');node(nv,P,'nvPr')
+    pr=node(sp,P,'spPr');transform(pr,box);node(node(pr,A,'prstGeom',prst=geometry),A,'avLst')
+    solid(pr,fill) if fill is not None else node(pr,A,'noFill')
+    ln=node(pr,A,'ln',w=round(line_width*12700));solid(ln,stroke) if stroke is not None else node(ln,A,'noFill')
+    write(path,tree);return handle(workspace,number,ident)
+
+def add_connector(workspace,number,start,end,*,points,start_site,end_site,ink,line_width,arrow,name):
+    from native_structure import anchor
+    if len(points)!=4 or not all(math.isfinite(v) for v in points):raise ValueError('Specify exact start/end coordinates')
+    if not math.isfinite(line_width) or line_width<=0:raise ValueError('Positive line width required')
+    if arrow not in ('none','triangle'):raise ValueError('Choose arrow none/triangle')
+    color(ink);start=target(workspace,number,start);end=target(workspace,number,end)
+    _,path,tree,shapes=page(workspace,number);ident=next_id(tree)
+    cx=node(shapes,P,'cxnSp');nv=node(cx,P,'nvCxnSpPr');node(nv,P,'cNvPr',id=ident,name=name);node(nv,P,'cNvCxnSpPr');node(nv,P,'nvPr')
+    pr=node(cx,P,'spPr');x1,y1,x2,y2=points
+    if x1==x2 and y1==y2:raise ValueError('Connector must have a length')
+    xf=transform(pr,(min(x1,x2),min(y1,y2),max(abs(x2-x1),1/EMU),max(abs(y2-y1),1/EMU)))
+    if x2<x1:xf.set('flipH','1')
+    if y2<y1:xf.set('flipV','1')
+    node(node(pr,A,'prstGeom',prst='line'),A,'avLst');ln=node(pr,A,'ln',w=round(line_width*12700));solid(ln,ink);node(ln,A,'tailEnd',type=arrow)
+    anchor(tree,ident,start,end,start_site,end_site)
+    write(path,tree);return handle(workspace,number,ident)
+
+def semantic_group(workspace,number,members,*,name):
+    from native_structure import group
+    _,path,tree,_=page(workspace,number)
+    ident=group(tree,[target(workspace,number,m) for m in members],name)
+    write(path,tree);return handle(workspace,number,int(ident))
+
+def reveal(workspace,number,steps,*,replace=False):
+    from native_builds import set_builds
+    _,path,tree,_=page(workspace,number)
+    ids=[[target(workspace,number,m) for m in step] for step in steps]
+    set_builds(tree.getroot(),ids,replace=replace);write(path,tree)
+    return {'slide':number,'steps':ids,'playback_verified':False}
+
 def text_measure(text,font_file,size,width,*,index=0,padding=.04,line_spacing=1.12):
     if not isinstance(text,str) or not text.strip() or not all(math.isfinite(x) for x in (size,width,padding,line_spacing)) or size<=0 or width<=2*padding or padding<0 or line_spacing<1:
         raise ValueError('Invalid text measurement input')
@@ -91,7 +151,7 @@ def text_measure(text,font_file,size,width,*,index=0,padding=.04,line_spacing=1.
 
 def add_text(workspace,number,text,font_file,size,ink,*,x,y,width,max_height,index=0,padding=.04,name='Editable text'):
     color(ink);measure=text_measure(text,font_file,size,width,index=index,padding=padding)
-    if not math.isfinite(max_height) or max_height<=0 or measure['height']>max_height:raise ValueError('Text exceeds its allocated height; shorten or recompose instead of clipping/shrinking')
+    if not math.isfinite(max_height) or max_height<=0 or measure['height']>max_height:raise ValueError(f"Text exceeds its allocated height: needs {measure['height']:.3f} inches for {len(measure['lines'])} lines in {measure['font_family']}; available {max_height:.3f}. Shorten, enlarge or recompose instead of clipping/shrinking")
     _,path,tree,shapes=page(workspace,number);ident=next_id(tree)
     sp=node(shapes,P,'sp');nv=node(sp,P,'nvSpPr');node(nv,P,'cNvPr',id=ident,name=name);node(nv,P,'cNvSpPr',txBox=1);node(nv,P,'nvPr')
     pr=node(sp,P,'spPr');transform(pr,(x,y,width,measure['height']));node(node(pr,A,'prstGeom',prst='rect'),A,'avLst');node(pr,A,'noFill');node(node(pr,A,'ln'),A,'noFill')
@@ -101,7 +161,7 @@ def add_text(workspace,number,text,font_file,size,ink,*,x,y,width,max_height,ind
         run=node(p,A,'r');rp=node(run,A,'rPr',sz=round(size*100),b=int(measure['bold']),i=int(measure['italic']));solid(rp,ink)
         for kind in ('latin','ea','cs'):node(rp,A,kind,typeface=measure['font_family'])
         node(run,A,'t').text=line;node(p,A,'endParaRPr',sz=round(size*100))
-    write(path,tree);return {'shape_id':ident,**measure}
+    write(path,tree);return {**handle(workspace,number,ident),**measure}
 
 def relations(root,path):
     relpath=path.parent/'_rels'/(path.name+'.rels')
@@ -130,7 +190,7 @@ def add_image(workspace,number,source,box,*,fit,layer,task_root=None):
     types=parse(scoped(root,'[Content_Types].xml'))
     if not any(t.get('Extension')==suffix[1:] for t in types.getroot()):node(types.getroot(),CT,'Default',Extension=suffix[1:],ContentType=mime)
     write(path,tree);write(relpath,rels);write(scoped(root,'[Content_Types].xml'),types)
-    return {'shape_id':ident,'fit':fit,'layer':layer,'media':'ppt/media/'+name}
+    return {**handle(workspace,number,ident),'fit':fit,'layer':layer,'media':'ppt/media/'+name}
 
 def workbook(labels,values,unit):
     ns='http://schemas.openxmlformats.org/spreadsheetml/2006/main';sheet=E.Element('{'+ns+'}worksheet',nsmap={None:ns});data=node(sheet,ns,'sheetData')
@@ -185,7 +245,7 @@ def add_bar_chart(workspace,number,labels,values,unit,colors,box,*,font_family,f
     types=parse(scoped(root,'[Content_Types].xml'));node(types.getroot(),CT,'Override',PartName='/ppt/charts/'+stem+'.xml',ContentType='application/vnd.openxmlformats-officedocument.drawingml.chart+xml')
     if not any(x.get('Extension')=='xlsx' for x in types.getroot()):node(types.getroot(),CT,'Default',Extension='xlsx',ContentType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     write(path,tree);write(relpath,rels);write(scoped(root,'[Content_Types].xml'),types)
-    return {'shape_id':ident,'chart':'ppt/charts/'+stem+'.xml','workbook':'ppt/embeddings/'+stem+'.xlsx','unit':unit,'baseline':0}
+    return {**handle(workspace,number,ident),'chart':'ppt/charts/'+stem+'.xml','workbook':'ppt/embeddings/'+stem+'.xlsx','unit':unit,'baseline':0}
 
 
 def main():

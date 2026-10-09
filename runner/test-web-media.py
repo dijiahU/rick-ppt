@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import threading
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -19,6 +20,49 @@ class Policy(unittest.TestCase):
     def setUp(self):
         self.env=patch.dict(os.environ,{},clear=True);self.env.start();self.addCleanup(self.env.stop)
         m.DNS_CACHE.clear()
+
+    def test_same_task_imports_overlap_without_mixing_provenance(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);(root/'media-requests').mkdir();(root/'assets').mkdir()
+            for ident,purpose in [('a'*32,'first'),('b'*32,'second')]:
+                (root/'media-requests'/(ident+'.request.json')).write_text(json.dumps({'url':'https://example.com/'+purpose,'purpose':purpose}))
+            broker=m.WebMediaBroker(root);barrier=threading.Barrier(2)
+            def download(url):
+                barrier.wait(timeout=2);return url.encode(),url,'image/png'
+            def normalize(blob):return {'kind':'image','file':'media.png'},{'media.png':blob}
+            with patch.object(m,'download',side_effect=download),patch.object(m,'normalize',side_effect=normalize):
+                broker.poll();broker.drain(timeout=3)
+            self.assertEqual(len(broker.records),2)
+            for record in broker.records:
+                self.assertEqual((root/'assets'/record['file']).read_bytes(),record['url'].encode())
+                self.assertTrue(record['url'].endswith(record['purpose']))
+            self.assertFalse(broker.pending)
+
+    def test_oversized_image_decoder_returns_actionable_safe_code(self):
+        def docker(command,**kwargs):
+            if 'run' in command:
+                mount=next(x for x in command if x.startswith('type=bind,'))
+                directory=Path(mount.split('source=',1)[1].split(',target=',1)[0])
+                (directory/'error.json').write_text('{"code":"image_dimensions"}')
+                return subprocess.CompletedProcess(command,1,b'private decoder data',b'secret')
+            return subprocess.CompletedProcess(command,0,b'',b'')
+        with patch.object(m.subprocess,'run',side_effect=docker),self.assertRaises(m.MediaError) as error:m.normalize(b'fixture')
+        self.assertEqual(error.exception.code,'image_dimensions')
+        self.assertIn('smaller derivative',str(error.exception));self.assertNotIn('secret',str(error.exception))
+
+    def test_resume_retains_verified_imports_and_byte_budget(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);(root/'assets').mkdir();(root/'media-requests').mkdir()
+            ident='c'*32;name='web-'+ident+'-media.png';body=b'previous verified image'
+            (root/'assets'/name).write_bytes(body)
+            record={'id':ident,'file':name,'sha256':hashlib.sha256(body).hexdigest(),'purpose':'Previous example','url':'https://example.com/previous'}
+            (root/'assets/web-index.json').write_text(json.dumps({'assets':[record]}))
+            broker=m.WebMediaBroker(root)
+            self.assertEqual(broker.records,[record]);self.assertEqual(broker.bytes,len(body));self.assertIn(ident,broker.processed)
+            broker.drain(timeout=0)
+            (root/'assets'/name).write_bytes(b'changed')
+            altered=m.WebMediaBroker(root);self.assertFalse(altered.records);altered.drain(timeout=0)
 
     def test_dns_transient_retry_and_public_cache_are_bounded(self):
         answer=subprocess.CompletedProcess([],0,b'{"Answer":[{"type":1,"data":"93.184.216.34","TTL":30}]}',b'')

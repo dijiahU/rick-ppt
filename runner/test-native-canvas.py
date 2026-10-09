@@ -25,6 +25,35 @@ class NativeCanvasTests(unittest.TestCase):
         with zipfile.ZipFile(PLUGIN/'skills/pptx/assets/blank.pptx') as archive:archive.extractall(self.workspace)
         Image.new('RGB',(200,100),'blue').save(self.root/'image.png')
 
+    def test_borderless_native_groups_accept_handles_and_click_together(self):
+        a=canvas.add_shape(self.workspace,1,(1,1,2,1),geometry='ellipse',fill=None,stroke='202020',line_width=1,name='Observed state')
+        b=canvas.add_image(self.workspace,1,self.root/'image.png',(4,1,2,1),fit='contain',layer='front',task_root=self.root)
+        group=canvas.semantic_group(self.workspace,1,[a,b],name='State and evidence')
+        canvas.reveal(self.workspace,1,[[group]])
+        tree=canvas.parse(self.workspace/'ppt/slides/slide1.xml')
+        self.assertEqual([n.get('spid') for n in tree.iter('{'+canvas.P+'}spTgt')],[str(group['shape_id'])])
+        gp=next(n for n in tree.iter('{'+canvas.P+'}grpSp') if n.find('{'+canvas.P+'}nvGrpSpPr/{'+canvas.P+'}cNvPr').get('id')==str(group['shape_id']))
+        self.assertIsNone(gp.find('{'+canvas.P+'}grpSpPr/{'+canvas.A+'}solidFill'))
+        with self.assertRaisesRegex(ValueError,'Existing timing'):canvas.reveal(self.workspace,1,[[group]])
+
+    def test_connector_handles_preserve_native_endpoint_identity(self):
+        def obj(x):return canvas.add_shape(self.workspace,1,(x,1,2,1),geometry='ellipse',fill=None,stroke='202020',line_width=1,name='State')
+        a,b=obj(1),obj(4)
+        c=canvas.add_connector(self.workspace,1,a,b,points=(3,1.5,4,1.5),start_site=3,end_site=1,ink='202020',line_width=2,arrow='triangle',name='Change')
+        tree=canvas.parse(self.workspace/'ppt/slides/slide1.xml')
+        self.assertEqual(tree.find('.//{'+canvas.A+'}stCxn').get('id'),str(a['shape_id']))
+        self.assertEqual(tree.find('.//{'+canvas.A+'}endCxn').get('id'),str(b['shape_id']))
+        before=(self.workspace/'ppt/slides/slide1.xml').read_bytes()
+        for bad in (None,{'workspace':str(self.workspace),'slide':2,'shape_id':a['shape_id']},999):
+            with self.assertRaises(Exception):canvas.add_connector(self.workspace,1,bad,b,points=(3,1.5,4,1.5),start_site=3,end_site=1,ink='202020',line_width=2,arrow='triangle',name='Invalid')
+            self.assertEqual((self.workspace/'ppt/slides/slide1.xml').read_bytes(),before)
+
+    def test_nonadjacent_group_does_not_reorder_unrelated_objects(self):
+        objs=[canvas.add_shape(self.workspace,1,(x,1,1,1),geometry='ellipse',fill=None,stroke='202020',line_width=1,name='State') for x in (1,3,5)]
+        before=(self.workspace/'ppt/slides/slide1.xml').read_bytes()
+        with self.assertRaisesRegex(Exception,'adjacent'):canvas.semantic_group(self.workspace,1,[objs[0],objs[2]],name='Would reorder')
+        self.assertEqual((self.workspace/'ppt/slides/slide1.xml').read_bytes(),before)
+
     def test_font_measurement_prevents_real_short_box_clipping(self):
         if not FONT.is_file():self.skipTest('Installed Arial font unavailable')
         before=(self.workspace/'ppt/slides/slide1.xml').read_bytes()

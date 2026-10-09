@@ -56,3 +56,38 @@ These are example values/colors only. Position an editable unit/title where it
 belongs and inspect actual chart labels, scales and chart editability after export.
 Existing groups/connectors use native_structure.py. The canvas helper makes no
 claim about aesthetic quality, factual provenance or PowerPoint playback.
+
+## Safe object handles and semantic groups
+
+Python callers can use add_text/add_image/add_bar_chart and add_shape; each returns
+workspace, slide and shape_id. Feed those handles directly to add_connector,
+semantic_group and reveal. Cross-workspace/page handles, missing targets and
+non-adjacent groups are rejected before writing. Grouping preserves coordinates,
+member IDs and drawing order; it adds no visible frame. Existing source timing is
+preserved unless replacement is explicitly authorized. Keep one author writing
+the current page; helpers do not coordinate competing direct XML editors.
+
+add_shape requires explicit geometry, fill (or None), stroke (or None), line_width
+and name. It does not assign a card style. add_connector requires actual endpoints,
+chosen connection sites, ink/width, arrow and explicit start/end coordinates;
+inspect routing and labels in production renders and target PowerPoint. reveal
+accepts lists of handles per meaningful click, including separate objects sharing
+a click without changing their drawing order.
+
+```python
+# Import native_canvas from the exposed plugin scripts directory.
+label = canvas.add_text(workspace, 1, actual_text, selected_font_file, chosen_size,
+                        chosen_ink, x=x, y=y, width=w, max_height=h)
+detail = canvas.add_image(workspace, 1, selected_asset, detail_box,
+                          fit='contain', layer='front', task_root=task_root)
+# Adjacent objects only; name expresses what the viewer learns on this click.
+unit = canvas.semantic_group(workspace, 1, [label, detail], name='Observed result')
+canvas.reveal(workspace, 1, [[unit]])
+```
+
+Measurements use host fonts and are estimates. render-environment.json records
+production renderer version, requested/resolved font families and input SHA when
+the host renderer is used. A Mac font file need not exist inside the Linux renderer;
+check substitutions and actual output instead of treating font metrics as proof.
+Do not install fonts/tools in task jobs or claim PowerPoint compatibility from a
+LibreOffice preview. Test actual exported playback when the target player is available.

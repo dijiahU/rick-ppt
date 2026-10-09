@@ -1,6 +1,6 @@
 // Pure data/SQL tests: no production requests and no user quota consumed.
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,existsSync} from 'node:fs';
 import ts from 'typescript';
 import {DatabaseSync} from 'node:sqlite';
 async function moduleFrom(path){const source=readFileSync(new URL(path,import.meta.url),'utf8');return import('data:text/javascript;base64,'+Buffer.from(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText).toString('base64'));}
@@ -13,9 +13,15 @@ const db=new DatabaseSync(':memory:');
 db.exec('CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,request_key TEXT,title TEXT,brief TEXT,pages INTEGER,style TEXT,status TEXT,created_at INTEGER,updated_at INTEGER,lease TEXT,UNIQUE(user_id,request_key));');
 // New migration preserves existing legacy rows as NULL, not an invented language.
 db.exec("INSERT INTO jobs VALUES('legacy','old','old','原主题','原内容',5,'test','complete',0,0,NULL)");
-db.exec(readFileSync(new URL('../drizzle/0002_wakeful_lucky_pierre.sql',import.meta.url),'utf8'));
-db.exec(readFileSync(new URL('../drizzle/0003_conscious_bug.sql',import.meta.url),'utf8'));
+const languageMigration=new URL('../drizzle/0002_wakeful_lucky_pierre.sql',import.meta.url);
+// Sites source has a squashed initial schema; extend this legacy in-memory fixture
+// directly there, and exercise the actual incremental migration where retained.
+db.exec(existsSync(languageMigration)?readFileSync(languageMigration,'utf8'):'ALTER TABLE jobs ADD language TEXT');
+const attachmentMigration=new URL('../drizzle/0003_conscious_bug.sql',import.meta.url);
+db.exec(existsSync(attachmentMigration)?readFileSync(attachmentMigration,'utf8'):'ALTER TABLE jobs ADD attachments TEXT');
 assert.equal(db.prepare("SELECT language FROM jobs WHERE id='legacy'").get().language,null);
+// Queue recovery returns summary; mirror that production column in the fixture.
+db.exec('ALTER TABLE jobs ADD COLUMN summary TEXT');
 let i=0;for(const language of Object.keys(languages)){
  const id=String(++i);const args=[id,'test',id,'中文主题','中文需求内容',5,'Designer choice',language,null,i,i,0,'test'];
  assert.equal(db.prepare(INSERT_JOB).get(...args).id,id);

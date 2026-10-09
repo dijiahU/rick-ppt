@@ -126,9 +126,14 @@ def prepare(cfg):
                 use='Choose audience strategy and actual canvas composition. Record work/title/creator/source/inspection/observed/borrowed/page applications; write applied references into final slide notes. Choice counts do not establish design quality.')
             capabilities['native_canvas']={'guide':str(skill/'references/native-canvas.md'),
                 'helper':str(skill/'scripts/native_canvas.py'),
-                'use':'Measure text using an installed font; create editable type without default card backgrounds; crop and layer actual task images; create editable one-unit bars. Choose typography/color/geometry yourself and inspect the actual render.'}
+                'use':'Measure text using an installed font; create editable type without default card backgrounds; crop and layer actual task images; create editable one-unit bars; use returned workspace/slide/object handles for explicit shapes, anchored connections, borderless semantic grouping and click reveals. Choose typography/color/geometry yourself and inspect the actual render.'}
         (job/'capabilities.json').write_text(json.dumps(capabilities,indent=2))
     (job/'fonts.conf').write_text('<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig><dir>/System/Library/Fonts</dir><dir>/Library/Fonts</dir><cachedir>'+str(job/'font-cache')+'</cachedir></fontconfig>')
+    font_catalog=ROOT/'render-fonts.local.json'
+    if font_catalog.is_file():
+        capabilities=json.loads((job/'capabilities.json').read_text())
+        capabilities['native_renderer_fonts']=json.loads(font_catalog.read_text())
+        (job/'capabilities.json').write_text(json.dumps(capabilities,ensure_ascii=False,indent=2))
     return job
 
 def sandbox(cfg,job,command):
@@ -163,14 +168,27 @@ def _render_requests_fd(job,qfd,trajectory=None,tick=None):
             if not source.is_relative_to(job) or not destination.is_relative_to(job):raise ValueError('Path outside task')
             if source.suffix!='.pptx' or not source.is_file() or source.stat().st_size>30*1024*1024:raise ValueError('Invalid PPTX')
             if not destination.is_dir():raise ValueError('Invalid output directory')
-            source_arg='/work/'+source.relative_to(job).as_posix()
-            output_arg='/work/'+destination.relative_to(job).as_posix()
-            command=['/usr/local/bin/docker','run','--rm','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','128','--memory','2g','--cpus','2','--user',f'{os.getuid()}:{os.getgid()}','--tmpfs','/tmp:rw,nosuid,nodev,size=512m','--mount',f'type=bind,source={job},target=/work','pptx-lab-renderer:1','-env:UserInstallation=file:///tmp/lo-profile','--headless','--convert-to','pdf:impress_pdf_Export:{"ExportHiddenSlides":{"type":"boolean","value":"true"}}','--outdir',output_arg,source_arg]
+            from render_inputs import render_input,publish_pdf
+            from progress import read_scoped
+            frozen_bytes,render_environment=render_input(job,source)
+            input_stage=tempfile.TemporaryDirectory(prefix='pptx-render-input-')
+            input_dir=Path(input_stage.name)/'input';input_dir.mkdir()
+            output_dir=Path(input_stage.name)/'output';output_dir.mkdir()
+            frozen_source=input_dir/source.name;frozen_source.write_bytes(frozen_bytes)
+            source_arg='/input/'+source.name
+            output_arg='/output'
+            command=['/usr/local/bin/docker','run','--rm','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','128','--memory','2g','--cpus','2','--user',f'{os.getuid()}:{os.getgid()}','--tmpfs','/tmp:rw,nosuid,nodev,size=512m',
+                '--mount',f'type=bind,source={input_dir},target=/input,readonly',
+                '--mount',f'type=bind,source={output_dir},target=/output','--entrypoint','/bin/sh','pptx-lab-renderer:1','-c',
+                'src=$1; out=$2; shift 2; printf "PPTX_RENDER_VERSION\\n"; /usr/bin/libreoffice --version; printf "PPTX_FONT_MATCHES\\n"; for font do fc-match -f "%{family}\\n" -- "$font"; done; printf "PPTX_RENDER_START\\n"; exec /usr/bin/libreoffice -env:UserInstallation=file:///tmp/lo-profile --headless --convert-to \'pdf:impress_pdf_Export:{"ExportHiddenSlides":{"type":"boolean","value":"true"}}\' --outdir "$out" "$src"',
+                'render',source_arg,output_arg,*render_environment['requested_fonts']]
             capture(trajectory,'emit','render.request',{'request_id':identifier,'command':command,'args':args})
-            capture(trajectory,'artifact_path',job,source,'render-input',{'request_id':identifier})
+            capture(trajectory,'artifact',frozen_bytes,source.name,'render-input',{'request_id':identifier,**render_environment})
             container='pptx-lab-render-'+uuid.uuid4().hex
             command[3:3]=['--name',container]
-            process=subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+            try:process=subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+            except BaseException:
+                input_stage.cleanup();raise
             deadline=time.monotonic()+70
             try:
                 while True:
@@ -181,15 +199,27 @@ def _render_requests_fd(job,qfd,trajectory=None,tick=None):
                         break
                     except subprocess.TimeoutExpired:pass
                 converted=subprocess.CompletedProcess(command,process.returncode,stdout,stderr)
+                if converted.returncode==0:
+                    pdf=read_scoped(output_dir,source.stem+'.pdf',60*1024*1024)
+                    if not pdf.startswith(b'%PDF-'):raise ValueError('Renderer produced invalid PDF')
+                    publish_pdf(job,destination,source.stem+'.pdf',pdf)
             finally:
                 if process.poll() is None:
                     process.kill();process.communicate()
                     # Only the named ephemeral container created by this request.
                     subprocess.run(['/usr/local/bin/docker','rm','-f',container],capture_output=True,timeout=10)
+                input_stage.cleanup()
             capture(trajectory,'emit','render.result',{'request_id':identifier,'returncode':converted.returncode,'stdout':converted.stdout,'stderr':converted.stderr})
             if converted.returncode==0:
+                lines=converted.stdout.splitlines()
+                try:
+                    marker=lines.index('PPTX_FONT_MATCHES');end=lines.index('PPTX_RENDER_START')
+                    render_environment['resolved_fonts']=dict(zip(render_environment['requested_fonts'],lines[marker+1:end]))
+                    render_environment['renderer_version']=lines[lines.index('PPTX_RENDER_VERSION')+1]
+                except (ValueError,IndexError):render_environment['font_diagnostics']='unavailable'
+                capture(trajectory,'emit','render.environment',render_environment)
                 capture(trajectory,'artifact_path',job,destination/(source.stem+'.pdf'),'render-output',{'request_id':identifier})
-            result={'returncode':converted.returncode,'stdout':converted.stdout[-2000:],'stderr':converted.stderr[-2000:]}
+            result={'returncode':converted.returncode,'stdout':converted.stdout[-2000:],'stderr':converted.stderr[-2000:],'environment':render_environment}
         except Exception as error:result['stderr']=f'Isolated render failed: {type(error).__name__}'
         temporary=uuid.uuid4().hex+'.host-pending'
         fd=os.open(temporary,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=qfd)

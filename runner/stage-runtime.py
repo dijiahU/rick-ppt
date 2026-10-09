@@ -25,7 +25,7 @@ required=('skills/pptx/SKILL.md','skills/pptx/references/content.md','skills/ppt
 if (source/'skills/pptx/assets/workflow-choices.json').is_file():
     required+=('skills/pptx/assets/workflow-choices.json','skills/pptx/references/workflow-branches.md','skills/pptx/scripts/workflow_decisions.py')
     if json.loads((source/'skills/pptx/assets/workflow-choices.json').read_text())['version']>=3:
-        required+=('skills/pptx/references/native-canvas.md','skills/pptx/references/animations.md','skills/pptx/scripts/native_canvas.py','skills/pptx/scripts/design_references.py')
+        required+=('skills/pptx/references/native-canvas.md','skills/pptx/references/content-led-composition.md','skills/pptx/references/animations.md','skills/pptx/scripts/native_canvas.py','skills/pptx/scripts/design_references.py')
 if not (source/'skills/pptx/assets/single-file-policy.json').is_file():
     required+=('skills/pptx/references/interactive-authoring.md','runtime/dist/preview.html','runtime/dist/content.html','runtime/config.json','runtime/manifests/manifest.addin.xml')
 for relative in required:
@@ -35,6 +35,9 @@ cfg['blank']=str(target/'skills/pptx/assets/blank.pptx')
 if args.python:cfg['python']=str(args.python.absolute())
 cfg.setdefault('job_timeout_seconds',5400)
 runner.self_test(cfg)
+from render_inputs import renderer_font_catalog
+fonts=renderer_font_catalog()
+(root/'render-fonts.local.json').write_text(json.dumps(fonts,ensure_ascii=False,indent=2))
 settings=root/'settings.local.json'
 backup=root/('settings-before-'+version+'.local.json')
 if not backup.exists():

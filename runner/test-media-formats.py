@@ -22,9 +22,17 @@ for bad in (b'<html>not an image</html>',b'<svg xmlns="http://www.w3.org/2000/sv
     except ValueError:pass
     else:raise AssertionError('Unsafe content accepted')
 print('PASS corrupt/active/external resources rejected',flush=True)
+# A source-sized 18 MP photograph must get a specific limit diagnostic, not a
+# generic codec error; do not load it on the unrestricted host decoder path.
+b=io.BytesIO();Image.new('RGB',(5184,3456),'gray').save(b,format='JPEG')
+from web_media import MediaError
+try:normalize(b.getvalue())
+except MediaError as error:assert error.code=='image_dimensions',error.code
+else:raise AssertionError('Oversized source accepted')
+print('PASS 18 MP source receives same-source derivative diagnostic',flush=True)
 with tempfile.TemporaryDirectory(prefix='pptx-media-fixtures-') as directory:
     root=Path(directory)
-    docker=['/usr/local/bin/docker','run','--rm','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','128','--memory','1g','--cpus','1','--user',f'{os.getuid()}:{os.getgid()}','--mount',f'type=bind,source={root},target=/work','--entrypoint','ffmpeg','pptx-lab-media:1','-v','error','-y']
+    docker=['/usr/local/bin/docker','run','--rm','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','128','--memory','1g','--cpus','1','--user',f'{os.getuid()}:{os.getgid()}','--mount',f'type=bind,source={root},target=/work','--entrypoint','ffmpeg','pptx-lab-media:2','-v','error','-y']
     for fmt,extra in [('webm',['-c:v','libvpx-vp9']),('mov',['-c:v','libx264']),('avi',['-c:v','mpeg4'])]:
         subprocess.run(docker+['-f','lavfi','-i','color=c=blue:s=160x90:d=1','-threads','1',*extra,'/work/fixture.'+fmt],check=True,timeout=30)
         meta,files=normalize((root/('fixture.'+fmt)).read_bytes());assert meta['kind']=='video';print('PASS',fmt,'→ MP4',flush=True)

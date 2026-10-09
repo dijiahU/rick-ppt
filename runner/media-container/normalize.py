@@ -90,4 +90,12 @@ def main():
 if __name__=='__main__':
     try:main()
     except Exception as error:
-        print(type(error).__name__+': '+str(error)[:200]);raise SystemExit(1)
+        message=str(error)
+        if isinstance(error,(Image.DecompressionBombError,Image.DecompressionBombWarning)) or 'megapixels' in message or 'frame too large' in message:code='image_dimensions'
+        elif 'frames' in message or 'Animated non-GIF' in message:code='image_frames'
+        elif 'SVG' in message and any(s in message for s in ('forbidden','resource')):code='unsafe_svg'
+        elif 'Unsupported' in message:code='unsupported_format'
+        elif 'exceeds limit' in message or 'exceeds 30 MB' in message:code='output_limit'
+        else:code='invalid_media'
+        (ROOT/'error.json').write_text(json.dumps({'code':code}))
+        print(code);raise SystemExit(1)

@@ -154,3 +154,13 @@ Fresh tasks require v3; historical v1/v2 records remain readable through protect
 recovery/explicit --allow-legacy without inventing provenance or modifying old bytes.
 The existing visual review evaluates audience fit, actual sequence and reference
 transfer; neither decision counts nor the artist register establish design quality.
+
+## Implementation within the chosen branch
+
+Use content-led-composition.md while planning and authoring. Existing role and
+visual_action carry the audience question and concrete focus, proportions, reading
+path and enclosure meaning; source notes carry entry/click/final groups. No new
+schema or admission gate is needed. Form/composition IDs must resolve into actual
+content-specific operations before a reusable object helper is written. At natural
+section milestones inspect the already authored sequence, including repeated body
+pages, using saved previews. Preserve comparable encoding and source/edit scope.

@@ -216,14 +216,14 @@ class Trajectory(ArtifactArchive):
         except (OSError,subprocess.SubprocessError):pass
         if self.cfg.get('plugin'):self.snapshot(Path(self.cfg['plugin']),'runtime.plugin')
         host=Path(__file__).resolve().parent
-        for name in ('runner.py','workflow.py','trajectory.py','trajectory_artifacts.py','trajectory_replay.py','assets.py','web_media.py','progress.py','outline.py','attachments.py','office_policy.py','resilience.py','render-container/Dockerfile','media-container/Dockerfile'):
+        for name in ('runner.py','workflow.py','trajectory.py','trajectory_artifacts.py','trajectory_replay.py','assets.py','web_media.py','render_inputs.py','soffice-proxy.py','progress.py','outline.py','attachments.py','office_policy.py','resilience.py','render-container/Dockerfile','media-container/Dockerfile','media-container/normalize.py'):
             if (host/name).is_file():self.artifact_path(host,Path(name),'runtime-source')
         packages={}
         for name in ('lxml','Pillow'):
             try:packages[name]=importlib.metadata.version(name)
             except importlib.metadata.PackageNotFoundError:packages[name]=None
         images={}
-        for name in ('pptx-lab-renderer:1','pptx-lab-media:1'):
+        for name in ('pptx-lab-renderer:1','pptx-lab-media:2'):
             try:
                 result=subprocess.run(['/usr/local/bin/docker','image','inspect','--format','{{.Id}}',name],capture_output=True,text=True,timeout=3)
                 images[name]=result.stdout.strip() if result.returncode==0 else None

@@ -19,7 +19,7 @@ def language_instruction(task):
     language=presentation_request(task)['language']
     if language is None:
         return 'This legacy task has no saved language choice. Follow an explicit requested output language, otherwise use the main language of its topic/brief; do not impose English retroactively.'
-    return (f'The user selected {LANGUAGES[language]} ({language}) as the presentation language. '
+    return (f'The submitted presentation language is {LANGUAGES[language]} ({language}). '
             'Write all audience-facing slide titles, body text, chart labels, captions, conclusions and speaker notes in that language, '
             'even when the topic or brief is written in another language. This saved selection governs output language. '
             'Translate the subject faithfully; preserve proper names, product names, code and original source titles where needed. '

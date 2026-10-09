@@ -38,6 +38,16 @@ direct-file URL; a size or partial-download failure needs an appropriate smaller
 source. Record a DNS/proxy/TLS outage and follow the selected asset branch's
 alternative or unmet-requirement action without inventing documentary evidence.
 
+The broker accepts two independent import requests concurrently per task; page
+authoring stays sequential. Launch independent proxy commands concurrently when
+both assets are already chosen, then inspect both replies. All requests retain
+their own provenance and task-wide import/byte limits. Decoder failures distinguish
+image_dimensions, image_frames, unsupported_format, unsafe_svg, invalid_media,
+output_limit and decode_timeout; raw decoder output is not exposed. An oversized
+original needs a permitted smaller derivative from that same source, preserving
+credit/identity and the intended explanatory detail. Do not repeatedly download
+the same over-limit bytes or loosen decoder/network limits.
+
 For original concept imagery, use the exposed built-in generator with
 imagegen-skill.md when that fits the task; it does not require a failed search first.
 Inspect the scoped file in assets/index.json and distinguish illustration from

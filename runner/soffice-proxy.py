@@ -20,6 +20,9 @@ deadline=time.monotonic()+85
 while time.monotonic()<deadline:
     if reply.is_file():
         result=json.loads(reply.read_text())
+        if result.get('environment') and '--outdir' in sys.argv:
+            destination=Path(sys.argv[sys.argv.index('--outdir')+1])
+            (destination/'render-environment.json').write_text(json.dumps(result['environment']))
         print(result.get('stdout',''),end='')
         print(result.get('stderr',''),end='',file=sys.stderr)
         raise SystemExit(result['returncode'])

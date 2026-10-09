@@ -17,6 +17,7 @@ import time
 import threading
 from urllib.parse import urlsplit,urlunsplit,urljoin,urlencode
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from progress import read_scoped,public_text,public_url
 from trajectory import record as capture
 import mimetypes
@@ -171,10 +172,26 @@ def normalize(data):
         command=['/usr/local/bin/docker','run','--name',container,'--rm','--network','none','--read-only','--cap-drop','ALL',
             '--security-opt','no-new-privileges','--pids-limit','128','--memory','1g','--cpus','1',
             '--user',f'{os.getuid()}:{os.getgid()}','--tmpfs','/tmp:rw,nosuid,nodev,size=128m',
-            '--mount',f'type=bind,source={root},target=/work','pptx-lab-media:1']
-        try:run=subprocess.run(command,capture_output=True,timeout=130)
+            '--mount',f'type=bind,source={root},target=/work','pptx-lab-media:2']
+        try:
+            try:run=subprocess.run(command,capture_output=True,timeout=130)
+            except subprocess.TimeoutExpired:raise MediaError('decode_timeout','Media validation/conversion timed out; use a smaller source derivative') from None
         finally:subprocess.run(['/usr/local/bin/docker','rm','-f',container],capture_output=True,timeout=15)
-        if run.returncode:raise ValueError('Media format/codec/limits could not be validated or converted')
+        if run.returncode:
+            # Structured allowlisted diagnostics only; never expose raw decoder output.
+            failure={}
+            try:failure=json.loads(read_scoped(root,Path('error.json'),4096))
+            except (ValueError,OSError):pass
+            code=failure.get('code')
+            if code not in ('image_dimensions','image_frames','unsupported_format','unsafe_svg','invalid_media','output_limit'):code='decode_failed'
+            messages={'image_dimensions':'Image exceeds the 16 megapixel decode limit; import a smaller derivative from the same source',
+                'image_frames':'Animation exceeds supported limits; select a suitable original GIF or clip',
+                'unsafe_svg':'Active or external SVG resources are forbidden',
+                'unsupported_format':'Media format is unsupported; choose a permitted source format',
+                'output_limit':'Converted media exceeds the size limit; use a smaller source',
+                'invalid_media':'Media could not be validated; check the direct file URL',
+                'decode_failed':'Media decoder failed; check format or use a smaller source derivative'}
+            raise MediaError(code,messages[code],max_image_pixels=16777216,max_download_bytes=MAX_DOWNLOAD)
         result=json.loads(read_scoped(root,Path('result.json'),4096))
         if result.get('kind') not in ('image','gif','video','audio'):raise ValueError('Invalid decoded media')
         if result.get('file') not in ('media.png','media.gif','media.mp4','media.mp3'):raise ValueError('Unexpected decoded file')
@@ -187,22 +204,41 @@ class WebMediaBroker:
         self.job=job;self.reporter=reporter;self.processed=set();self.records=[];self.bytes=0
         self.worker=None;self.result=None;self.current=None
         self.trajectory=trajectory
+        self.pool=ThreadPoolExecutor(max_workers=2,thread_name_prefix="media-import")
+        self.pending={}
+        # Resume imports without replacing earlier verified media/provenance.
+        try:
+            saved=json.loads(read_scoped(self.job,'assets/web-index.json',256*1024))
+            for record in saved.get('assets',[])[:16]:
+                ident=record.get('id');name=record.get('file')
+                if not isinstance(ident,str) or not re.fullmatch(r'[0-9a-f]{32}',ident):continue
+                if not isinstance(name,str) or not re.fullmatch('web-'+ident+r'-media\.(png|gif|mp4|mp3)',name):continue
+                body=read_scoped(self.job,Path('assets')/name,28*1024*1024)
+                if hashlib.sha256(body).hexdigest()!=record.get('sha256'):continue
+                total=len(body)
+                if record.get('poster')=='web-'+ident+'-poster.png':total+=len(read_scoped(self.job,Path('assets')/record['poster'],12*1024*1024))
+                self.records.append(record);self.bytes+=total;self.processed.add(ident)
+        except (OSError,ValueError,AttributeError,TypeError):pass
 
     def fetch(self,data):
+        # Compatibility for callers inspecting a single synchronous import.
+        self.result=self._fetch(data,self.current)
+
+    def _fetch(self,data,identifier):
         try:
             if len(self.records)>=16 or len(self.processed)>32:raise ValueError('Per-task media import limit reached')
             if not isinstance(data.get('purpose'),str) or not data['purpose'].strip():raise ValueError('Asset purpose required')
             blob,final_url,mime=download(data.get('url'))
-            source={'request_id':self.current,'requested_url':data.get('url'),'final_url':final_url,
+            source={'request_id':identifier,'requested_url':data.get('url'),'final_url':final_url,
                     'source_page':data.get('source_page'),'purpose':data.get('purpose'),'content_type':mime}
             capture(self.trajectory,'artifact',blob,'original'+(mimetypes.guess_extension(mime) or '.bin'),'download-originals',source)
             metadata,files=normalize(blob)
             for name,body in files.items():capture(self.trajectory,'artifact',body,name,'download-converted',{**source,'source_sha256':hashlib.sha256(blob).hexdigest(),'conversion':metadata})
             total=sum(map(len,files.values()))
             if self.bytes+total>60*1024*1024:raise ValueError('Task media total exceeds 60 MB')
-            self.result=(metadata,files,dict(url=final_url,sourcePage=public_url(data.get('source_page')),purpose=public_text(data['purpose']),sourceSha256=hashlib.sha256(blob).hexdigest(),contentType=mime))
-        except MediaError as error:self.result={'ok':False,'error':str(error),'error_code':error.code,'details':error.details}
-        except Exception as error:self.result={'ok':False,'error':public_text(str(error)) or type(error).__name__}
+            return (metadata,files,dict(url=final_url,sourcePage=public_url(data.get('source_page')),purpose=public_text(data['purpose']),sourceSha256=hashlib.sha256(blob).hexdigest(),contentType=mime))
+        except MediaError as error:return {'ok':False,'error':str(error),'error_code':error.code,'details':error.details}
+        except Exception as error:return {'ok':False,'error':public_text(str(error)) or type(error).__name__}
 
     @staticmethod
     def publish(fd,name,body):
@@ -212,52 +248,54 @@ class WebMediaBroker:
         os.replace(pending,name,src_dir_fd=fd,dst_dir_fd=fd)
 
     def poll(self,start_new=True):
-        import threading
         root=os.open(self.job,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
         try:
             qfd=os.open('media-requests',os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=root)
             try:
-                if self.worker:
-                    if self.worker.is_alive():return
-                    self.worker.join();self.worker=None;result=self.result
+                for ident,future in list(self.pending.items()):
+                    if not future.done():continue
+                    result=future.result();del self.pending[ident]
                     if isinstance(result,tuple):
                         metadata,files,origin=result
-                        afd=os.open('assets',os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=root)
-                        try:
-                            for name,body in files.items():self.publish(afd,'web-'+self.current+'-'+name,body)
-                            record={**metadata,**origin,'id':self.current,'file':'web-'+self.current+'-'+metadata['file'],'sha256':hashlib.sha256(files[metadata['file']]).hexdigest()}
-                            if metadata.get('poster'):record['poster']='web-'+self.current+'-poster.png'
-                            self.records.append(record);self.bytes+=sum(map(len,files.values()))
-                            self.publish(afd,'web-index.json',json.dumps({'assets':self.records},ensure_ascii=False).encode())
-                        finally:os.close(afd)
-                        result={'ok':True,**record,'path':str(self.job/'assets'/record['file'])}
-                        if self.reporter:self.reporter.event('edited','Imported '+metadata['kind']+': '+origin['purpose'],url=origin['sourcePage'] or origin['url'],state='completed',category='media')
-                    elif self.reporter:self.reporter.event('working',result.get('error','Media import failed'),state='failed',category='media')
-                    self.publish(qfd,self.current+'.reply.json',json.dumps(result,ensure_ascii=False).encode())
-                    self.current=None;self.result=None
-                if not start_new or len(self.processed)>=32:return
+                        total=sum(map(len,files.values()))
+                        if self.bytes+total>60*1024*1024 or len(self.records)>=16:
+                            result={'ok':False,'error':'Task media size/import limit reached','error_code':'task_media_limit'}
+                        else:
+                            afd=os.open('assets',os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=root)
+                            try:
+                                for name,body in files.items():self.publish(afd,'web-'+ident+'-'+name,body)
+                                record={**metadata,**origin,'id':ident,'file':'web-'+ident+'-'+metadata['file'],'sha256':hashlib.sha256(files[metadata['file']]).hexdigest()}
+                                if metadata.get('poster'):record['poster']='web-'+ident+'-poster.png'
+                                self.records.append(record);self.bytes+=total
+                                self.publish(afd,'web-index.json',json.dumps({'assets':self.records},ensure_ascii=False).encode())
+                            finally:os.close(afd)
+                            result={'ok':True,**record,'path':str(self.job/'assets'/record['file'])}
+                            if self.reporter:self.reporter.event('edited','Imported '+metadata['kind']+': '+origin['purpose'],url=origin['sourcePage'] or origin['url'],state='completed',category='media')
+                    if not result.get('ok') and self.reporter:self.reporter.event('working',result.get('error','Media import failed'),state='failed',category='media')
+                    self.publish(qfd,ident+'.reply.json',json.dumps(result,ensure_ascii=False).encode())
+                if not start_new:return
                 for name in sorted(os.listdir(qfd))[:1000]:
+                    if len(self.pending)>=2 or len(self.processed)>=32:break
                     if not re.fullmatch(r'[0-9a-f]{32}\.request\.json',name):continue
                     ident=name.split('.')[0]
-                    if ident in self.processed:continue
-                    if ident+'.reply.json' in os.listdir(qfd):continue
+                    if ident in self.processed or ident+'.reply.json' in os.listdir(qfd):continue
                     self.processed.add(ident)
                     try:
                         data=json.loads(read_scoped(self.job,Path('media-requests')/name,8192))
                         if not isinstance(data,dict):raise ValueError('Invalid request')
                     except (ValueError,OSError):
                         self.publish(qfd,ident+'.reply.json',b'{"ok":false,"error":"Invalid request file"}');continue
-                    self.current=ident;self.worker=threading.Thread(target=self.fetch,args=(data,),daemon=True,name='media-import')
                     capture(self.trajectory,'emit','media.request',{'request_id':ident,'request':data})
                     if self.reporter:self.reporter.event('working','Download media: '+public_text(data.get('purpose')),url=data.get('url'),state='started',category='media')
-                    self.worker.start();break
+                    self.pending[ident]=self.pool.submit(self._fetch,data,ident)
             finally:os.close(qfd)
         finally:os.close(root)
 
     def drain(self,timeout=280):
         deadline=time.monotonic()+max(0,timeout)
-        while self.worker is not None and time.monotonic()<deadline:
+        while self.pending and time.monotonic()<deadline:
             self.poll(start_new=False)
-            if self.worker is not None:time.sleep(.2)
-        if self.worker is not None:
-            capture(self.trajectory,'gap','unfinished_media_import',{'request_id':self.current})
+            if self.pending:time.sleep(.2)
+        if self.pending:
+            for ident in self.pending:capture(self.trajectory,'gap','unfinished_media_import',{'request_id':ident})
+        self.pool.shutdown(wait=False,cancel_futures=True)

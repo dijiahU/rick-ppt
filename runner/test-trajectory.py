@@ -125,7 +125,7 @@ open(sys.argv[sys.argv.index('--output-last-message')+1],'w').write('Actual outp
         import runner
         import workflow
         runner_root=self.root/'runner';runner_root.mkdir()
-        reporter=SimpleNamespace(event=lambda *a:None,flush=lambda **k:None)
+        reporter=SimpleNamespace(event=lambda *a:None,flush=lambda **k:None,finish_drafts=lambda **k:None)
         lease=SimpleNamespace(check=lambda:None,finish=lambda:None)
         with patch.object(runner,'ROOT',runner_root),patch.object(runner,'prepare',return_value=self.job),\
              patch.object(runner,'request',return_value={'ok':True}),patch.object(runner,'Reporter',return_value=reporter),\

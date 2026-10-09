@@ -182,7 +182,7 @@ An unmet essential requirement is reported as a gap, not a verified completion.
 The capability manifest distinguishes search, actual acquisition, native embedding and playback.
 Public HTTPS images/GIF/video/audio can now be imported with the task-local web-media-proxy.py.
 See WEB-MEDIA.md for formats, explicit conversion/fallback, limits and native embedding.
-Build the isolated decoder with `docker build -t pptx-lab-media:1 media-container`.
+Build the isolated decoder with `docker build -t pptx-lab-media:2 media-container`.
 The host validates and IP-pins each redirect, uses a configured unauthenticated
 loopback HTTP proxy when present, and decodes media in a no-network container.
 Proxy transport resolves through a fixed public HTTPS DNS service and pins the
@@ -409,3 +409,33 @@ restores one file. Existing destinations, missing originals, corrupt hashes and
 unsafe paths are rejected. Byte restoration is not deterministic model rerunning:
 unexposed provider context/results and transient writes inside a tool call remain
 outside the capture boundary. `test-trajectory-artifacts.py` covers these guarantees.
+
+
+## Content-led composition release
+
+Version 0.1.0+codex.20261009composition2 keeps the existing four stages, v3 decision
+contract, sequential pages, separate bounded reviews and reviewed-hash single-PPTX
+delivery. role/visual_action resolve audience question, canvas focus/proportions,
+reading path, enclosure meaning and native pacing. Saved previews are compared at
+natural section milestones; explicit body-page variation requests are checked even
+when covers/photos interrupt a repeated pattern. Artwork records retain inspected
+work, borrowed principle and actual page application. No new gate or style score.
+
+native_canvas returns workspace/slide/object handles, supports explicit shapes,
+anchored connectors, borderless semantic groups and reveal steps, and reports
+measured required text height. Two media requests may run concurrently per task
+with serialized publication and existing per-task limits. Decoder v2 returns safe
+error codes; keep v1 available for existing workers. Oversized originals need a
+same-source derivative, not raised decode limits.
+
+Native rendering freezes scoped input bytes into a private read-only mount; a private
+output mount is writable and its verified PDF is atomically published into the task. Trace input bytes and
+render metadata are linked by SHA. Runtime staging records the container font
+catalog; render reports and review packets include version and Fontconfig family
+candidates. Per-glyph fallback and actual PowerPoint playback remain distinct
+verification tasks. Do not assume host text metrics equal the container renderer.
+
+Before submitting a new request, the form displays the resolved PPT language and
+whether it came from a manual choice, the brief or the default. Manual selection
+wins; the final literal is saved and shared by author and reviewers. This changes
+no saved historical task or quota/schema. UI updates require normal Sites publishing.

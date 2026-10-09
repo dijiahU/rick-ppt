@@ -145,6 +145,7 @@ def simple_appear_steps(tree):
 
 
 def state_previews(root,parts,destination):
+    destination=Path(destination).resolve()
     plans={};skipped=[]
     for number,part in enumerate(parts,1):
         steps=simple_appear_steps(parse(root/part))
@@ -177,7 +178,7 @@ def state_previews(root,parts,destination):
 
 def collect(workspace, render, destination):
     ws=select(workspace); root=ws.root
-    destination=Path(destination); destination.mkdir(parents=True,exist_ok=True)
+    destination=Path(destination).resolve(); destination.mkdir(parents=True,exist_ok=True)
     pages=slide_parts(root)
     if len(render['pages'])!=len(pages):raise ValueError('Render/page count mismatch')
     records=[];tiles=[]

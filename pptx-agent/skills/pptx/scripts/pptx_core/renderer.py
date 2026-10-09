@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 import shutil
 import subprocess
 import sys
@@ -83,8 +84,13 @@ def render_package(pptx, destination, slide=None, expected_pages=None):
             shutil.move(path, dest)
             output.append(str(dest))
         shutil.move(pdf, final / "deck.pdf")
+        environment_path=stage/'render-environment.json'
+        environment=json.loads(environment_path.read_text()) if environment_path.is_file() else {
+            'renderer_executable':str(soffice),'platform':sys.platform,'fontconfig':bool(font_environment(stage,soffice).get('FONTCONFIG_FILE')),
+            'powerpoint_playback_verified':False}
+        (final/'render-environment.json').write_text(json.dumps(environment,ensure_ascii=False,indent=2))
     return {"at": now(), "source_hash": sha256(pptx), "pages": output,
-            "pdf": str(final / "deck.pdf"), "renderer": "LibreOffice", "ok": True}
+            "pdf": str(final / "deck.pdf"), "renderer": "LibreOffice", "environment":environment,"ok": True}
 
 
 def render(ws, slide=None):
