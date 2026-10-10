@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rick PPTX"
+  short_description: "Research, design and build editable native PowerPoint decks"
+  default_prompt: "Use $rick-pptx to create or edit a standalone PowerPoint for my purpose and audience."

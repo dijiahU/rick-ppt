@@ -12,6 +12,14 @@
 
 插件源码位于 **[pptx-agent/](pptx-agent/)**，完整说明见 **[插件 README](pptx-agent/README.md)**，主流程见 **[SKILL.md](pptx-agent/skills/pptx/SKILL.md)**。
 
+## 独立 Skill
+
+已打包为 **[rick-pptx](skills/rick-pptx/SKILL.md)**，完整文件位于 `skills/rick-pptx/`，可直接下载 **[安装包](releases/rick-pptx.zip)**。解压后将 `rick-pptx` 文件夹放入支持 SKILL.md 的宿主技能目录；在 Codex 中可用 `$rick-pptx` 调用。
+
+Skill 包含原生制作工具、设计分支、参考作品记录、动画和审核流程。作者环境需要 Python 3.11+、lxml、Pillow、jsonschema、LibreOffice 和 Poppler；先运行 `scripts/doctor.py`，详见 [环境与命令](skills/rick-pptx/references/environment.md)。模型、API、搜索、生图与独立审核能力由宿主提供，包中不包含凭证、任务数据或网站执行端。
+
+维护时用 `python3 tools/build-skill.py --output /path/to/fresh-output` 从当前插件原生工具和独立适配文件重新构建；验证后同步技能目录和安装包。当前包已通过两页原生制作、点击目标、静态渲染和导出测试，未认证实际 PowerPoint 播放。
+
 ## 本地运行
 
 需要 Python 3.11+、LibreOffice 和 Poppler。在仓库目录执行：
