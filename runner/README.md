@@ -471,10 +471,22 @@ its recorded model/URL/tool route; key rotation is allowed, silent model changes
 are rejected. Keep the profile file at mode 0600 when it contains a key. No global
 Codex or Claude settings are changed.
 
+Profiles can select `gpt-6.1-sol` with `wire_api: "responses"`,
+`reasoning_effort: "high"`, and `service_tier: "fast"`. Reasoning effort and
+service tier are independent. The tier is passed through the native Responses
+configuration and the Chat adapter; requested and returned Chat tiers are recorded
+separately. A requested Fast tier is not proof of accelerated processing: a gateway
+can return `default`. Inspect the actual response tier before reporting Fast as
+active. Profiles without this field preserve their historical identity/config.
+
 APINebula model-list, vision/function call, real sandbox file use, schema response,
 Opus→retained search and Opus→retained generation have been exercised with isolated
-fixtures. The target's Responses probes returned convert_request_failed; use the
-verified Chat adapter, not a claimed direct Responses capability. These probes
+fixtures. Opus 5.5's Responses probes returned convert_request_failed; use the
+verified Chat adapter for that backend, not a claimed direct Responses capability.
+The Codex-group GPT-6.1 Sol backend has separately passed native streaming Responses
+and actual app-server structured-output tests with high reasoning effort. Requests
+with both Fast parameter spellings returned `service_tier: default` in the observed
+gateway responses; accelerated processing was not confirmed. These probes
 establish observed interface behavior, not the upstream identity behind an alias.
 
 

@@ -67,6 +67,7 @@ class ChatProxy:
   request['model']=self.profile['model'];request['stream']=False
   request['enable_thinking']=bool(self.profile.get('reasoning_effort'))
   if self.profile.get('reasoning_effort'):request['reasoning_effort']=self.profile['reasoning_effort']
+  if self.profile.get('service_tier') is not None:request['service_tier']=self.profile['service_tier']
   request['max_tokens']=min(int(request.get('max_tokens',8192)),16384)
   config='header = '+json.dumps('Authorization: Bearer '+self.profile['api_key'])+'\nheader = "Content-Type: application/json"\n'+ 'data = '+json.dumps(json.dumps(request))+'\n'
   started=time.monotonic()
@@ -93,6 +94,8 @@ class ChatProxy:
   reply=json.loads(raw);response=chat_to_response(reply,mapping,model=self.profile['model'])
   self.calls.append({'ok':True,'attempts':attempt,'upstream_status':status,'seconds':round(time.monotonic()-started,3),'usage':reply.get('usage'),
    'tools':len(request.get('tools',[])),'output_types':[x.get('type') for x in response.get('output',[])]})
+  if self.profile.get('service_tier') is not None:self.calls[-1]['requested_service_tier']=self.profile['service_tier']
+  if reply.get('service_tier') in ('auto','default','fast','priority'):self.calls[-1]['actual_service_tier']=reply['service_tier']
   return response
 
 def safe_api_calls(calls):
@@ -108,6 +111,8 @@ def safe_api_calls(calls):
    if number(call.get(key)):clean[key]=call[key]
   if isinstance(call.get('output_types'),list):
    clean['output_types']=[kind for kind in call['output_types'] if kind in ('message','function_call','custom_tool_call','reasoning')]
+  for key in ('requested_service_tier','actual_service_tier'):
+   if call.get(key) in ('auto','default','fast','priority'):clean[key]=call[key]
   usage=call.get('usage')
   if isinstance(usage,dict):
    clean['usage']={key:usage[key] for key in token_keys if number(usage.get(key))}

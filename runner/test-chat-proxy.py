@@ -21,6 +21,17 @@ def completed():
 
 
 class ProxyTests(unittest.TestCase):
+    def test_requested_fast_is_forwarded_and_default_fallback_is_recorded(self):
+        reply={**completed(),'service_tier':'default'}
+        response=SimpleNamespace(returncode=0,stdout=json.dumps(reply)+'\n200',stderr='')
+        proxy=ChatProxy({**PROFILE,'service_tier':'fast','reasoning_effort':'high'})
+        with patch('chat_proxy.ChatProxy._upstream',return_value=response) as run:
+            proxy.complete({'model':'test-flash','input':'hello','service_tier':'default'})
+        line=next(x for x in run.call_args.kwargs['input'].splitlines() if x.startswith('data = '))
+        sent=json.loads(json.loads(line[len('data = '):]))
+        self.assertEqual(sent['service_tier'],'fast');self.assertEqual(sent['reasoning_effort'],'high')
+        safe=safe_api_calls(proxy.calls)[0]
+        self.assertEqual(safe['requested_service_tier'],'fast');self.assertEqual(safe['actual_service_tier'],'default')
     def test_empty_transient_tls_failure_gets_one_retry(self):
         bad=SimpleNamespace(returncode=35,stdout='\n000',stderr='private TLS context')
         good=SimpleNamespace(returncode=0,stdout=json.dumps(completed())+'\n200',stderr='')

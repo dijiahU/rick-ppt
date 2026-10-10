@@ -29,7 +29,7 @@ def load_profile(path):
     path=Path(path).resolve(strict=True);info=path.stat()
     if not stat.S_ISREG(info.st_mode) or info.st_size>65536:raise ValueError('Invalid model profile file')
     data=json.loads(path.read_text())
-    allowed={'model','base_url','api_key','api_key_env','wire_api','web_search','image_generation','reasoning_effort','auxiliary_tools'}
+    allowed={'model','base_url','api_key','api_key_env','wire_api','web_search','image_generation','reasoning_effort','auxiliary_tools','service_tier'}
     if not isinstance(data,dict) or set(data)-allowed:raise ValueError('Unknown model profile fields')
     model=data.get('model');url=data.get('base_url')
     if not isinstance(model,str) or not model.strip() or len(model)>200 or any(ord(c)<32 for c in model):raise ValueError('A valid model ID is required')
@@ -50,6 +50,7 @@ def load_profile(path):
     if data.get('auxiliary_tools','disabled') not in ('disabled','existing_backend'):raise ValueError('Invalid auxiliary tool route')
     effort=data.get('reasoning_effort')
     if effort is not None and effort not in ('minimal','low','medium','high','xhigh'):raise ValueError('Invalid reasoning_effort')
+    if data.get('service_tier') is not None and data['service_tier'] not in ('auto','default','fast','priority'):raise ValueError('Invalid service_tier')
     return {**data,'model':model.strip(),'base_url':url.rstrip('/'),'api_key':key,'wire_api':data.get('wire_api','responses')}
 
 def public_identity(profile):
@@ -58,6 +59,7 @@ def public_identity(profile):
       'web_search':profile.get('web_search','disabled'),'image_generation':profile.get('image_generation',False),
       'reasoning_effort':profile.get('reasoning_effort')}
     if profile.get('auxiliary_tools','disabled')!='disabled':identity['auxiliary_tools']=profile['auxiliary_tools']
+    if profile.get('service_tier') is not None:identity['service_tier']=profile['service_tier']
     return identity
 
 def retained_tools(profile):return bool(profile and profile.get('auxiliary_tools')=='existing_backend')
@@ -79,6 +81,9 @@ def overrides(profile):
       'web_search':profile.get('web_search','disabled'),'features.image_generation':profile.get('image_generation',False),
       'model_supports_reasoning_summaries':False,'model_reasoning_summary':'none'}
     if profile.get('reasoning_effort'):config['model_reasoning_effort']=profile['reasoning_effort']
+    if profile.get('service_tier') is not None:
+        config['service_tier']=profile['service_tier']
+        config['features.fast_mode']=profile['service_tier'] in ('fast','priority')
     return config
 
 def bind_task(state_root,task_id,profile,existing):

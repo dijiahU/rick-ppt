@@ -14,6 +14,12 @@ class Tests(unittest.TestCase):
   server=AppServer(cwd=self.root,config=config,provider_env={KEY_ENV:p['api_key']})
   self.assertEqual(server.env[KEY_ENV],p['api_key']);self.assertNotIn(p['api_key'],json.dumps(config));self.assertNotIn(KEY_ENV,config['shell_environment_policy']['set']);self.assertEqual(config['shell_environment_policy']['inherit'],'none');self.assertIn(p['api_key'],server.secrets)
  def test_default_unchanged(self):self.assertEqual(overrides(None),{});self.assertEqual(public_identity(None),{'backend':'codex-default'})
+ def test_fast_and_high_are_independent_profile_settings(self):
+  p=self.profile(model='gpt-6.1-sol',reasoning_effort='high',service_tier='fast')
+  c=overrides(p);self.assertEqual(c['model_reasoning_effort'],'high');self.assertEqual(c['service_tier'],'fast');self.assertTrue(c['features.fast_mode'])
+  self.assertEqual(public_identity(p)['service_tier'],'fast')
+  with self.assertRaisesRegex(ValueError,'service_tier'):self.profile(service_tier='invented')
+  self.assertNotIn('service_tier',public_identity(self.profile()))
  def test_retained_tools_are_explicit_and_recorded_without_changing_wire_protocol(self):
   p=self.profile(wire_api='chat_completions',auxiliary_tools='existing_backend')
   self.assertTrue(retained_tools(p));self.assertEqual(public_identity(p)['auxiliary_tools'],'existing_backend')
