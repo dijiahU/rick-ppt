@@ -137,7 +137,7 @@ class RecoveryWorkspaceTests(unittest.TestCase):
             self.assertEqual(job,job.resolve())
             self.assertEqual(job.parent,real_parent/'scratch')
             self.assertEqual(str(job),journal.state['workspace'])
-            source=job/'draft.pptx';source.write_bytes(b'PK-owned-render-fixture')
+            source=job/'draft.pptx';source.write_bytes((ROOT/'pptx-agent/skills/pptx/assets/blank.pptx').read_bytes())
             destination=job/'rendered';destination.mkdir()
             queue=job/'render-requests'
             identifier='a'*32
@@ -145,13 +145,18 @@ class RecoveryWorkspaceTests(unittest.TestCase):
             (queue/(identifier+'.request.json')).write_text(json.dumps(request))
 
             def convert(command,**kwargs):
-                self.assertIn('type=bind,source='+str(job)+',target=/work',command)
-                self.assertEqual(command[-1],'/work/draft.pptx')
-                self.assertIn('/work/rendered',command)
-                (destination/'draft.pdf').write_bytes(b'%PDF-scoped-fixture')
-                return SimpleNamespace(returncode=0,stdout='rendered',stderr='')
+                mounts=[dict(field.split('=',1) for field in value.split(',') if '=' in field)
+                        for value in command if value.startswith('type=bind,')]
+                input_mount=next(value for value in mounts if value['target']=='/input')
+                output_mount=next(value for value in mounts if value['target']=='/output')
+                self.assertIn('type=bind,source='+input_mount['source']+',target=/input,readonly',command)
+                self.assertFalse(any(value['source']==str(job) for value in mounts))
+                self.assertIn('/input/draft.pptx',command);self.assertIn('/output',command)
+                self.assertEqual((Path(input_mount['source'])/'draft.pptx').read_bytes(),source.read_bytes())
+                (Path(output_mount['source'])/'draft.pdf').write_bytes(b'%PDF-scoped-fixture')
+                return SimpleNamespace(returncode=0,communicate=lambda **_:('rendered',''),poll=lambda:0)
 
-            with patch.object(runner.subprocess,'run',side_effect=convert) as docker:
+            with patch.object(runner.subprocess,'Popen',side_effect=convert) as docker:
                 runner.render_requests(job)
                 self.assertEqual(docker.call_count,1)
             reply=json.loads((queue/(identifier+'.reply.json')).read_text())
@@ -165,7 +170,7 @@ class RecoveryWorkspaceTests(unittest.TestCase):
             ]):
                 identifier=str(index+1)*32
                 (queue/(identifier+'.request.json')).write_text(json.dumps({'args':args}))
-                with patch.object(runner.subprocess,'run') as docker:
+                with patch.object(runner.subprocess,'Popen') as docker:
                     runner.render_requests(job);docker.assert_not_called()
                 self.assertNotEqual(json.loads((queue/(identifier+'.reply.json')).read_text())['returncode'],0)
             return 'continued-with-scoped-native-render'

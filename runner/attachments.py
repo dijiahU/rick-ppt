@@ -56,28 +56,36 @@ def validate_content(data,ext):
     else:
         if '\0' in data.decode('utf-8'):raise ValueError('Invalid text file')
 
-def receive(cfg,task,job,request,*,recover=False):
+def receive(cfg,task,job,request,*,recover=False,check=None):
+    """Download fenced originals; the caller owns heartbeat retries and stop checks."""
     from progress import read_scoped
     from conversation import _publish_task_file
+    check=check or (lambda:None)
+    check()
     items=metadata(task.get('attachments'))
     if not items:return []
     root=job/'references'
     result=[]
     for item in items:
+        check()
         relative='references/'+item['id']+'.'+item['ext']
         data=None
         if recover:
             try:data=read_scoped(job,relative,item['size'])
             except FileNotFoundError:pass
         if data is None:
-            request(cfg,f'/api/worker/{task["id"]}?action=heartbeat',lease=task['lease'])
+            # The shared LeaseKeeper already renews/retries in the background.
+            # A separate one-shot heartbeat here made a transient outage fatal.
             data=request(cfg,f'/api/worker/{task["id"]}?action=attachment&file={item["id"]}',lease=task['lease'],raw=True)
+        check()
         if len(data)!=item['size'] or hashlib.sha256(data).hexdigest()!=item['sha256']:raise ValueError('Attachment checksum mismatch')
         validate_content(data,item['ext'])
         # The original filename is a display label, never a host path.
+        check()
         _publish_task_file(job,relative,data)
         result.append({**item,'path':relative})
     # Versioned immutable index avoids following a stale author-created symlink.
+    check()
     index=json.dumps(result,ensure_ascii=False,indent=2).encode()
     staged='references/index-'+uuid.uuid4().hex+'.json'
     _publish_task_file(job,staged,index)

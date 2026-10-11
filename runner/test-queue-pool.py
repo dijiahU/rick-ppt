@@ -13,7 +13,7 @@ class PoolTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path=Path(directory)/'queue.sqlite'
             with sqlite3.connect(path) as db:
-                db.execute('CREATE TABLE jobs(id TEXT,status TEXT,lease TEXT,updated_at INTEGER,created_at INTEGER,title TEXT,brief TEXT,pages INTEGER,style TEXT,language TEXT,attachments TEXT)')
+                db.execute('CREATE TABLE jobs(id TEXT,status TEXT,lease TEXT,updated_at INTEGER,created_at INTEGER,title TEXT,brief TEXT,pages INTEGER,style TEXT,language TEXT,attachments TEXT,summary TEXT)')
                 db.executemany("INSERT INTO jobs(id,status,created_at) VALUES (?,'queued',?)",[(str(i),i) for i in range(20)])
             barrier=threading.Barrier(12)
             def claim(i):

@@ -98,6 +98,14 @@ The token must match WORKER_TOKEN in Sites. The bridge uses curl to respect this
 host's proxy setup. The credential is not passed to Codex, the renderer, command
 arguments or website client code.
 
+Original attachment downloads on new tasks and recovery share the execution's
+background LeaseKeeper, including its bounded 150-second heartbeat outage budget.
+They do not send a separate one-shot heartbeat that can turn a retryable timeout
+into immediate task failure. The current lease is checked before download, after
+the response and before publishing files/indexes; owner pause, rejected leases and
+an exhausted silence budget stop initialization. Downloads retain their existing
+bounded transport retries, task-bound lease and byte/hash/content validation.
+
 After every plugin installation/cachebuster, run the
 [installed hook Python preflight](../docs/installed-hook-runtime.md) against that
 exact installed directory and the retained dependency venv, then repeat with

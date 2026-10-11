@@ -426,13 +426,13 @@ def _run_job_locked(cfg,task,lease,job,journal,recovery_plan):
         payload=presentation_request(task)
         trace.stage='attachments';trace.emit('phase','Read uploaded references',state='started')
         if recovery_plan:
-            payload['attachments']=receive(cfg,task,job,request,recover=True)
+            payload['attachments']=receive(cfg,task,job,request,recover=True,check=lease.check)
             try:old_request=read_scoped(job,'request.json',1024*1024)
             except FileNotFoundError:old_request=None
             if old_request is not None:
                 (job/('request-before-recovery-'+uuid.uuid4().hex+'.json')).write_bytes(old_request)
         else:
-            payload['attachments']=receive(cfg,task,job,request)
+            payload['attachments']=receive(cfg,task,job,request,check=lease.check)
             progress_draft=receive_progress_draft(cfg,task,job)
             if progress_draft:
                 payload['attachments'].append(progress_draft)
