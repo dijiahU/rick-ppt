@@ -20,6 +20,7 @@ from assets import AssetImporter
 from outline import validate_outline, page_version, MAX_OUTLINE_BYTES
 from progress import read_scoped
 from web_media import WebMediaBroker
+from font_broker import FontBroker
 from durable import AppServer, RPCError, JournalError, task_configuration
 from model_backend import overrides,KEY_ENV,public_identity
 from chat_proxy import provider_session,safe_api_calls
@@ -137,6 +138,7 @@ class Execution:
         self.records=bridge.ROOT/'records';self.records.mkdir(mode=0o700,exist_ok=True)
         self.started=time.monotonic();self.total_seconds=max(1800,min(int(cfg.get('job_timeout_seconds',5400)),10800));self.deadline=self.started+self.total_seconds
         self.stages=[];self.images={};self.logs=[];self.threads=[];self.media=WebMediaBroker(job,reporter,trajectory=trajectory)
+        self.fonts=FontBroker(job,trajectory=trajectory)
         self.trace=trace or AdminTrace(cfg,task,bridge.request if hasattr(bridge,'request') else lambda *a:{'ok':True},self.records)
         self.trajectory=trajectory
         self.render_source_identity=None
@@ -202,7 +204,7 @@ class Execution:
             self.bridge.render_requests(root,trajectory=self.trajectory,tick=self.lease.check)
             broker.poll();importer.poll(activity);self.trace.poll(trace_stream)
             record(self.trajectory,'poll',trajectory_stream);record(self.trajectory,'sample',root)
-            if public:self.media.poll();self.reporter.poll(activity)
+            if public:self.media.poll();self.fonts.poll();self.reporter.poll(activity)
             else:self.reporter.flush(force=now-self.reporter.last_sent>45)
             if self.conversation:
                 self.conversation.poll(server=server if public and primary_turn else None,thread_id=active_thread,allow_steer=public)
@@ -312,7 +314,7 @@ class Execution:
                 importer.poll(activity);self.trace.poll(trace_stream)
                 record(self.trajectory,'poll',trajectory_stream)
                 record(self.trajectory,'sample',root)
-                if public:self.media.poll();self.reporter.poll(activity)
+                if public:self.media.poll();self.fonts.poll();self.reporter.poll(activity)
                 else:self.reporter.flush(force=time.monotonic()-self.reporter.last_sent>45)
                 time.sleep(.25)
             log.flush()
@@ -411,6 +413,8 @@ class Execution:
         from office_policy import validate_delivery
         validate_delivery(artifact,single_file=self.cfg.get('single_file_pptx',False))
         frozen=self.bridge.prepare(self.cfg);snapshot=frozen/'result.pptx';snapshot.write_bytes(artifact)
+        from font_assets import copy_fonts
+        copy_fonts(self.job,frozen)
         cli=str(Path(self.cfg['plugin'])/'skills/pptx/scripts/pptx.py')
         result=json.loads(self.run_check(frozen,self.bridge.sandbox(self.cfg,frozen,[self.cfg['python'],cli,'unpack',str(snapshot)]),tick=self.lease.check))
         workspace=result['workspace']
@@ -431,6 +435,8 @@ class Execution:
 
     def reviewer_root(self,rendered,packet,*,include_design=False,include_notes=False):
         root=self.bridge.prepare(self.cfg)
+        from font_assets import copy_fonts
+        copy_fonts(self.job,root)
         # Copy only material actually visible to the audience; not the author's job.
         for n,path in enumerate(rendered['pages'],1):(root/f'page-{n}.png').write_bytes(Path(path).read_bytes())
         for path in packet.rglob('*'):
@@ -721,6 +727,7 @@ def run_workflow(bridge,cfg,task,job,payload,lease,reporter,trace=None,trajector
         status='reviewed';result['workflow_audit']=str(audit_path)
         return result
     finally:
+        run.fonts.close()
         try:run.media.drain(timeout=min(280,max(0,run.deadline-time.monotonic())))
         except Exception as error:record(run.trajectory,'gap','media_drain_failed',type(error).__name__)
         try:write_json(audit_path,{'task':task['id'],'status':status,'budget':budget_summary(run.stages),'threads':run.threads,'final_review':receipt,'admin_trace':str(run.trace.path)})
@@ -845,6 +852,7 @@ def _run_workflow(run,bridge,cfg,task,job,payload,lease,reporter):
     author+=' Apply the content-and-layout plan page by page. Before publishing each page, compare it against the actual source: preserve conditions, example qualifiers, units, formula symbols, actors, input/output direction and operation order; visual simplification must not change them. Use meaningful named native groups for movable composite diagrams/cards and native p:cxnSp connectors with stCxn/endCxn endpoints for linked nodes. See references/groups.md and scripts/native_structure.py for explicit grouping/anchoring; retain child IDs and animation targets. Do not regroup unrelated original template objects during a scoped edit. Check hierarchy, alignment, line breaks, balanced density, formula/label readability and collisions at both full size and a 900-pixel-wide preview. Repair concrete defects before proceeding, without extra aesthetic scoring or a second author review loop.'
     author+=' Execute each selected page/asset/behavior branch from decision-plan.json and workflow-branches.md. Inspect actual acquired/generated files and implement the selected form/composition in order. If a branch cannot be completed, follow its documented alternative/unmet-requirement path and update the choice record; do not silently leave selected imagery or behavior absent. New decks must vary their actual explanatory form/composition across the sequence, without a fixed rotation. Before completion run the authored decision check on the exact exported PPTX; all chosen file assets must be ready and used on their planned pages. Preserve source fidelity, editability and scope.'
     author+=' Follow the task-driven design search guidance in references/research-and-assets.md: while finalizing this page, search for relevant knowledge or inspiration if typography, composition, visual relationships or an unresolved render needs it. Reuse the task references and deck-wide choices for equivalent problems; stop searching once there is a usable approach and test it in the actual native page. Record new sources and concrete applications in source-notes.md. During revisions, use targeted search only for findings needing new knowledge; ordinary geometry repairs do not require research. Keep page order, editing scope and offline constraints; do not wait to read whole books or add a search requirement to independent reviews.'
+    author+=' Read task-local FONTS.md when choosing or changing type. For new work choose actual Chinese and Latin faces together; use fonts/index.json files for measurements and explicit East Asian/Latin names. Missing OFL fonts can be acquired with font-proxy.py; inspect real family, weight and glyph coverage, then the native render. Keep regular body and purposeful true-weight emphasis; do not use renderer fallback as a design choice or indiscriminately bold CJK. Preserve supplied template fonts and unrelated pages during scoped edits. Downloads do not embed fonts or prove recipient availability.'
     if policy and policy.load_catalog()['version']>=3:
         author+=' Choose and implement the concrete canvas treatment before writing reusable rendering helpers: do not collapse different strategy/intent IDs into the same prose-filled boxes. Read references/content-led-composition.md. Use the existing role/visual_action to resolve audience question, concrete focus/scale/reading path/enclosure meaning, and entry-click-final pacing before objects. At natural section milestones compare saved previews of completed body pages as a sequence without re-rendering them; do not let occasional image pages conceal repeated prose boxes. Keep related comparison encoding consistent. Use returned native_canvas handles directly for connecting, grouping and revealing; semantic groups need no visible card background. Do not build a universal filled-node helper or repeatedly parse XML for new IDs. Use references/native-canvas.md and scripts/native_canvas.py for installed-font measurement, clipping prevention, native image crop/front-back layering and editable one-unit bars when helpful. Do not silently shrink text or remove needed evidence to fit. After composing, shorten duplicate headlines, long labels and explanation that the actual image/relationship/chart now carries; necessary qualifications stay visible. Reconsider a failed asset against the same audience need instead of silently downgrading it to cards. Before the final export use scripts/design_references.py --workspace YOUR_NATIVE_WORKSPACE to write each applied work, creator, source, observed property, borrowed principle and concrete page operation into affected slide notes while preserving existing notes. Update decision-plan reference IDs/applications together. The host verifies these notes against final bytes and supplies scoped reference images to the existing visual review. Briefly name actually applied works/ideas in the completion summary, or state honestly that no outside artwork was applied.'
     if recovery.repair_round is not None:

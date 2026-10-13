@@ -7,6 +7,10 @@ description: Research, create and edit standalone native PowerPoint with editabl
 
 Use scripts/pptx.py with Python 3.11+ and installed dependencies; prefer the plugin's
 .venv/bin/python. Paths below are relative to this skill.
+When selecting or repairing typography, read [Actual fonts](references/fonts.md).
+Choose Chinese/Latin faces together for the content; use real files and weights,
+acquire missing OFL resources through the available host, and inspect actual mixed
+text. Preserve supplied template fonts for scoped edits.
 
 For new decks and substantive rewrites, follow these four stages. Stable decisions
 protect meaning, evidence and delivery; the author owns visual direction,

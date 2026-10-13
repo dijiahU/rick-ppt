@@ -20,7 +20,9 @@ python PLUGIN/skills/pptx/scripts/native_canvas.py text --workspace WORKSPACE --
 ```
 
 Paths/fonts, numbers and color above are command examples, not prescribed style.
-For a .ttc face, choose --font-index explicitly. Essential qualifiers and explanations
+For mixed Chinese/English, pass the actual Chinese file as --font and English file
+as --latin-font (or latin_font in Python). Measurement uses both files and output
+keeps separate editable runs with actual East Asian/Latin names. For a .ttc face, choose --font-index explicitly. Essential qualifiers and explanations
 remain visible; the helper cannot judge which words to remove.
 
 ## Image and editable-type integration
@@ -89,5 +91,6 @@ Measurements use host fonts and are estimates. render-environment.json records
 production renderer version, requested/resolved font families and input SHA when
 the host renderer is used. A Mac font file need not exist inside the Linux renderer;
 check substitutions and actual output instead of treating font metrics as proof.
-Do not install fonts/tools in task jobs or claim PowerPoint compatibility from a
+Use the exposed font broker for missing OFL files; its task files are mounted into
+the production renderer. Read fonts.md. Do not bypass host permissions or claim PowerPoint compatibility from a
 LibreOffice preview. Test actual exported playback when the target player is available.

@@ -22,6 +22,7 @@ runner/state/
 runner/worker.lock
 runner/launch.lock
 runner/runtime/
+runner/font-cache.local/
 runner/isolation-canary-*.txt
 trajectory/
 

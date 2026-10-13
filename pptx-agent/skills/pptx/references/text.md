@@ -1,5 +1,9 @@
 # Native text
 
+For actual Chinese/Latin font selection, missing-resource acquisition and coverage,
+read [Actual fonts](fonts.md). Use a coordinated pair and real regular/bold faces;
+font names alone do not install resources.
+
 Give title, body, number, quote, caption and code distinct roles through size, weight,
 line width, placement and spacing. Do not use every role on every page or randomly
 change fonts. Test actual long titles and CJK/Latin mixed content in the native render.

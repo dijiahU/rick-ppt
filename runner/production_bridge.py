@@ -62,6 +62,7 @@ def write_runtime_receipt(root,cfg,status):
     body['new_deck_click_reveal_required']=bool(catalog.is_file() and json.loads(catalog.read_text()).get('requirements',{}).get('new_deck_click_reveal'))
     body['native_canvas_available']=(plugin/'skills/pptx/scripts/native_canvas.py').is_file()
     body['reference_notes_available']=(plugin/'skills/pptx/scripts/design_references.py').is_file()
+    body['font_assets_available']=(plugin/'skills/pptx/scripts/font_assets.py').is_file() and (Path(root)/'font-proxy.py').is_file()
     target=Path(root)/('runtime-'+str(os.getpid())+'.local.json')
     pending=target.with_suffix('.pending')
     with os.fdopen(os.open(pending,os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600),'w') as stream:

@@ -22,8 +22,25 @@ from progress import public_text
 from progress import Reporter
 from assets import AssetImporter
 from web_media import WebMediaBroker
+from font_broker import FontBroker
 
 ROOT=Path(__file__).resolve().parent
+
+def prepare_fonts(job):
+    from font_assets import configure,copy_fonts,manifest,STARTER_IDS
+    (job/'font-requests').mkdir(exist_ok=True)
+    shutil.copyfile(ROOT/'font-proxy.py',job/'font-proxy.py')
+    shutil.copyfile(ROOT/'font-catalog.json',job/'font-catalog.json')
+    shutil.copyfile(ROOT/'FONTS.md',job/'FONTS.md')
+    installed={x['id'] for x in manifest(job)['fonts']}
+    cache=ROOT/'font-cache.local'
+    if (cache/'fonts/index.json').is_file():copy_fonts(cache,job,[x for x in STARTER_IDS if x not in installed])
+    configure(job)
+    capabilities=json.loads((job/'capabilities.json').read_text()) if (job/'capabilities.json').is_file() else {}
+    capabilities['font_assets']={'mode':'public-https-font-broker','guide':'FONTS.md','helper':'font-proxy.py',
+        'catalog':'font-catalog.json','installed':'fonts/index.json','same_files_in_renderer':True,
+        'use':'Choose actual Chinese/Latin faces for the brief; preserve scoped templates. Missing OFL fonts may be downloaded through the host; actual names/weights/glyph coverage and license/hash provenance are verified. Use task files for metrics and inspect real output. Downloads do not embed fonts in the delivered PPTX.'}
+    (job/'capabilities.json').write_text(json.dumps(capabilities,ensure_ascii=False,indent=2))
 
 def settings():
     source=Path(os.environ.get('PPTX_RUNNER_SETTINGS',ROOT/'settings.local.json')).resolve()
@@ -137,7 +154,7 @@ def prepare(cfg):
                 'helper':str(skill/'scripts/native_canvas.py'),
                 'use':'Measure text using an installed font; create editable type without default card backgrounds; crop and layer actual task images; create editable one-unit bars; use returned workspace/slide/object handles for explicit shapes, anchored connections, borderless semantic grouping and click reveals. Choose typography/color/geometry yourself and inspect the actual render.'}
         (job/'capabilities.json').write_text(json.dumps(capabilities,indent=2))
-    (job/'fonts.conf').write_text('<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig><dir>/System/Library/Fonts</dir><dir>/Library/Fonts</dir><cachedir>'+str(job/'font-cache')+'</cachedir></fontconfig>')
+    prepare_fonts(job)
     font_catalog=ROOT/'render-fonts.local.json'
     if font_catalog.is_file():
         capabilities=json.loads((job/'capabilities.json').read_text())
@@ -183,11 +200,24 @@ def _render_requests_fd(job,qfd,trajectory=None,tick=None):
             input_stage=tempfile.TemporaryDirectory(prefix='pptx-render-input-')
             input_dir=Path(input_stage.name)/'input';input_dir.mkdir()
             output_dir=Path(input_stage.name)/'output';output_dir.mkdir()
+            font_dir=Path(input_stage.name)/'fonts';font_dir.mkdir()
+            from font_assets import verified_files,inspect as inspect_font
+            font_files=verified_files(job)
+            actual_font_records=[]
+            for relative,data in font_files.items():
+                if relative.endswith(('.ttf','.otf')):
+                    (font_dir/Path(relative).name).write_bytes(data)
+                    metadata=inspect_font(data)
+                    actual_font_records.append({'id':Path(relative).stem.rsplit('-',1)[0],**{k:metadata[k] for k in ('family','style','weight','sha256')}})
+            (font_dir/'fonts.conf').write_text('<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig><include>/etc/fonts/fonts.conf</include><dir>/fonts</dir><cachedir>/tmp/font-cache</cachedir></fontconfig>')
+            render_environment['font_files']=actual_font_records
+            render_environment['measurement_environment']='Task-local verified font files shared with production renderer; geometry remains an estimate'
             frozen_source=input_dir/source.name;frozen_source.write_bytes(frozen_bytes)
             source_arg='/input/'+source.name
             output_arg='/output'
             command=['/usr/local/bin/docker','run','--rm','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','128','--memory','2g','--cpus','2','--user',f'{os.getuid()}:{os.getgid()}','--tmpfs','/tmp:rw,nosuid,nodev,size=512m',
                 '--mount',f'type=bind,source={input_dir},target=/input,readonly',
+                '--mount',f'type=bind,source={font_dir},target=/fonts,readonly','--env','FONTCONFIG_FILE=/fonts/fonts.conf',
                 '--mount',f'type=bind,source={output_dir},target=/output','--entrypoint','/bin/sh','pptx-lab-renderer:1','-c',
                 'src=$1; out=$2; shift 2; printf "PPTX_RENDER_VERSION\\n"; /usr/bin/libreoffice --version; printf "PPTX_FONT_MATCHES\\n"; for font do fc-match -f "%{family}\\n" -- "$font"; done; printf "PPTX_RENDER_START\\n"; exec /usr/bin/libreoffice -env:UserInstallation=file:///tmp/lo-profile --headless --convert-to \'pdf:impress_pdf_Export:{"ExportHiddenSlides":{"type":"boolean","value":"true"}}\' --outdir "$out" "$src"',
                 'render',source_arg,output_arg,*render_environment['requested_fonts']]
@@ -239,6 +269,7 @@ def run_with_renderer(cfg,job,command,timeout=150,tick=None,media_broker=None,tr
     from interactive_host import InteractiveHostBroker
     output=job/('check-'+uuid.uuid4().hex+'.log')
     media_broker=media_broker or WebMediaBroker(job,trajectory=trajectory)
+    font_broker=FontBroker(job,trajectory=trajectory)
     interactive_broker=InteractiveHostBroker(cfg,job,trajectory=trajectory)
     with output.open('wb') as log:
         process=subprocess.Popen(command,stdout=log,stderr=log,env=environment(job),cwd=job,start_new_session=True)
@@ -248,6 +279,7 @@ def run_with_renderer(cfg,job,command,timeout=150,tick=None,media_broker=None,tr
                 if time.monotonic()>deadline:raise TimeoutError('Render validation timed out')
                 if tick:tick()
                 media_broker.poll()
+                font_broker.poll()
                 render_requests(job,trajectory=trajectory,tick=tick)
                 interactive_broker.poll()
                 from trajectory import record as capture
@@ -255,6 +287,7 @@ def run_with_renderer(cfg,job,command,timeout=150,tick=None,media_broker=None,tr
             if tick:tick()
             if process.returncode:raise RuntimeError(f'Validation failed; log: {output}')
         finally:
+            font_broker.close()
             if process.poll() is None:os.killpg(process.pid,signal.SIGTERM);process.wait(timeout=10)
     return output.read_text()
 
@@ -370,7 +403,7 @@ def refresh_support(cfg,job):
     """Refresh only host-provided helpers, retaining previous support bytes."""
     from progress import read_scoped
     backup=job/'support-versions'/uuid.uuid4().hex;backup.mkdir(parents=True,mode=0o700)
-    for name in ('soffice-proxy.py','interactive-proxy.py','public-progress.py','outline.py','PROGRESS.md','ANIMATION.md','web-media-proxy.py','media-embed.py','WEB-MEDIA.md','INTERACTIVE.md','imagegen-skill.md'):
+    for name in ('soffice-proxy.py','interactive-proxy.py','public-progress.py','outline.py','PROGRESS.md','ANIMATION.md','web-media-proxy.py','media-embed.py','WEB-MEDIA.md','INTERACTIVE.md','imagegen-skill.md','font-proxy.py','font-catalog.json','FONTS.md'):
         source=ROOT/name
         if not source.is_file():continue
         target=job/name
@@ -380,13 +413,13 @@ def refresh_support(cfg,job):
         temporary=job/('.support-'+uuid.uuid4().hex)
         shutil.copyfile(source,temporary);temporary.chmod(0o755 if name.endswith('.py') else 0o644)
         os.replace(temporary,target)
-    for name in ('tmp','render-requests','interactive-requests','media-requests'):
+    for name in ('tmp','render-requests','interactive-requests','media-requests','font-requests'):
         destination=job/name
         if destination.is_symlink():raise ValueError('Unsafe restored support directory')
         destination.mkdir(exist_ok=True)
     fonts=job/'fonts.conf'
     if fonts.exists():(backup/'fonts.conf').write_bytes(read_scoped(job,'fonts.conf',100000))
-    fonts.write_text('<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig><dir>/System/Library/Fonts</dir><dir>/Library/Fonts</dir><cachedir>'+str(job/'font-cache')+'</cachedir></fontconfig>')
+    prepare_fonts(job)
 
 
 def receive_progress_draft(cfg,task,job,send=request):
