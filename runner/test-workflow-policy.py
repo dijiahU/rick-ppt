@@ -1,7 +1,7 @@
-import io,json,tempfile,threading,time,unittest,uuid,zipfile
+import hashlib,io,json,tempfile,threading,time,unittest,uuid,zipfile
 from pathlib import Path
 from types import SimpleNamespace
-from workflow import Execution,fidelity_task,_repair_candidate
+from workflow import Execution,fidelity_task,_repair_candidate,phase_time_limit
 from progress import Reporter
 from resilience import LeaseKeeper,TaskPaused
 from office_policy import validate_delivery
@@ -17,6 +17,48 @@ def deck(files):
 def report():return {'summary':'Independent check','pages_reviewed':[1],'findings':[],'limitations':['No real PowerPoint player']}
 
 class PolicyTests(unittest.TestCase):
+    def test_execution_source_proofs_are_bound_to_its_trajectory_task(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp).resolve();job=root/'author';job.mkdir()
+            task_runs=root/'trajectory'/'this-task';run_root=task_runs/'new-run';run_root.mkdir(parents=True)
+            own=task_runs/'previous-run'/'artifacts/render-input/input.pptx'
+            other=root/'trajectory'/'other-task'/'run'/'artifacts/render-input/input.pptx'
+            for path,text in ((own,'same-task'),(other,'different-task')):
+                path.parent.mkdir(parents=True,exist_ok=True)
+                path.write_bytes(deck({'[Content_Types].xml':'<Types/>','ppt/presentation.xml':text}))
+            task={'id':'this-task'};cfg={};reporter=Reporter(cfg,task,job,lambda *a:None)
+            execution=Execution(SimpleNamespace(ROOT=root),cfg,task,job,SimpleNamespace(check=lambda:None),
+                                reporter,trajectory=SimpleNamespace(root=run_root))
+            try:
+                self.assertIsNotNone(execution.render_source_identity(hashlib.sha256(own.read_bytes()).hexdigest()))
+                self.assertIsNone(execution.render_source_identity(hashlib.sha256(other.read_bytes()).hexdigest()))
+            finally:execution.trace.close()
+    def test_parallel_review_keeps_configured_budget_and_shared_deadline(self):
+        from admin_trace import AdminTrace
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);run=object.__new__(Execution)
+            run.cfg={'phase_timeout_seconds':{'content-first-1':2700,'visual-1':2700}}
+            run.task={'id':str(uuid.uuid4())};run.records=root;run.job=root
+            run.lease=SimpleNamespace(check=lambda:None);run.trajectory=None
+            run.deadline=12345;run.stages=[];run.logs=[];run.threads=[]
+            run.review_tick=lambda:None
+            run.trace=AdminTrace({},run.task,lambda *a,**k:{'ok':True},root)
+            def work(child):
+                self.assertEqual(child.deadline,run.deadline)
+                name='content-first-1' if child.review_role=='content' else 'visual-1'
+                return (phase_time_limit(child.cfg,name,900,5000),
+                        phase_time_limit(child.cfg,name,900,450),
+                        phase_time_limit(child.cfg,'unconfigured-review',900,5000))
+            try:
+                result=run._parallel_review({'content':work,'visual':work},1)
+                self.assertEqual(result,{'content':(2700,450,900),'visual':(2700,450,900)})
+            finally:run.trace.close()
+
+    def test_review_time_budget_remains_bounded_and_validated(self):
+        self.assertEqual(phase_time_limit({},'visual-1',900,-1),-1)
+        for value in (True,0,29,10801,'unbounded'):
+            with self.assertRaises(ValueError):
+                phase_time_limit({'phase_timeout_seconds':{'visual-1':value}},'visual-1',900,10000)
     def test_pause_heartbeat_stops_without_becoming_failure(self):
         keeper=LeaseKeeper(lambda:{'ok':True,'stop':True})
         self.assertFalse(keeper.pulse())
@@ -86,7 +128,7 @@ class PolicyTests(unittest.TestCase):
                 root=kw['root']
                 with lock:calls.append((name,root,prompt))
                 self.assertFalse((root/'source-notes.md').exists());self.assertFalse((root/'outline.json').exists())
-                if name.startswith('content-evidence'):
+                if name.startswith(('content-evidence','visual')):
                     self.assertEqual((root/'references/source.txt').read_text(),'SOURCE')
                 else:self.assertFalse((root/'references/source.txt').exists())
                 barrier.wait()  # Would time out if the passes were still serial.

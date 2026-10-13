@@ -44,9 +44,52 @@ def file_receipt(body):
     return {'sha256': digest(body), 'bytes': len(body)}
 
 
-def selected_files(root, names):
+ENVIRONMENT = 'render-environment.json'
+TEMP_PATH_FIELDS = frozenset({'source_path', 'input_path', 'output_path', 'render_directory',
+                              'temporary_directory', 'profile_directory', 'workspace'})
+
+
+def environment_receipt(body, source_identity=None):
+    """Fingerprint visual conditions, retaining raw evidence separately.
+
+    A source alias is allowed only when the host proves that actual source ZIPs
+    contain the same parts. Unknown fields and unverified source hashes remain
+    significant; installed-font and renderer paths are never discarded.
+    """
+    value = json.loads(body)
+    if not isinstance(value, dict):
+        raise ReviewSessionError('Invalid render environment')
+    def normalize(value, field=None):
+        if isinstance(value, dict):
+            return {key: normalize(item, key) for key, item in value.items()}
+        if isinstance(value, list):
+            return [normalize(item, field) for item in value]
+        if field in TEMP_PATH_FIELDS and isinstance(value, str):
+            match = re.fullmatch(r'(?:/private)?/var/folders/[^/]+/[^/]+/T/'
+                                 r'(?:pptx-lab-(?:job|resume)-[^/]+|tmp[^/]+)(/.*)?', value)
+            match = match or re.fullmatch(r'/tmp/(?:pptx-lab-(?:job|resume)-[^/]+|tmp[^/]+)(/.*)?', value)
+            if match:
+                return '<task-temporary-root>' + (match[1] or '')
+        return value
+    value = normalize(value)
+    source = value.get('source_sha256')
+    if source_identity is not None and isinstance(source, str):
+        parts = source_identity(source)
+        if parts is not None:
+            if not isinstance(parts, str) or not re.fullmatch('[0-9a-f]{64}', parts):
+                raise ReviewSessionError('Invalid verified render source identity')
+            if value.get('source_parts_sha256', parts) != parts:
+                raise ReviewSessionError('Render source parts evidence disagrees')
+            value['source_sha256'] = 'verified-parts-sha256:' + parts
+            value['source_parts_sha256'] = parts
+    return {**file_receipt(encoded(value)), 'kind': 'render-environment-conditions/v1'}
+
+
+def selected_files(root, names, *, source_identity=None):
     root = _root(root)
-    return {name: file_receipt(_read(root, name)) for name in sorted(set(names))}
+    return {name: (environment_receipt(_read(root, name), source_identity)
+                   if name == ENVIRONMENT else file_receipt(_read(root, name)))
+            for name in sorted(set(names))}
 
 
 def runtime_identity(cfg):
@@ -65,7 +108,8 @@ def runtime_identity(cfg):
     return value
 
 
-def candidate_identity(task_id, revision, artifact, rendered, packet, runtime, plugin_version=None):
+def candidate_identity(task_id, revision, artifact, rendered, packet, runtime, plugin_version=None,
+                       *, source_identity=None):
     if not isinstance(task_id, str) or not task_id or len(task_id) > 256:
         raise ReviewSessionError('Invalid review task identity')
     if type(revision) is not int or revision < 0:
@@ -78,6 +122,8 @@ def candidate_identity(task_id, revision, artifact, rendered, packet, runtime, p
         raise ReviewSessionError('Review requires rendered pages')
     packet = _root(packet)
     packet_files = _inventory(_root(packet.parent), packet.name)
+    if ENVIRONMENT in packet_files:
+        packet_files[ENVIRONMENT] = environment_receipt(_read(packet, ENVIRONMENT), source_identity)
     if set(pages) & set(packet_files):
         raise ReviewSessionError('Review packet shadows a rendered page')
     return {'version': VERSION, 'task_id': task_id, 'input_revision': revision,
@@ -181,17 +227,78 @@ def _load_attempt(root):
 
 
 class ReviewSessions:
-    def __init__(self, records, identity, *, author_root, plugin_root):
+    def __init__(self, records, identity, *, author_root, plugin_root,
+                 environment_body=None, source_identity=None):
         records = _root(records)
         for exposed in (author_root, plugin_root):
             exposed = _root(exposed)
             if records == exposed or records.is_relative_to(exposed):
                 raise ReviewSessionError('Review records must be outside model-readable roots')
         self.identity = copy.deepcopy(identity)
+        self.source_identity = source_identity
         self.key = digest(encoded(identity))
         task_key = digest(identity['task_id'].encode())
         self.root = _mkdir(records, ('review-sessions', task_key, self.key))
         _publish_same(self.root, 'candidate.json', encoded(identity))
+        if environment_body is not None:
+            if environment_receipt(environment_body, source_identity) != identity['packet'].get(ENVIRONMENT):
+                raise ReviewSessionError('Current render environment evidence changed')
+            _publish_same(self.root, 'environment-' + digest(environment_body) + '.json', environment_body)
+
+    def _old_environment(self, root, receipt):
+        if receipt.get('kind'):
+            return None  # A normalized identity is already compared as a whole.
+        sha = receipt.get('sha256', '')
+        stored = root / ('environment-' + sha + '.json')
+        if stored.is_file():
+            body = _read_record(root, stored.name)
+            if file_receipt(body) != receipt:
+                raise ReviewSessionError('Historical render environment checksum mismatch')
+            return body
+        # Legacy receipts did not store a separate environment body. Only a
+        # checksum-matching file from a validated completed context is evidence.
+        for context in root.glob('*/' + '[0-9a-f]' * 64 + '/context.json'):
+            for attempt in context.parent.iterdir():
+                if not attempt.is_dir() or not ATTEMPT.fullmatch(attempt.name):continue
+                state, _, _ = _load_attempt(_root(attempt))
+                if not state or state.get('status') != 'validated' or state.get('terminal_status') != 'completed':continue
+                try:body = _read(_root(state['root']), ENVIRONMENT)
+                except (OSError, ValueError):continue
+                if file_receipt(body) != receipt:
+                    raise ReviewSessionError('Historical render environment checksum mismatch')
+                return body
+        return None
+
+    def _compatible(self, role, context):
+        result = []
+        for old_root in self.root.parent.iterdir():
+            if old_root == self.root or not re.fullmatch('[0-9a-f]{64}', old_root.name):continue
+            old_root = _root(old_root)
+            old = json.loads(_read_record(old_root, 'candidate.json'))
+            if digest(encoded(old)) != old_root.name:
+                raise ReviewSessionError('Historical candidate identity checksum mismatch')
+            current = copy.deepcopy(self.identity);prior = copy.deepcopy(old)
+            old_receipt = prior.get('packet', {}).get(ENVIRONMENT)
+            if not old_receipt:continue
+            prior['packet'].pop(ENVIRONMENT);current['packet'].pop(ENVIRONMENT, None)
+            if prior != current:continue
+            body = self._old_environment(old_root, old_receipt)
+            if body is None or environment_receipt(body, self.source_identity) != self.identity['packet'].get(ENVIRONMENT):continue
+            home = old_root / role
+            if not home.is_dir():continue
+            for path in home.iterdir():
+                if not re.fullmatch('[0-9a-f]{64}', path.name):continue
+                old_context = json.loads(_read_record(_root(path), 'context.json'))
+                if digest(encoded(old_context)) != path.name:
+                    raise ReviewSessionError('Historical review context checksum mismatch')
+                comparable = copy.deepcopy(old_context)
+                if comparable.get('candidate') != old_root.name:continue
+                comparable['candidate'] = self.key
+                if comparable.get('files', {}).get(ENVIRONMENT) != old_receipt:continue
+                comparable['files'][ENVIRONMENT] = environment_receipt(body, self.source_identity)
+                if comparable == context:
+                    result.append(ReviewRole(_root(path), old_context))
+        return result
 
     def role(self, role, prompt, files):
         if role not in ROLES:
@@ -200,12 +307,12 @@ class ReviewSessions:
                    'files': copy.deepcopy(files)}
         root = _mkdir(self.root, (role, digest(encoded(context))))
         _publish_same(root, 'context.json', encoded(context))
-        return ReviewRole(root, context)
+        return ReviewRole(root, context, compatible=self._compatible(role, context))
 
 
 class ReviewRole:
-    def __init__(self, root, context):
-        self.root, self.context = root, context
+    def __init__(self, root, context, compatible=()):
+        self.root, self.context, self.compatible = root, context, compatible
 
     def cached(self, validate):
         found = None
@@ -234,6 +341,10 @@ class ReviewRole:
                 raise ReviewSessionError('Review report checksum mismatch')
             report = validate(json.loads(body))
             found = (copy.deepcopy(report), copy.deepcopy(state))
+        if found is None:
+            for role in self.compatible:
+                cached = role.cached(validate)
+                if cached is not None:found = cached
         return found
 
     def begin(self, root):

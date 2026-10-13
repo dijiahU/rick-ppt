@@ -9,7 +9,10 @@ class FrozenInputTests(unittest.TestCase):
     def test_input_bytes_survive_later_source_edit_and_preserve_font_data(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);path=root/'candidate.pptx'
-            with zipfile.ZipFile(path,'w') as z:z.writestr('ppt/slides/slide1.xml','<slide><font typeface="Arial"/><font typeface="+mn-lt"/></slide>')
+            with zipfile.ZipFile(path,'w') as z:
+                z.writestr('[Content_Types].xml','<Types/>')
+                z.writestr('ppt/presentation.xml','<presentation/>')
+                z.writestr('ppt/slides/slide1.xml','<slide><font typeface="Arial"/><font typeface="+mn-lt"/></slide>')
             before=path.read_bytes();data,environment=render_input(root,path)
             path.write_bytes(b'later author edit')
             self.assertEqual(data,before);self.assertEqual(environment['requested_fonts'],['Arial'])

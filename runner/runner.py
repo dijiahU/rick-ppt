@@ -338,10 +338,11 @@ def _run_job(cfg,task,lease):
     from durable import HOST_JOURNAL_LIMITS
     from model_backend import bind_task,profile_for_task,task_default_model,task_default_reasoning_effort,DEFAULT_TASK_MODEL,DEFAULT_TASK_REASONING_EFFORT
     cfg=dict(cfg)
-    selected=profile_for_task(state_root,task['id'],cfg.get('_model_profile'),existing)
+    selected=profile_for_task(state_root,task['id'],cfg.get('_model_profile'),existing,
+                              execution_backend=task.get('execution_backend'))
     if selected is None:cfg.pop('_model_profile',None)
     else:cfg['_model_profile']=selected
-    bind_task(state_root,task['id'],selected,existing)
+    bind_task(state_root,task['id'],selected,existing,execution_backend=task.get('execution_backend'))
     if not cfg.get('_model_profile'):
         cfg['_task_default_model']=task_default_model(state_root,task['id'],existing,cfg.get('default_model',DEFAULT_TASK_MODEL),cfg.get('default_reasoning_effort',DEFAULT_TASK_REASONING_EFFORT))
         cfg['_task_default_reasoning_effort']=task_default_reasoning_effort(state_root,task['id'])
@@ -533,15 +534,19 @@ def main():
     profile_path=args.model_profile or cfg.get('model_profile')
     if profile_path:
         from model_backend import load_profile
-        cfg['_model_profile']=load_profile(profile_path)
+        try:cfg['_model_profile']=load_profile(profile_path)
+        except (ValueError,OSError) as error:
+            if args.model_smoke or args.model_profile:raise
+            cfg['_api_profile_error']=type(error).__name__
+            print('API backend unavailable; local Codex remains available:',type(error).__name__,flush=True)
     if args.model_smoke:
-        from model_smoke import smoke
-        return smoke(cfg)
-    if args.codex_smoke and profile_path:
+        if not cfg.get('_model_profile'):raise SystemExit('API backend is not configured; no fallback was performed.')
         from model_smoke import smoke
         return smoke(cfg)
     if args.self_test:return self_test(cfg)
-    if args.codex_smoke:return codex_smoke(cfg)
+    if args.codex_smoke:
+        local=dict(cfg);local.pop('_model_profile',None)
+        return codex_smoke(local)
     if args.render_smoke:return render_smoke(cfg)
     worker_lock=(ROOT/'worker.lock').open('a+')
     from production_bridge import write_runtime_receipt
@@ -559,7 +564,9 @@ def main():
     self_test(cfg)
     write_runtime_receipt(ROOT,cfg,'ready')
     print('Bridge ready; up to 3 tasks run concurrently.',flush=True)
-    serve(lambda:request(cfg,'/api/worker').get('job'),lambda task:execute_task(cfg,task),stopping,
+    from model_backend import available_backends
+    claim_body=json.dumps({'execution_backends':available_backends(cfg)}).encode()
+    serve(lambda:request(cfg,'/api/worker',body=claim_body).get('job'),lambda task:execute_task(cfg,task),stopping,
           lambda error:print('Bridge error:',type(error).__name__,public_text(str(error)),flush=True),once=args.once)
 
 if __name__=='__main__':main()

@@ -26,7 +26,7 @@ def launch_environment(worker,credentials,environ=None):
     # Only its path is propagated to the host; keys never enter tool environments.
     env.pop('PPTX_RUNNER_MODEL_PROFILE',None)
     if cfg.get('model_profile'):
-        env['PPTX_RUNNER_MODEL_PROFILE']=str(Path(cfg['model_profile']).resolve(strict=True))
+        env['PPTX_RUNNER_MODEL_PROFILE']=str(Path(cfg['model_profile']).resolve())
     return env
 
 
@@ -48,7 +48,7 @@ def run(worker,credentials,argv=None):
 def write_runtime_receipt(root,cfg,status):
     """Proof of the configuration loaded by this process, rather than the file."""
     from model_backend import DEFAULT_TASK_MODEL,DEFAULT_TASK_REASONING_EFFORT
-    from model_backend import public_identity
+    from model_backend import public_identity,available_backends
     plugin=Path(cfg['plugin']).resolve()
     body={'pid':os.getpid(),'status':status,'plugin':str(plugin),
           'version':json.loads((plugin/'.codex-plugin/plugin.json').read_text())['version'],
@@ -56,6 +56,7 @@ def write_runtime_receipt(root,cfg,status):
           'default_model':cfg.get('default_model',DEFAULT_TASK_MODEL),
           'default_reasoning_effort':cfg.get('default_reasoning_effort',DEFAULT_TASK_REASONING_EFFORT)}
     body['model_backend']=public_identity(cfg.get('_model_profile'))
+    body['execution_backends']=available_backends(cfg)
     catalog=plugin/'skills/pptx/assets/workflow-choices.json'
     body['decision_contract_version']=json.loads(catalog.read_text()).get('version') if catalog.is_file() else None
     body['new_deck_click_reveal_required']=bool(catalog.is_file() and json.loads(catalog.read_text()).get('requirements',{}).get('new_deck_click_reveal'))

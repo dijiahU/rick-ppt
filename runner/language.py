@@ -13,6 +13,10 @@ def presentation_request(task):
     if language is not None and (not isinstance(language,str) or language not in LANGUAGES):
         raise ValueError('Unsupported presentation language')
     value['language']=language
+    backend=task.get('execution_backend')
+    if backend not in (None,'api','codex'):
+        raise ValueError('Unsupported task execution backend')
+    if backend is not None:value['execution_backend']=backend
     return value
 
 def language_instruction(task):
