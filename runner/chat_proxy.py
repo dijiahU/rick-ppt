@@ -5,6 +5,12 @@ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from model_backend import overrides,KEY_ENV
 
 MAX_BODY=16*1024*1024
+SAFE_SSE_EVENT_TYPES=frozenset(('error','response.created','response.in_progress','response.completed','response.failed','response.incomplete',
+ 'response.output_item.added','response.output_item.done','response.content_part.added','response.content_part.done',
+ 'response.output_text.delta','response.output_text.done','response.refusal.delta','response.refusal.done',
+ 'response.function_call_arguments.delta','response.function_call_arguments.done','response.custom_tool_call_input.delta','response.custom_tool_call_input.done',
+ 'response.reasoning_summary_part.added','response.reasoning_summary_part.done','response.reasoning_summary_text.delta','response.reasoning_summary_text.done',
+ 'response.reasoning_text.delta','response.reasoning_text.done'))
 def curl_reply(output):
  """Parse host curl status/allowlisted ID trailers; legacy mocks lack IDs."""
  try:
@@ -161,15 +167,17 @@ def safe_api_calls(calls,*,secrets=()):
   if not isinstance(call,dict):continue
   hidden=tuple(value for value in (*secrets,call.get('api_key'),call.get('token'),call.get('authorization')) if isinstance(value,str) and value)
   clean={}
-  for key in ('ok','http_ok','stream','cache_hit','terminal'):
+  for key in ('ok','http_ok','stream','cache_hit','terminal','sse_terminal_seen','sse_terminal_label_seen','sse_data_type_missing','generation_retry'):
    if type(call.get(key)) is bool:clean[key]=call[key]
-  for key in ('attempt','attempts','upstream_status','transport_code','retry_delay_seconds','seconds','tools','response_bytes'):
+  for key in ('attempt','attempts','upstream_status','transport_code','retry_delay_seconds','seconds','tools','response_bytes','sse_event_count','sse_unknown_event_count','sse_malformed_event_count'):
    if number(call.get(key)):clean[key]=call[key]
   for key in ('protocol','endpoint','requested_model','response_model','response_status','response_error_code','response_error_type','incomplete_reason','request_id','finish_reason'):
    value=call.get(key)
    if isinstance(value,str) and re.fullmatch(r'[A-Za-z0-9_.:/-]{1,200}',value) and not any(secret in value for secret in hidden):clean[key]=value
   if isinstance(call.get('output_types'),list):
    clean['output_types']=[kind for kind in call['output_types'] if kind in ('message','function_call','custom_tool_call','reasoning')]
+  for key in ('sse_event_counts','sse_event_label_counts'):
+   if isinstance(call.get(key),dict):clean[key]={kind:count for kind,count in call[key].items() if kind in SAFE_SSE_EVENT_TYPES and number(count)}
   for key in ('requested_service_tier','actual_service_tier'):
    if call.get(key) in ('auto','default','fast','priority'):clean[key]=call[key]
   usage=call.get('usage')

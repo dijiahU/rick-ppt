@@ -9,13 +9,17 @@ import hashlib
 import json
 import re
 import time
-from collections import OrderedDict
+from collections import OrderedDict,Counter
 
-from chat_proxy import ChatProxy, MAX_BODY, UpstreamError, curl_reply
+from chat_proxy import ChatProxy, MAX_BODY, UpstreamError, curl_reply, SAFE_SSE_EVENT_TYPES
 
 MAX_ATTEMPTS = 2
 MAX_FAILED_REQUESTS = 128
 RETRY_HTTP = frozenset((429, 500, 502, 503, 504, 524))
+
+class SSEParseError(ValueError):
+    def __init__(self,telemetry,output_seen):
+        super().__init__('Malformed upstream event');self.telemetry=telemetry;self.output_seen=output_seen
 
 
 class ResponsesProxy(ChatProxy):
@@ -58,31 +62,74 @@ class ResponsesProxy(ChatProxy):
 
     def _parse(self, raw, streaming):
         output_seen = False
+        telemetry={'sse_event_count':0,'sse_unknown_event_count':0,'sse_malformed_event_count':0,
+                   'sse_event_counts':{},'sse_event_label_counts':{},'sse_terminal_seen':False,
+                   'sse_terminal_label_seen':False,'sse_data_type_missing':False}
+        unsafe_output=False
         if not streaming:
             result = json.loads(raw)
             terminal = True
         else:
             result, terminal, top_error = None, False, None
+            counts,labels=Counter(),Counter()
             for frame in re.split(r'\r?\n\r?\n', raw):
+                event_labels=[line[6:].strip() for line in frame.splitlines() if line.startswith('event:')]
+                label=event_labels[-1] if event_labels else None
+                if label in SAFE_SSE_EVENT_TYPES:labels[label]+=1
+                if label in ('response.completed','response.failed','response.incomplete'):telemetry['sse_terminal_label_seen']=True
                 data = '\n'.join(line[5:].lstrip() for line in frame.splitlines() if line.startswith('data:'))
                 if not data or data == '[DONE]':
                     continue
-                event = json.loads(data)
-                if not isinstance(event, dict):
-                    raise ValueError('Malformed upstream event')
+                telemetry['sse_event_count']+=1
+                try:
+                    event = json.loads(data)
+                    if not isinstance(event,dict):raise ValueError('Malformed upstream event')
+                except ValueError:
+                    telemetry['sse_malformed_event_count']+=1
+                    telemetry.update(sse_event_counts=dict(counts),sse_event_label_counts=dict(labels))
+                    raise SSEParseError(telemetry,output_seen) from None
                 kind=event.get('type','')
+                if not kind:telemetry['sse_data_type_missing']=True
+                if kind in SAFE_SSE_EVENT_TYPES:counts[kind]+=1
+                else:telemetry['sse_unknown_event_count']+=1
                 if (kind in ('response.output_item.added','response.output_item.done','response.content_part.added','response.content_part.done')
                         or isinstance(kind,str) and kind.startswith('response.') and kind.endswith('.delta')):
                     output_seen = True
+                if kind in ('response.output_item.added','response.output_item.done'):
+                    item=event.get('item')
+                    if not isinstance(item,dict) or item.get('type') not in ('function_call','custom_tool_call','message','reasoning'):
+                        unsafe_output=True
                 if event.get('type') in ('response.completed', 'response.failed', 'response.incomplete'):
                     result, terminal = event.get('response'), True
                 elif event.get('type') == 'error':
                     top_error = event.get('error') or event
+            telemetry.update(sse_event_counts=dict(counts),sse_event_label_counts=dict(labels),sse_terminal_seen=terminal)
+            telemetry['_unsafe_output']=unsafe_output
             if not terminal:
-                return {'status': 'failed', 'error': top_error or {'type': 'stream_incomplete'}}, False, output_seen
+                return {'status': 'failed', 'error': top_error or {'type': 'stream_incomplete'}}, False, output_seen, telemetry
         if not isinstance(result, dict):
             raise ValueError('Malformed upstream response')
-        return result, terminal, output_seen
+        return result, terminal, output_seen, telemetry
+
+    def _client_generation(self,request):
+        # New generations are safe before downlink only when API-side execution
+        # and appendable conversation state are absent. Immutable parent IDs
+        # remain unchanged; this proxy never executes client tool declarations.
+        if request.get('conversation') is not None:return False
+        def local(specs,depth=0):
+            if not isinstance(specs,list) or depth>16:return False
+            for spec in specs:
+                if not isinstance(spec,dict):return False
+                kind=spec.get('type')
+                if not isinstance(spec.get('name'),str) or not spec['name']:return False
+                if kind in ('function','custom'):
+                    if kind=='function' and 'parameters' in spec and not isinstance(spec['parameters'],dict):return False
+                    if kind=='custom' and 'format' in spec and not isinstance(spec['format'],dict):return False
+                    continue
+                if kind=='namespace' and local(spec.get('tools'),depth+1):continue
+                return False
+            return True
+        return local(request.get('tools',[]))
 
     def _receipt(self, request, result, *, status, attempt, seconds, size, request_id):
         error = result.get('error') if isinstance(result, dict) else None
@@ -92,7 +139,7 @@ class ResponsesProxy(ChatProxy):
                    'ok': status == 200 and result.get('status') == 'completed',
                    'stream': request['stream'], 'requested_model': self.profile['model'],
                    'seconds': round(seconds, 3), 'response_bytes': size,
-                   'tools': len(request.get('tools', []))}
+                   'tools': len(request['tools']) if isinstance(request.get('tools'),list) else 0}
         incomplete=result.get('incomplete_details')
         incomplete=incomplete if isinstance(incomplete,dict) else {}
         for key, value in (('response_model', result.get('model')),
@@ -179,17 +226,21 @@ class ResponsesProxy(ChatProxy):
                 # A partial body is never replayed: it may include server-side
                 # state. Empty connect/TLS/socket failures get one host retry.
                 retry = (attempt < MAX_ATTEMPTS and process.returncode in (7, 28, 35, 52, 55, 56)
-                         and process.stdout.strip() in ('', '000'))
+                         and process.stdout.strip() in ('', '000') and self._client_generation(request))
                 if retry:
                     continue
                 message = 'Configured API transport failed'
                 self._remember_failure(digest, 502, message)
                 raise UpstreamError(502, message)
             try:
+                telemetry={};status=None
                 raw, status, request_id = curl_reply(process.stdout)
                 try:
-                    result, stream_terminal, output_seen = self._parse(raw, request['stream'])
-                except (ValueError, TypeError):
+                    result, stream_terminal, output_seen, telemetry = self._parse(raw, request['stream'])
+                    parse_error=False
+                except (ValueError, TypeError) as error:
+                    telemetry=getattr(error,'telemetry',{})
+                    parse_error=True
                     if status == 200:
                         raise
                     result = {'error': {'type': 'http_error'}}
@@ -199,12 +250,14 @@ class ResponsesProxy(ChatProxy):
                     output_seen = bool(re.search(r'(?m)^(?:data|event):', raw))
             except (ValueError, TypeError, KeyError):
                 self.calls.append({'ok': False, 'attempt': attempt, 'protocol': 'responses',
-                                   'response_error_type': 'malformed_response'})
+                                   'response_error_type': 'malformed_response','upstream_status':status,**telemetry})
                 message = 'Configured API returned a malformed response'
                 self._remember_failure(digest, 502, message)
                 raise UpstreamError(502, message) from None
             receipt = self._receipt(request, result, status=status, attempt=attempt,
                 seconds=time.monotonic()-started, size=len(raw.encode()), request_id=request_id)
+            unsafe_output=telemetry.pop('_unsafe_output',False)
+            receipt.update(telemetry)
             self.calls.append(receipt)
             valid = (status == 200 and result.get('status') == 'completed'
                      and result.get('model') == self.profile['model']
@@ -217,14 +270,18 @@ class ResponsesProxy(ChatProxy):
                 receipt['output_types'] = [x.get('type') for x in result['output'] if isinstance(x, dict)]
                 return result
             receipt['ok'] = False
-            retry = (attempt < MAX_ATTEMPTS and (status in RETRY_HTTP or
-                     status == 200 and result.get('status') == 'failed'
-                     and receipt.get('response_error_type') == 'server_error')
-                     and not result.get('output') and not output_seen
-                     and (not request['stream'] or status != 200 or stream_terminal))
+            local_result=(not result.get('output') or isinstance(result['output'],list) and
+                          all(isinstance(item,dict) and item.get('type') in ('function_call','custom_tool_call','message','reasoning') for item in result['output']))
+            regenerate=(self._client_generation(request) and local_result and not unsafe_output and not parse_error and
+                        (status==524 or status==200 and result.get('status')=='failed'
+                         and receipt.get('response_error_type') in ('stream_incomplete','server_error')))
+            ordinary_retry=(self._client_generation(request) and status in RETRY_HTTP-{524} and not result.get('output') and not output_seen
+                            and (not request['stream'] or status!=200 or stream_terminal))
+            retry=attempt<MAX_ATTEMPTS and (regenerate or ordinary_retry)
             if retry:
                 delay = 120 if status == 524 else 1
                 receipt['retry_delay_seconds'] = delay
+                receipt['generation_retry']=regenerate
                 if self.stopping.wait(delay):
                     raise UpstreamError(499, 'Configured API request interrupted')
                 continue

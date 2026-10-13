@@ -1,5 +1,6 @@
 """Atomic native Responses transport, retry boundaries and credential isolation."""
-import copy, io, json, unittest, threading,urllib.request,urllib.error
+import copy, io, json, unittest, threading,urllib.request,urllib.error,tempfile
+from pathlib import Path
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -93,12 +94,12 @@ class ResponsesTests(unittest.TestCase):
         safe=safe_api_calls(proxy.calls);self.assertEqual(safe[0]['response_error_type'],'server_error')
         self.assertNotIn('private upstream details',json.dumps(proxy.calls))
 
-    def test_partial_tool_result_never_retries_or_escapes_as_success(self):
+    def test_partial_client_server_error_can_regenerate_but_not_escape_as_success(self):
         call_item={'id':'fc_1','type':'function_call','call_id':'call_1','name':'write','arguments':'partial','status':'incomplete'}
         proxy=ResponsesProxy(PROFILE)
         with patch.object(proxy,'_upstream',return_value=upstream(response(status='failed',output=[call_item],error={'type':'server_error'}))) as call:
             with self.assertRaises(UpstreamError):proxy.complete({'model':'test-model','input':'hello'})
-        self.assertEqual(call.call_count,1);self.assertFalse(proxy.calls[0]['ok'])
+        self.assertEqual(call.call_count,2);self.assertFalse(proxy.calls[0]['ok'])
 
     def test_top_completed_with_incomplete_tool_is_rejected(self):
         item={'id':'fc_1','type':'function_call','call_id':'call_1','name':'write','arguments':'partial','status':'incomplete'}
@@ -145,7 +146,7 @@ class ResponsesTests(unittest.TestCase):
         proxy=ResponsesProxy({**PROFILE,'responses_transport':'streaming'})
         raw='event: response.created\ndata: '+json.dumps({'type':'response.created','response':response(status='in_progress')})+'\n\n'
         process=SimpleNamespace(returncode=0,stdout=raw+'\n200\nreq-123\n',stderr='')
-        with patch.object(proxy,'_upstream',return_value=process):
+        with patch.object(proxy.stopping,'wait',return_value=False),patch.object(proxy,'_upstream',return_value=process):
             with self.assertRaises(UpstreamError):proxy.complete({'model':'test-model','input':'hello'})
         self.assertEqual(proxy.calls[0]['response_error_type'],'stream_incomplete')
 
@@ -188,7 +189,7 @@ class ResponsesTests(unittest.TestCase):
             process=SimpleNamespace(returncode=0,stdout=raw+'\n200\nreq-123\n',stderr='')
             proxy=ResponsesProxy(PROFILE)
             with patch.object(proxy,'_upstream',return_value=process) as call:
-                with self.assertRaises(UpstreamError):proxy.complete({'model':'test-model','input':'hello'})
+                with self.assertRaises(UpstreamError):proxy.complete({'model':'test-model','input':'hello','tools':[{'type':'web_search'}]})
             self.assertEqual(call.call_count,1)
 
     def test_524_partial_then_malformed_sse_is_terminal_sdk_error(self):
@@ -226,5 +227,73 @@ class ResponsesTests(unittest.TestCase):
             with provider_session(PROFILE) as (config,env,calls):
                 self.assertEqual(env,{KEY_ENV:fake.token});self.assertEqual(calls,[])
                 self.assertNotIn(PROFILE['api_key'],json.dumps([config,env,calls]))
+
+    def test_client_partial_generation_discarded_sdk_executes_only_second_tool(self):
+        partial={'type':'response.output_item.added','item':{'id':'fc_old','type':'function_call','arguments':'partial','name':'write','call_id':'call_old','status':'in_progress'},'output_index':0}
+        raw='event: response.output_item.added\ndata: '+json.dumps(partial)+'\n\n'
+        incomplete=SimpleNamespace(returncode=0,stdout=raw+'\n200\nreq-1\n',stderr='')
+        fresh=response(id='resp_fresh',output=[{'id':'fc_new','type':'function_call','arguments':json.dumps({'contents':'新完整内容 ✅'},ensure_ascii=False),'name':'write','call_id':'call_new','status':'completed'}])
+        request={'model':'test-model','input':'hello','stream':True,'tools':[{'type':'namespace','name':'functions','tools':[{'type':'function','name':'write'}]}]}
+        executed=[]
+        with ResponsesProxy(PROFILE) as proxy,tempfile.TemporaryDirectory() as folder:
+            with patch.object(proxy.stopping,'wait',return_value=False),patch.object(proxy,'_upstream',side_effect=[incomplete,upstream(fresh)]) as call:
+                opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+                req=urllib.request.Request(proxy.url+'/responses',data=json.dumps(request).encode(),headers={'Authorization':'Bearer '+proxy.token,'Content-Type':'application/json'})
+                with opener.open(req,timeout=5) as reply:downlink=reply.read().decode()
+                self.assertNotIn('call_old',downlink)
+                events=[json.loads(frame.split('\ndata: ',1)[1]) for frame in downlink.strip().split('\n\n')]
+                final=events[-1]['response'];self.assertEqual(final['status'],'completed')
+                for item in final['output']:
+                    executed.append(item['call_id']);(Path(folder)/'written.txt').write_text(json.loads(item['arguments'])['contents'])
+                self.assertEqual(executed,['call_new']);self.assertEqual((Path(folder)/'written.txt').read_text(),'新完整内容 ✅')
+                self.assertEqual(call.call_count,2);self.assertTrue(proxy.calls[0]['generation_retry'])
+
+    def test_two_unfinished_generations_fail_sdk400_and_deduplicate(self):
+        raw='data: '+json.dumps({'type':'response.created','response':response(status='in_progress',output=[])})+'\n\n'
+        incomplete=SimpleNamespace(returncode=0,stdout=raw+'\n200\nreq-1\n',stderr='')
+        with ResponsesProxy(PROFILE) as proxy:
+            with patch.object(proxy.stopping,'wait',return_value=False),patch.object(proxy,'_upstream',return_value=incomplete) as call:
+                opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+                for _ in range(2):
+                    req=urllib.request.Request(proxy.url+'/responses',data=json.dumps({'model':'test-model','input':'hello','stream':True}).encode(),headers={'Authorization':'Bearer '+proxy.token,'Content-Type':'application/json'})
+                    with self.assertRaises(urllib.error.HTTPError) as caught:opener.open(req,timeout=5)
+                    self.assertEqual(caught.exception.code,400);self.assertNotIn(b'output_item',caught.exception.read())
+                self.assertEqual(call.call_count,2);self.assertTrue(proxy.calls[-1]['cache_hit'])
+
+    def test_hosted_unknown_malformed_or_conversation_never_regenerates_partial(self):
+        raw='data: '+json.dumps({'type':'response.output_item.added','item':{'type':'function_call','call_id':'old'}})+'\n\n'
+        incomplete=SimpleNamespace(returncode=0,stdout=raw+'\n200\nreq-1\n',stderr='')
+        blocked=[{'tools':[{'type':'web_search'}]},{'tools':[{'type':'function'},{'type':'image_generation'}]},
+                 {'tools':[{'type':'namespace','tools':[{'type':'mcp'}]}]},{'tools':[{'type':'unknown'}]},
+                 {'tools':{}},{'tools':[{'type':'namespace','tools':None}]},{'conversation':'conv_1'}]
+        blocked.extend([{'tools':[{'type':'function'}]},{'tools':[{'type':'custom','name':''}]},
+                        {'tools':[{'type':'function','name':'write','parameters':'bad'}]},
+                        {'tools':[{'type':'namespace','tools':[{'type':'function','name':'write'}]}]}])
+        for extra in blocked:
+            proxy=ResponsesProxy(PROFILE)
+            with patch.object(proxy,'_upstream',return_value=incomplete) as call:
+                with self.assertRaises(UpstreamError):proxy.complete({'model':'test-model','input':'hello',**extra})
+            call.assert_called_once()
+
+    def test_sse_telemetry_is_allowlisted_and_does_not_invent_terminal(self):
+        frames=[('response.created',{'type':'response.created','response':response(status='in_progress',output=[])}),
+                ('response.completed',{'response':response()}),(PROFILE['api_key'],{'type':PROFILE['api_key'],'text':PROFILE['api_key']})]
+        raw=''.join('event: '+label+'\ndata: '+json.dumps(event)+'\n\n' for label,event in frames)
+        process=SimpleNamespace(returncode=0,stdout=raw+'\n200\nreq-1\n',stderr='')
+        proxy=ResponsesProxy(PROFILE)
+        with patch.object(proxy,'_upstream',return_value=process):
+            with self.assertRaises(UpstreamError):proxy.complete({'model':'test-model','input':'hello','tools':[{'type':'web_search'}]})
+        safe=safe_api_calls(proxy.calls)[0]
+        self.assertFalse(safe['sse_terminal_seen']);self.assertTrue(safe['sse_terminal_label_seen']);self.assertTrue(safe['sse_data_type_missing'])
+        self.assertEqual(safe['sse_event_count'],3);self.assertEqual(safe['sse_unknown_event_count'],2)
+        self.assertNotIn(PROFILE['api_key'],json.dumps(safe))
+
+    def test_undeclared_hosted_partial_output_is_not_regenerated(self):
+        raw='data: '+json.dumps({'type':'response.output_item.added','item':{'type':'web_search_call','id':'hosted_1'}})+'\n\n'
+        process=SimpleNamespace(returncode=0,stdout=raw+'\n200\nreq-1\n',stderr='')
+        proxy=ResponsesProxy(PROFILE)
+        with patch.object(proxy,'_upstream',return_value=process) as call:
+            with self.assertRaises(UpstreamError):proxy.complete({'model':'test-model','input':'hello','tools':[]})
+        call.assert_called_once()
 
 if __name__=='__main__':unittest.main()
