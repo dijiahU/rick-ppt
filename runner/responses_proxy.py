@@ -150,7 +150,10 @@ class ResponsesProxy(ChatProxy):
             raise UpstreamError(status, message)
         config = ('header = ' + json.dumps('Authorization: Bearer ' + self.profile['api_key']) + '\n'
                   'header = "Content-Type: application/json"\n'
-                  'data = ' + json.dumps(encoded) + '\n')
+                  # curl's config language does not implement JSON \u escapes.
+                  # Keep literal UTF-8 in this outer quoting layer; the inner
+                  # JSON document still escapes newlines, quotes and slashes.
+                  'data = ' + json.dumps(encoded, ensure_ascii=False) + '\n')
         timeout = 600 if self.profile.get('reasoning_effort') else 180
         for attempt in range(1, MAX_ATTEMPTS + 1):
             if self.stopping.is_set():

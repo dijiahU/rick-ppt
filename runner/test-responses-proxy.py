@@ -1,5 +1,6 @@
 """Atomic native Responses transport, retry boundaries and credential isolation."""
-import copy, io, json, unittest
+import copy, io, json, unittest, threading
+from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -21,6 +22,44 @@ def upstream(reply,status=200):
     return SimpleNamespace(returncode=0,stdout=json.dumps(reply)+'\n'+str(status)+'\nreq-123\n',stderr='')
 
 class ResponsesTests(unittest.TestCase):
+    def test_real_curl_utf8_and_nested_tool_json_round_trip(self):
+        """Parse with actual curl, not json.loads(config), which hides this bug."""
+        observed=[]
+        class Echo(BaseHTTPRequestHandler):
+            def log_message(self,*args):pass
+            def do_POST(self):
+                body=json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+                observed.append(body)
+                arguments=json.dumps({'正文':body['input'][0]['content'],'nested':body['input'][1]['output']},ensure_ascii=False)
+                result=response(output=[{'id':'fc_utf8','type':'function_call','status':'completed','name':'capture',
+                                       'call_id':'call_utf8','arguments':arguments}])
+                encoded=json.dumps(result,ensure_ascii=False).encode('utf-8')
+                self.send_response(200);self.send_header('Content-Type','application/json; charset=utf-8')
+                self.send_header('Content-Length',str(len(encoded)));self.end_headers();self.wfile.write(encoded)
+        server=ThreadingHTTPServer(('127.0.0.1',0),Echo);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        try:
+            text='原始标题 → API链路测试 😀\n换行 "双引号" 与反斜杠 \\ 文件路径 C:\\资料\\测试.txt'
+            nested={'中文键':'图表 ✅','quoted':'"你好"','path':'C:\\资料\\file.txt','lines':'甲\n乙','literal_escape':'\\u4e2d'}
+            body={'model':'test-model','stream':True,'input':[{'role':'user','content':text},
+                  {'type':'function_call_output','call_id':'prior_call','output':json.dumps(nested,ensure_ascii=False)}]}
+            proxy=ResponsesProxy({**PROFILE,'base_url':f'http://127.0.0.1:{server.server_port}/v1'})
+            actual=proxy._upstream
+            def local_curl(command,**kwargs):
+                # This fixture alone bypasses developer machine proxy env.
+                return actual(command[:1]+['--noproxy','*']+command[1:],**kwargs)
+            with patch.object(proxy,'_upstream',side_effect=local_curl) as call:
+                result=proxy.complete(body)
+                self.assertEqual(call.call_count,1)
+            self.assertEqual(observed[0]['input'],body['input'])
+            parsed=json.loads(result['output'][0]['arguments'])
+            self.assertEqual(parsed['正文'],text);self.assertEqual(json.loads(parsed['nested']),nested)
+            self.assertEqual(proxy._digest(body),proxy._digest(copy.deepcopy(body)))
+            proxy.abort_delivery(body)
+            with patch.object(proxy,'_upstream') as call:
+                with self.assertRaises(UpstreamError):proxy.complete(copy.deepcopy(body))
+                call.assert_not_called()
+        finally:server.shutdown();server.server_close();thread.join(timeout=2)
+
     def test_native_history_images_reasoning_schema_and_length_are_preserved(self):
         body={'model':'test-model','stream':True,'previous_response_id':'resp_old','max_output_tokens':48000,
               'reasoning':{'effort':'low','summary':'auto'},'input':[{'type':'reasoning','encrypted_content':'encrypted-state'},
