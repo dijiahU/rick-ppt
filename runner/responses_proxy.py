@@ -15,7 +15,7 @@ from chat_proxy import ChatProxy, MAX_BODY, UpstreamError, curl_reply
 
 MAX_ATTEMPTS = 2
 MAX_FAILED_REQUESTS = 128
-RETRY_HTTP = frozenset((429, 500, 502, 503, 504))
+RETRY_HTTP = frozenset((429, 500, 502, 503, 504, 524))
 
 
 class ResponsesProxy(ChatProxy):
@@ -42,7 +42,10 @@ class ResponsesProxy(ChatProxy):
         # Stateful IDs, reasoning items, encrypted content, namespaces, image
         # inputs and JSON schemas pass through untouched on the native route.
         request = copy.deepcopy(body)
-        request['stream'] = self.profile.get('responses_transport', 'buffered') == 'streaming'
+        # Stream from the provider to avoid waiting for the entire generation
+        # before the upstream HTTP connection has observable response data.
+        # Delivery to app-server remains atomic after full validation.
+        request['stream'] = self.profile.get('responses_transport', 'streaming') == 'streaming'
         if self.profile.get('reasoning_effort'):
             reasoning = request.get('reasoning') or {}
             if not isinstance(reasoning, dict):
@@ -54,8 +57,10 @@ class ResponsesProxy(ChatProxy):
         return request
 
     def _parse(self, raw, streaming):
+        output_seen = False
         if not streaming:
             result = json.loads(raw)
+            terminal = True
         else:
             result, terminal, top_error = None, False, None
             for frame in re.split(r'\r?\n\r?\n', raw):
@@ -65,15 +70,19 @@ class ResponsesProxy(ChatProxy):
                 event = json.loads(data)
                 if not isinstance(event, dict):
                     raise ValueError('Malformed upstream event')
+                kind=event.get('type','')
+                if (kind in ('response.output_item.added','response.output_item.done','response.content_part.added','response.content_part.done')
+                        or isinstance(kind,str) and kind.startswith('response.') and kind.endswith('.delta')):
+                    output_seen = True
                 if event.get('type') in ('response.completed', 'response.failed', 'response.incomplete'):
                     result, terminal = event.get('response'), True
                 elif event.get('type') == 'error':
                     top_error = event.get('error') or event
             if not terminal:
-                return {'status': 'failed', 'error': top_error or {'type': 'stream_incomplete'}}
+                return {'status': 'failed', 'error': top_error or {'type': 'stream_incomplete'}}, False, output_seen
         if not isinstance(result, dict):
             raise ValueError('Malformed upstream response')
-        return result
+        return result, terminal, output_seen
 
     def _receipt(self, request, result, *, status, attempt, seconds, size, request_id):
         error = result.get('error') if isinstance(result, dict) else None
@@ -179,11 +188,15 @@ class ResponsesProxy(ChatProxy):
             try:
                 raw, status, request_id = curl_reply(process.stdout)
                 try:
-                    result = self._parse(raw, request['stream'])
+                    result, stream_terminal, output_seen = self._parse(raw, request['stream'])
                 except (ValueError, TypeError):
                     if status == 200:
                         raise
                     result = {'error': {'type': 'http_error'}}
+                    # A malformed later frame must not erase an earlier tool
+                    # item. Any SSE framing makes non-200 replay uncertain.
+                    stream_terminal = False
+                    output_seen = bool(re.search(r'(?m)^(?:data|event):', raw))
             except (ValueError, TypeError, KeyError):
                 self.calls.append({'ok': False, 'attempt': attempt, 'protocol': 'responses',
                                    'response_error_type': 'malformed_response'})
@@ -207,9 +220,12 @@ class ResponsesProxy(ChatProxy):
             retry = (attempt < MAX_ATTEMPTS and (status in RETRY_HTTP or
                      status == 200 and result.get('status') == 'failed'
                      and receipt.get('response_error_type') == 'server_error')
-                     and not result.get('output'))
+                     and not result.get('output') and not output_seen
+                     and (not request['stream'] or status != 200 or stream_terminal))
             if retry:
-                if self.stopping.wait(1):
+                delay = 120 if status == 524 else 1
+                receipt['retry_delay_seconds'] = delay
+                if self.stopping.wait(delay):
                     raise UpstreamError(499, 'Configured API request interrupted')
                 continue
             marker = receipt.get('response_error_type') or receipt.get('response_error_code') or receipt.get('response_status') or 'invalid_response'

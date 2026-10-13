@@ -1,5 +1,5 @@
 """Atomic native Responses transport, retry boundaries and credential isolation."""
-import copy, io, json, unittest, threading
+import copy, io, json, unittest, threading,urllib.request,urllib.error
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -18,8 +18,9 @@ def response(**changes):
             'service_tier':'default','usage':{'input_tokens':10,'output_tokens':2,'total_tokens':12}}
     result.update(changes);return result
 
-def upstream(reply,status=200):
-    return SimpleNamespace(returncode=0,stdout=json.dumps(reply)+'\n'+str(status)+'\nreq-123\n',stderr='')
+def upstream(reply,status=200,streaming=True):
+    raw=('event: response.'+reply['status']+'\ndata: '+json.dumps({'type':'response.'+reply['status'],'response':reply})+'\n\n') if streaming else json.dumps(reply)
+    return SimpleNamespace(returncode=0,stdout=raw+'\n'+str(status)+'\nreq-123\n',stderr='')
 
 class ResponsesTests(unittest.TestCase):
     def test_real_curl_utf8_and_nested_tool_json_round_trip(self):
@@ -33,8 +34,9 @@ class ResponsesTests(unittest.TestCase):
                 arguments=json.dumps({'正文':body['input'][0]['content'],'nested':body['input'][1]['output']},ensure_ascii=False)
                 result=response(output=[{'id':'fc_utf8','type':'function_call','status':'completed','name':'capture',
                                        'call_id':'call_utf8','arguments':arguments}])
-                encoded=json.dumps(result,ensure_ascii=False).encode('utf-8')
-                self.send_response(200);self.send_header('Content-Type','application/json; charset=utf-8')
+                raw=(''.join('event: '+e['type']+'\ndata: '+json.dumps(e,ensure_ascii=False)+'\n\n' for e in response_sse_events(result))) if body['stream'] else json.dumps(result,ensure_ascii=False)
+                encoded=raw.encode('utf-8')
+                self.send_response(200);self.send_header('Content-Type','text/event-stream' if body['stream'] else 'application/json; charset=utf-8')
                 self.send_header('Content-Length',str(len(encoded)));self.end_headers();self.wfile.write(encoded)
         server=ThreadingHTTPServer(('127.0.0.1',0),Echo);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         try:
@@ -51,6 +53,7 @@ class ResponsesTests(unittest.TestCase):
                 result=proxy.complete(body)
                 self.assertEqual(call.call_count,1)
             self.assertEqual(observed[0]['input'],body['input'])
+            self.assertTrue(observed[0]['stream'])
             parsed=json.loads(result['output'][0]['arguments'])
             self.assertEqual(parsed['正文'],text);self.assertEqual(json.loads(parsed['nested']),nested)
             self.assertEqual(proxy._digest(body),proxy._digest(copy.deepcopy(body)))
@@ -67,8 +70,8 @@ class ResponsesTests(unittest.TestCase):
               'tools':[{'type':'namespace','name':'functions','description':'tools','tools':[{'type':'custom','name':'exec',
                        'format':{'type':'grammar','syntax':'lark','definition':'start: /.+/'}}]}],
               'text':{'format':{'type':'json_schema','name':'result','schema':{'type':'object'}}}}
-        original=copy.deepcopy(body);proxy=ResponsesProxy(PROFILE)
-        with patch.object(proxy,'_upstream',return_value=upstream(response())) as call:
+        original=copy.deepcopy(body);proxy=ResponsesProxy({**PROFILE,'responses_transport':'buffered'})
+        with patch.object(proxy,'_upstream',return_value=upstream(response(),streaming=False)) as call:
             self.assertEqual(proxy.complete(body)['status'],'completed')
         config=call.call_args.kwargs['input'];line=next(x for x in config.splitlines() if x.startswith('data = '))
         sent=json.loads(json.loads(line[7:]));self.assertFalse(sent['stream'])
@@ -146,6 +149,62 @@ class ResponsesTests(unittest.TestCase):
             with self.assertRaises(UpstreamError):proxy.complete({'model':'test-model','input':'hello'})
         self.assertEqual(proxy.calls[0]['response_error_type'],'stream_incomplete')
 
+    def test_default_and_explicit_upstream_modes(self):
+        for selected,expected in (({},True),({'responses_transport':'streaming'},True),({'responses_transport':'buffered'},False)):
+            proxy=ResponsesProxy({**PROFILE,**selected})
+            with patch.object(proxy,'_upstream',return_value=upstream(response(),streaming=expected)) as call:
+                proxy.complete({'model':'test-model','input':'中文 😀','stream':True})
+            line=next(x for x in call.call_args.kwargs['input'].splitlines() if x.startswith('data = '))
+            self.assertIs(json.loads(json.loads(line[7:]))['stream'],expected)
+
+    def test_524_retries_once_with_cancellable_documented_backoff(self):
+        timeout=SimpleNamespace(returncode=0,stdout='Gateway timeout\n524\nreq-timeout\n',stderr='')
+        proxy=ResponsesProxy(PROFILE)
+        with patch.object(proxy.stopping,'wait',return_value=False) as wait,patch.object(proxy,'_upstream',side_effect=[timeout,upstream(response())]) as call:
+            self.assertEqual(proxy.complete({'model':'test-model','input':'hello'})['status'],'completed')
+        self.assertEqual(call.call_count,2);wait.assert_called_once_with(120)
+        self.assertEqual(proxy.calls[0]['upstream_status'],524);self.assertEqual(proxy.calls[0]['retry_delay_seconds'],120)
+
+    def test_524_exhaustion_returns_fatal_sdk_400_and_deduplicates(self):
+        timeout=SimpleNamespace(returncode=0,stdout='Gateway timeout\n524\nreq-timeout\n',stderr='')
+        with ResponsesProxy(PROFILE) as proxy:
+            with patch.object(proxy.stopping,'wait',return_value=False),patch.object(proxy,'_upstream',return_value=timeout) as call:
+                request={'model':'test-model','input':'hello','stream':True}
+                opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+                for _ in range(2):
+                    req=urllib.request.Request(proxy.url+'/responses',data=json.dumps(request).encode(),headers={'Authorization':'Bearer '+proxy.token,'Content-Type':'application/json'})
+                    with self.assertRaises(urllib.error.HTTPError) as caught:opener.open(req,timeout=5)
+                    self.assertEqual(caught.exception.code,400)
+                    self.assertEqual(json.loads(caught.exception.read())['error']['code'],'pptx_upstream_failure')
+                self.assertEqual(call.call_count,2);self.assertTrue(proxy.calls[-1]['cache_hit'])
+
+    def test_failed_stream_with_partial_or_without_terminal_never_retries(self):
+        partial={'type':'response.output_item.added','item':{'id':'fc_1','type':'function_call','arguments':'','name':'write','call_id':'call_1','status':'in_progress'},'output_index':0}
+        failed=response(status='failed',output=[],error={'type':'server_error'})
+        terminal={'type':'response.failed','response':failed}
+        error={'type':'error','error':{'type':'server_error'}}
+        for events in ([partial,terminal],[error],[partial,error]):
+            raw=''.join('data: '+json.dumps(e)+'\n\n' for e in events)
+            process=SimpleNamespace(returncode=0,stdout=raw+'\n200\nreq-123\n',stderr='')
+            proxy=ResponsesProxy(PROFILE)
+            with patch.object(proxy,'_upstream',return_value=process) as call:
+                with self.assertRaises(UpstreamError):proxy.complete({'model':'test-model','input':'hello'})
+            self.assertEqual(call.call_count,1)
+
+    def test_524_partial_then_malformed_sse_is_terminal_sdk_error(self):
+        partial={'type':'response.output_item.added','item':{'id':'fc_1','type':'function_call','arguments':'','name':'write','call_id':'call_1','status':'in_progress'},'output_index':0}
+        raw='event: response.output_item.added\ndata: '+json.dumps(partial)+'\n\ndata: {malformed\n\n'
+        process=SimpleNamespace(returncode=0,stdout=raw+'\n524\nreq-524\n',stderr='')
+        with ResponsesProxy(PROFILE) as proxy:
+            with patch.object(proxy.stopping,'wait',return_value=False) as wait,patch.object(proxy,'_upstream',return_value=process) as call:
+                opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+                req=urllib.request.Request(proxy.url+'/responses',data=json.dumps({'model':'test-model','input':'hello','stream':True}).encode(),headers={'Authorization':'Bearer '+proxy.token,'Content-Type':'application/json'})
+                with self.assertRaises(urllib.error.HTTPError) as caught:opener.open(req,timeout=5)
+                self.assertEqual(caught.exception.code,400)
+                body=caught.exception.read();self.assertNotIn(b'output_item',body)
+                self.assertEqual(json.loads(body)['error']['code'],'pptx_upstream_failure')
+                call.assert_called_once();wait.assert_not_called()
+
     def test_auth_key_and_private_error_codes_cannot_enter_receipts(self):
         proxy=ResponsesProxy(PROFILE);failed=response(status='failed',output=[],error={'type':PROFILE['api_key'],'code':PROFILE['api_key']})
         with patch.object(proxy,'_upstream',return_value=upstream(failed)):
@@ -155,7 +214,7 @@ class ResponsesTests(unittest.TestCase):
     def test_request_id_cannot_embed_provider_or_loopback_credentials(self):
         for secret_source in ('provider','loopback'):
             proxy=ResponsesProxy(PROFILE);secret=PROFILE['api_key'] if secret_source=='provider' else proxy.token
-            reply=SimpleNamespace(returncode=0,stdout=json.dumps(response())+'\n200\nreq-'+secret+'\n',stderr='')
+            reply=upstream(response());reply.stdout=reply.stdout.replace('req-123','req-'+secret)
             with patch.object(proxy,'_upstream',return_value=reply):proxy.complete({'model':'test-model','input':'hello'})
             self.assertNotIn('request_id',safe_api_calls(proxy.calls)[0]);self.assertNotIn(secret,json.dumps(proxy.calls))
         self.assertEqual(safe_api_calls([{'request_id':'req-host-secret-placeholder'}],secrets=(PROFILE['api_key'],)),[])
