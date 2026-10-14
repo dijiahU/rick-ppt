@@ -108,6 +108,17 @@ class ReviewRecoveryTests(unittest.TestCase):
         evidence_prompt=next(prompt for name,_,prompt in self.calls if name.startswith('content-evidence'))
         self.assertIn('read the actual exported notes',evidence_prompt)
 
+    def test_legacy_packet_keeps_historical_policy_prompt_for_report_reuse(self):
+        self.review()
+        reference=self.plugin/'skills/pptx/references'
+        prompts={name:prompt for name,_,prompt in self.calls}
+        self.assertIn(f' Read {reference}/content-review.md. First audience pass:',prompts['content-first-1'])
+        self.assertIn(f' Read {reference}/content-review.md, request.json and original attachments.',prompts['content-evidence-1'])
+        self.assertIn(f' Read {reference}/visual-review.md and request.json. Check sequence',prompts['visual-1'])
+        self.assertTrue(all('Trusted content-review policy:' not in p and 'Trusted visual-review policy:' not in p for p in prompts.values()))
+        self.review(self.execution())
+        self.assertEqual(len(self.calls),3)
+
     def test_v3_visual_review_requires_actual_design_assessment(self):
         catalog=self.plugin/'skills/pptx/assets/workflow-choices.json';catalog.parent.mkdir();catalog.write_text('{"version":3}')
         with self.assertRaisesRegex(ValueError,'audience fit'):self.review()
