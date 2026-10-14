@@ -70,6 +70,18 @@ class ToolPreparationTests(unittest.TestCase):
         self.assertEqual(value['native_batch']['document_fields'], ['version', 'batch_id', 'operations'])
         self.assertIn('does not create decision-plan.json', value['command_outputs']['decision_scaffold'])
 
+    def test_planning_and_sequential_page_tools_use_installed_interfaces(self):
+        helper.prepare_tool_manifest(self.root)
+        value = self.read_manifest()
+        self.assertEqual(value['planning_commit']['command'],value['commands']['planning_commit'])
+        self.assertEqual(value['planning_commit']['outputs'],['outline.json','decision-plan.json','source-notes.md'])
+        for name in ('planning_commit','ensure_next_page'):
+            self.assertEqual(value['commands'][name][0],sys.executable)
+        self.assertEqual(value['native_pages']['mode'],'blank_from_layout')
+        self.assertIn('CHOSEN_LAYOUT_SOURCE_PAGE',value['commands']['ensure_next_page'])
+        self.assertFalse((self.root/'outline.json').exists())
+        self.assertFalse((self.root/'decision-plan.json').exists())
+
     def test_generated_examples_follow_actual_cli_parser(self):
         helper.prepare_tool_manifest(self.root)
         value = self.read_manifest()

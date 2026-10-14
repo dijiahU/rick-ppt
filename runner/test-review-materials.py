@@ -61,7 +61,81 @@ class ReviewMaterialsTests(unittest.TestCase):
 
     def test_old_immutable_packet_keeps_existing_review_path(self):
         (self.root / 'review-index.json').unlink()
+        # Historical packets must neither read new evidence nor change prompts,
+        # including when supplemental data is malformed or inaccessible.
+        (self.root / 'request.json').write_text('{bad JSON')
+        (self.root / 'audience-notes.json').symlink_to('/unavailable/private-notes')
         self.assertEqual(prepare_review_materials(self.root, 'visual'), ('', []))
+
+    def test_role_documents_preserve_blind_isolation_and_source_role_boundaries(self):
+        documents = {
+            'request.json': {'title': 'VISIBLE REQUIREMENT', 'brief': 'SOURCE BRIEF',
+                             'api_key': 'PRIVATE HOST VALUE',
+                             'attachments': [{'path': 'references/source.md', 'name': 'ACTUAL SOURCE',
+                                              'private_transport': 'PRIVATE TRANSPORT VALUE'}]},
+            'first-view.json': {'summary': 'SEALED BLIND JUDGMENT', 'pages_reviewed': [1, 2]},
+            'audience-notes.json': {'slides': [{'text': 'EXPORTED NOTES'}]},
+            'references/index.json': [{'path': 'references/source.md', 'title': 'SOURCE REGISTER'}],
+        }
+        (self.root / 'references').mkdir()
+        for name, value in documents.items():
+            (self.root / name).write_text(json.dumps(value))
+        (self.root / 'references/source.md').write_text('ACTUAL SOURCE BODY NOT AUTOMATICALLY INLINED')
+        before = {p: p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
+        blind, _ = prepare_review_materials(self.root, 'content-first')
+        evidence, _ = prepare_review_materials(self.root, 'content-evidence',include_role_documents=True)
+        visual, _ = prepare_review_materials(self.root, 'visual',include_role_documents=True)
+        for marker in ('VISIBLE REQUIREMENT', 'SOURCE BRIEF', 'SEALED BLIND JUDGMENT',
+                       'EXPORTED NOTES', 'SOURCE REGISTER', 'AUTHOR DESIGN', 'ACTUAL SOURCE'):
+            self.assertNotIn(marker, blind)
+        for marker in ('VISIBLE REQUIREMENT', 'SOURCE BRIEF', 'SEALED BLIND JUDGMENT',
+                       'EXPORTED NOTES', 'SOURCE REGISTER'):
+            self.assertIn(marker, evidence)
+        self.assertNotIn('AUTHOR DESIGN', evidence)
+        self.assertNotIn('AUTHOR DESIGN', visual)
+        self.assertNotIn('EXPORTED NOTES', visual)
+        self.assertIn('Inspect the actual audience canvas/sequence first', visual)
+        self.assertIn('After that assessment, read the existing', visual)
+        self.assertNotIn('SEALED BLIND JUDGMENT', visual)
+        for prompt in (blind, evidence, visual):
+            self.assertNotIn('PRIVATE AUTHOR REASONING', prompt)
+            self.assertNotIn('PRIVATE HOST VALUE', prompt)
+            self.assertNotIn('PRIVATE TRANSPORT VALUE', prompt)
+            self.assertNotIn('ACTUAL SOURCE BODY NOT AUTOMATICALLY INLINED', prompt)
+        self.assertEqual(before, {p: p.read_bytes() for p in self.root.rglob('*') if p.is_file()})
+
+    def test_oversize_evidence_has_exact_receipt_and_explicit_read_fallback(self):
+        body = json.dumps({'slides': [{'text': 'NONTRUNCATED' * 4000}]}).encode()
+        (self.root / 'audience-notes.json').write_bytes(body)
+        prompt, _ = prepare_review_materials(self.root, 'content-evidence',include_role_documents=True)
+        self.assertIn(hashlib.sha256(body).hexdigest(), prompt)
+        self.assertIn('read this exact file before judging its contents', prompt)
+        self.assertNotIn('NONTRUNCATED', prompt)
+
+    def test_malformed_supplement_falls_back_to_original_without_inventing_content(self):
+        (self.root / 'first-view.json').write_text('{unfinished')
+        prompt, _ = prepare_review_materials(self.root, 'content-evidence',include_role_documents=True)
+        self.assertIn('JSON could not be prepared; inspect the original file directly', prompt)
+        self.assertNotIn('{unfinished', prompt)
+
+    def test_blind_never_opens_disallowed_symlinks_but_visible_symlinks_are_rejected(self):
+        (self.root / 'request.json').symlink_to('/unavailable/private-request')
+        prepare_review_materials(self.root, 'content-first')
+        with self.assertRaises(OSError):
+            prepare_review_materials(self.root, 'visual',include_role_documents=True)
+
+    def test_historical_index_does_not_opt_into_new_role_prompt(self):
+        (self.root/'request.json').write_text('{"brief":"MUST NOT CHANGE HISTORICAL PROMPT"}')
+        (self.root/'first-view.json').write_text('{"summary":"HISTORICAL SEALED PASS"}')
+        for role in ('content-first','content-evidence','visual'):
+            prompt,_=prepare_review_materials(self.root,role)
+            self.assertNotIn('ROLE-SCOPED SUPPLEMENTAL EVIDENCE',prompt)
+            self.assertNotIn('MUST NOT CHANGE HISTORICAL PROMPT',prompt)
+            self.assertNotIn('HISTORICAL SEALED PASS',prompt)
+
+    def test_unknown_prepared_role_fails_closed(self):
+        with self.assertRaisesRegex(ReviewSessionError, 'Unknown prepared reviewer role'):
+            prepare_review_materials(self.root, 'author')
 
 
 if __name__ == '__main__':

@@ -4,6 +4,16 @@ The host can prepare `tool-quickstart.md` and `tool-manifest.json` in the task r
 Read the quickstart for exact executable commands, then only the needed manifest
 sections. These describe the installed tools; they do not choose content, design,
 references, branch values or a page template, and do not replace SKILL requirements.
+When the host includes complete current documents in a phase's initial prompt,
+use that reading directly. Read only deferred/changed files and needed detail;
+do not reopen the same instructions or print every manifest section for discovery.
+Original source/visual attachments still require actual inspection.
+
+The planning interface supports one combined `planning_commit` submission instead
+of separate scaffold generation and three-file writes. The native `ensure_next_page`
+interface safely appends a blank page from an explicitly selected existing layout
+or returns the existing page on retry; it never clones source content or chooses
+style. See [planning-commit.md](planning-commit.md) and [native-pages.md](native-pages.md).
 
 Use the exact interpreter path in `tool-manifest.json.python` for scripts and
 inline patches. Keep its venv invocation path even if it is a symlink; do not

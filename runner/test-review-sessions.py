@@ -127,6 +127,24 @@ class ReviewRecoveryTests(unittest.TestCase):
         value['design_assessment']['sequence']=''
         with self.assertRaises(ValueError):validate_report(value,2,require_design=True)
 
+    def test_historical_prepared_index_keeps_routing_prompt_and_cached_reports(self):
+        images=[]
+        for number,path in enumerate(self.pages,1):
+            body=Path(path).read_bytes();name=f'reading-page-{number}.png'
+            (self.packet/name).write_bytes(body)
+            images.append({'path':name,'page':number,'sha256':hashlib.sha256(body).hexdigest(),'bytes':len(body)})
+        (self.packet/'review-index.json').write_text(json.dumps({
+            'schema':'native-review-index/v1','reading_pages':images,'state_contacts':[],
+            'page_contacts':[],'slides':[{'page':number,'text':'Actual page text'} for number in (1,2)]}))
+        self.review()
+        for _,_,prompt in self.calls:
+            self.assertIn('Read references/workflow-branches.md in the plugin',prompt)
+            self.assertNotIn('Applicable review routing is defined here',prompt)
+            self.assertNotIn('ROLE-SCOPED SUPPLEMENTAL EVIDENCE',prompt)
+        recovered=self.execution();self.review(recovered)
+        self.assertEqual(len(self.calls),3)
+        self.assertTrue(all(stage['reused_validated_report'] for stage in recovered.stages))
+
     def test_reviewers_share_the_saved_output_language_with_author(self):
         self.task['language']='fr';self.payload['language']='fr'
         self.review()

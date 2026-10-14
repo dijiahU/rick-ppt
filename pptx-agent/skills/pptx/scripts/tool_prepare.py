@@ -144,6 +144,16 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
         'planning_check': [interpreter, str(SCRIPTS / 'workflow_decisions.py'), '--plan', 'decision-plan.json', '--outline', 'outline.json', '--stage', 'planning'],
     }
     batch_script = SCRIPTS / 'native_batch.py'
+    planning_script = SCRIPTS / 'planning_commit.py'
+    pages_script = SCRIPTS / 'native_pages.py'
+    if planning_script.is_file():
+        commands['planning_commit'] = [interpreter, str(planning_script), '--task-root', str(root),
+                                        '--input', 'planning-input.json']
+    if pages_script.is_file():
+        commands['ensure_next_page'] = [interpreter, str(pages_script), '--task-root', str(root),
+                                         '--workspace', parts_arg, '--page', 'CHOSEN_PAGE',
+                                         '--key', 'STABLE_PAGE_OPERATION_ID', '--mode', 'blank_from_layout',
+                                         '--source-slide', 'CHOSEN_LAYOUT_SOURCE_PAGE']
     if batch_script.is_file():
         commands['native_page_batch'] = [interpreter, str(batch_script), '--task-root', str(root),
                                          '--workspace', parts_arg, '--input', 'CHOSEN_PAGE_BATCH.json']
@@ -189,6 +199,31 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
               'workflow_decisions.py --template prints JSON to stdout only. It never creates decision-plan.json; save/fill it explicitly or use manifest.decision_scaffold after refreshing.',
               'reference.source is the exact HTTPS URL or actual attachment path below; provenance labels go in title/observed. Ready file assets need file/kind/status/origin; native/no-asset records only route.',
               'Choose and execute every required finite branch yourself. Preserve source invariants, meaningful native reveals, sequential authoring, actual rendering and independent reviews.', '']
+    if planning_script.is_file():
+        manifest['planning_commit'] = {
+            'guide': str(SCRIPTS.parent / 'references/planning-commit.md'),
+            'command': commands['planning_commit'],
+            'document': {'version': 1, 'outline': 'Complete current outline object',
+                         'decisions': 'Complete existing v3 decision record, with author choices',
+                         'source_notes': 'Original nonempty Markdown evidence and page/build plan'},
+            'options': {'mode': 'Add --mode create or edit exactly as selected by the host.',
+                        'expected_pages': 'Add --expected-pages with the resolved task total when fixed.',
+                        'allow_legacy': 'Only for explicitly historically admitted contracts.'},
+            'outputs': ['outline.json', 'decision-plan.json', 'source-notes.md'],
+            'validation': 'Checks current outline and planning decisions before transactional commit; does not select branches or certify facts/design.'}
+        lines += ['For planning, write one complete planning-input.json and call planning_commit once with the host mode and resolved total.',
+                  'It validates and commits outline/decision-plan/source-notes together. No separate scaffold generation or duplicate CLI planning check is needed.', '']
+    if pages_script.is_file():
+        manifest['native_pages'] = {
+            'guide': str(SCRIPTS.parent / 'references/native-pages.md'),
+            'command': commands['ensure_next_page'],
+            'mode': 'blank_from_layout',
+            'selection': 'Explicit --source-slide N or --layout EXISTING_LAYOUT_PART; no style/layout selection by the tool.',
+            'retry': 'Same persistent --key and request reuse the same page even after it has been edited.',
+            'scope': 'Reuse existing pages or append only the next page with the existing layout/master/theme chain. Not a clone of source objects, notes or animation.'}
+        lines += ['To append the next blank page, use ensure_next_page with an explicit layout source and a stable key.',
+                  'It safely reuses that page on retry. Do not handwrite repeated slideN/rId/sldId appends or replay a whole-deck generator.',
+                  'This preserves the selected layout/master/theme, not source-page objects, notes, media, animation or background. Faithful edits keep their existing pages.', '']
     if batch_script.is_file():
         manifest['native_batch'] = {
             'guide': str(SCRIPTS.parent / 'references/native-batch.md'),

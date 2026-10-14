@@ -140,6 +140,9 @@ class RepairRecoveryTests(unittest.TestCase):
                     (run.job/'outline.json').write_text(json.dumps(outline()))
                     (run.job/'source-notes.md').write_text('Verified stopping condition')
                 elif name.startswith('repair-') or name == 'author':
+                    if 'This revision includes source/content corrections' in prompt:
+                        (run.job/'outline.json').write_text(json.dumps(outline()))
+                        (run.job/'source-notes.md').write_text('Verified stopping condition in combined repair')
                     export=f'export-{name}-{uuid.uuid4().hex}.pptx'
                     (run.job/export).write_bytes(b'FRESH SYNTHETIC EXPORT')
                     (run.job/'delivery.json').write_text(json.dumps({'path':export}))
@@ -197,6 +200,21 @@ class RepairRecoveryTests(unittest.TestCase):
         run,bridge,reporter=self.restore()
         with self.assertRaises(ReviewReached):self.execute(run,bridge,reporter)
         self.assertEqual([(x[0],x[1]) for x in self.calls],[('repair-1','original-author')])
+        self.assert_review_round(run,2)
+
+    def test_new_combined_repair_restores_partial_plan_before_reaching_review(self):
+        marker=self.plugin/'skills/pptx/scripts/planning_commit.py'
+        marker.parent.mkdir(parents=True);marker.write_text('# new retained context protocol')
+        self.seed(phase='repair')
+        (self.job/'outline.json').write_text('{"slides":[{"id":"unfinished')
+        self.journal.checkpoint(self.job,reason='interrupted_combined_plan_write')
+        run,bridge,reporter=self.restore()
+        with self.assertRaises(ReviewReached):self.execute(run,bridge,reporter)
+        self.assertEqual([call[0] for call in self.calls],['repair-1'])
+        self.assertIn('This revision includes source/content corrections',self.calls[0][2])
+        artifacts=self.journal.state['completed_stages']['repair-1']['artifacts']
+        self.assertIn('outline.json',artifacts);self.assertIn('source-notes.md',artifacts)
+        self.assertEqual(json.loads((run.job/'outline.json').read_text()),outline())
         self.assert_review_round(run,2)
 
     def test_completed_second_repair_continues_round_three_without_authoring(self):

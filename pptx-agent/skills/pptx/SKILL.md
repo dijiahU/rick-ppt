@@ -169,6 +169,20 @@ Inherited source ambiguities and unrelated improvements are suggestions, not
 delivery blockers. Content and visual reviews can run independently in parallel;
 source conversion can compare directly with the original without a blind pass.
 
+When the host supplies complete current documents in the initial phase prompt,
+use that reading directly; reopen only changed/deferred material or needed detail.
+For planning, [one planning submission](references/planning-commit.md) validates
+and commits the chosen outline, decision record and source notes together; its
+successful existing planning check satisfies the planning CLI instruction above.
+Do not separately generate/read a scaffold or repeat the same validation.
+For new pages, [native page creation](references/native-pages.md) safely reuses or
+appends the next blank page from an explicitly chosen existing layout. It preserves
+the layout/master/theme chain, not source objects or timing; scoped edits retain
+their existing pages. Do not rewrite a whole-deck generator for page appends.
+During a correction, resolve source/content first and then change native objects
+in the same retained context when the host supports it. Reuse completed evidence
+and corrections; separate API conversations are not required for these actions.
+
 ## Native operations
 
 Plan content and layout together in source-notes.md, then author in page order.
