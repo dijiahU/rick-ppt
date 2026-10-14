@@ -558,8 +558,19 @@ class AppServer:
         return result
 
     def start_turn(self, thread_id: str, text: str, *, client_message_id: str | None = None,
-                   output_schema: dict | None = None, request_id: str | None = None) -> dict:
+                   output_schema: dict | None = None, request_id: str | None = None,
+                   images: list[Path | str] | None = None) -> dict:
         params = {"threadId": thread_id, "input": [{"type": "text", "text": text}]}
+        for name in images or []:
+            path = Path(name)
+            if not path.is_absolute():
+                path = self.cwd / path
+            resolved = path.resolve(strict=True)
+            if path.is_symlink() or not resolved.is_relative_to(self.cwd) or not resolved.is_file():
+                raise TransportError("Initial image must be a regular task-local file")
+            if resolved.suffix.lower() not in (".png", ".jpg", ".jpeg", ".webp"):
+                raise TransportError("Unsupported initial image format")
+            params["input"].append({"type": "localImage", "path": str(resolved), "detail": "high"})
         if client_message_id:
             params["clientUserMessageId"] = client_message_id
         if output_schema is not None:

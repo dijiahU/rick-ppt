@@ -5,8 +5,13 @@ description: Research, create and edit standalone native PowerPoint with editabl
 
 # Native PowerPoint
 
-Use scripts/pptx.py with Python 3.11+ and installed dependencies; prefer the plugin's
-.venv/bin/python. Paths below are relative to this skill.
+Use scripts/pptx.py with Python 3.11+ and installed dependencies. Use the host's
+exact interpreter from tool-manifest.json or the supplied prompt; do not substitute
+bare python/python3. Outside a host, use a verified environment's interpreter.
+Paths below are relative to this skill. Read the task's tool-quickstart.md when
+available; [tool preparation](references/tool-preparation.md) explains refresh and
+the exact session/parts directory and current API contracts. This does not replace
+any content, design, source, rendering or review requirements below.
 When selecting or repairing typography, read [Actual fonts](references/fonts.md).
 Choose Chinese/Latin faces together for the content; use real files and weights,
 acquire missing OFL resources through the available host, and inspect actual mixed

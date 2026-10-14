@@ -7,7 +7,9 @@ are suggestions, not delivery blockers. Required findings must identify introduc
 errors, missing requested content, unreadability or broken requested native behavior.
 Do not turn a conversion into an unrequested rewrite. Keep the report concise.
 
-Inspect full-size renders of all pages and the complete sequence in a fresh context.
+Inspect the actual rendered pages and complete sequence in a fresh context. When
+the host attaches every 900-pixel reading page up front, use those images for the
+initial audience reading; inspect full-size images for details and uncertain defects.
 Know the subject/viewing mode but judge pages, not the author's design claims.
 First inspect the audience canvas and sequence. Then read design-references.json
 when supplied and its scoped reference images/actual slide notes; do not use the
@@ -97,7 +99,18 @@ playback limits. No taste score or required problem count. Follow the host schem
 Recheck actual revisions and neighboring rhythm.
 # Reading scale and native editing evidence
 
-Read each full-size slide and its `reading-page-N.png` preview at the actual 900-pixel width. Inspect formula symbols, diagram labels, captions, long-word wrapping, margins and text collisions. Use inventory object IDs/names, parent groups and connector anchors to locate a correction. Explicit font sizes omit inherited style values and do not establish readability alone. No minimum group count or aesthetic score is a delivery gate. A required finding needs demonstrated unreadability, lost relationships, requested editability failure or another concrete defect. State the page, object/region, evidence, and action (resize/widen/move/align/reflow/group/anchor as appropriate), rather than “make the design better.” Stay within one bounded review pass.
+Read every `reading-page-N.png` at the actual 900-pixel width. Inspect full-size
+renders or individual state frames when needed to resolve formula symbols, diagram
+labels, captions, wrapping, margins, collisions or an uncertain finding. Host-attached
+images need not be reopened through tools. Use review-index.json and
+review-objects.json when supplied, or the raw inventory, to locate object IDs/names,
+parent groups and connector anchors; do not rebuild equivalent summaries in Python.
+Explicit font sizes omit inherited style values and do not establish readability
+alone. No minimum group count or aesthetic score is a delivery gate. A required
+finding needs demonstrated unreadability, lost relationships, requested editability
+failure or another concrete defect. State the page, object/region, evidence and action
+(resize/widen/move/align/reflow/group/anchor as appropriate), rather than “make the
+design better.” Stay within one bounded review pass.
 
 # Finding route
 

@@ -16,9 +16,12 @@ whole page until one click. The number and effect follow the explanation, not a
 fixed click count. All required content remains readable in the final view.
 
 For simple entrance groups, inspect target IDs with `pptx.py inspect N`, then use:
+Replace HOST_PYTHON with the exact tool-manifest.json.python or supplied host
+interpreter; do not invoke bare python/python3. PATH may be session_dir or parts_dir
+from the manifest. Keep the global pptx --workspace argument before inspect.
 
 ```
-python scripts/native_builds.py --workspace PATH --slide 2 --steps '[[4,5],[6,7]]'
+HOST_PYTHON scripts/native_builds.py --workspace PATH --slide 2 --steps '[[4,5],[6,7]]'
 ```
 
 Each group appears on a separate click; other objects are initially visible. The

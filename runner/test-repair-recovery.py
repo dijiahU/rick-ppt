@@ -153,7 +153,12 @@ class RepairRecoveryTests(unittest.TestCase):
         return FakeServer
 
     def execute(self, run, bridge, reporter, *, fail=None):
-        with patch('workflow.task_configuration', return_value={}), patch('workflow.AppServer', self.server(run, fail=fail)):
+        # This suite exercises journal/phase routing with deliberately non-ZIP
+        # exports and no native validation claim. Actual frozen-byte bootstrap
+        # is tested separately with a native package in test-repair-bootstrap.
+        with patch('workflow.task_configuration', return_value={}), \
+                patch('workflow.AppServer', self.server(run, fail=fail)), \
+                patch.object(run, 'seed_repair_workspace', return_value=None):
             return _run_workflow(run, bridge, self.cfg, self.task, run.job, {'mode':'create'}, run.lease, reporter)
 
     def assert_review_round(self, run, number):

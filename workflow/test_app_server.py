@@ -259,6 +259,29 @@ class AppServerTests(unittest.TestCase):
         self.assertEqual(captured[0][1]["clientUserMessageId"], "message-1")
         self.assertEqual(captured[0][1]["outputSchema"], schema)
 
+    def test_first_turn_images_use_task_local_protocol_inputs(self):
+        s = self.start()
+        image = self.job / 'reading-page-1.png'
+        image.write_bytes(b'image-fixture')
+        captured = []
+        original = s.request
+        def request(method, params, **kwargs):
+            captured.append(params)
+            return original(method, params, **kwargs)
+        s.request = request
+        s.start_turn('thread-1', 'Inspect this page', images=[image.name])
+        self.assertEqual(captured[0]['input'], [
+            {'type': 'text', 'text': 'Inspect this page'},
+            {'type': 'localImage', 'path': str(image), 'detail': 'high'}])
+        external = self.base / 'private.png'
+        external.write_bytes(b'private')
+        link = self.job / 'linked.png'
+        link.symlink_to(external)
+        for path in (external, link):
+            with self.assertRaises(TransportError):
+                s.start_turn('thread-1', 'Reject outside task material', images=[path])
+        self.assertEqual(len(captured), 1)
+
     def test_tool_env_and_child_env_do_not_inherit_host_credentials(self):
         env = child_environment(self.job, {"PATH": "/usr/bin", "TOKEN": "secret", "API_KEY": "key", "HOME": "/bad", "CODEX_HOME": "/bad", "LANG": "en_US.UTF-8"})
         self.assertEqual(set(env), {"PATH", "TMPDIR", "LANG"})

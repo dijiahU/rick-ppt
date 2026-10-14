@@ -181,9 +181,10 @@ def collect(workspace, render, destination):
     destination=Path(destination).resolve(); destination.mkdir(parents=True,exist_ok=True)
     pages=slide_parts(root)
     if len(render['pages'])!=len(pages):raise ValueError('Render/page count mismatch')
-    records=[];tiles=[]
+    records=[];tiles=[];reveal_steps=[]
     for number,(part,png) in enumerate(zip(pages,render['pages']),1):
         tree=parse(root/part)
+        reveal_steps.append(simple_appear_steps(tree))
         shapes=[]
         for node in tree.iter():
             if local(node) not in ('sp','pic','graphicFrame','grpSp','cxnSp'):continue
@@ -211,7 +212,7 @@ def collect(workspace, render, destination):
             'unanchored_connector_ids':[s['id'] for s in shapes if s['kind']=='cxnSp' and len(s['connections'])<2]}
         records.append(record)
         with Image.open(png) as im:
-            reading=ImageOps.contain(im.convert('RGB'),(900,900))
+            reading=im.convert('RGB').resize((900,max(1,round(im.height*900/im.width))),Image.Resampling.LANCZOS)
             name=f'reading-page-{number}.png';reading.save(destination/name)
             record['reading_preview']={'file':name,'width':reading.width,'height':reading.height,'purpose':'Scaled reading check; inspect the full-size render for detail. No automatic readability verdict.'}
             tile=Image.new('RGB',(420,260),'white'); im=ImageOps.contain(im.convert('RGB'),(410,231))
@@ -227,9 +228,13 @@ def collect(workspace, render, destination):
     try:value['static_states']=state_previews(root,pages,destination)
     except Exception as error:value['static_states']={'frames':[],'error':type(error).__name__,'limitation':'Static state rendering failed; only final pages and timing inventory are available.'}
     atomic_json(destination/'inventory.json',value)
+    from review_index import write_review_index
+    write_review_index(value,render,destination,reveal_steps)
     return value
 
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('--workspace',required=True);p.add_argument('--render-json',required=True);p.add_argument('--out',required=True)
     a=p.parse_args();value=collect(a.workspace,json.loads(Path(a.render_json).read_text()),a.out)
-    print(json.dumps({'pages':len(value['slides']),'inventory':str(Path(a.out)/'inventory.json')}))
+    print(json.dumps({'pages':len(value['slides']),'inventory':str(Path(a.out)/'inventory.json'),
+                      'review_index':str(Path(a.out)/'review-index.json'),
+                      'object_index':str(Path(a.out)/'review-objects.json')}))

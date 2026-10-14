@@ -49,8 +49,10 @@ def validate_outline(value, expected_pages=None):
     if not isinstance(value, dict):
         raise ValueError('Outline object required')
     slides = value.get('slides')
+    if 'slides' not in value:
+        raise ValueError('outline.json missing "slides": use {"title": "...", "purpose": "...", "slides": [{"id": "page-1", "title": "...", "summary": "..."}]}; "pages" is not an alias')
     if not isinstance(slides, list) or not 1 <= len(slides) <= MAX_SLIDES:
-        raise ValueError(f'Outline must have 1–{MAX_SLIDES} pages')
+        raise ValueError(f'outline.json "slides" must be an array of 1–{MAX_SLIDES} page objects')
     if expected_pages and len(slides) != expected_pages:
         raise ValueError('Outline page count differs from the requested count')
     result = {'title': clean(value.get('title'), 200), 'purpose': clean(value.get('purpose'), 1600)}

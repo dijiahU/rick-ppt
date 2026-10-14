@@ -15,11 +15,15 @@ recompose. CJK wrapping is a basic estimate, not full language-layout compliance
 check glyphs, punctuation, line breaks and actual renders.
 
 ```
-python PLUGIN/skills/pptx/scripts/native_canvas.py measure --text 'Your actual title' --font '/Library/Fonts/Arial.ttf' --size 36 --width 7
-python PLUGIN/skills/pptx/scripts/native_canvas.py text --workspace WORKSPACE --slide 1 --text 'Your actual title' --font ACTUAL_FONT_FILE --size 36 --width 7 --x .6 --y .5 --max-height 1.5 --color 202020
+HOST_PYTHON PLUGIN/skills/pptx/scripts/native_canvas.py measure --text 'Your actual title' --font '/Library/Fonts/Arial.ttf' --size 36 --width 7
+HOST_PYTHON PLUGIN/skills/pptx/scripts/native_canvas.py text --workspace PARTS_DIR --slide 1 --text 'Your actual title' --font ACTUAL_FONT_FILE --size 36 --width 7 --x .6 --y .5 --max-height 1.5 --color 202020
 ```
 
-Paths/fonts, numbers and color above are command examples, not prescribed style.
+Replace HOST_PYTHON with tool-manifest.json.python (or the exact supplied host
+interpreter), never bare python/python3. PARTS_DIR is the returned native parts
+directory containing ppt/presentation.xml, not its enclosing session directory.
+The prepared manifest contains actual helper signatures. Paths/fonts, numbers
+and color above are command examples, not prescribed style.
 For mixed Chinese/English, pass the actual Chinese file as --font and English file
 as --latin-font (or latin_font in Python). Measurement uses both files and output
 keeps separate editable runs with actual East Asian/Latin names. For a .ttc face, choose --font-index explicitly. Essential qualifiers and explanations
@@ -35,7 +39,7 @@ image beside type, overlapping type, contextual details and illustration/text
 relationships without flattening a slide. Ordinary shapes/connectors remain native.
 
 ```
-python PLUGIN/skills/pptx/scripts/native_canvas.py image --workspace WORKSPACE --slide 1 --file assets/SELECTED.png --box 0 0 13.333 7.5 --fit cover --layer back
+HOST_PYTHON PLUGIN/skills/pptx/scripts/native_canvas.py image --workspace PARTS_DIR --slide 1 --file assets/SELECTED.png --box 0 0 13.333 7.5 --fit cover --layer back
 ```
 
 For video/audio use task-local media-embed.py and its required poster/icon; a static
@@ -51,7 +55,7 @@ native implementation. Do not invent source values or hide assumptions.
 
 ```
 {"labels":["Category A","Category B"],"values":[12,9],"unit":"CNY million","colors":["A84D3D","71816B"]}
-python PLUGIN/skills/pptx/scripts/native_canvas.py bars --workspace WORKSPACE --slide 1 --data values.json --box .7 2 9 4 --font-family Arial --font-size 18
+HOST_PYTHON PLUGIN/skills/pptx/scripts/native_canvas.py bars --workspace PARTS_DIR --slide 1 --data values.json --box .7 2 9 4 --font-family Arial --font-size 18
 ```
 
 These are example values/colors only. Position an editable unit/title where it

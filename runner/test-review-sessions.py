@@ -266,7 +266,9 @@ class ReviewRecoveryTests(unittest.TestCase):
         self.payload['attachments'][0]['sha256']='f'*64
         with self.assertRaisesRegex(ValueError,'attachment checksum changed'):
             self.review()
-        self.assertEqual([name for name,_,_ in self.calls],['content-first-1'])
+        # Source material is prepared before the blind model call. A corrupt
+        # attachment fails locally without spending a blind API request.
+        self.assertEqual([name for name,_,_ in self.calls],[])
 
     def test_verified_source_does_not_override_environment_self_claims(self):
         first,_=self.source_packages()

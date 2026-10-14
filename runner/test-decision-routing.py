@@ -2,6 +2,7 @@
 import copy
 import io
 import json
+import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -312,7 +313,7 @@ class DecisionTests(unittest.TestCase):
                 reusable_author=lambda:False, reusable=lambda name:False,
                 phase=Mock(side_effect=phase), complete_phase=Mock())
             task = {'id':'local-only','title':'A place','brief':'Explain the proposal','pages':2,'style':'Open','language':'en'}
-            cfg = {'plugin':str(PLUGIN),'python':'python3'}
+            cfg = {'plugin':str(PLUGIN),'python':sys.executable}
             with self.assertRaises(FileNotFoundError):
                 _run_workflow(run, SimpleNamespace(), cfg, task, root, {'mode':'create'}, SimpleNamespace(), Mock())
             self.assertEqual([call.args[0] for call in run.phase.call_args_list], ['research'])

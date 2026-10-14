@@ -63,6 +63,19 @@ Historical browser-scene/portable-bundle instructions below describe older versi
 the single-file production profile disables those paths. Native runtime staging
 does not require building their browser assets.
 
+Current tool runtimes prepare `tool-quickstart.md` and `tool-manifest.json` before
+planning, using the exact configured Python and installed CLI/native-canvas
+interfaces. They leave content, design and branch choices unselected. Frozen
+review packets include `review-index.json`, `review-objects.json` and native-state
+contact sheets. Blind and visual reviewers receive all 900-pixel pages in their
+first multimodal API request; detail images remain available. Source review uses
+the sealed blind report and checks every page's claims against actual sources,
+opening images where meaning or uncertainty requires it. Existing role isolation,
+hash-bound receipts and review judgments remain in force. Corrections bootstrap
+from the host-verified frozen PPTX, preserving its native parts and retained
+partial repairs instead of regenerating an older draft. Historical runtimes keep
+their compatible packet and validated-delivery paths.
+
 New default-provider tasks use `gpt-6.1-sol` with `high` reasoning. Both values are
 pinned in each task's private model receipt and reused on recovery. Existing
 model-only receipts retain their model and implicit effort. Explicit external
