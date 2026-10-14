@@ -60,6 +60,16 @@ class ToolPreparationTests(unittest.TestCase):
             self.assertTrue(text[name]['required'])
         self.assertEqual(value['add_text']['signature'], str(helper.inspect.signature(helper._module('native_canvas').add_text)))
 
+    def test_batch_entry_uses_same_interpreter_and_no_design_defaults(self):
+        helper.prepare_tool_manifest(self.root)
+        value = self.read_manifest()
+        command = value['commands']['native_page_batch']
+        self.assertEqual(command[0], sys.executable)
+        self.assertEqual(command[command.index('--workspace')+1], 'PARTS_DIR_FROM_UNPACK')
+        self.assertEqual(value['native_batch']['operations']['connector'], 'add_connector')
+        self.assertEqual(value['native_batch']['document_fields'], ['version', 'batch_id', 'operations'])
+        self.assertIn('does not create decision-plan.json', value['command_outputs']['decision_scaffold'])
+
     def test_generated_examples_follow_actual_cli_parser(self):
         helper.prepare_tool_manifest(self.root)
         value = self.read_manifest()

@@ -143,6 +143,10 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
         'decision_scaffold': [interpreter, str(SCRIPTS / 'workflow_decisions.py'), '--template', '--outline', 'outline.json'],
         'planning_check': [interpreter, str(SCRIPTS / 'workflow_decisions.py'), '--plan', 'decision-plan.json', '--outline', 'outline.json', '--stage', 'planning'],
     }
+    batch_script = SCRIPTS / 'native_batch.py'
+    if batch_script.is_file():
+        commands['native_page_batch'] = [interpreter, str(batch_script), '--task-root', str(root),
+                                         '--workspace', parts_arg, '--input', 'CHOSEN_PAGE_BATCH.json']
     if parts_dir:
         commands['refresh'] += ['--workspace', parts_dir]
     progress = root / 'public-progress.py'
@@ -168,6 +172,7 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
                               'native_asset_records': 'none/source_grounded_native records contain only route.',
                               'file_asset_fields': ['route', 'kind', 'status', 'file', 'origin']},
         'outline_fields': {'required': ['title', 'purpose', 'slides'], 'page_required': ['id', 'title', 'summary']},
+        'command_outputs': {'decision_scaffold': 'Prints unselected JSON to stdout; does not create decision-plan.json. Save/fill it explicitly.'},
         'decision_scaffold': scaffold, 'scaffold_error': scaffold_error, 'attachments': attachments,
         'authority': 'Interface preparation only. The author selects content, visual expression and explicit branches; unchanged validators and reviews remain authoritative.'}
     lines = ['# Task tool quickstart', '', 'Read SKILL.md and task requirements. This guide prepares interfaces, not content or design.',
@@ -181,8 +186,25 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
               'add_text uses font_file,size,ink and x/y/width/max_height; box belongs to other helpers. Use returned object handles for links/groups/reveals.',
               'Before edits take a snapshot. A failed multi-object script can leave earlier changes saved: inspect or restore before retry; never append hardcoded IDs.',
               'Write outline.slides, not outline.pages. Generate the unselected scaffold only after outline IDs/order exist. Do not infer aesthetics from choice counts.',
+              'workflow_decisions.py --template prints JSON to stdout only. It never creates decision-plan.json; save/fill it explicitly or use manifest.decision_scaffold after refreshing.',
               'reference.source is the exact HTTPS URL or actual attachment path below; provenance labels go in title/observed. Ready file assets need file/kind/status/origin; native/no-asset records only route.',
               'Choose and execute every required finite branch yourself. Preserve source invariants, meaningful native reveals, sequential authoring, actual rendering and independent reviews.', '']
+    if batch_script.is_file():
+        manifest['native_batch'] = {
+            'guide': str(SCRIPTS.parent / 'references/native-batch.md'),
+            'document_fields': ['version', 'batch_id', 'operations'], 'version': 1,
+            'operation_fields': 'op,id,slide plus exact native_canvas helper parameters; reveal has no id',
+            'operations': {'text': 'add_text', 'shape': 'add_shape', 'image': 'add_image',
+                           'connector': 'add_connector', 'group': 'semantic_group', 'reveal': 'reveal', 'bars': 'add_bar_chart'},
+            'references': 'Earlier id string or existing positive integer object ID, same page only.',
+            'text_height': 'Numeric max_height is strict; explicit auto measures without shrinking.',
+            'transaction': 'Checks every text first, stages all objects, commits on success, rolls back on failure; exact successful retries do not append.',
+            'scope': 'One existing page per batch; content, coordinates, actual assets/style and page order are author choices.'}
+        lines += ['For multi-object pages, call native_page_batch with one chosen-page JSON instead of writing a temporary Python page-operation framework.',
+                  'Read the native_batch guide shown in the manifest once for its compact input contract. Native_canvas signatures provide exact operation fields.',
+                  'Names resolve group/connector/reveal targets. All explicit text-height errors return together; failures leave parts unchanged.',
+                  'Use max_height="auto" only when you deliberately want measured height; numeric bounds remain strict. Check composition and overlaps in the actual render.',
+                  'The batch does not create pages, choose a style or replace sequential publication/self-check/independent review.', '']
     lines += [f'- `{a["path"]}` ({a.get("name", "attachment")})' for a in attachments]
     manifest_path = _write(root, 'tool-manifest.json', json.dumps(manifest, ensure_ascii=False, indent=2))
     guide_path = _write(root, 'tool-quickstart.md', '\n'.join(lines) + '\n')

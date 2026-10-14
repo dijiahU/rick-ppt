@@ -12,6 +12,10 @@ Paths below are relative to this skill. Read the task's tool-quickstart.md when
 available; [tool preparation](references/tool-preparation.md) explains refresh and
 the exact session/parts directory and current API contracts. This does not replace
 any content, design, source, rendering or review requirements below.
+For a multi-object native page, [native JSON batches](references/native-batch.md)
+call installed helpers directly with chosen content/coordinates. All text height
+errors return together and failed batches leave the page unchanged. This operation
+tool has no page template or automatic design selection.
 When selecting or repairing typography, read [Actual fonts](references/fonts.md).
 Choose Chinese/Latin faces together for the content; use real files and weights,
 acquire missing OFL resources through the available host, and inspect actual mixed

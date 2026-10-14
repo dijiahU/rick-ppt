@@ -33,6 +33,7 @@ for relative in required:
 for relative in ('skills/pptx/scripts/font_assets.py','skills/pptx/assets/font-catalog.json','skills/pptx/references/fonts.md'):
     if (source/relative).is_file() and (source/relative).read_bytes()!=(target/relative).read_bytes():raise RuntimeError('Runtime font mismatch: '+relative)
 for relative in ('skills/pptx/scripts/tool_prepare.py','skills/pptx/scripts/review_index.py',
+                 'skills/pptx/scripts/native_batch.py','skills/pptx/references/native-batch.md',
                  'skills/pptx/references/tool-preparation.md','skills/pptx/references/review-packet.md'):
     if (source/relative).is_file() and (source/relative).read_bytes()!=(target/relative).read_bytes():raise RuntimeError('Runtime prepared-tool mismatch: '+relative)
 cfg['plugin']=str(target)
