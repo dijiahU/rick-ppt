@@ -21,6 +21,16 @@ def completed():
 
 
 class ProxyTests(unittest.TestCase):
+    def test_current_claude_uses_adaptive_native_effort_without_legacy_flags(self):
+        for model in ('claude-opus-5-5','claude-sonnet-5-5'):
+            with self.subTest(model=model):
+                response=SimpleNamespace(returncode=0,stdout=json.dumps({**completed(),'model':model})+'\n200',stderr='')
+                with patch('chat_proxy.ChatProxy._upstream',return_value=response) as run:
+                    ChatProxy({**PROFILE,'model':model,'reasoning_effort':'high'}).complete({'model':model,'input':'hello'})
+                data_line=next(x for x in run.call_args.kwargs['input'].splitlines() if x.startswith('data = '))
+                sent=json.loads(json.loads(data_line[len('data = '):]))
+                self.assertEqual(sent['thinking'],{'type':'adaptive'});self.assertEqual(sent['output_config'],{'effort':'high'})
+                self.assertNotIn('enable_thinking',sent);self.assertNotIn('reasoning_effort',sent)
     def test_requested_fast_is_forwarded_and_default_fallback_is_recorded(self):
         reply={**completed(),'service_tier':'default'}
         response=SimpleNamespace(returncode=0,stdout=json.dumps(reply)+'\n200',stderr='')

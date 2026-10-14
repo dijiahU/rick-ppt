@@ -107,8 +107,15 @@ class ChatProxy:
   if body.get('model')!=self.profile['model']:raise ValueError('Model does not match selected profile')
   request,mapping=responses_to_chat(body)
   request['model']=self.profile['model'];request['stream']=False
-  request['enable_thinking']=bool(self.profile.get('reasoning_effort'))
-  if self.profile.get('reasoning_effort'):request['reasoning_effort']=self.profile['reasoning_effort']
+  # Current Claude 5.5 rejects the legacy enabled/disabled thinking modes.
+  # Its OpenAI-compatible relay accepts the native adaptive configuration.
+  if self.profile['model'] in ('claude-opus-5-5','claude-sonnet-5-5'):
+   request.pop('enable_thinking',None);request.pop('reasoning_effort',None)
+   request['thinking']={'type':'adaptive'}
+   if self.profile.get('reasoning_effort'):request['output_config']={'effort':self.profile['reasoning_effort']}
+  else:
+   request['enable_thinking']=bool(self.profile.get('reasoning_effort'))
+   if self.profile.get('reasoning_effort'):request['reasoning_effort']=self.profile['reasoning_effort']
   if self.profile.get('service_tier') is not None:request['service_tier']='priority' if self.profile['service_tier']=='fast' else self.profile['service_tier']
   request.setdefault('max_tokens',8192)
   if type(request['max_tokens']) is not int or request['max_tokens']<=0:raise ValueError('Invalid output token limit')
