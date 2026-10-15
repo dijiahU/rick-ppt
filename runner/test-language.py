@@ -26,5 +26,13 @@ class LanguageTests(unittest.TestCase):
         self.assertEqual(presentation_request(self.task)['mode'],'create')
     def test_invalid_mode(self):
         with self.assertRaises(ValueError):presentation_request({**self.task,'mode':'other'})
+    def test_explicit_secondary_language_preserves_primary_selection(self):
+        task={**self.task,'language':'en','brief':'主语言为英语，中文为辅'}
+        self.assertEqual(presentation_request(task)['language'],'en')
+        self.assertEqual(presentation_request(task)['brief'],task['brief'])
+        instruction=language_instruction(task)
+        self.assertIn('primary presentation language is English (en)',instruction)
+        self.assertIn('Honor explicitly requested supplementary languages',instruction)
+        self.assertIn('does not cancel an explicit supplementary-language requirement',instruction)
 
 if __name__=='__main__':unittest.main()

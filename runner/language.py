@@ -23,9 +23,13 @@ def language_instruction(task):
     language=presentation_request(task)['language']
     if language is None:
         return 'This legacy task has no saved language choice. Follow an explicit requested output language, otherwise use the main language of its topic/brief; do not impose English retroactively.'
-    return (f'The submitted presentation language is {LANGUAGES[language]} ({language}). '
-            'Write all audience-facing slide titles, body text, chart labels, captions, conclusions and speaker notes in that language, '
-            'even when the topic or brief is written in another language. This saved selection governs output language. '
+    return (f'The submitted primary presentation language is {LANGUAGES[language]} ({language}). '
+            'Use that language for the main audience-facing slide titles, body text, chart labels, captions, conclusions and speaker notes, '
+            'even when the topic or brief is written in another language. This saved selection governs the primary output language. '
+            'Honor explicitly requested supplementary languages in the original brief or ordered revisions as secondary copy. '
+            'For example, English as the primary language with Chinese support requires English main copy plus concise Chinese support. '
+            'A primary-language selection does not cancel an explicit supplementary-language requirement; do not call that requirement older or superseded. '
+            'If no supplementary language is requested, keep all new audience-facing copy in the selected language. '
             'Translate the subject faithfully; preserve proper names, product names, code and original source titles where needed. '
             'Do not add unrequested bilingual or decorative English labels. Record the language in the content outline; '
             'design for its actual text length, fonts, accents, glyphs, line breaks and number/date conventions. '
