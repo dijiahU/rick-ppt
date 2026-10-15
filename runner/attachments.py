@@ -11,7 +11,7 @@ from PIL import Image
 EXTENSIONS={'pdf','pptx','docx','txt','md','csv','png','jpg','jpeg'}
 MAX_FILES=10
 MAX_FILE=20*1024*1024
-MAX_TOTAL=20*1024*1024
+MAX_TOTAL=200*1024*1024
 
 def metadata(value):
     if value is None:return []

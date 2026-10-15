@@ -86,8 +86,8 @@ class AttachmentsTests(unittest.TestCase):
         with self.assertRaises(ValueError):metadata([{**self.item,'id':str(uuid.uuid4())} for _ in range(11)])
         with self.assertRaises(ValueError):metadata([self.item]*2)
         self.assertEqual(metadata(None),[])
-    def test_ten_attachments_and_twenty_mb_boundary(self):
-        items=[{**self.item,'id':str(uuid.uuid4()),'size':2*1024*1024} for _ in range(10)]
+    def test_ten_attachments_and_two_hundred_mb_total(self):
+        items=[{**self.item,'id':str(uuid.uuid4()),'size':20*1024*1024} for _ in range(10)]
         self.assertEqual(len(metadata(items)),10)
         self.assertEqual(metadata([{**self.item,'size':20*1024*1024}])[0]['size'],20*1024*1024)
         with self.assertRaises(ValueError):metadata(items+[{**self.item,'id':str(uuid.uuid4())}])
