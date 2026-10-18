@@ -126,6 +126,18 @@ class ContentWorkflowTests(unittest.TestCase):
             with self.assertRaises(ValueError):validate_workbook(malicious)
         with self.assertRaises(ValueError):validate_delivery(zip_bytes({'ppt/embeddings/data.xlsx':workbook}))
 
+    def test_standalone_website_entry_link_is_not_a_linked_runtime(self):
+        def deck(kind,target):
+            from xml.sax.saxutils import quoteattr
+            rel='<Relationships><Relationship Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/'+kind+'" TargetMode="External" Target='+quoteattr(target)+'/></Relationships>'
+            return zip_bytes({'ppt/slides/_rels/slide1.xml.rels':rel})
+        url='https://rickppt.aaarickmorty.chatgpt.site/'
+        validate_delivery(deck('hyperlink',url),single_file=True)
+        for kind in ('image','audio','video','media','package','webextension'):
+            with self.assertRaises(ValueError):validate_delivery(deck(kind,url),single_file=True)
+        for target in ('javascript:alert(1)','file:///tmp/script','https://user:password@example.test','data:text/html,hello'):
+            with self.assertRaises(ValueError):validate_delivery(deck('hyperlink',target),single_file=True)
+
 
 class RecoveryPreviewTests(unittest.TestCase):
     def setUp(self):

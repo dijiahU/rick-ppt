@@ -3,6 +3,7 @@ import io
 from pathlib import PurePosixPath
 import posixpath
 import zipfile
+from urllib.parse import urlsplit
 from lxml import etree
 
 
@@ -55,8 +56,15 @@ def validate_delivery(data, *, single_file=False):
                 tree=xml(z.read(name))
                 for rel in tree:
                     typ=rel.get('Type','').rsplit('/',1)[-1]
+                    external=rel.get('TargetMode','').lower()=='external'
+                    if single_file and external and typ=='hyperlink':
+                        # A normal website citation/entry link is optional
+                        # navigation, not an external rendering dependency.
+                        target=urlsplit(rel.get('Target',''))
+                        if target.scheme!='https' or not target.hostname or target.username is not None or target.password is not None:
+                            raise ValueError('Standalone website hyperlinks must use credential-free HTTPS')
                     if single_file and (typ.lower() in ('webextension','webextensiontaskpanes') or
-                        (rel.get('TargetMode','').lower()=='external' and typ in ('image','audio','video','media','oleObject','package','hyperlink'))):
+                        (external and typ in ('image','audio','video','media','oleObject','package'))):
                         raise ValueError('The presentation requires an external runtime or linked media; embed native content in the PPTX')
                     if typ in ('oleObject','control','vbaProject'):raise ValueError('Executable/active embedding rejected')
                     if name.startswith('ppt/charts/_rels/') and typ=='package' and rel.get('TargetMode','Internal')=='Internal':
