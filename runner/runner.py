@@ -26,6 +26,11 @@ from font_broker import FontBroker
 
 ROOT=Path(__file__).resolve().parent
 
+def prefetch_capability():
+    return {'mode':'bounded-asynchronous-materials','guide':'PREFETCH.md','helper':'prefetch-proxy.py',
+        'index':'material-prefetch/index.json','max_concurrent':2,'page_authoring':'single-main-author-in-order',
+        'use':'Submit concrete later-page source searches or selected illustration generation, then continue the current page. Batch status/get return immediately. Inspect and choose ready results before use; assistants never edit the deck. Known media URLs use web-media-proxy.py --submit-only. Respect selected source/asset routes; reuse valid saved results and do not automatically retry failed/interrupted work.'}
+
 def prepare_fonts(job):
     from font_assets import configure,copy_fonts,manifest,STARTER_IDS,prepare_default_fonts
     (job/'font-requests').mkdir(exist_ok=True)
@@ -100,11 +105,13 @@ def prepare(cfg):
     (job/'interactive-requests').mkdir()
     shutil.copyfile(ROOT/'interactive-proxy.py',job/'interactive-proxy.py')
     if (ROOT/'INTERACTIVE.md').is_file():shutil.copyfile(ROOT/'INTERACTIVE.md',job/'INTERACTIVE.md')
-    for name in ('public-progress.py','outline.py','PROGRESS.md','ANIMATION.md'):
+    for name in ('public-progress.py','outline.py','PROGRESS.md','ANIMATION.md','prefetch-proxy.py','PREFETCH.md'):
         shutil.copyfile(ROOT/name,job/name)
     (job/'assets').mkdir()
     (job/'assets/index.json').write_text('{"images":[]}')
     (job/'media-requests').mkdir()
+    (job/'prefetch-requests').mkdir()
+    (job/'material-prefetch').mkdir()
     for name in ('web-media-proxy.py','media-embed.py','WEB-MEDIA.md'):
         shutil.copyfile(ROOT/name,job/name)
     image_skill=ROOT/'imagegen-skill.md'
@@ -115,6 +122,7 @@ def prepare(cfg):
         'web_search':{'mode':'live','optional':True,'use':'Hosted search for current evidence, relevant assets or design knowledge when the task needs them. Choose material and expression by content, purpose and audience; no preferred medium or acquisition sequence. Shell networking remains disabled.'},
         'image_generation':{'mode':'built-in','optional':True,'guide':'imagegen-skill.md','use':'Use exposed built-in generation when an original raster illustration serves the task. It need not wait for unsuccessful image searching. Inspect/embed the scoped result and distinguish illustration from documentary evidence; never fabricate real app screenshots or case evidence. No API fallback.'},
         'web_asset_import':{'mode':'public-https-broker','guide':'WEB-MEDIA.md','use':'Run task-local web-media-proxy.py with a direct public media URL and --purpose. Images, animated GIF, common video and audio are supported through isolated validation/conversion. Inspect assets/web-index.json and embed the actual local media, not just a search result or poster. Shell networking remains disabled.'},
+        'material_prefetch':prefetch_capability(),
         'animation_playback':{'mode':'not-verified-by-static-render','use':'Native editable-object timing and GIF/video/audio embedding are available. No PowerPoint/WPS slide-show player is exposed in this task. Follow ANIMATION.md: inspect all native click groups while authoring and reuse host batch state previews in existing visual review. No routine UI playback, player installation, repeated UI workarounds or extra review stage. Static simulations do not verify playback. Report unavailable/unsupported playback separately without removing native builds or claiming playback was tested.'},
         'interactive_content':{'mode':'disabled-single-file-pptx','guide':'INTERACTIVE.md','runtime':str(Path(cfg['plugin'])/'runtime'),
            'use':'Deliver one PPTX only. Use native editable shapes, native click/trigger timing, internal slide links and embedded media. Content add-ins, web scenes, executable code, external website interactions and portable runtime bundles are disabled.'},
@@ -406,7 +414,7 @@ def refresh_support(cfg,job):
     """Refresh only host-provided helpers, retaining previous support bytes."""
     from progress import read_scoped
     backup=job/'support-versions'/uuid.uuid4().hex;backup.mkdir(parents=True,mode=0o700)
-    for name in ('soffice-proxy.py','interactive-proxy.py','public-progress.py','outline.py','PROGRESS.md','ANIMATION.md','web-media-proxy.py','media-embed.py','WEB-MEDIA.md','INTERACTIVE.md','imagegen-skill.md','font-proxy.py','font-catalog.json','FONTS.md'):
+    for name in ('soffice-proxy.py','interactive-proxy.py','public-progress.py','outline.py','PROGRESS.md','ANIMATION.md','web-media-proxy.py','media-embed.py','WEB-MEDIA.md','INTERACTIVE.md','imagegen-skill.md','font-proxy.py','font-catalog.json','FONTS.md','prefetch-proxy.py','PREFETCH.md'):
         source=ROOT/name
         if not source.is_file():continue
         target=job/name
@@ -416,13 +424,16 @@ def refresh_support(cfg,job):
         temporary=job/('.support-'+uuid.uuid4().hex)
         shutil.copyfile(source,temporary);temporary.chmod(0o755 if name.endswith('.py') else 0o644)
         os.replace(temporary,target)
-    for name in ('tmp','render-requests','interactive-requests','media-requests','font-requests'):
+    for name in ('tmp','render-requests','interactive-requests','media-requests','font-requests','prefetch-requests','material-prefetch'):
         destination=job/name
         if destination.is_symlink():raise ValueError('Unsafe restored support directory')
         destination.mkdir(exist_ok=True)
     fonts=job/'fonts.conf'
     if fonts.exists():(backup/'fonts.conf').write_bytes(read_scoped(job,'fonts.conf',100000))
     prepare_fonts(job)
+    capabilities=json.loads(read_scoped(job,'capabilities.json',2*1024*1024))
+    capabilities['material_prefetch']=prefetch_capability()
+    (job/'capabilities.json').write_text(json.dumps(capabilities,ensure_ascii=False,indent=2))
 
 
 def receive_progress_draft(cfg,task,job,send=request):

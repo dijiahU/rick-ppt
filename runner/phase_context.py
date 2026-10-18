@@ -84,6 +84,8 @@ def prepared_phase_context(cfg, job, stage):
     host = Path(__file__).resolve().parent
     add(host, 'PROGRESS.md', kind='host_instruction')
     add(host, 'FONTS.md', kind='host_instruction')
+    add(host, 'PREFETCH.md', kind='host_instruction')
+    add(job, 'material-prefetch/index.json', kind='task_data')
     add(job, 'capabilities.json', kind='task_data')
     add(job, 'fonts/index.json', kind='task_data')
     add(job, 'tool-quickstart.md', kind='task_data')

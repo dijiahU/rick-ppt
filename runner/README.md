@@ -10,6 +10,11 @@ Current production policy delivers one standalone native PPTX. Author pages in
 order, seek relevant design knowledge/material when the task benefits, and run
 independent content/visual reviews in parallel on the same frozen candidate.
 The visual review checks style against content, purpose, audience and viewing mode.
+One main author owns all native edits and design continuity. Concrete later-page
+search/reference/illustration work can run asynchronously through
+[material preparation](PREFETCH.md); known URLs download with `--submit-only`.
+Ready material still needs the author's inspection and selection. Helpers do not
+author parts, and the separate parallel-authoring prototype is not enabled.
 Expression is chosen from the actual content, evidence, audience, purpose, viewing
 mode and supplied constraints. New presentations require meaningful native click
 reveals; multi-step explanation uses an entry/click/final-view plan. Static covers

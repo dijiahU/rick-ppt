@@ -63,6 +63,8 @@ def write_runtime_receipt(root,cfg,status):
     body['native_canvas_available']=(plugin/'skills/pptx/scripts/native_canvas.py').is_file()
     body['reference_notes_available']=(plugin/'skills/pptx/scripts/design_references.py').is_file()
     body['font_assets_available']=(plugin/'skills/pptx/scripts/font_assets.py').is_file() and (Path(root)/'font-proxy.py').is_file()
+    body['page_authoring']='single-main-author-in-order'
+    body['material_prefetch_available']=all((Path(root)/name).is_file() for name in ('material_prefetch.py','prefetch-proxy.py','PREFETCH.md'))
     target=Path(root)/('runtime-'+str(os.getpid())+'.local.json')
     pending=target.with_suffix('.pending')
     with os.fdopen(os.open(pending,os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600),'w') as stream:

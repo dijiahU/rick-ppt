@@ -141,6 +141,14 @@ design search when a new question needs it. Apply the reference to the current
 content and verify the rendered result, keeping sequential authoring and the
 agreed visual direction. Reuse prior findings for equivalent problems.
 
+Keep one main author responsible for the whole deck's visual direction and native
+page edits. When the host exposes asynchronous material preparation, read its
+PREFETCH.md and submit concrete later-page evidence/reference/asset needs while
+making the current page. Helpers return candidate material, not page designs or
+edits. Inspect and choose results before use; preserve page order and source
+constraints. Do not wait for all later assets, duplicate pending requests or add
+a new stage. See [Research and assets](references/research-and-assets.md).
+
 Deliver a single standalone PPTX. Use native objects, click-controlled builds,
 trigger animations, internal slide links and embedded media. Do not create Content
 Add-ins, JSON browser scenes, runnable code labs, local servers, runtime bundles,

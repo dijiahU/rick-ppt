@@ -13,7 +13,15 @@ search, official pages, public asset libraries or supplied references:
 python web-media-proxy.py 'https://public.example/asset.gif' --source-page 'https://public.example/source' --purpose 'Show the actual ability being explained'
 ```
 
-Use the task's configured Python interpreter. Wait for the result, inspect the
+For an already selected asset needed on a later page, add `--submit-only` to
+return its request ID immediately and continue authoring the current page.
+Submit independent known URLs together; the host downloads two concurrently.
+Check them together with `python web-media-proxy.py --status ID1 ID2` when their
+pages approach. `pending` returns immediately; do not poll in a shell loop or
+stop useful current work. The ordinary invocation still waits for an asset
+needed immediately. Do not repeat a pending request.
+
+Use the task's configured Python interpreter. Once ready, inspect the
 returned local file and `assets/web-index.json`, then embed it. Search results
 are not downloaded files. A page URL is not a media URL. Prefer official/source
 assets for identifiable games, films, products, characters and objects; do not

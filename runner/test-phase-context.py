@@ -60,6 +60,17 @@ class Tests(unittest.TestCase):
         self.assertIn('NEW RESOLVED EVIDENCE',text)
         self.assertNotIn('RETAINED AUTHOR EVIDENCE',text)
 
+    def test_author_receives_material_status_without_source_result_payloads(self):
+        (self.job/'material-prefetch').mkdir()
+        index={'version':1,'requests':[{'id':'a'*32,'state':'running',
+               'payload':{'kind':'search','page_ids':['later-page'],'purpose':'Actual image source'}}]}
+        (self.job/'material-prefetch/index.json').write_text(json.dumps(index))
+        (self.job/('material-prefetch/'+'a'*32+'.result.json')).write_text('LARGE CANDIDATE SOURCE BODY')
+        text=prepared_phase_context(self.cfg,self.job,'author')
+        doc=next(d for d in self.documents(text) if d['path'].endswith('/material-prefetch/index.json'))
+        self.assertEqual(json.loads(doc['content']),index)
+        self.assertNotIn('LARGE CANDIDATE SOURCE BODY',text)
+
     def test_oversize_document_is_deferred_whole_instead_of_silently_cut(self):
         (self.job/'source-notes.md').write_text('SOURCE'*MAX_DOCUMENT)
         text = prepared_phase_context(self.cfg,self.job,'author')
