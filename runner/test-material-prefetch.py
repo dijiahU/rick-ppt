@@ -45,7 +45,7 @@ class FakeTools:
             self.tick()
             time.sleep(.005)
         self.tick()
-        output = {'text': 'Inspected the original diagram at https://example.org/original; ' 
+        output = {'text': 'Inspected the original diagram at https://example.org/original; '
                           'blue indicates the input, only this page was inspected.',
                   'model': 'fake-hosted-tool', 'files': []}
         if value['tool'] == 'pptx_generate_image':
