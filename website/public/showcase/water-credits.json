@@ -1,0 +1,17 @@
+{
+  "environment": {
+    "title": "Kiara 1 Dawn",
+    "creator": "Greg Zaal",
+    "source": "https://polyhaven.com/a/kiara_1_dawn",
+    "license": "CC0",
+    "use": "Optimized tonemapped environment texture for water reflection."
+  },
+  "water_still": {
+    "creator": "Rick / rickppt",
+    "use": "Fallback rendered from the same procedural water shader."
+  },
+  "darkroom_still": {
+    "creator": "Rick / rickppt",
+    "use": "Fallback rendered from the same live darkroom developer-bath shader; no photographic case is flattened."
+  }
+}

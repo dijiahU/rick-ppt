@@ -12,6 +12,11 @@ read [Environment and commands](references/environment.md) if needed. Rendering
 requires LibreOffice and Poppler on the author machine; recipients need only the
 PPTX. Do not silently install dependencies.
 When selecting or repairing typography, read [Actual fonts](references/fonts.md).
+Default new English/Latin to Times New Roman and Chinese to SimSun (宋体),
+using genuine task files and explicit run/theme fonts. Additional fonts need
+actual glyph/weight checks and recipient availability or verified embedding.
+Read [Windows WPS compatibility](references/windows-wps.md) for native arrows;
+Mac previews do not verify Windows WPS. Preserve scoped templates and user choices.
 Choose Chinese/Latin faces together, use real files and weights, acquire missing
 OFL resources when permitted, and inspect actual mixed text. Preserve template
 fonts during scoped edits. The user's authorization to download fonts applies.

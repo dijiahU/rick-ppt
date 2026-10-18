@@ -8,6 +8,9 @@ first; then validate, render and inspect the actual result. Keep page order.
 ## Text and typography
 
 Select an actual installed font file, point size, color, available width and height.
+Default new Latin/English to Times New Roman and Chinese to SimSun (宋体), using
+the genuine task font files. For chart labels, set `font_family='Times New Roman'`
+and `east_asian_font_family='SimSun'`; CLI bars accepts `--east-asian-font-family`.
 The helper measures with that font, keeps requested breaks, preserves ordinary
 unbreakable Latin terms and estimates glyph height. It does not shrink text or add
 card backgrounds. If the allocated height/width cannot fit, edit the wording or

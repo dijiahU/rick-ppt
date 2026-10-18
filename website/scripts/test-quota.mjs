@@ -5,9 +5,9 @@ import {INSERT_JOB} from '../lib/queries.ts';
 import {adminAllowed} from '../lib/admin-policy.ts';
 function fixture(){
  const db=new DatabaseSync(':memory:');
- db.exec(`CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,request_key TEXT,title TEXT,brief TEXT,pages INTEGER,style TEXT,language TEXT,attachments TEXT,status TEXT,created_at INTEGER,updated_at INTEGER,UNIQUE(user_id,request_key))`);
+ db.exec(`CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,request_key TEXT,title TEXT,brief TEXT,pages INTEGER,style TEXT,language TEXT,attachments TEXT,execution_backend TEXT,status TEXT,created_at INTEGER,updated_at INTEGER,UNIQUE(user_id,request_key))`);
  let i=0;
- const insert=(user,admin=false,key=String(++i))=>db.prepare(INSERT_JOB).get(crypto.randomUUID(),user,key,'Test','Test brief',5,'','en','[]',1,1,admin?1:0,user);
+ const insert=(user,admin=false,key=String(++i))=>db.prepare(INSERT_JOB).get(crypto.randomUUID(),user,key,'Test','Test brief',5,'','en','api','[]',1,1,admin?1:0,user);
  return {db,insert};
 }
 test('regular account is limited to exactly ten; duplicate is idempotent',()=>{

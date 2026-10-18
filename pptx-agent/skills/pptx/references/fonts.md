@@ -1,18 +1,24 @@
 # Actual fonts
 
 Use `font-catalog.json` and `fonts/index.json` to choose from real installed files.
-For a new deck, select Chinese and Latin typography together for the content,
-audience and chosen expression. Start with Noto Sans CJK SC + Inter for clear
-mixed-language explanations, Noto Serif CJK SC + Source Serif 4 for an editorial
-voice, or Noto Sans CJK SC + Source Sans 3 for longer explanatory text. These are
-options, not a fixed rotation. Preserve supplied template fonts for scoped edits.
-Use meaningful hierarchy, space and real weights; do not indiscriminately bold
-Chinese, use a serif for tiny labels, or change font families page by page.
-For a gentler title weight, `noto-sans-sc-medium` and `inter-semibold` are also
-available on demand; use their actual returned family names instead of simulated
-bold. Contrast title/body primarily with purposeful scale, placement and spacing.
+For new work, Rick's default is **Times New Roman for English/Latin** and
+**SimSun (宋体) for Chinese**. Apply the pair to native runs, theme defaults,
+chart/table labels and inherited text. Preserve supplied template fonts for scoped
+edits and explicit user choices. Read [Windows WPS compatibility](windows-wps.md).
+Use size, spacing, hierarchy and real weights rather than acquiring more families.
+The default IDs are `times-new-roman-regular`, `times-new-roman-bold`,
+`times-new-roman-italic`, `times-new-roman-bold-italic`, and `simsun-regular`.
+Use actual returned family/style names; do not simulate an unavailable SimSun bold.
+Special fonts are exceptions for an explicit requirement or functional need.
+Record actual glyph coverage/weight/name plus recipient availability or verified
+editable embedding before using them. A downloaded font is not embedded.
 
-The starter regular/bold sans files are already in `fonts/`. A missing resource
+The host prepares genuine installed default faces in `fonts/` when available,
+including the actual SimSun face extracted from its collection. Check the manifest;
+never rename Songti SC/Noto as SimSun or silently rely on fallback. Host-installed
+faces carry source hashes, original licensing metadata and a provenance record;
+they are not OFL downloads or evidence that fonts were embedded into the PPTX.
+A missing optional OFL resource
 can be downloaded without asking the user again, unless the brief prohibits
 network access. Author shell networking remains disabled; the host does it:
 
@@ -34,7 +40,7 @@ character is not proof of successful fallback. Check the exact current title,
 body, numbers and punctuation across the chosen pair with:
 
 ```
-python PLUGIN/skills/pptx/scripts/font_assets.py --root . check --ids noto-sans-sc-regular inter-regular --text '中文 English 2026，公式 α + β'
+python PLUGIN/skills/pptx/scripts/font_assets.py --root . check --ids simsun-regular times-new-roman-regular --text '中文 English 2026，公式 α + β'
 ```
 
 Use the returned files for native_canvas measurements. For mixed text, its
@@ -46,7 +52,7 @@ weight, punctuation, wrapping and substitutions; font inventory is not an
 aesthetic verdict. Do not overwrite originals or restyle unrelated template pages.
 For a new deck, set its existing theme to the selected installed pair so inherited
 text also has intentional typography: `python PLUGIN/skills/pptx/scripts/font_assets.py
---root . theme --workspace WORKSPACE --latin Inter --east-asian 'Noto Sans CJK SC'`.
+--root . theme --workspace WORKSPACE --latin 'Times New Roman' --east-asian SimSun`.
 This changes native major/minor font schemes. Preserve the original theme during
 scoped edits unless the user asked to change it; explicit run fonts still take precedence.
 
@@ -56,4 +62,4 @@ Do not claim portability or PowerPoint playback from a LibreOffice preview.
 
 ## Standalone skill
 
-When no font broker is exposed, use `python SKILL_ROOT/scripts/font_assets.py --root TASK_DIR ensure inter-regular noto-sans-sc-regular`. This downloads actual official catalog files and OFL licenses into the task, producing the same metadata/coverage checks. For a locally authorized Mac installation add `--user-install`; keep user installations out of public job flows. A Linux local render can use `FONTCONFIG_FILE=TASK_DIR/fonts.conf`. Mac native apps need the fonts installed in the user font directory. Honor supplied-only/offline briefs; report unavailable resources rather than silently substituting.
+When no font broker is exposed, use `python SKILL_ROOT/scripts/font_assets.py --root TASK_DIR ensure times-new-roman-regular simsun-regular`. This uses genuine already-installed host faces, with source hashes and licensing provenance; it does not download proprietary font files. Missing default faces are reported, not replaced. The existing OFL catalog/downloader remains available for justified alternatives. For an authorized OFL user installation add `--user-install`; keep user installations out of public job flows. A Linux local render can use `FONTCONFIG_FILE=TASK_DIR/fonts.conf`. Mac native apps need the fonts available to that application. Honor supplied-only/offline briefs and scoped templates.

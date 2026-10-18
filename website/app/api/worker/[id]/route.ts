@@ -6,6 +6,7 @@ import {boundedBody} from '@/lib/attachments';
 import {RETRY_JOB} from '@/lib/queries';
 import {storeTrace} from '@/lib/admin-trace';
 import {ensureConversation} from '@/lib/conversation';
+import {workerCapabilities} from '@/lib/execution-backend';
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}) {
   if(!await workerAuthorized(request)) return json({error:'Unauthorized'},401);
   const {id}=await params, lease=request.headers.get('X-Job-Lease');
@@ -17,6 +18,10 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   if(action==='retry'){
     let body;try{body=JSON.parse(new TextDecoder().decode(await boundedBody(request,1024)));}catch{return json({error:'Invalid retry request'},400);}
     if(!body||!Number.isSafeInteger(body.expectedUpdatedAt)||body.expectedUpdatedAt<=0)return json({error:'Expected failed attempt timestamp required'},400);
+    if(body.execution_backend!==undefined){
+      const saved=await db.prepare('SELECT execution_backend FROM jobs WHERE id=?').bind(id).first();
+      if(!saved||body.execution_backend!==saved.execution_backend)return json({error:'Task execution method cannot change',code:'execution_backend_locked'},409);
+    }
     const row=await db.prepare(RETRY_JOB).bind(Math.max(Date.now(),body.expectedUpdatedAt+1),id,body.expectedUpdatedAt).first();
     return row?json(row):json({error:'Task changed, not failed, already delivered, or queue full'},409);
   }
@@ -92,7 +97,16 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
     return json({ok:true});
   }
   if(action==='heartbeat') {
-    const [renewed]=await db.batch([db.prepare("UPDATE jobs SET updated_at=? WHERE id=? AND lease=? AND status='running'").bind(Date.now(),id,lease),db.prepare('UPDATE worker SET heartbeat=? WHERE id=?').bind(Date.now(),'primary')]);
+    let body;
+    try{const bytes=await boundedBody(request,2048);body=bytes.length?JSON.parse(new TextDecoder().decode(bytes)):{};}catch{return json({error:'Invalid worker capabilities'},400);}
+    if(!body||typeof body!=='object'||Array.isArray(body))return json({error:'Invalid worker capabilities'},400);
+    const capabilities=workerCapabilities(body.execution_backends);
+    if(!capabilities)return json({error:'Invalid worker capabilities'},400);
+    const now=Date.now();
+    const workerHeartbeat=capabilities.advertised?
+      db.prepare('INSERT INTO worker(id,heartbeat,execution_backends) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET heartbeat=excluded.heartbeat,execution_backends=excluded.execution_backends').bind('primary',now,JSON.stringify(capabilities.backends)):
+      db.prepare('INSERT INTO worker(id,heartbeat) VALUES (?,?) ON CONFLICT(id) DO UPDATE SET heartbeat=excluded.heartbeat').bind('primary',now);
+    const [renewed]=await db.batch([db.prepare("UPDATE jobs SET updated_at=? WHERE id=? AND lease=? AND status='running'").bind(now,id,lease),workerHeartbeat]);
     return renewed.meta.changes?json({ok:true}):json({error:'Lease expired'},409);
   }
   if(action==='complete') {

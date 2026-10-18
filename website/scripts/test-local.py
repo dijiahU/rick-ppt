@@ -26,7 +26,7 @@ def call(path, data=None, signed=True, origin=BASE):
         return error.code,body
 
 def brief(key=None):
-    return {'title':'本地额度测试','brief':'这是本地测试，不应该在真实执行端制作。','pages':5,'style':'清晰学术报告','requestKey':key or str(uuid.uuid4())}
+    return {'title':'本地额度测试','brief':'这是本地测试，不应该在真实执行端制作。','execution_backend':'codex','pages':5,'style':'清晰学术报告','requestKey':key or str(uuid.uuid4())}
 
 assert call('/api/jobs',brief(),signed=False)[0]==401
 assert call('/api/jobs',brief(),origin='https://untrusted.example')[0]==403

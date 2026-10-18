@@ -17,6 +17,11 @@ call installed helpers directly with chosen content/coordinates. All text height
 errors return together and failed batches leave the page unchanged. This operation
 tool has no page template or automatic design selection.
 When selecting or repairing typography, read [Actual fonts](references/fonts.md).
+Default new English/Latin text to Times New Roman and Chinese to SimSun (宋体),
+using genuine files for metrics, explicit runs and theme fonts. Additional faces
+need actual glyph/weight checks and recipient availability or verified embedding.
+Read [Windows WPS compatibility](references/windows-wps.md) for native arrows and
+cross-platform checks within existing authoring/review; Mac previews are not proof.
 Choose Chinese/Latin faces together for the content; use real files and weights,
 acquire missing OFL resources through the available host, and inspect actual mixed
 text. Preserve supplied template fonts for scoped edits.
@@ -125,6 +130,10 @@ interface/case display. Neither cards nor images replace every other form.
 
 Build, render and inspect each page; repair defects and publish native previews
 where available. Return to content when a visual exposes a missing explanation.
+For animated pages, check native click groups and semantic order during authoring;
+reuse the host's batch state previews in the existing visual review. Follow the
+fast-path and targeted-playback rules in [Animations](references/animations.md);
+routine animation checks do not require a separate slideshow session.
 Essential self-reading meaning must be visible without inaccessible notes.
 
 While finalizing the current page's wording and composition, return to targeted

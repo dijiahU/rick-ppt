@@ -13,7 +13,20 @@ from urllib.request import urlopen
 
 MAX_FONT=30*1024*1024
 MAX_TOTAL=180*1024*1024
-STARTER_IDS=('noto-sans-sc-regular','noto-sans-sc-bold','inter-regular','inter-bold')
+SYSTEM_FONTS={
+    'times-new-roman-regular':('Times New Roman','times.ttf','Times New Roman.ttf',0),
+    'times-new-roman-bold':('Times New Roman','timesbd.ttf','Times New Roman Bold.ttf',0),
+    'times-new-roman-italic':('Times New Roman','timesi.ttf','Times New Roman Italic.ttf',0),
+    'times-new-roman-bold-italic':('Times New Roman','timesbi.ttf','Times New Roman Bold Italic.ttf',0),
+    'simsun-regular':('SimSun','Simsun.ttc','simsun.ttc',0),
+}
+STARTER_IDS=tuple(SYSTEM_FONTS)
+
+def system_font_candidates(font_id):
+    _,office,system,_=SYSTEM_FONTS[font_id]
+    return [Path('/Applications/Microsoft PowerPoint.app/Contents/Resources/DFonts')/office,
+            Path('/System/Library/Fonts/Supplemental')/system,
+            Path('C:/Windows/Fonts')/office.lower()]
 
 def catalog_path():
     here=Path(__file__).resolve().parent
@@ -79,7 +92,8 @@ def inspect(data,text=''):
         if not cmap or not 1<=weight<=1000:raise ValueError('Invalid font metadata')
         missing=sorted({c for c in text if not c.isspace() and ord(c) not in cmap})
         return {'family':family,'style':style,'weight':weight,'format':'otf' if data[:4]==b'OTTO' else 'ttf',
-                'glyphs':len(cmap),'editable_embedding_allowed':not bool(bits & 0x206),'missing_characters':missing,
+                'glyphs':len(cmap),'embedding_flags':bits,'subsetting_allowed':not bool(bits & 0x100),
+                'editable_embedding_allowed':not bool(bits & 0x206),'missing_characters':missing,
                 'sha256':hashlib.sha256(data).hexdigest(),'size':len(data)}
 
 def static_font(data,weight):
@@ -111,6 +125,9 @@ def install(root,font_id,*,downloader=direct_download,descriptor=None,text=''):
         meta=inspect(read(root,existing['file']),text)
         if meta['sha256']!=existing['sha256']:raise ValueError('Installed font changed; refusing silent substitution')
         return {**existing,'missing_characters':meta['missing_characters'],'cache_hit':True}
+    if font_id in SYSTEM_FONTS:
+        if descriptor:raise ValueError('Host font IDs cannot be replaced by a download descriptor')
+        return install_system_font(root,font_id,text=text)
     spec=descriptor or next((x for x in catalog()['fonts'] if x['id']==font_id),None)
     if not spec:raise ValueError('Unknown font; supply a direct official font URL and OFL license URL')
     license_data,license_url,_=downloader(spec['license_url'])
@@ -132,13 +149,62 @@ def install(root,font_id,*,downloader=direct_download,descriptor=None,text=''):
     configure(root)
     return {**record,'missing_characters':meta['missing_characters'],'cache_hit':False}
 
+def install_system_font(root,font_id,*,text=''):
+    """Copy a genuine installed host face for private task metrics/rendering.
+
+    No proprietary font is downloaded, renamed, relicensed as OFL, globally
+    installed or embedded into a presentation by this operation.
+    """
+    from fontTools.ttLib import TTFont
+    expected,_,_,face_index=SYSTEM_FONTS[font_id]
+    source=next((p for p in system_font_candidates(font_id) if p.is_file()),None)
+    if source is None:raise FileNotFoundError('Actual host font unavailable: '+expected)
+    if source.stat().st_size>MAX_FONT:raise ValueError('Host font exceeds size limit')
+    original=source.read_bytes()
+    with TTFont(io.BytesIO(original),fontNumber=face_index,lazy=False) as font:
+        if font['name'].getDebugName(1)!=expected:raise ValueError('Host font family mismatch')
+        license_description=font['name'].getDebugName(13) or ''
+        license_url=font['name'].getDebugName(14) or ''
+        if original[:4]==b'ttcf':
+            output=io.BytesIO();font.save(output);data=output.getvalue()
+        else:data=original
+    meta=inspect(data,text);index=manifest(root)
+    if sum(x.get('size',0) for x in index['fonts'])+len(data)>MAX_TOTAL or len(index['fonts'])>=32:raise ValueError('Task font limit reached')
+    filename='fonts/'+font_id+'-'+meta['sha256'][:12]+'.'+meta['format']
+    provenance_file='fonts/'+font_id+'-provenance.json'
+    provenance=json.dumps({'source_kind':'host-installed-font','source_file':str(source),
+        'source_sha256':hashlib.sha256(original).hexdigest(),'collection_face':face_index if original[:4]==b'ttcf' else None,
+        'family':meta['family'],'style':meta['style'],'license_description':license_description,
+        'license_url':license_url,'use':'Private authoring metrics and rendering; not an OFL download or a font-embedding receipt.'},ensure_ascii=False,indent=2).encode()
+    record={**meta,'id':font_id,'file':filename,'source_kind':'host-installed-font',
+        'source_sha256':hashlib.sha256(original).hexdigest(),'provenance_file':provenance_file,
+        'provenance_sha256':hashlib.sha256(provenance).hexdigest(),'license':'host-installed; see original font licensing metadata',
+        'extracted_collection_face':original[:4]==b'ttcf'}
+    record.pop('missing_characters')
+    publish(root,filename,data);publish(root,provenance_file,provenance)
+    index['fonts'].append(record);publish(root,'fonts/index.json',json.dumps(index,ensure_ascii=False,indent=2).encode())
+    configure(root)
+    return {**record,'missing_characters':meta['missing_characters'],'cache_hit':False}
+
+def prepare_default_fonts(root):
+    available=[];missing=[]
+    for font_id in STARTER_IDS:
+        try:install(root,font_id);available.append(font_id)
+        except FileNotFoundError:missing.append(font_id)
+    return {'available':available,'missing':missing}
+
+def auxiliary_file(item):
+    if item.get('source_kind')=='host-installed-font':return item['provenance_file'],item['provenance_sha256']
+    return item['license_file'],item['license_sha256']
+
 def verified_files(root):
     result={}
     for item in manifest(root)['fonts']:
-        data=read(root,item['file']);license_data=read(root,item['license_file'],128*1024)
-        if hashlib.sha256(data).hexdigest()!=item['sha256'] or hashlib.sha256(license_data).hexdigest()!=item['license_sha256']:raise ValueError('Font or license bytes changed')
-        if not item['file'].startswith('fonts/') or not item['license_file'].startswith('fonts/'):raise ValueError('Invalid font resource path')
-        result[item['file']]=data;result[item['license_file']]=license_data
+        auxiliary,digest=auxiliary_file(item)
+        data=read(root,item['file']);auxiliary_data=read(root,auxiliary,128*1024)
+        if hashlib.sha256(data).hexdigest()!=item['sha256'] or hashlib.sha256(auxiliary_data).hexdigest()!=digest:raise ValueError('Font or license/provenance bytes changed')
+        if not item['file'].startswith('fonts/') or not auxiliary.startswith('fonts/'):raise ValueError('Invalid font resource path')
+        result[item['file']]=data;result[auxiliary]=auxiliary_data
     return result
 
 def copy_fonts(source,target,ids=None):
@@ -147,7 +213,7 @@ def copy_fonts(source,target,ids=None):
     current=manifest(target);by_id={x['id']:x for x in current['fonts']}
     for item in items:
         if item['id'] in by_id and by_id[item['id']]['sha256']!=item['sha256']:raise ValueError('Existing task font is immutable')
-        for key in ('file','license_file'):publish(target,item[key],files[item[key]])
+        for relative in (item['file'],auxiliary_file(item)[0]):publish(target,relative,files[relative])
         by_id[item['id']]=item
     publish(target,'fonts/index.json',json.dumps({'version':1,'fonts':list(by_id.values())},ensure_ascii=False,indent=2).encode())
     configure(target)

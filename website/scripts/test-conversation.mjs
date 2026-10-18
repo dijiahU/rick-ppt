@@ -5,19 +5,21 @@ import {DatabaseSync} from 'node:sqlite';
 import ts from 'typescript';
 const modules={};
 function load(path){const code=ts.transpileModule(readFileSync(new URL('../'+path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const exports={};new Function('require','exports',code)(name=>{assert.ok(modules[name],name);return modules[name];},exports);return exports;}
-const db=new DatabaseSync(':memory:');db.exec("CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,status TEXT,lease TEXT,result_key TEXT,summary TEXT,updated_at INTEGER);CREATE TABLE worker(id TEXT PRIMARY KEY,heartbeat INTEGER);CREATE TABLE task_drafts(job_id TEXT PRIMARY KEY)");
-const id=crypto.randomUUID(),lease=crypto.randomUUID();db.prepare("INSERT INTO jobs VALUES (?,'owner','running',?,NULL,NULL,100)").run(id,lease);
+modules['./execution-backend']=load('lib/execution-backend.ts');modules['@/lib/execution-backend']=modules['./execution-backend'];
+const db=new DatabaseSync(':memory:');db.exec("CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,status TEXT,lease TEXT,result_key TEXT,summary TEXT,updated_at INTEGER,execution_backend TEXT);CREATE TABLE worker(id TEXT PRIMARY KEY,heartbeat INTEGER);CREATE TABLE task_drafts(job_id TEXT PRIMARY KEY)");
+const id=crypto.randomUUID(),lease=crypto.randomUUID();db.prepare("INSERT INTO jobs VALUES (?,'owner','running',?,NULL,NULL,100,NULL)").run(id,lease);
 let user='owner',loseInsertResponse=false,failUpload=false,afterPut=null;const objects=new Map();
 const binding={prepare(sql){let args=[];const s={bind(...v){args=v;return s;},async first(){const value=db.prepare(sql).get(...args)??null;if(loseInsertResponse&&sql.startsWith('INSERT INTO task_messages')){loseInsertResponse=false;throw Error('lost response');}return value;},async all(){return {results:db.prepare(sql).all(...args)};},async run(){return {meta:{changes:Number(db.prepare(sql).run(...args).changes)}};}};return s;},async batch(statements){const out=[];for(const s of statements)out.push(await s.run());return out;}};
 modules['@/lib/server']={database:()=>binding,files:()=>({async put(key,bytes){if(failUpload)throw Error('R2 offline');objects.set(key,new Uint8Array(bytes));if(afterPut){const callback=afterPut;afterPut=null;callback();}},async get(key){return objects.has(key)?{body:new Response(objects.get(key)).body}:null;},async head(key){return objects.has(key)?{size:objects.get(key).length}:null;}}),json:(v,status=200)=>Response.json(v,{status}),userId:async()=>user,sameOrigin:r=>r.headers.get('Origin')===new URL(r.url).origin,workerAuthorized:async r=>r.headers.get('Authorization')==='Bearer synthetic-worker'};
 modules['@/lib/attachments']=load('lib/attachments.ts');modules['@/lib/conversation']=load('lib/conversation.ts');
+modules['@/lib/staged-uploads']=load('lib/staged-uploads.ts');
 const {POST:send,GET:read}=load('app/api/jobs/[id]/conversation/route.ts');const worker=load('app/api/worker/[id]/conversation/route.ts').POST,resume=load('app/api/jobs/[id]/resume/route.ts').POST,download=load('app/api/jobs/[id]/versions/[version]/route.ts').GET;
 const params={params:Promise.resolve({id})};
 function request({clientId=crypto.randomUUID(),body='Make the kernel draggable.',kind='revision',files=[],origin='https://test.local'}={}){const form=new FormData();for(const [k,v] of Object.entries({id:clientId,body,kind}))form.set(k,v);for(const f of files)form.append('files',f);return new Request(`https://test.local/api/jobs/${id}/conversation`,{method:'POST',headers:{Origin:origin},body:form});}
 function wr(action,body={},givenLease=lease){return worker(new Request(`https://test.local/api/worker/${id}/conversation?action=${action}`,{method:'POST',headers:{Authorization:'Bearer synthetic-worker','X-Job-Lease':givenLease,'Content-Type':'application/json'},body:JSON.stringify(body)}),params);}
 const plain=new Request('https://test.local');
 user=null;assert.equal((await send(request(),params)).status,401);user='other';assert.equal((await send(request(),params)).status,404);assert.equal((await read(plain,params)).status,404);user='owner';assert.equal((await send(request({origin:'https://evil.test'}),params)).status,403);
-for(const options of [{body:''},{body:'x'.repeat(8001)},{kind:'admin'},{clientId:'../escape'},{files:[new File(['exe'],'x.exe')]},{files:[new File(['not png'],'x.png')]},{files:Array.from({length:4},()=>new File(['a'],'a.txt'))}])assert.equal((await send(request(options),params)).status,400);
+for(const options of [{body:''},{body:'x'.repeat(8001)},{kind:'admin'},{clientId:'../escape'},{files:[new File(['exe'],'x.exe')]},{files:[new File(['not png'],'x.png')]},{files:Array.from({length:11},()=>new File(['a'],'a.txt'))}])assert.equal((await send(request(options),params)).status,400);
 const clientId=crypto.randomUUID(),file=new File(['kernel = [[1,0],[0,-1]]'],'kernel.txt');const accepted=await send(request({clientId,files:[file]}),params);assert.equal(accepted.status,201);const first=(await accepted.json()).message;assert.equal(first.status,'pending');assert.equal(first.attachments.length,1);
 assert.equal((await send(request({clientId,files:[file]}),params)).status,200);
 assert.equal((await send(request({clientId,body:'Different intent',files:[file]}),params)).status,409);
@@ -68,3 +70,19 @@ assert.equal((await finish(lateSeq)).status,200);assert.equal((await finish(late
 assert.equal(db.prepare('SELECT COUNT(*) n FROM task_versions WHERE job_id=?').get(second).n,1);
 assert.equal(db.prepare('SELECT bundle_key FROM task_versions WHERE job_id=?').get(second).bundle_key,`bundles/${second}/${secondLease}.zip`);
 console.log('PASS: owner/CSRF isolation, bounded uploads, SHA metadata, conflicting idempotency, concurrent sends, lost acknowledgements, lease fencing, message delivery/application, safe checkpoints, quota-preserving resume, retained versions and atomic late-input delivery fence');
+
+// Legacy multipart follow-ups retain the 20 MB request bound; larger sets use staging.
+const pngFile=(size,name='reference.png')=>{const bytes=new Uint8Array(size);bytes.set([137,80,78,71,13,10,26,10]);return new File([bytes],name);};
+const ten=await send(request({files:Array.from({length:10},(_,i)=>pngFile(2*1024*1024,`reference-${i}.png`))}),params);
+assert.equal(ten.status,201);assert.equal((await ten.json()).message.attachments.length,10);
+assert.equal((await send(request({files:[pngFile(20*1024*1024)]}),params)).status,201);
+assert.equal((await send(request({files:[pngFile(20*1024*1024+1)]}),params)).status,400);
+assert.equal((await send(request({files:[pngFile(10*1024*1024),pngFile(10*1024*1024+1)]}),params)).status,400);
+console.log('PASS: legacy multipart follow-ups accept 10 files / 20 MB and reject count/inline-size overflow');
+
+const image=await send(request({files:[pngFile(8)]}),params);assert.equal(image.status,201);
+const picture=(await image.json()).message;
+const imageUrl=`https://test.local/api/jobs/${id}/conversation?message=${picture.id}&file=${picture.attachments[0].id}&preview=1`;
+const inline=await read(new Request(imageUrl),params);assert.equal(inline.status,200);assert.equal(inline.headers.get('Content-Type'),'image/png');assert.ok(inline.headers.get('Content-Disposition').startsWith('inline;'));
+user='stranger';assert.equal((await read(new Request(imageUrl),params)).status,404);user='owner';
+console.log('PASS: conversation image previews preserve private owner authorization');

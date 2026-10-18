@@ -9,7 +9,7 @@ export const dynamic='force-dynamic';
 export async function GET(_request:Request,{params}:{params:Promise<{id:string}>}) {
   const denied=await adminGate();if(denied)return denied;
   const {id}=await params;
-  const row=await database().prepare(`SELECT id,user_id,title,brief,pages,style,language,status,created_at,updated_at,summary,result_key,progress,attachments,${QUEUE_POSITION_SQL} AS queuePosition FROM jobs WHERE id=?`).bind(id).first();
+  const row=await database().prepare(`SELECT id,user_id,title,brief,pages,style,language,execution_backend,status,created_at,updated_at,summary,result_key,progress,attachments,${QUEUE_POSITION_SQL} AS queuePosition FROM jobs WHERE id=?`).bind(id).first();
   if(!row)return json({error:'Request not found.'},404);
   const {result_key,progress,attachments,...job}=row;
   let parsed=null;try{parsed=parseProgress(JSON.parse(String(progress||'null')));}catch{}

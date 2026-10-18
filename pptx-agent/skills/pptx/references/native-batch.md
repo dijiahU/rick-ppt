@@ -34,7 +34,8 @@ Parameter names are the exact current `native_canvas` Python API:
 | bars | add_bar_chart | labels,values,unit,colors,box,font_family,font_size |
 
 Use existing optional helper parameters unchanged: text supports index, padding,
-name, latin_font and latin_index; reveal supports explicit `replace: true` only
+name, latin_font and latin_index; bars accepts `east_asian_font_family` alongside
+`font_family` (new default pair: Times New Roman / SimSun); reveal supports explicit `replace: true` only
 when replacing timing is authorized. Even a shape with `stroke: null` requires
 a positive explicit line_width, such as 1. This preserves the helper contract.
 
@@ -58,7 +59,8 @@ relative, and escaping/symlink paths are rejected. Font files must be within
 `/Library/Fonts`; Linux system font directories when applicable). Copy/acquire
 permitted task fonts into that directory; arbitrary private paths are not accepted.
 Choose actual mixed-script faces and weights; bars keep the existing explicit
-font-family/font-size contract. Asset acquisition and inspection remain required.
+font-family/font-size contract, with an optional explicit East Asian family.
+Asset acquisition and inspection remain required.
 
 All operations run on a complete temporary parts copy, including relationships,
 timing, notes, fonts and existing resources. An operation failure discards that

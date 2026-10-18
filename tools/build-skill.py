@@ -23,7 +23,7 @@ REFERENCES = ('content.md', 'content-review.md', 'visual-review.md', 'research-a
               'animations.md', 'ooxml-overview.md', 'slides-and-shapes.md', 'text.md',
               'images.md', 'charts.md', 'groups.md', 'masters-and-layouts.md',
               'relationships.md', 'safe-mutation-rules.md', 'review-examples.md',
-              'technical/native-capabilities.md', 'technical/formula-fidelity.md', 'fonts.md')
+              'technical/native-capabilities.md', 'technical/formula-fidelity.md', 'fonts.md', 'windows-wps.md')
 
 
 def copy(source, target):

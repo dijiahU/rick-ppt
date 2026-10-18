@@ -15,3 +15,27 @@ The website PNG/PDF previews are static. No PowerPoint slideshow player is expos
 to the isolated task. Inspect native timing and important states; clearly distinguish
 these checks from untested real playback. Preserve the native builds in the download.
 Do not claim playback verification from thumbnails or a successful export.
+
+## Fast animation check
+
+During sequential authoring, inspect each animated page's native targets and all
+click groups against its entry/click/final plan. Check that context persists,
+labels/connectors and supporting evidence enter together, translations do not
+reveal answers early, and the final page is readable. Fix affected objects in the
+current page; reuse its normal final render.
+
+The existing frozen-candidate visual review reuses the host review packet's batch
+initial/middle/pre-final simulations for supported simple Appear builds, plus the
+existing final render and complete click-group inventory. Samples are not every
+click. Inspect contacts first and targeted frames for concrete issues; do not
+regenerate unchanged evidence, rerender the whole deck after each page/click, or
+add another review stage.
+
+Actual WPS/PowerPoint playback is conditional on an explicit request, a required
+playback contract or a concrete compatibility concern, and a suitable exposed
+player. Test affected pages/clicks only. This isolated task has no such player:
+do not install one or attempt repeated UI workarounds. Record unsupported effects
+and unresolved playback honestly; do not delete native behavior to obtain a pass.
+Keep timing inspection, static simulation and real playback results distinct.
+A real playback receipt identifies PPTX hash, player/version and tested pages/clicks;
+WPS evidence does not certify PowerPoint or unplayed pages. Recheck changed scope only.

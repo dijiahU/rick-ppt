@@ -31,15 +31,42 @@ timing is preserved unless `--replace` is explicitly selected within editing sco
 It is a small convenience, not a restriction to Appear; use verified OOXML for Fade,
 emphasis, paths or more complex behavior when the explanation benefits.
 
-Inspect initial/intermediate/final states and actual playback when available.
-Check that contextual objects persist, related elements enter together and exported
-targets/click groups survive. `scripts/review_packet.py --workspace PATH --render-json
-RENDER_JSON --out DIRECTORY` collects timing and full-deck contact sheets, and renders
-separate initial/middle/pre-final simulations for supported simple whole-object Appear
-builds. It labels unsupported effects and does not certify playback. A host may run
-this automatically; do not duplicate the same state-copy work without a reason.
-If using other temporary state copies, keep them separate
-from the deliverable and do not publish their page numbers as actual deck pages.
+## Animation check within authoring and visual review
+
+Use the fast path by default; a separate slideshow session or animation review
+stage is not required for every deck.
+
+While authoring each animated page, inspect native target IDs and the complete
+click-group order against the speaking sequence. Check entry context, persistent
+orientation, labels/connectors/evidence entering with the relevant object, premature
+answers (including translated labels), and the complete final view. Fix a missing
+or mistimed semantic group before continuing. Reuse the page's normal final render;
+do not rerender the whole deck after each click or page.
+
+At the existing frozen-candidate visual review, reuse the host's animation evidence:
+`scripts/review_packet.py --workspace PATH --render-json RENDER_JSON --out DIRECTORY`
+collects native timing/click groups and batch-renders initial/middle/pre-final
+simulations for supported simple whole-object Appear builds. The final view uses
+the existing full-page render. Inspect the state contacts, then open only frames
+needed to resolve a concrete issue. These samples do not cover every click; inspect
+the complete group list and create a targeted extra state only when it is necessary.
+Do not generate another packet or duplicate unchanged evidence. Keep temporary
+state copies separate from the deliverable and its page numbering.
+
+Actual WPS/PowerPoint slideshow playback is a targeted diagnostic when explicitly
+requested, required by the task's playback contract, or needed to resolve a concrete
+compatibility concern (such as a translated label appearing early, triggers, motion,
+or embedded media). First check whether the host exposes a suitable player. Test
+only affected pages and clicks; do not automatically click through the whole deck,
+launch/install a player, or try repeated UI workarounds as routine review. If the
+player is unavailable, record the unresolved playback limitation. Unsupported
+simulation is unknown, not a pass and not a reason to remove native behavior.
+
+Record native timing inspection, static state simulation and real playback
+separately in the existing review/delivery evidence. For real playback record the
+PPTX hash, player/version, pages/clicks and observed result; a WPS check verifies
+that scope in WPS only. Never infer playback from exported XML or static renders,
+or mark unplayed pages as playback-verified. Recheck changed scope only.
 
 Reference: [Microsoft PresentationML animation](https://learn.microsoft.com/en-us/office/open-xml/presentation/working-with-animation).
 

@@ -8,9 +8,10 @@ export const jobs = sqliteTable('jobs', {
   summary: text('summary'), resultKey: text('result_key'), threadId: text('thread_id'),
   progress: text('progress'),
   language: text('language'),
+  executionBackend: text('execution_backend', {enum:['api','codex']}),
   attachments: text('attachments'),
 }, (t) => [uniqueIndex('jobs_user_request').on(t.userId, t.requestKey), index('jobs_user').on(t.userId), index('jobs_status_created').on(t.status,t.createdAt)]);
-export const worker = sqliteTable('worker', { id: text('id').primaryKey(), heartbeat: integer('heartbeat').notNull() });
+export const worker = sqliteTable('worker', { id: text('id').primaryKey(), heartbeat: integer('heartbeat').notNull(), executionBackends:text('execution_backends') });
 export const siteAdmins = sqliteTable('site_admins', {
   email: text('email').primaryKey(),
   userId: text('user_id'),

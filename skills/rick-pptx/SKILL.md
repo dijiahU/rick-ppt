@@ -5,12 +5,21 @@ description: Research, design, create and edit standalone editable PowerPoint wi
 
 # Rick PPTX
 
-Use scripts/pptx.py with Python 3.11+ and lxml, Pillow and jsonschema. Resolve
+Use scripts/pptx.py with Python 3.11+ and lxml, Pillow, jsonschema and fonttools. Resolve
 SKILL_ROOT from this file; all paths below are relative to it. Work in a separate
 task folder, outside the skill. First run `python SKILL_ROOT/scripts/doctor.py`;
 read [Environment and commands](references/environment.md) if needed. Rendering
 requires LibreOffice and Poppler on the author machine; recipients need only the
 PPTX. Do not silently install dependencies.
+When selecting or repairing typography, read [Actual fonts](references/fonts.md).
+Default new English/Latin to Times New Roman and Chinese to SimSun (宋体),
+using genuine task files and explicit run/theme fonts. Additional fonts need
+actual glyph/weight checks and recipient availability or verified embedding.
+Read [Windows WPS compatibility](references/windows-wps.md) for native arrows;
+Mac previews do not verify Windows WPS. Preserve scoped templates and user choices.
+Choose Chinese/Latin faces together, use real files and weights, acquire missing
+OFL resources when permitted, and inspect actual mixed text. Preserve template
+fonts during scoped edits. The user's authorization to download fonts applies.
 
 This standalone skill does not configure model/API keys or provide website queues,
 search, generation, process cancellation or reviewer contexts. Use the host's

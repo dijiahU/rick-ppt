@@ -43,6 +43,32 @@ class FontsTests(unittest.TestCase):
         f.install(self.root,'cjk',descriptor=self.spec,downloader=self.download)
         self.assertTrue(f.coverage(self.root,['fixture','cjk'],'中文 ABC 123')['ok'])
         self.assertEqual(f.coverage(self.root,['fixture','cjk'],'中文😀')['missing_characters'],['😀'])
+    def test_installed_defaults_use_real_faces_and_verified_provenance_without_download(self):
+        from fontTools.ttLib import TTFont,TTCollection
+        latin=self.root/'times.ttf';latin.write_bytes(font_bytes('Times New Roman','ABC123'))
+        collection=TTCollection();collection.fonts=[TTFont(io.BytesIO(font_bytes('SimSun','中文'))),TTFont(io.BytesIO(font_bytes('NSimSun','中文')))]
+        chinese=self.root/'simsun.ttc';collection.save(chinese)
+        def candidates(ident):return [chinese if ident=='simsun-regular' else latin]
+        def forbidden(url):raise AssertionError('Installed fonts must not be downloaded')
+        with patch.object(f,'system_font_candidates',side_effect=candidates):
+            a=f.install(self.root,'times-new-roman-regular',downloader=forbidden)
+            b=f.install(self.root,'simsun-regular',downloader=forbidden)
+        self.assertEqual((a['family'],b['family']),('Times New Roman','SimSun'))
+        self.assertTrue(b['extracted_collection_face']);self.assertEqual(b['source_kind'],'host-installed-font')
+        self.assertNotEqual(b['license'],'OFL-1.1');self.assertNotIn('license_file',b)
+        self.assertTrue(f.coverage(self.root,[a['id'],b['id']],'中文 ABC 123')['ok'])
+        other=self.root/'recovered';other.mkdir();f.copy_fonts(self.root,other)
+        self.assertEqual(f.verified_files(self.root),f.verified_files(other))
+        (self.root/b['provenance_file']).write_text('{}')
+        with self.assertRaises(ValueError):f.copy_fonts(self.root,other)
+    def test_missing_defaults_are_reported_and_mislabeled_substitutes_are_rejected(self):
+        with patch.object(f,'system_font_candidates',return_value=[]):
+            result=f.prepare_default_fonts(self.root)
+        self.assertEqual(result['available'],[]);self.assertEqual(result['missing'],list(f.STARTER_IDS))
+        substitute=self.root/'pretend.ttf';substitute.write_bytes(font_bytes('Noto Serif CJK SC','中文'))
+        with patch.object(f,'system_font_candidates',return_value=[substitute]):
+            with self.assertRaisesRegex(ValueError,'family mismatch'):f.install(self.root,'simsun-regular')
+        self.assertFalse((self.root/'fonts/index.json').exists())
     def test_html_and_missing_license_or_mismatched_family_are_rejected(self):
         self.font=b'<html>not a font</html>'
         with self.assertRaises(ValueError):self.install()

@@ -10,7 +10,7 @@ def main():
     root = Path(__file__).resolve().parents[1]
     checks = {'python_3_11': sys.version_info >= (3, 11), 'posix_host': sys.platform != 'win32'}
     details = {'python': sys.version.split()[0], 'platform': sys.platform}
-    for module in ('lxml.etree', 'PIL.Image', 'jsonschema'):
+    for module in ('lxml.etree', 'PIL.Image', 'jsonschema', 'fontTools.ttLib'):
         try:
             importlib.import_module(module)
             checks[module] = True

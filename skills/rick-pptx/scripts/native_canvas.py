@@ -13,6 +13,7 @@ import posixpath
 import re
 import shutil
 import uuid
+import unicodedata
 import zipfile
 from lxml import etree as E
 from PIL import Image,ImageFont
@@ -121,10 +122,30 @@ def reveal(workspace,number,steps,*,replace=False):
     set_builds(tree.getroot(),ids,replace=replace);write(path,tree)
     return {'slide':number,'steps':ids,'playback_verified':False}
 
-def text_measure(text,font_file,size,width,*,index=0,padding=.04,line_spacing=1.12):
+def script_runs(text):
+    runs=[]
+    for char in text:
+        role='ea' if unicodedata.east_asian_width(char) in ('W','F') else 'latin'
+        if unicodedata.combining(char) and runs:role=runs[-1][0]
+        if runs and runs[-1][0]==role:runs[-1]=(role,runs[-1][1]+char)
+        else:runs.append((role,char))
+    return runs
+
+def native_font_name(path,index):
+    # PowerPoint uses legacy family/subfamily style linking. Pillow may return
+    # the typographic family instead: then a Medium/SemiBold file can render as
+    # regular/bold under the same family, despite different measured metrics.
+    from fontTools.ttLib import TTFont
+    with TTFont(str(path),fontNumber=index,lazy=True) as font:
+        return font['name'].getDebugName(1),font['name'].getDebugName(2)
+
+def text_measure(text,font_file,size,width,*,index=0,padding=.04,line_spacing=1.12,latin_font=None,latin_index=0):
     if not isinstance(text,str) or not text.strip() or not all(math.isfinite(x) for x in (size,width,padding,line_spacing)) or size<=0 or width<=2*padding or padding<0 or line_spacing<1:
         raise ValueError('Invalid text measurement input')
     font=ImageFont.truetype(str(font_file),round(size*4),index=index)
+    latin=ImageFont.truetype(str(latin_font),round(size*4),index=latin_index) if latin_font else font
+    def length(value):
+        return sum((font if role=='ea' else latin).getlength(chunk) for role,chunk in script_runs(value)) if latin_font else font.getlength(value)
     available=(width-2*padding)*72*4;lines=[]
     for paragraph in text.split('\n'):
         chunks=[]
@@ -137,20 +158,23 @@ def text_measure(text,font_file,size,width,*,index=0,padding=.04,line_spacing=1.
         current=''
         for chunk in chunks:
             candidate=current+chunk
-            if font.getlength(candidate)<=available:current=candidate;continue
+            if length(candidate)<=available:current=candidate;continue
             if not chunk.strip():continue
             if current.strip():lines.append(current.rstrip());current=chunk.lstrip()
             else:current=chunk
-            if font.getlength(current)>available:raise ValueError('Unbreakable text exceeds the chosen width; widen, shorten or add a meaningful break')
+            if length(current)>available:raise ValueError('Unbreakable text exceeds the chosen width; widen, shorten or add a meaningful break')
         lines.append(current.rstrip())
-    ascent,descent=font.getmetrics();line_points=max(size,(ascent+descent)/4)*line_spacing
-    family,style=font.getname()
+    ascent,descent=font.getmetrics();la,ld=latin.getmetrics();line_points=max(size,(ascent+descent)/4,(la+ld)/4)*line_spacing
+    family,style=native_font_name(font_file,index)
+    latin_family,latin_style=native_font_name(latin_font,latin_index) if latin_font else (family,style)
     return {'lines':lines,'height':len(lines)*line_points/72+2*padding,
             'line_points':line_points,'font_family':family,'bold':'bold' in style.lower() or 'demi' in style.lower(),'italic':'italic' in style.lower() or 'oblique' in style.lower(),
-            'size':size,'width':width,'padding':padding,'measurement':'Installed-font estimate; actual native render still required'}
+            'latin_family':latin_family,'latin_bold':'bold' in latin_style.lower() or 'demi' in latin_style.lower(),
+            'latin_italic':'italic' in latin_style.lower() or 'oblique' in latin_style.lower(),
+            'size':size,'width':width,'padding':padding,'measurement':'Actual selected-font estimate; actual native render still required'}
 
-def add_text(workspace,number,text,font_file,size,ink,*,x,y,width,max_height,index=0,padding=.04,name='Editable text'):
-    color(ink);measure=text_measure(text,font_file,size,width,index=index,padding=padding)
+def add_text(workspace,number,text,font_file,size,ink,*,x,y,width,max_height,index=0,padding=.04,name='Editable text',latin_font=None,latin_index=0):
+    color(ink);measure=text_measure(text,font_file,size,width,index=index,padding=padding,latin_font=latin_font,latin_index=latin_index)
     if not math.isfinite(max_height) or max_height<=0 or measure['height']>max_height:raise ValueError(f"Text exceeds its allocated height: needs {measure['height']:.3f} inches for {len(measure['lines'])} lines in {measure['font_family']}; available {max_height:.3f}. Shorten, enlarge or recompose instead of clipping/shrinking")
     _,path,tree,shapes=page(workspace,number);ident=next_id(tree)
     sp=node(shapes,P,'sp');nv=node(sp,P,'nvSpPr');node(nv,P,'cNvPr',id=ident,name=name);node(nv,P,'cNvSpPr',txBox=1);node(nv,P,'nvPr')
@@ -158,9 +182,12 @@ def add_text(workspace,number,text,font_file,size,ink,*,x,y,width,max_height,ind
     body=node(sp,P,'txBody');node(body,A,'bodyPr',wrap='none',anchor='t',lIns=round(padding*EMU),rIns=round(padding*EMU),tIns=round(padding*EMU),bIns=round(padding*EMU));node(body,A,'lstStyle')
     for line in measure['lines']:
         p=node(body,A,'p');pp=node(p,A,'pPr');node(node(pp,A,'lnSpc'),A,'spcPts',val=round(measure['line_points']*100));node(node(pp,A,'spcAft'),A,'spcPts',val=0)
-        run=node(p,A,'r');rp=node(run,A,'rPr',sz=round(size*100),b=int(measure['bold']),i=int(measure['italic']));solid(rp,ink)
-        for kind in ('latin','ea','cs'):node(rp,A,kind,typeface=measure['font_family'])
-        node(run,A,'t').text=line;node(p,A,'endParaRPr',sz=round(size*100))
+        for role,chunk in (script_runs(line) if latin_font else [('ea',line)]):
+            run=node(p,A,'r');rp=node(run,A,'rPr',sz=round(size*100),b=int(measure['latin_bold'] if role=='latin' else measure['bold']),i=int(measure['latin_italic'] if role=='latin' else measure['italic']));solid(rp,ink)
+            node(rp,A,'latin',typeface=measure['latin_family']);node(rp,A,'ea',typeface=measure['font_family']);node(rp,A,'cs',typeface=measure['latin_family'])
+            t=node(run,A,'t');t.text=chunk
+            if chunk!=chunk.strip():t.set('{http://www.w3.org/XML/1998/namespace}space','preserve')
+        node(p,A,'endParaRPr',sz=round(size*100))
     write(path,tree);return {**handle(workspace,number,ident),**measure}
 
 def relations(root,path):
@@ -210,10 +237,14 @@ def workbook(labels,values,unit):
         for name,xml in [('[Content_Types].xml',content),('_rels/.rels',package),('xl/workbook.xml',book),('xl/_rels/workbook.xml.rels',links),('xl/worksheets/sheet1.xml',sheet)]:z.writestr(name,E.tostring(xml,encoding='UTF-8',xml_declaration=True))
     return stream.getvalue()
 
-def add_bar_chart(workspace,number,labels,values,unit,colors,box,*,font_family,font_size):
+def add_bar_chart(workspace,number,labels,values,unit,colors,box,*,font_family,font_size,east_asian_font_family=None):
     if not labels or len(labels)!=len(values) or len(labels)!=len(colors) or any(not isinstance(x,str) or not x.strip() for x in labels) or not isinstance(unit,str) or not unit.strip():raise ValueError('Specify categories, one unit and matching series values/colors')
     if any(type(v) not in (int,float) or not math.isfinite(v) or v<0 for v in values) or max(values)<=0:raise ValueError('Use finite nonnegative values; negative/stacked charts require a different explicit implementation')
     if not font_family or not math.isfinite(font_size) or font_size<=0:raise ValueError('Specify chart typography')
+    if east_asian_font_family is not None and (not isinstance(east_asian_font_family,str) or not east_asian_font_family.strip()):raise ValueError('Specify an actual East Asian chart font family')
+    east_asian_font_family=east_asian_font_family or font_family
+    def chart_text(parent):
+        tx=node(parent,C,'txPr');node(tx,A,'bodyPr');node(tx,A,'lstStyle');p=node(tx,A,'p');pr=node(node(p,A,'pPr'),A,'defRPr',sz=round(font_size*100));node(pr,A,'latin',typeface=font_family);node(pr,A,'ea',typeface=east_asian_font_family);node(pr,A,'cs',typeface=font_family);node(p,A,'endParaRPr',sz=round(font_size*100))
     colors=[color(c) for c in colors]
     root,path,tree,shapes=page(workspace,number);chart=E.Element('{'+C+'}chartSpace',nsmap={'c':C,'a':A,'r':R});node(chart,C,'lang',val='en-US')
     actual=node(chart,C,'chart');plot=node(actual,C,'plotArea');node(plot,C,'layout');bars=node(plot,C,'barChart');node(bars,C,'barDir',val='bar');node(bars,C,'grouping',val='clustered');series=node(bars,C,'ser');node(series,C,'idx',val=0);node(series,C,'order',val=0);node(node(series,C,'tx'),C,'v').text=unit
@@ -223,16 +254,17 @@ def add_bar_chart(workspace,number,labels,values,unit,colors,box,*,font_family,f
         if kind=='val':node(cache,C,'formatCode').text='0.##'
         node(cache,C,'ptCount',val=len(data))
         for i,v in enumerate(data):node(node(cache,C,'pt',idx=i),C,'v').text=str(v)
-    dl=node(bars,C,'dLbls');node(dl,C,'dLblPos',val='outEnd');node(dl,C,'showLegendKey',val=0);node(dl,C,'showVal',val=1);node(dl,C,'showCatName',val=0);node(dl,C,'showSerName',val=0)
+    dl=node(bars,C,'dLbls');chart_text(dl);node(dl,C,'dLblPos',val='outEnd');node(dl,C,'showLegendKey',val=0);node(dl,C,'showVal',val=1);node(dl,C,'showCatName',val=0);node(dl,C,'showSerName',val=0)
     node(bars,C,'gapWidth',val=70);node(bars,C,'axId',val=101);node(bars,C,'axId',val=102)
     for typ,ident,cross,pos in [('catAx',101,102,'l'),('valAx',102,101,'b')]:
         axis=node(plot,C,typ);node(axis,C,'axId',val=ident);scale=node(axis,C,'scaling');node(scale,C,'orientation',val='maxMin' if typ=='catAx' else 'minMax')
         if typ=='valAx':node(scale,C,'min',val=0);node(scale,C,'max',val=max(values)*1.15)
         node(axis,C,'delete',val=0);node(axis,C,'axPos',val=pos);node(axis,C,'majorTickMark',val='none');node(axis,C,'minorTickMark',val='none');node(axis,C,'tickLblPos',val='nextTo')
-        tx=node(axis,C,'txPr');node(tx,A,'bodyPr');node(tx,A,'lstStyle');p=node(tx,A,'p');pr=node(node(p,A,'pPr'),A,'defRPr',sz=round(font_size*100));node(pr,A,'latin',typeface=font_family);node(pr,A,'ea',typeface=font_family);node(p,A,'endParaRPr',sz=round(font_size*100))
+        chart_text(axis)
         node(axis,C,'crossAx',val=cross);node(axis,C,'crosses',val='autoZero')
         if typ=='valAx':node(axis,C,'crossBetween',val='between')
     node(actual,C,'plotVisOnly',val=1)
+    chart_text(chart)
     folder=scoped(root,'ppt/charts');folder.mkdir(exist_ok=True);n=1
     while (folder/f'chart{n}.xml').exists():n+=1
     stem=f'chart{n}';rid='rIdChart'+uuid.uuid4().hex
@@ -252,16 +284,17 @@ def main():
     p=argparse.ArgumentParser(description=__doc__);commands=p.add_subparsers(dest='command',required=True)
     for kind in ('measure','text'):
         s=commands.add_parser(kind);s.add_argument('--text',required=True);s.add_argument('--font',required=True);s.add_argument('--font-index',type=int,default=0);s.add_argument('--size',type=float,required=True);s.add_argument('--width',type=float,required=True)
+        s.add_argument('--latin-font');s.add_argument('--latin-index',type=int,default=0)
         if kind=='text':
             s.add_argument('--workspace',required=True);s.add_argument('--slide',type=int,required=True);s.add_argument('--x',type=float,required=True);s.add_argument('--y',type=float,required=True);s.add_argument('--max-height',type=float,required=True);s.add_argument('--color',required=True)
     image=commands.add_parser('image');image.add_argument('--workspace',required=True);image.add_argument('--slide',type=int,required=True);image.add_argument('--file',required=True);image.add_argument('--box',type=float,nargs=4,required=True);image.add_argument('--fit',choices=('contain','cover'),required=True);image.add_argument('--layer',choices=('back','front'),required=True)
-    bars=commands.add_parser('bars');bars.add_argument('--workspace',required=True);bars.add_argument('--slide',type=int,required=True);bars.add_argument('--data',required=True);bars.add_argument('--box',type=float,nargs=4,required=True);bars.add_argument('--font-family',required=True);bars.add_argument('--font-size',type=float,required=True)
+    bars=commands.add_parser('bars');bars.add_argument('--workspace',required=True);bars.add_argument('--slide',type=int,required=True);bars.add_argument('--data',required=True);bars.add_argument('--box',type=float,nargs=4,required=True);bars.add_argument('--font-family',required=True);bars.add_argument('--font-size',type=float,required=True);bars.add_argument('--east-asian-font-family')
     a=p.parse_args()
-    if a.command=='measure':result=text_measure(a.text,a.font,a.size,a.width,index=a.font_index)
-    elif a.command=='text':result=add_text(a.workspace,a.slide,a.text,a.font,a.size,a.color,x=a.x,y=a.y,width=a.width,max_height=a.max_height,index=a.font_index)
+    if a.command=='measure':result=text_measure(a.text,a.font,a.size,a.width,index=a.font_index,latin_font=a.latin_font,latin_index=a.latin_index)
+    elif a.command=='text':result=add_text(a.workspace,a.slide,a.text,a.font,a.size,a.color,x=a.x,y=a.y,width=a.width,max_height=a.max_height,index=a.font_index,latin_font=a.latin_font,latin_index=a.latin_index)
     elif a.command=='image':result=add_image(a.workspace,a.slide,a.file,a.box,fit=a.fit,layer=a.layer)
     else:
-        data=json.loads(Path(a.data).read_text());result=add_bar_chart(a.workspace,a.slide,data['labels'],data['values'],data['unit'],data['colors'],a.box,font_family=a.font_family,font_size=a.font_size)
+        data=json.loads(Path(a.data).read_text());result=add_bar_chart(a.workspace,a.slide,data['labels'],data['values'],data['unit'],data['colors'],a.box,font_family=a.font_family,font_size=a.font_size,east_asian_font_family=a.east_asian_font_family)
     print(json.dumps(result,ensure_ascii=False))
 
 if __name__=='__main__':main()

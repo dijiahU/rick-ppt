@@ -27,7 +27,7 @@ async def run(base, site, output):
         page=await context.new_page();errors=[]
         page.on('pageerror',lambda error:errors.append(str(error)))
         await page.goto(base+'/signin-with-chatgpt?return_to=/',wait_until='networkidle')
-        result=await context.request.post(base+'/api/jobs',headers={'Origin':base},data={'requestKey':str(uuid.uuid4()),'title':'LOCAL TEST · Interactive CNN conversation','brief':'A local browser acceptance test, never sent to the production queue. Explain convolution interactively.','mode':'create','pages':5,'style':'Designer choice','language':'en'})
+        result=await context.request.post(base+'/api/jobs',headers={'Origin':base},data={'requestKey':str(uuid.uuid4()),'title':'LOCAL TEST · Interactive CNN conversation','brief':'A local browser acceptance test, never sent to the production queue. Explain convolution interactively.','mode':'create','execution_backend':'codex','pages':5,'style':'Designer choice','language':'en'})
         if result.status==429:
             # Prior local suites may have exhausted the synthetic account's quota.
             # Seed a new local fixture under that known account; never alter old jobs.

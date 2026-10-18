@@ -13,7 +13,7 @@ export async function GET(request:Request) {
   const [counts,total,rows,queue]=await Promise.all([
     db.prepare("SELECT COUNT(*) AS total,COUNT(DISTINCT user_id) AS users,COALESCE(SUM(status='queued'),0) AS queued,COALESCE(SUM(status='running'),0) AS running,COALESCE(SUM(status='complete'),0) AS complete,COALESCE(SUM(status='failed' AND COALESCE(summary,'')<>'delivery_pending'),0) AS failed,COALESCE(SUM(status='failed' AND summary='delivery_pending'),0) AS delivery_pending FROM jobs").first(),
     db.prepare(`SELECT COUNT(*) AS count FROM jobs ${where}`).bind(...args).first<{count:number}>(),
-    db.prepare(`SELECT id,user_id,title,status,summary,pages,language,created_at,updated_at,progress,${QUEUE_POSITION_SQL} AS queuePosition FROM jobs ${where} ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?`).bind(...args,limit,offset).all(),queueHealth()]);
+    db.prepare(`SELECT id,user_id,title,status,summary,pages,language,execution_backend,created_at,updated_at,progress,${QUEUE_POSITION_SQL} AS queuePosition FROM jobs ${where} ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?`).bind(...args,limit,offset).all(),queueHealth()]);
   const jobs=rows.results.map(({progress,...row})=>{let p=null;try{p=parseProgress(JSON.parse(String(progress||'null')));}catch{}return {...row,status:publicJobStatus(row.status,row.summary),activity:p?.notes?.at(-1)||p?.events.at(-1)||null,previewCount:p?.previews.length||0};});
   return json({counts,total:total?.count||0,page,limit,jobs,queue,online:queue.online,checkedAt:queue.checkedAt});
 }
