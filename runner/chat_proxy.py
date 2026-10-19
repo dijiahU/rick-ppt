@@ -21,10 +21,16 @@ def curl_reply(output):
   return raw,int(status),None
 
 class ChatProxy:
- def __init__(self,profile):
+ def __init__(self,profile,on_usage=None):
   self.profile=profile;self.token=secrets.token_urlsafe(32);self.calls=[];self.server=None;self.thread=None
+  self.on_usage=on_usage
   self.stopping=threading.Event();self.active=set();self.active_lock=threading.Lock()
   self.failed_requests=OrderedDict();self.request_lock=threading.RLock()
+ def record_call(self,receipt):
+  self.calls.append(receipt)
+  if self.on_usage:
+   try:self.on_usage(safe_api_calls([receipt],secrets=(self.profile['api_key'],self.token))[0])
+   except Exception:print('Usage receipt capture failed; inspect host storage.',flush=True)
  def _marker(self,value,limit=200):
   return value if (isinstance(value,str) and re.fullmatch(r'[A-Za-z0-9_.:/-]{1,'+str(limit)+r'}',value)
                   and self.profile['api_key'] not in value and self.token not in value) else None
@@ -97,7 +103,7 @@ class ChatProxy:
   digest=self._digest(body)
   with self.request_lock:
    if digest in self.failed_requests:
-    status,message=self.failed_requests[digest];self.calls.append({'ok':False,'cache_hit':True,'terminal':True,'protocol':'chat_completions'})
+    status,message=self.failed_requests[digest];self.record_call({'ok':False,'cache_hit':True,'terminal':True,'protocol':'chat_completions'})
     raise UpstreamError(status,message)
    try:return self._complete(body)
    except UpstreamError as error:
@@ -131,23 +137,36 @@ class ChatProxy:
     upstream_requests+=1
     process=self._upstream(['curl','--disable','--config','-','--silent','--show-error','--max-time',str(remaining),'--max-filesize',str(MAX_BODY),'--write-out','\n%{http_code}\n%header{x-request-id}\n%header{request-id}',self.profile['base_url']+'/chat/completions'],input=config,text=True,capture_output=True,timeout=remaining+10)
     if upstream_requests<3 and transport_retries==0 and process.returncode in (7,28,35,52,55,56) and process.stdout.strip() in ('','000') and time.monotonic()<deadline and not self.stopping.is_set():
-     transport_retries+=1;self.calls.append({'ok':False,'attempt':attempt,'transport_code':process.returncode,'retry_delay_seconds':0});continue
+     transport_retries+=1;self.record_call({'ok':False,'attempt':attempt,'transport_code':process.returncode,'retry_delay_seconds':0});continue
     break
    if process.returncode:
-    self.calls.append({'ok':False,'attempt':attempt,'transport_code':process.returncode})
+    self.record_call({'ok':False,'attempt':attempt,'transport_code':process.returncode})
     raise UpstreamError(502,'Upstream transport failed (curl '+str(process.returncode)+')')
    raw,status,request_id=curl_reply(process.stdout)
    if status==200:break
    delay=(30 if attempt==1 else 60) if status==429 and attempt<3 and upstream_requests<3 else 0
-   self.calls.append({'ok':False,'attempt':attempt,'upstream_status':status,'retry_delay_seconds':delay})
+   failure={'ok':False,'attempt':attempt,'upstream_status':status,'retry_delay_seconds':delay}
+   try:
+    failed_reply=json.loads(raw)
+    if isinstance(failed_reply,dict):
+     if isinstance(failed_reply.get('usage'),dict):failure['usage']=failed_reply['usage']
+     for key,value in (('response_id',failed_reply.get('id')),('request_id',request_id),('response_model',failed_reply.get('model'))):
+      if self._marker(value) is not None:failure[key]=value
+   except (ValueError,TypeError):pass
+   self.record_call(failure)
    if not delay:raise UpstreamError(status if 400<=status<600 else 502,'Provider rejected request (HTTP '+str(status)+')')
    if self.stopping.wait(delay):raise UpstreamError(499,'Configured API request interrupted')
-  reply=json.loads(raw)
+  try:
+   reply=json.loads(raw)
+   if not isinstance(reply,dict):raise ValueError('Invalid completion body')
+  except (ValueError,TypeError):
+   self.record_call({'ok':False,'protocol':'chat_completions','upstream_status':status,'response_error_type':'malformed_response'})
+   raise UpstreamError(502,'Configured API returned a malformed completion') from None
   receipt={'ok':False,'http_ok':True,'protocol':'chat_completions','endpoint':'/chat/completions','attempts':attempt,
            'upstream_status':status,'seconds':round(time.monotonic()-started,3),'tools':len(request.get('tools',[])),
            'requested_model':self.profile['model'],'response_bytes':len(raw.encode())}
-  self.calls.append(receipt)
   for key,value in (('request_id',request_id),('response_model',reply.get('model')),
+                    ('response_id',reply.get('id')),
                     ('response_error_type',(reply.get('error') or {}).get('type')),
                     ('response_error_code',(reply.get('error') or {}).get('code')),
                     ('finish_reason',(reply.get('choices') or [{}])[0].get('finish_reason'))):
@@ -155,6 +174,7 @@ class ChatProxy:
   if isinstance(reply.get('usage'),dict):receipt['usage']=safe_api_calls([{'usage':reply['usage']}])[0]['usage']
   if self.profile.get('service_tier') is not None:receipt['requested_service_tier']=request['service_tier']
   if reply.get('service_tier') in ('auto','default','fast','priority'):receipt['actual_service_tier']=reply['service_tier']
+  self.record_call(receipt)
   if reply.get('model')!=self.profile['model'] or reply.get('error'):
    raise UpstreamError(502,'Configured API returned an invalid completion')
   if self.profile['api_key'] in json.dumps(reply,ensure_ascii=False) or self.token in json.dumps(reply,ensure_ascii=False):
@@ -169,7 +189,7 @@ def safe_api_calls(calls,*,secrets=()):
  """Allowlisted metadata snapshot: never persist upstream text or credentials."""
  result=[]
  def number(value):return type(value) in (int,float) and math.isfinite(value) and value>=0
- token_keys=('prompt_tokens','completion_tokens','total_tokens','input_tokens','output_tokens')
+ token_keys=('prompt_tokens','completion_tokens','total_tokens','input_tokens','output_tokens','cache_read_input_tokens','cache_creation_input_tokens')
  for call in calls:
   if not isinstance(call,dict):continue
   hidden=tuple(value for value in (*secrets,call.get('api_key'),call.get('token'),call.get('authorization')) if isinstance(value,str) and value)
@@ -178,7 +198,7 @@ def safe_api_calls(calls,*,secrets=()):
    if type(call.get(key)) is bool:clean[key]=call[key]
   for key in ('attempt','attempts','upstream_status','transport_code','retry_delay_seconds','seconds','tools','response_bytes','sse_event_count','sse_unknown_event_count','sse_malformed_event_count'):
    if number(call.get(key)):clean[key]=call[key]
-  for key in ('protocol','endpoint','requested_model','response_model','response_status','response_error_code','response_error_type','incomplete_reason','request_id','finish_reason'):
+  for key in ('protocol','endpoint','requested_model','response_model','response_id','response_status','response_error_code','response_error_type','incomplete_reason','request_id','finish_reason'):
    value=call.get(key)
    if isinstance(value,str) and re.fullmatch(r'[A-Za-z0-9_.:/-]{1,200}',value) and not any(secret in value for secret in hidden):clean[key]=value
   if isinstance(call.get('output_types'),list):
@@ -192,7 +212,7 @@ def safe_api_calls(calls,*,secrets=()):
    clean['usage']={key:usage[key] for key in token_keys if number(usage.get(key))}
    for key in ('prompt_tokens_details','completion_tokens_details','input_tokens_details','output_tokens_details'):
     if isinstance(usage.get(key),dict):
-     clean['usage'][key]={k:usage[key][k] for k in ('cached_tokens','reasoning_tokens','audio_tokens','accepted_prediction_tokens','rejected_prediction_tokens') if number(usage[key].get(k))}
+     clean['usage'][key]={k:usage[key][k] for k in ('cached_tokens','cache_write_tokens','reasoning_tokens','audio_tokens','accepted_prediction_tokens','rejected_prediction_tokens') if number(usage[key].get(k))}
   if clean:result.append(clean)
  return result
 
@@ -200,13 +220,13 @@ class UpstreamError(RuntimeError):
  def __init__(self,status,message,*,terminal=True):super().__init__(message);self.status=status;self.terminal=terminal
 
 @contextlib.contextmanager
-def provider_session(profile):
+def provider_session(profile,on_usage=None):
  if profile:
   if profile.get('wire_api','responses')=='chat_completions':factory=ChatProxy
   else:
    from responses_proxy import ResponsesProxy
    factory=ResponsesProxy
-  with factory(profile) as proxy:
+  with factory(profile,**({'on_usage':on_usage} if on_usage else {})) as proxy:
    local={**profile,'base_url':proxy.url,'wire_api':'responses','api_key':proxy.token}
    yield overrides(local),{KEY_ENV:proxy.token},proxy.calls
  else:yield overrides(profile),None,[]

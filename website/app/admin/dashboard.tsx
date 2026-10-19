@@ -1,4 +1,5 @@
 'use client';
+import UsagePanel from './usage-panel';
 import ActivityTimeline from '@/app/activity-timeline';
 import QueueStatus from '@/app/queue-status';
 import CreationStory from '@/app/creation-story';
@@ -58,6 +59,7 @@ export default function Dashboard(){
  <aside className="admin-detail" aria-label={w[14]}>{!selected?<p className="empty-detail">{w[13]}</p>:<><button className="admin-close" onClick={()=>setSelected(null)}>{w[22]} ×</button>{detailError&&<p className="error" role="alert">{w[20]}</p>}{!detail?<p>{t.loading}</p>:<><p className="eyebrow">{w[14]}</p><h2>{detail.title}</h2><span className={`status status-${detail.status}`}>{label(detail.status)}</span><dl><dt>{w[7]}</dt><dd>{detail.user_id}</dd><dt>ID</dt><dd>{detail.id}</dd><dt>{w[9]}</dt><dd>{date(detail.created_at)}</dd><dt>{w[16]}</dt><dd>{date(detail.updated_at)}</dd><dt>{m.label} / {t.pptLanguage}</dt><dd>{scope(detail.pages)} / {isLocale(detail.language)?languages[detail.language]:'—'}</dd><dt>{executionWords[locale].label}</dt><dd>{executionLabel(detail.execution_backend,locale)}</dd><dt>{t.style}</dt><dd>{detail.style}</dd></dl>{detail.pages===0&&<p className="fineprint">{m.automatic}</p>}
  {detail.queue&&<QueueStatus queue={detail.queue} position={detail.queuePosition} createdAt={detail.created_at}/>}
  {detail.status==='running'&&Date.now()-detail.updated_at>120000&&<p className="error">{w[27]}</p>}
+ <UsagePanel key={detail.id} id={detail.id}/>
  <h3>{w[15]}</h3><p className="original-brief">{detail.brief}</p>{!!detail.attachments.length&&<><h3>{w[29]}</h3><AttachmentPreviews files={detail.attachments} hrefFor={file=>`/api/admin/jobs/${detail.id}/attachments/${file.id}`}/></>}
  <ConversationHistory key={detail.id} id={detail.id}/>
  {detail.summary&&<p>{displaySummary(detail.summary,t)}</p>}<p><a className="admin-link" href={`/jobs/${detail.id}`}>{t.details} →</a></p><p><a className="admin-link" href={`/admin/jobs/${detail.id}/trace`}>执行记录 · 命令、输出与审核 →</a></p><CreationStory key={detail.id} progress={detail.progress} pages={detail.pages} status={detail.status} base={`/api/admin/jobs/${detail.id}`}/>

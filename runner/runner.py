@@ -60,6 +60,7 @@ def settings():
         ('blank','PPTX_RUNNER_BLANK'),
         ('state_directory','PPTX_RUNNER_STATE_DIRECTORY'),
         ('model_profile','PPTX_RUNNER_MODEL_PROFILE'),
+        ('usage_pricing_file','PPTX_USAGE_PRICING_FILE'),
     ):
         if os.environ.get(environment_key):data[key]=os.environ[environment_key]
     for key in ('site','token','plugin','python','blank'):
@@ -462,6 +463,9 @@ def _run_job_locked(cfg,task,lease,job,journal,recovery_plan):
     from admin_trace import AdminTrace
     records=ROOT/'records';records.mkdir(mode=0o700,exist_ok=True)
     trace=AdminTrace(cfg,task,request,records);trace.roots[str(job)]='$WORKSPACE'
+    from usage_ledger import UsageLedger
+    usage=UsageLedger(cfg,task,request)
+    cfg['_usage_ledger']=usage
     from trajectory import Trajectory,record
     trajectory=None;outcome='failed'
     try:
@@ -548,6 +552,7 @@ def _run_job_locked(cfg,task,lease,job,journal,recovery_plan):
         raise error
     finally:
         if 'reporter' in locals():reporter.finish_drafts(timeout=2)
+        usage.close()
         folder=record(trajectory,'finish',outcome,job)
         if folder:trace.emit('note','Local trajectory saved',detail={'taskId':task['id'],'runId':trajectory.run_id,'captureGaps':len(trajectory.gaps)})
         trace.stage='finished';trace.emit('phase','Execution finished');trace.close()

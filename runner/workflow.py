@@ -175,6 +175,10 @@ class Execution:
         reads=[Path(self.cfg['plugin']).resolve(),Path(self.cfg['python']).parent.parent.resolve(),
                Path('/opt/homebrew'),Path('/Applications/LibreOffice.app'),Path('/System/Library/Fonts'),Path('/Library/Fonts')]
         profile=self.cfg.get('_model_profile')
+        meter=self.cfg.get('_usage_ledger')
+        usage_options={}
+        if meter and not profile:
+            usage_options['on_usage']=meter.codex_sink(name,self.cfg.get('_task_default_model') or self.cfg.get('default_model','unknown'))
         config=task_configuration(root,read_roots=[p for p in reads if p.exists()],tool_env=env)
         if not profile and self.cfg.get('_task_default_model'):
             config['model']=self.cfg['_task_default_model']
@@ -227,11 +231,12 @@ class Execution:
         tool_options={'dynamic_tools':auxiliary_specs()} if auxiliary else {}
         try:
             with ExitStack() as resources:
-                selected,provider_env,api_calls=resources.enter_context(provider_session(profile))
+                meter_options={'on_usage':meter.api_sink(name,profile)} if meter and profile else {}
+                selected,provider_env,api_calls=resources.enter_context(provider_session(profile,**meter_options))
                 config.update(selected)
                 server=resources.enter_context(AppServer(cwd=root,config=config,env=env,on_event=event,on_public=public_event,tick=tick,
                            secrets=tuple(x for x in (self.cfg.get('token'),self.task.get('lease')) if x),
-                           provider_env=provider_env,on_tool_call=auxiliary.handle if auxiliary else None))
+                           provider_env=provider_env,on_tool_call=auxiliary.handle if auxiliary else None,**usage_options))
                 try:response=server.resume_thread(thread) if thread else server.start_thread(**tool_options)
                 except RPCError as error:
                     if not thread or error.code not in (-32602,-32000):raise

@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index, uniqueIndex, primaryKey } from 'drizzle-orm/sqlite-core';
 export const jobs = sqliteTable('jobs', {
   id: text('id').primaryKey(), userId: text('user_id').notNull(),
   requestKey: text('request_key').notNull(), title: text('title').notNull(),
@@ -40,3 +40,11 @@ export const taskDrafts = sqliteTable('task_drafts', {
   bytes:integer('bytes').notNull(),pages:integer('pages').notNull(),revision:integer('revision').notNull(),
   exportedAt:integer('exported_at').notNull(),savedAt:integer('saved_at').notNull(),
 });
+
+// Receipts are private operational data; public task serializers never select them.
+export const taskUsage = sqliteTable('task_usage', {
+ jobId:text('job_id').notNull(),eventId:text('event_id').notNull(),version:integer('version').notNull(),
+ source:text('source').notNull(),model:text('model').notNull(),provider:text('provider').notNull(),stage:text('stage').notNull(),usageStatus:text('usage_status').notNull(),
+ inputTokens:integer('input_tokens'),outputTokens:integer('output_tokens'),cachedInputTokens:integer('cached_input_tokens'),cacheWriteTokens:integer('cache_write_tokens'),reasoningTokens:integer('reasoning_tokens'),totalTokens:integer('total_tokens'),costMicrousd:integer('cost_microusd'),
+ payload:text('payload').notNull(),createdAt:integer('created_at').notNull(),updatedAt:integer('updated_at').notNull(),
+},t=>[primaryKey({columns:[t.jobId,t.eventId]}),index('task_usage_job_created').on(t.jobId,t.createdAt,t.eventId)]);

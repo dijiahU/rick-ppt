@@ -246,3 +246,19 @@ and extracted text is rendered as text rather than executable HTML. Long preview
 are explicitly marked as excerpts. PPTX attachments remain downloads.
 Validation: `scripts/test-document-preview.mjs`, also run against the uploaded
 course Word file without copying that private document into the source repository.
+
+## Internal model usage
+
+The administrator task detail includes a private usage ledger. Worker uploads to
+`POST /api/worker/:id/usage` require its credential and the current task lease.
+`GET /api/admin/jobs/:id/usage` authorizes administrators before reading storage.
+The additive `task_usage` table initializes on first authenticated use. Public
+job, conversation and progress APIs do not expose these records.
+
+API requests and local Codex turns are separate. Receipt IDs make uploads
+idempotent; versioned cumulative local snapshots replace earlier snapshots.
+Historical attempts survive resume. Missing usage/cost stays unknown. Configured
+supplier rates and calculated token costs are frozen per API receipt; search,
+image and other charges are not inferred. No automatic charging is enabled.
+Host price setup and limitations are documented in the companion runner USAGE.md.
+Validation: `node scripts/test-usage.mjs` (isolated SQLite and actual route auth).

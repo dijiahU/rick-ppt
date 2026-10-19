@@ -23,8 +23,8 @@ class SSEParseError(ValueError):
 
 
 class ResponsesProxy(ChatProxy):
-    def __init__(self, profile):
-        super().__init__(profile)
+    def __init__(self, profile, on_usage=None):
+        super().__init__(profile, on_usage=on_usage)
         self.failed_requests = OrderedDict()
         self.request_lock = __import__('threading').Lock()
 
@@ -143,6 +143,7 @@ class ResponsesProxy(ChatProxy):
         incomplete=result.get('incomplete_details')
         incomplete=incomplete if isinstance(incomplete,dict) else {}
         for key, value in (('response_model', result.get('model')),
+                           ('response_id', result.get('id')),
                            ('response_status', result.get('status')),
                            ('response_error_code', error.get('code')),
                            ('response_error_type', error.get('type')),
@@ -202,7 +203,7 @@ class ResponsesProxy(ChatProxy):
     def _complete(self, request, encoded, digest):
         if digest in self.failed_requests:
             status, message = self.failed_requests[digest]
-            self.calls.append({'ok': False, 'cache_hit': True, 'terminal': True, 'protocol': 'responses'})
+            self.record_call({'ok': False, 'cache_hit': True, 'terminal': True, 'protocol': 'responses'})
             raise UpstreamError(status, message)
         config = ('header = ' + json.dumps('Authorization: Bearer ' + self.profile['api_key']) + '\n'
                   'header = "Content-Type: application/json"\n'
@@ -221,7 +222,7 @@ class ResponsesProxy(ChatProxy):
                 self.profile['base_url'] + '/responses'], input=config, text=True,
                 capture_output=True, timeout=timeout + 10)
             if process.returncode:
-                self.calls.append({'ok': False, 'attempt': attempt, 'protocol': 'responses',
+                self.record_call({'ok': False, 'attempt': attempt, 'protocol': 'responses',
                                    'transport_code': process.returncode, 'seconds': round(time.monotonic()-started, 3)})
                 # A partial body is never replayed: it may include server-side
                 # state. Empty connect/TLS/socket failures get one host retry.
@@ -249,7 +250,7 @@ class ResponsesProxy(ChatProxy):
                     stream_terminal = False
                     output_seen = bool(re.search(r'(?m)^(?:data|event):', raw))
             except (ValueError, TypeError, KeyError):
-                self.calls.append({'ok': False, 'attempt': attempt, 'protocol': 'responses',
+                self.record_call({'ok': False, 'attempt': attempt, 'protocol': 'responses',
                                    'response_error_type': 'malformed_response','upstream_status':status,**telemetry})
                 message = 'Configured API returned a malformed response'
                 self._remember_failure(digest, 502, message)
@@ -258,7 +259,7 @@ class ResponsesProxy(ChatProxy):
                 seconds=time.monotonic()-started, size=len(raw.encode()), request_id=request_id)
             unsafe_output=telemetry.pop('_unsafe_output',False)
             receipt.update(telemetry)
-            self.calls.append(receipt)
+            self.record_call(receipt)
             valid = (status == 200 and result.get('status') == 'completed'
                      and result.get('model') == self.profile['model']
                      and self._valid_output(result))

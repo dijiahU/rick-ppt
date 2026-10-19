@@ -152,7 +152,8 @@ class MaterialPrefetchBroker:
         # Opening before resolving refuses a symlinked task root.
         fd = os.open(self.job, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         os.close(fd)
-        self.cfg = {key: cfg[key] for key in ('default_model', 'default_reasoning_effort') if key in cfg}
+        self.cfg = {key: cfg[key] for key in ('default_model', 'default_reasoning_effort', '_usage_ledger') if key in cfg}
+        self.cfg['_usage_stage'] = 'prefetch'
         self.images = images if images is not None else {}
         self.reporter, self.trajectory = reporter, trajectory
         self.lease_check, self.input_revision, self.deadline = lease_check, input_revision, deadline

@@ -72,7 +72,9 @@ class AuxiliaryTools:
             def event(value):
                 events.append(value)
                 capture(self.trajectory,'emit','auxiliary.event',{'request_id':ident,'event':value})
-            with AppServer(cwd=workspace,config=config,on_event=event,tick=self.tick) as server:
+            meter=self.cfg.get('_usage_ledger')
+            usage_options={'on_usage':meter.codex_sink(self.cfg.get('_usage_stage','auxiliary')+'.'+tool,config['model'])} if meter else {}
+            with AppServer(cwd=workspace,config=config,on_event=event,tick=self.tick,**usage_options) as server:
                 thread=server.start_thread()['thread']['id']
                 turn=server.start_turn(thread,prompt)['id']
                 result=server.wait_turn(thread,turn,timeout=300 if tool=='pptx_generate_image' else 150)
