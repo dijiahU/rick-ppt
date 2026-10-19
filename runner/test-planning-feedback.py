@@ -19,6 +19,15 @@ class Tests(unittest.TestCase):
         self.assertIn('--template',run.phase.call_args.args[1]);self.assertIn('do not repeat research',run.phase.call_args.args[1])
     def test_default_provider_retains_existing_hard_gate(self):
         with self.assertRaisesRegex(ValueError,'Invalid choices'):self.run_case(None,[ValueError('Invalid choices')])
+    def test_outline_field_error_is_repaired_without_restarting_research(self):
+        run=SimpleNamespace(threads=[{'stage':'research','thread':'same-research'}],phase=Mock())
+        with patch('workflow.read_json',return_value={}),patch('workflow.validate_outline',side_effect=[
+            ValueError('outline.json missing "slides"'),{'slides':[{'id':'a'}]}]),patch('workflow.check_decisions',return_value={'ok':True}):
+            validated_planning(run,{'_model_profile':{'model':'external'}},Path('/synthetic/job'),
+                               {'pages':1},{'mode':'create'},'Scope.',required=True,require_variation=True)
+        run.phase.assert_called_once()
+        self.assertEqual(run.phase.call_args.kwargs['thread'],'same-research')
+        self.assertIn('outline.json missing "slides"',run.phase.call_args.args[1])
     def test_external_feedback_is_bounded_and_does_not_accept_an_invalid_plan(self):
         run=SimpleNamespace(threads=[],phase=Mock())
         with patch('workflow.read_json',return_value={}),patch('workflow.validate_outline',return_value={'slides':[]}),patch('workflow.check_decisions',side_effect=ValueError('Still invalid')) as check:

@@ -25,6 +25,12 @@ invent a presenter who fills every gap. Record concrete page evidence:
 - Closing: specific understanding/feeling, answered promises, visible boundaries.
 
 Only after first-pass findings inspect the original brief and necessary sources.
+When the host supplies a sealed independent `first-view.json`, that audience
+reading has already happened. In the source-evidence context, check all pages'
+claims against the actual brief and sources using complete extracted text and
+the actual images wherever a diagram, spatial meaning or uncertainty requires it.
+Resolve unsupported blind assumptions directly; do not repeat its full design/
+comprehension reading or rebuild host-prepared inventories and contact sheets.
 Check required coverage, accuracy, data/units, examples, quotes, uncertainty,
 attribution and scope. Separate source errors from author errors. Do not demand
 unrequested topics or novel opinions from a lesson.

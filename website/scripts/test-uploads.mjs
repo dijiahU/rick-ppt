@@ -9,24 +9,26 @@ const modules={};
 modules['@/lib/conversation']={ensureConversation:async()=>{throw Error('Legacy route must not require conversation storage without a revision fence');}};
 modules['./slide-limits.mjs']=slideLimits;modules['@/lib/slide-limits.mjs']=slideLimits;
 function load(path){const source=readFileSync(new URL('../'+path,import.meta.url),'utf8');const code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const exports={};new Function('require','exports',code)(name=>{assert.ok(modules[name],name);return modules[name];},exports);return exports;}
+modules['./execution-backend']=load('lib/execution-backend.ts');modules['@/lib/execution-backend']=modules['./execution-backend'];
 modules['@/lib/attachments']=load('lib/attachments.ts');
 modules['@/lib/page-count-i18n']=load('lib/page-count-i18n.ts');modules['@/lib/task-mode']=load('lib/task-mode.ts');modules['@/lib/task-mode-i18n']=load('lib/task-mode-i18n.ts');
 modules['@/lib/admin']={isAdmin:async()=>false};
-modules['@/lib/i18n']=load('lib/i18n.ts');modules['@/lib/upload-i18n']=load('lib/upload-i18n.ts');modules['@/lib/queries']=load('lib/queries.ts');modules['@/lib/progress']=load('lib/progress.ts');
+modules['@/lib/execution-backend-i18n']=load('lib/execution-backend-i18n.ts');modules['@/lib/i18n']=load('lib/i18n.ts');modules['@/lib/upload-i18n']=load('lib/upload-i18n.ts');modules['@/lib/queries']=load('lib/queries.ts');modules['@/lib/progress']=load('lib/progress.ts');
 const db=new DatabaseSync(':memory:');
-db.exec('CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,request_key TEXT,title TEXT,brief TEXT,pages INTEGER,style TEXT,language TEXT,attachments TEXT,status TEXT,created_at INTEGER,updated_at INTEGER,lease TEXT,summary TEXT,result_key TEXT,progress TEXT,UNIQUE(user_id,request_key));CREATE TABLE worker(id TEXT PRIMARY KEY,heartbeat INTEGER);');
+db.exec('CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,request_key TEXT,title TEXT,brief TEXT,pages INTEGER,style TEXT,language TEXT,attachments TEXT,status TEXT,created_at INTEGER,updated_at INTEGER,lease TEXT,summary TEXT,result_key TEXT,progress TEXT,execution_backend TEXT,UNIQUE(user_id,request_key));CREATE TABLE worker(id TEXT PRIMARY KEY,heartbeat INTEGER,execution_backends TEXT);');
 let currentUser='owner',failPut=false;const objects=new Map();
 const binding={prepare(sql){let args=[];const statement={bind(...values){args=values;return statement;},async first(){return db.prepare(sql).get(...args)??null;},async all(){return {results:db.prepare(sql).all(...args)};},async run(){const result=db.prepare(sql).run(...args);return {meta:{changes:Number(result.changes)}};}};return statement;},async batch(statements){return Promise.all(statements.map(s=>s.run()));}};
-modules['@/lib/server']={database:()=>binding,files:()=>({async put(key,data){objects.set(key,new Uint8Array(data));if(failPut)throw Error('simulated partial R2 failure');},async get(key){const data=objects.get(key);return data?{body:new Response(data).body}:null;},async delete(keys){for(const key of Array.isArray(keys)?keys:[keys])objects.delete(key);}}),json:(v,status=200)=>Response.json(v,{status}),userId:async()=>currentUser,sameOrigin:r=>r.headers.get('Origin')===new URL(r.url).origin,workerAuthorized:async r=>r.headers.get('Authorization')==='Bearer local-test-token'};
+modules['@/lib/server']={database:()=>binding,files:()=>({async put(key,data){objects.set(key,new Uint8Array(data));if(failPut)throw Error('simulated partial R2 failure');},async get(key){const data=objects.get(key);return data?{body:new Response(data).body}:null;},async delete(keys){for(const key of Array.isArray(keys)?keys:[keys])objects.delete(key);}}),json:(v,status=200)=>Response.json(v,{status}),userId:async()=>currentUser,sameOrigin:r=>r.headers.get('Origin')===new URL(r.url).origin,workerStatus:async()=>({online:false,executionAvailability:{api:false,codex:false}}),workerAuthorized:async r=>r.headers.get('Authorization')==='Bearer local-test-token'};
 modules['@/lib/admin-trace']=load('lib/admin-trace.ts');
+modules['@/lib/staged-uploads']=load('lib/staged-uploads.ts');
 const submit=load('app/api/jobs/route.ts').POST,download=load('app/api/jobs/[id]/attachments/[file]/route.ts').GET,worker=load('app/api/worker/[id]/route.ts').POST;
-function request({key=crypto.randomUUID(),files=[new File(['Café reference material'],'référence.txt')],origin='https://local.test'}={}){const form=new FormData();for(const [k,v] of Object.entries({title:'Test attachment',brief:'Use these references for a French deck.',pages:'5',style:'Designer choice',language:'fr',requestKey:key}))form.set(k,v);for(const file of files)form.append('files',file);return new Request('https://local.test/api/jobs',{method:'POST',headers:{Origin:origin,'X-UI-Language':'fr'},body:form});}
+function request({key=crypto.randomUUID(),files=[new File(['Café reference material'],'référence.txt')],origin='https://local.test'}={}){const form=new FormData();for(const [k,v] of Object.entries({title:'Test attachment',brief:'Use these references for a French deck.',pages:'5',style:'Designer choice',language:'fr',execution_backend:'codex',requestKey:key}))form.set(k,v);for(const file of files)form.append('files',file);return new Request('https://local.test/api/jobs',{method:'POST',headers:{Origin:origin,'X-UI-Language':'fr'},body:form});}
 currentUser=null;assert.equal((await submit(request())).status,401);currentUser='owner';assert.equal((await submit(request({origin:'https://evil.test'}))).status,403);
 assert.equal((await submit(request({files:[new File(['x'],'bad.exe')]}))).status,400);
 assert.equal((await submit(request({files:[new File(['fake PDF'],'fake.pdf')]}))).status,400);
 assert.equal((await submit(request({files:[new File([],'empty.txt')]}))).status,400);
-assert.equal((await submit(request({files:Array.from({length:4},()=>new File(['x'],'x.txt'))}))).status,400);
-assert.equal((await submit(request({files:[new File([new Uint8Array(10*1024*1024+1)],'large.png')]}))).status,400);
+assert.equal((await submit(request({files:Array.from({length:11},()=>new File(['x'],'x.txt'))}))).status,400);
+assert.equal((await submit(request({files:[new File([new Uint8Array(20*1024*1024+1)],'large.png')]}))).status,400);
 const key=crypto.randomUUID();const accepted=await submit(request({key}));assert.equal(accepted.status,201);const {id}=await accepted.json();
 const row=db.prepare('SELECT * FROM jobs WHERE id=?').get(id),meta=JSON.parse(row.attachments)[0];assert.equal(row.language,'fr');assert.equal(meta.name,'référence.txt');assert.equal(meta.size,new TextEncoder().encode('Café reference material').length);assert.equal(objects.size,1);
 const replay=await submit(request({key}));assert.equal((await replay.json()).id,id);assert.equal(objects.size,1);
@@ -45,11 +47,11 @@ assert.equal(await (await worker(workerRequest(),workerParams)).text(),'Café re
 db.prepare("UPDATE jobs SET status='complete' WHERE id=?").run(id);
 assert.equal((await worker(workerRequest(),workerParams)).status,409);
 // Competing retries must leave just one job and its own one object.
-const concurrentKey=crypto.randomUUID();const results=await Promise.all(Array.from({length:4},()=>submit(request({key:concurrentKey}))));const ids=await Promise.all(results.map(r=>r.json()));assert.equal(new Set(ids.map(x=>x.id)).size,1);assert.equal(objects.size,2);
+const concurrentKey=crypto.randomUUID();const results=await Promise.all(Array.from({length:11},()=>submit(request({key:concurrentKey}))));const ids=await Promise.all(results.map(r=>r.json()));assert.equal(new Set(ids.map(x=>x.id)).size,1);assert.equal(objects.size,2);
 // A partial object write must not charge quota or leave an unlinked object.
 failPut=true;assert.equal((await submit(request())).status,503);failPut=false;assert.equal(objects.size,2);assert.equal(db.prepare('SELECT COUNT(*) n FROM jobs').get().n,2);
-// JSON-only legacy submissions still work.
-const jsonRequest=new Request('https://local.test/api/jobs',{method:'POST',headers:{Origin:'https://local.test','Content-Type':'application/json'},body:JSON.stringify({title:'Legacy',brief:'No attachments here.',pages:5,style:'test',requestKey:crypto.randomUUID()})});assert.equal((await submit(jsonRequest)).status,201);
+// JSON-only submissions use an explicit per-task method.
+const jsonRequest=new Request('https://local.test/api/jobs',{method:'POST',headers:{Origin:'https://local.test','Content-Type':'application/json'},body:JSON.stringify({title:'Legacy',brief:'No attachments here.',pages:5,style:'test',execution_backend:'codex',requestKey:crypto.randomUUID()})});assert.equal((await submit(jsonRequest)).status,201);
 // Count quota exactly once for every accepted task, not per attachment.
 for(let i=3;i<10;i++)assert.equal((await submit(request({files:[]}))).status,201);
 assert.equal((await submit(request())).status,429);assert.equal(objects.size,2);
@@ -60,7 +62,7 @@ console.log('PASS: real multipart handlers, file validation/limits, private down
 currentUser='mode-test';
 const pptx=()=>new File([new Uint8Array([80,75,3,4,0,0,0,0])],'original.pptx');
 function modeRequest(mode,files=[],pages,key=crypto.randomUUID()){
- const form=new FormData();for(const [k,v] of Object.entries({title:'Mode test',brief:'Change slide two and add a conclusion.',style:'Designer choice',language:'en',requestKey:key,mode}))form.set(k,v);
+ const form=new FormData();for(const [k,v] of Object.entries({title:'Mode test',brief:'Change slide two and add a conclusion.',style:'Designer choice',language:'en',execution_backend:'codex',requestKey:key,mode}))form.set(k,v);
  if(pages!==undefined)form.set('pages',String(pages));for(const f of files)form.append('files',f);
  return new Request('https://local.test/api/jobs',{method:'POST',headers:{Origin:'https://local.test'},body:form});
 }
@@ -79,13 +81,13 @@ const create=await submit(modeRequest('create',[],10));assert.equal(create.statu
 const noCount=await submit(modeRequest('edit',[pptx()]));assert.equal(noCount.status,201);
 db.prepare("UPDATE jobs SET status='complete' WHERE id<>?").run(editId);
 const claim=load('app/api/worker/route.ts').POST;
-const claimed=await (await claim(new Request('https://local.test/api/worker',{method:'POST',headers:{Authorization:'Bearer local-test-token'}}))).json();
+const claimed=await (await claim(new Request('https://local.test/api/worker',{method:'POST',headers:{Authorization:'Bearer local-test-token'},body:JSON.stringify({execution_backends:['codex']})}))).json();
 assert.equal(claimed.job.id,editId);assert.equal(claimed.job.mode,'edit');assert.equal(claimed.job.pages,null);
 assert.ok(claimed.job.brief.includes('There is no target slide count'));assert.ok(claimed.job.brief.includes('Change slide two'));
 assert.ok(!db.prepare('SELECT brief FROM jobs WHERE id=?').get(editId).brief.includes('TASK MODE'));
 console.log('PASS: create/edit validation, missing and multiple originals, ignored edit count, omitted count, retries, original brief preservation and actual worker claim payload');
 // Every offered count survives both submission formats and the worker payload.
-function countRequest(pages){return new Request('https://local.test/api/jobs',{method:'POST',headers:{Origin:'https://local.test','Content-Type':'application/json'},body:JSON.stringify({mode:'create',title:'Exact slide count',brief:'Create the exact requested number of slides.',pages,style:'test',requestKey:crypto.randomUUID()})});}
+function countRequest(pages){return new Request('https://local.test/api/jobs',{method:'POST',headers:{Origin:'https://local.test','Content-Type':'application/json'},body:JSON.stringify({mode:'create',title:'Exact slide count',brief:'Create the exact requested number of slides.',pages,style:'test',execution_backend:'codex',requestKey:crypto.randomUUID()})});}
 for(const format of ['multipart','json']){
  for(const pages of [1,10,15,16,30,50]){
   currentUser=`count-${format}-${pages}`;
@@ -94,7 +96,7 @@ for(const format of ['multipart','json']){
   assert.equal(response.status,201,`${format}: ${pages} slides`);
   const {id}=await response.json();
   assert.equal(db.prepare('SELECT pages FROM jobs WHERE id=?').get(id).pages,pages);
-  const payload=await (await claim(new Request('https://local.test/api/worker',{method:'POST',headers:{Authorization:'Bearer local-test-token'}}))).json();
+  const payload=await (await claim(new Request('https://local.test/api/worker',{method:'POST',headers:{Authorization:'Bearer local-test-token'},body:JSON.stringify({execution_backends:['codex']})}))).json();
   assert.equal(payload.job.id,id);assert.equal(payload.job.mode,'create');assert.equal(payload.job.pages,pages);
  }
 }
@@ -108,13 +110,13 @@ console.log('PASS: counts through 50 through multipart/JSON, database and worker
 for(const format of ['multipart','json']){
  currentUser=`brief-count-${format}`;
  const brief='请制作30页的中国历史介绍，面向初学者。';
- const fields={mode:'create',title:'历史课件',brief,pages:15,language:'zh-CN',style:'test',requestKey:crypto.randomUUID()};
+ const fields={mode:'create',title:'历史课件',brief,pages:15,language:'zh-CN',style:'test',execution_backend:'codex',requestKey:crypto.randomUUID()};
  const form=new FormData();for(const [key,value] of Object.entries(fields))form.set(key,String(value));
  db.prepare("UPDATE jobs SET status='complete'").run();
  const req=new Request('https://local.test/api/jobs',{method:'POST',headers:{Origin:'https://local.test',...(format==='json'?{'Content-Type':'application/json'}:{})},body:format==='json'?JSON.stringify(fields):form});
  const response=await submit(req);assert.equal(response.status,201);const {id}=await response.json();
  const saved=db.prepare('SELECT pages,brief FROM jobs WHERE id=?').get(id);assert.equal(saved.pages,30);assert.equal(saved.brief,brief);
- const job=(await (await claim(new Request('https://local.test/api/worker',{method:'POST',headers:{Authorization:'Bearer local-test-token'}}))).json()).job;
+ const job=(await (await claim(new Request('https://local.test/api/worker',{method:'POST',headers:{Authorization:'Bearer local-test-token'},body:JSON.stringify({execution_backends:['codex']})}))).json()).job;
  assert.equal(job.id,id);assert.equal(job.pages,30);
  const params={params:Promise.resolve({id})};
  const post=async(action,body)=>worker(new Request(`https://local.test/api/worker/${id}?${action}`,{method:'POST',headers:{Authorization:'Bearer local-test-token','X-Job-Lease':job.lease,'Content-Length':String(Buffer.byteLength(body))},body}),params);
@@ -134,8 +136,21 @@ for(const format of ['multipart','json']){
 }
 currentUser='ambiguous-count';
 for(const brief of ['请制作20页，再做30页的完整课件。','请制作20到30页的完整课件。','请制作51页的完整课件。']){
- const response=await submit(new Request('https://local.test/api/jobs',{method:'POST',headers:{Origin:'https://local.test','Content-Type':'application/json'},body:JSON.stringify({mode:'create',title:'页数冲突',brief,pages:15,style:'test',requestKey:crypto.randomUUID()})}));
+ const response=await submit(new Request('https://local.test/api/jobs',{method:'POST',headers:{Origin:'https://local.test','Content-Type':'application/json'},body:JSON.stringify({mode:'create',title:'页数冲突',brief,pages:15,style:'test',execution_backend:'codex',requestKey:crypto.randomUUID()})}));
  assert.equal(response.status,400);assert.ok(['pagesAmbiguous','pagesRange'].includes((await response.json()).code));
 }
 assert.equal(db.prepare('SELECT COUNT(*) n FROM jobs WHERE user_id=?').get(currentUser).n,0);
 console.log('PASS: brief 30 overrides input 15 in both formats; original brief preserved; worker, outline, page-30 upload and private/admin retrieval agree; invalid totals consume no quota');
+
+// Upload admission uses the same limits as the picker and worker metadata.
+currentUser='upload-limit-test';
+const pngFile=(size,name='reference.png')=>{const bytes=new Uint8Array(size);bytes.set([137,80,78,71,13,10,26,10]);return new File([bytes],name);};
+const tenImages=Array.from({length:10},(_,i)=>pngFile(2*1024*1024,`reference-${i}.png`));
+const tenResponse=await submit(request({files:tenImages}));assert.equal(tenResponse.status,201);
+const tenRow=db.prepare('SELECT attachments FROM jobs WHERE id=?').get((await tenResponse.json()).id);
+const tenMetadata=JSON.parse(tenRow.attachments);assert.equal(tenMetadata.length,10);assert.equal(parseAttachments(tenRow.attachments).length,10);
+assert.equal(tenMetadata.reduce((sum,f)=>sum+f.size,0),20*1024*1024);
+assert.equal((await submit(request({files:[pngFile(20*1024*1024)]}))).status,201);
+assert.equal((await submit(request({files:[pngFile(10*1024*1024),pngFile(10*1024*1024+1)]}))).status,400);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM jobs WHERE user_id=?').get(currentUser).n,2);
+console.log('PASS: legacy multipart accepts ten images / 20 MB; eleven files and inline/single-file overflow rejected');

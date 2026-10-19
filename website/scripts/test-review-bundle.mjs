@@ -11,7 +11,7 @@ function load(path){
  const exports={};new Function('require','exports',code)(name=>{assert.ok(modules[name],name);return modules[name];},exports);return exports;
 }
 const db=new DatabaseSync(':memory:');
-db.exec('CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,title TEXT,brief TEXT,pages INTEGER,style TEXT,language TEXT,status TEXT,created_at INTEGER,updated_at INTEGER,summary TEXT,progress TEXT,result_key TEXT);CREATE TABLE task_versions(id TEXT PRIMARY KEY,job_id TEXT,result_key TEXT,bundle_key TEXT,revision INTEGER,created_at INTEGER);');
+db.exec('CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,title TEXT,brief TEXT,pages INTEGER,style TEXT,language TEXT,status TEXT,created_at INTEGER,updated_at INTEGER,summary TEXT,progress TEXT,result_key TEXT,execution_backend TEXT);CREATE TABLE task_versions(id TEXT PRIMARY KEY,job_id TEXT,result_key TEXT,bundle_key TEXT,revision INTEGER,created_at INTEGER);');
 let selects=0,gets=0,cancels=0,afterGet=null;
 const binding={prepare(sql){assert.match(sql,/^SELECT /,'review must never write or initialize schema');let args=[];const statement={bind(...values){args=values;return statement;},async first(){selects++;return db.prepare(sql).get(...args)??null;}};return statement;}};
 const objects=new Map();
@@ -26,6 +26,7 @@ const storage={
 const REVIEW_TOKEN='synthetic-review-token-at-least-32-characters',WORKER_TOKEN='synthetic-worker-token-at-least-32-characters';
 modules['cloudflare:workers']={env:{DB:binding,FILES:storage,REVIEW_TOKEN,WORKER_TOKEN}};
 modules['@/app/chatgpt-auth']={getChatGPTUser:async()=>({userId:'ordinary-account'})};
+modules['./execution-backend']=load('lib/execution-backend.ts');modules['@/lib/execution-backend']=modules['./execution-backend'];
 for(const name of ['server','review-auth','review-bundle','progress']){
  modules['@/lib/'+name]=load('lib/'+name+'.ts');modules['./'+name]=modules['@/lib/'+name];
 }
@@ -37,7 +38,7 @@ const header='X-Review-Delivery';
 function seed({status='complete',withVersion=true,withBundle=true}={}){
  const id=crypto.randomUUID(),version=crypto.randomUUID();
  const pptxKey=`results/${id}/${version}.pptx`,bundleKey=`bundles/${id}/${version}.zip`;
- db.prepare('INSERT INTO jobs VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,'owner','Title','Original untrusted brief',20,'technical','en',status,1,2,'complete','null',pptxKey);
+ db.prepare('INSERT INTO jobs VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,'owner','Title','Original untrusted brief',20,'technical','en',status,1,2,'complete','null',pptxKey,null);
  if(withVersion)db.prepare('INSERT INTO task_versions VALUES(?,?,?,?,?,?)').run(version,id,pptxKey,withBundle?bundleKey:null,3,5);
  objects.set(pptxKey,{bytes:new TextEncoder().encode('PK-original-pptx'),etag:'"pptx-a"'});
  if(withBundle)objects.set(bundleKey,{bytes:new Uint8Array([80,75,3,4,10,20,30,40]),etag:'"bundle-a"'});
@@ -110,7 +111,7 @@ assert.equal((await call(bundle,moving.id,{headers:{'If-Match':movingMeta.bundle
 let signedIn=null;
 modules['@/app/chatgpt-auth'].getChatGPTUser=async()=>signedIn;
 modules['cloudflare:workers'].env.ADMIN_USER_ID='admin';
-modules['./admin-policy']=load('lib/admin-policy.ts');
+modules['./admin-policy']=load('lib/admin-policy.ts');modules['./admin-accounts']=load('lib/admin-accounts.ts');
 modules['@/lib/admin']=load('lib/admin.ts');
 modules['@/lib/bundle-download']=load('lib/bundle-download.ts');
 const ownerDownload=load('app/api/jobs/[id]/bundle/route.ts').GET;

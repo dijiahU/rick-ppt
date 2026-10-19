@@ -5,14 +5,15 @@ import {DatabaseSync} from 'node:sqlite';
 import ts from 'typescript';
 import * as slideLimits from '../lib/slide-limits.mjs';
 const db=new DatabaseSync(':memory:');
-db.exec('CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,status TEXT,lease TEXT,summary TEXT,updated_at INTEGER,result_key TEXT,attachments TEXT,progress TEXT);CREATE TABLE worker(id TEXT PRIMARY KEY,heartbeat INTEGER);CREATE TABLE task_drafts(job_id TEXT PRIMARY KEY,object_key TEXT,sha256 TEXT,bytes INTEGER);');
+db.exec('CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,status TEXT,lease TEXT,summary TEXT,updated_at INTEGER,result_key TEXT,attachments TEXT,progress TEXT,execution_backend TEXT);CREATE TABLE worker(id TEXT PRIMARY KEY,heartbeat INTEGER);CREATE TABLE task_drafts(job_id TEXT PRIMARY KEY,object_key TEXT,sha256 TEXT,bytes INTEGER);');
 let user='owner',admin=false;
 const binding={prepare(sql){let args=[];const s={bind(...a){args=a;return s;},async first(){return db.prepare(sql).get(...args)??null;},async all(){return {results:db.prepare(sql).all(...args)};},async run(){return {meta:{changes:Number(db.prepare(sql).run(...args).changes)}};}};return s;},async batch(ss){return Promise.all(ss.map(s=>s.run()));}};
 const objects=new Map(),modules={'@/lib/server':{database:()=>binding,files:()=>({put:async(k,v)=>objects.set(k,v),head:async()=>null}),json:(body,status=200)=>Response.json(body,{status}),userId:async()=>user,sameOrigin:r=>r.headers.get('Origin')===new URL(r.url).origin,workerAuthorized:r=>r.headers.get('Authorization')==='Bearer synthetic-worker-secret'},'@/lib/admin':{isAdmin:async()=>admin},'./slide-limits.mjs':slideLimits,'@/lib/slide-limits.mjs':slideLimits};
 function load(path){const code=ts.transpileModule(readFileSync(new URL('../'+path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const exports={};new Function('require','exports',code)(name=>{assert.ok(modules[name],name);return modules[name];},exports);return exports;}
+modules['./execution-backend']=load('lib/execution-backend.ts');modules['@/lib/execution-backend']=modules['./execution-backend'];
 for(const name of ['attachments','conversation','progress','queries','admin-trace'])modules['@/lib/'+name]=load('lib/'+name+'.ts');
 const pause=load('app/api/jobs/[id]/pause/route.ts').POST,resume=load('app/api/jobs/[id]/resume/route.ts').POST,worker=load('app/api/worker/[id]/route.ts').POST,conversation=load('app/api/worker/[id]/conversation/route.ts').POST;
-function seed(status='running',lease='lease'){const id=crypto.randomUUID();db.prepare('INSERT INTO jobs VALUES(?,?,?,?,?,?,?,?,?)').run(id,'owner',status,lease,null,100,null,'[]','saved-progress');return id;}
+function seed(status='running',lease='lease'){const id=crypto.randomUUID();db.prepare('INSERT INTO jobs VALUES(?,?,?,?,?,?,?,?,?,?)').run(id,'owner',status,lease,null,100,null,'[]','saved-progress',null);return id;}
 function call(route,id,action='',body='{}',headers={}){return route(new Request('https://local.test/api/jobs/'+id+'?action='+action,{method:'POST',headers:{Origin:'https://local.test','Content-Length':String(new TextEncoder().encode(body).length),Authorization:'Bearer synthetic-worker-secret','X-Job-Lease':'lease',...headers},body}),{params:Promise.resolve({id})});}
 const payload=JSON.stringify({expectedUpdatedAt:100}),id=seed();
 user=null;assert.equal((await call(pause,id,'',payload)).status,401);

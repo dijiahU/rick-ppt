@@ -5,8 +5,26 @@ description: Research, create and edit standalone native PowerPoint with editabl
 
 # Native PowerPoint
 
-Use scripts/pptx.py with Python 3.11+ and installed dependencies; prefer the plugin's
-.venv/bin/python. Paths below are relative to this skill.
+Use scripts/pptx.py with Python 3.11+ and installed dependencies. Use the host's
+exact interpreter from tool-manifest.json or the supplied prompt; do not substitute
+bare python/python3. Outside a host, use a verified environment's interpreter.
+Paths below are relative to this skill. Read the task's tool-quickstart.md when
+available; [tool preparation](references/tool-preparation.md) explains refresh and
+the exact session/parts directory and current API contracts. This does not replace
+any content, design, source, rendering or review requirements below.
+For a multi-object native page, [native JSON batches](references/native-batch.md)
+call installed helpers directly with chosen content/coordinates. All text height
+errors return together and failed batches leave the page unchanged. This operation
+tool has no page template or automatic design selection.
+When selecting or repairing typography, read [Actual fonts](references/fonts.md).
+Default new English/Latin text to Times New Roman and Chinese to SimSun (宋体),
+using genuine files for metrics, explicit runs and theme fonts. Additional faces
+need actual glyph/weight checks and recipient availability or verified embedding.
+Read [Windows WPS compatibility](references/windows-wps.md) for native arrows and
+cross-platform checks within existing authoring/review; Mac previews are not proof.
+Choose Chinese/Latin faces together for the content; use real files and weights,
+acquire missing OFL resources through the available host, and inspect actual mixed
+text. Preserve supplied template fonts for scoped edits.
 
 For new decks and substantive rewrites, follow these four stages. Stable decisions
 protect meaning, evidence and delivery; the author owns visual direction,
@@ -112,12 +130,24 @@ interface/case display. Neither cards nor images replace every other form.
 
 Build, render and inspect each page; repair defects and publish native previews
 where available. Return to content when a visual exposes a missing explanation.
+For animated pages, check native click groups and semantic order during authoring;
+reuse the host's batch state previews in the existing visual review. Follow the
+fast-path and targeted-playback rules in [Animations](references/animations.md);
+routine animation checks do not require a separate slideshow session.
 Essential self-reading meaning must be visible without inaccessible notes.
 
 While finalizing the current page's wording and composition, return to targeted
 design search when a new question needs it. Apply the reference to the current
 content and verify the rendered result, keeping sequential authoring and the
 agreed visual direction. Reuse prior findings for equivalent problems.
+
+Keep one main author responsible for the whole deck's visual direction and native
+page edits. When the host exposes asynchronous material preparation, read its
+PREFETCH.md and submit concrete later-page evidence/reference/asset needs while
+making the current page. Helpers return candidate material, not page designs or
+edits. Inspect and choose results before use; preserve page order and source
+constraints. Do not wait for all later assets, duplicate pending requests or add
+a new stage. See [Research and assets](references/research-and-assets.md).
 
 Deliver a single standalone PPTX. Use native objects, click-controlled builds,
 trigger animations, internal slide links and embedded media. Do not create Content
@@ -155,6 +185,20 @@ For image recreation and scoped edits, evaluate fidelity and authorized changes.
 Inherited source ambiguities and unrelated improvements are suggestions, not
 delivery blockers. Content and visual reviews can run independently in parallel;
 source conversion can compare directly with the original without a blind pass.
+
+When the host supplies complete current documents in the initial phase prompt,
+use that reading directly; reopen only changed/deferred material or needed detail.
+For planning, [one planning submission](references/planning-commit.md) validates
+and commits the chosen outline, decision record and source notes together; its
+successful existing planning check satisfies the planning CLI instruction above.
+Do not separately generate/read a scaffold or repeat the same validation.
+For new pages, [native page creation](references/native-pages.md) safely reuses or
+appends the next blank page from an explicitly chosen existing layout. It preserves
+the layout/master/theme chain, not source objects or timing; scoped edits retain
+their existing pages. Do not rewrite a whole-deck generator for page appends.
+During a correction, resolve source/content first and then change native objects
+in the same retained context when the host supports it. Reuse completed evidence
+and corrections; separate API conversations are not required for these actions.
 
 ## Native operations
 

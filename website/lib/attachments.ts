@@ -1,4 +1,6 @@
-export const MAX_FILES=3,MAX_FILE_BYTES=10*1024*1024,MAX_TOTAL_BYTES=20*1024*1024;
+export const MAX_FILES=10,MAX_FILE_BYTES=20*1024*1024,MAX_TOTAL_BYTES=200*1024*1024;
+// Legacy multipart clients stay bounded; the website stages one file at a time.
+export const MAX_INLINE_BYTES=20*1024*1024;
 export const extensions=['pdf','pptx','docx','txt','md','csv','png','jpg','jpeg'] as const;
 export type Attachment={id:string;name:string;size:number;ext:string;sha256:string};
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -27,4 +29,10 @@ export async function boundedBody(request:Request,max:number){
  const result=new Uint8Array(total);let offset=0;for(const chunk of chunks){result.set(chunk,offset);offset+=chunk.length;}return result;
 }
 export const attachmentKey=(job:string,file:string)=>`attachments/${job}/${file}`;
-export function attachmentResponse(file:{body:ReadableStream},meta:Attachment){return new Response(file.body,{headers:{'Content-Type':'application/octet-stream','Content-Disposition':`attachment; filename="reference.${meta.ext}"; filename*=UTF-8''${encodeURIComponent(meta.name).replace(/['()*]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase())}`,'Content-Length':String(meta.size),'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"sandbox; default-src 'none'"}});}
+export const isImageAttachment=(file:{name:string;ext?:string})=>['png','jpg','jpeg'].includes(file.ext??extension(file.name));
+export const canPreviewAttachment=(file:{name:string;ext?:string})=>isImageAttachment(file)||['pdf','docx','txt','md','csv'].includes(file.ext??extension(file.name));
+export function attachmentResponse(file:{body:ReadableStream},meta:Attachment,preview=false){
+ const image=preview&&isImageAttachment(meta);
+ const pdf=preview&&meta.ext==='pdf';
+ return new Response(file.body,{headers:{'Content-Type':image?(meta.ext==='png'?'image/png':'image/jpeg'):pdf?'application/pdf':'application/octet-stream','Content-Disposition':`${image||pdf?'inline':'attachment'}; filename="reference.${meta.ext}"; filename*=UTF-8''${encodeURIComponent(meta.name).replace(/['()*]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase())}`,'Content-Length':String(meta.size),'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"sandbox; default-src 'none'; img-src 'self' data: blob:"}});
+}

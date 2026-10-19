@@ -15,7 +15,7 @@ OVERLAY = REPO / 'tools/skill-packaging/rick-pptx'
 OVERLAY_FILES = ('SKILL.md', 'agents/openai.yaml', 'references/environment.md',
                  'scripts/doctor.py', 'scripts/native_policy.py', 'scripts/requirements.txt')
 SCRIPTS = ('pptx.py', 'native_canvas.py', 'native_builds.py', 'native_structure.py',
-           'workflow_decisions.py', 'design_references.py', 'review_packet.py', 'inspect_formulas.py')
+           'workflow_decisions.py', 'design_references.py', 'review_packet.py', 'inspect_formulas.py', 'font_assets.py')
 CORE = ('__init__.py', 'common.py', 'cli.py', 'package.py', 'renderer.py',
         'manifest.py', 'validator.py', 'relationships.py', 'snapshots.py', 'diff.py')
 REFERENCES = ('content.md', 'content-review.md', 'visual-review.md', 'research-and-assets.md',
@@ -23,7 +23,7 @@ REFERENCES = ('content.md', 'content-review.md', 'visual-review.md', 'research-a
               'animations.md', 'ooxml-overview.md', 'slides-and-shapes.md', 'text.md',
               'images.md', 'charts.md', 'groups.md', 'masters-and-layouts.md',
               'relationships.md', 'safe-mutation-rules.md', 'review-examples.md',
-              'technical/native-capabilities.md', 'technical/formula-fidelity.md')
+              'technical/native-capabilities.md', 'technical/formula-fidelity.md', 'fonts.md', 'windows-wps.md')
 
 
 def copy(source, target):
@@ -52,7 +52,7 @@ def build(output):
         inputs.append(path)
     for directory, names in [('scripts', SCRIPTS), ('scripts/pptx_core', CORE),
                              ('references', REFERENCES),
-                             ('assets', ('blank.pptx', 'workflow-choices.json', 'single-file-policy.json'))]:
+                             ('assets', ('blank.pptx', 'workflow-choices.json', 'single-file-policy.json', 'font-catalog.json'))]:
         for name in names:
             path = SOURCE / directory / name
             copy(path, target / directory / name)

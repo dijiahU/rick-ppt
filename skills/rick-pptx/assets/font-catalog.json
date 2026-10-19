@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "fonts": [
+    {
+      "id": "noto-sans-sc-regular",
+      "family": "Noto Sans CJK SC",
+      "weight": 400,
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf",
+      "license_url": "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/LICENSE",
+      "source_page": "https://github.com/notofonts/noto-cjk",
+      "role": "cjk-sans"
+    },
+    {
+      "id": "noto-serif-sc-regular",
+      "family": "Noto Serif CJK SC",
+      "weight": 400,
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Serif/OTF/SimplifiedChinese/NotoSerifCJKsc-Regular.otf",
+      "license_url": "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Serif/LICENSE",
+      "source_page": "https://github.com/notofonts/noto-cjk",
+      "role": "cjk-serif"
+    },
+    {
+      "id": "inter-regular",
+      "family": "Inter",
+      "weight": 400,
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter%5Bopsz,wght%5D.ttf",
+      "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/OFL.txt",
+      "source_page": "https://rsms.me/inter/",
+      "role": "latin-sans"
+    },
+    {
+      "id": "source-sans-regular",
+      "family": "Source Sans 3",
+      "weight": 400,
+      "url": "https://raw.githubusercontent.com/adobe-fonts/source-sans/release/TTF/SourceSans3-Regular.ttf",
+      "license_url": "https://raw.githubusercontent.com/adobe-fonts/source-sans/release/LICENSE.md",
+      "source_page": "https://github.com/adobe-fonts/source-sans",
+      "role": "latin-sans"
+    },
+    {
+      "id": "source-serif-regular",
+      "family": "Source Serif 4",
+      "weight": 400,
+      "url": "https://raw.githubusercontent.com/adobe-fonts/source-serif/release/TTF/SourceSerif4-Regular.ttf",
+      "license_url": "https://raw.githubusercontent.com/adobe-fonts/source-serif/release/LICENSE.md",
+      "source_page": "https://github.com/adobe-fonts/source-serif",
+      "role": "latin-serif"
+    },
+    {
+      "id": "noto-sans-sc-bold",
+      "family": "Noto Sans CJK SC",
+      "weight": 700,
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Bold.otf",
+      "license_url": "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/LICENSE",
+      "source_page": "https://github.com/notofonts/noto-cjk",
+      "role": "cjk-sans"
+    },
+    {
+      "id": "noto-serif-sc-bold",
+      "family": "Noto Serif CJK SC",
+      "weight": 700,
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Serif/OTF/SimplifiedChinese/NotoSerifCJKsc-Bold.otf",
+      "license_url": "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Serif/LICENSE",
+      "source_page": "https://github.com/notofonts/noto-cjk",
+      "role": "cjk-serif"
+    },
+    {
+      "id": "inter-bold",
+      "family": "Inter",
+      "weight": 700,
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter%5Bopsz,wght%5D.ttf",
+      "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/OFL.txt",
+      "source_page": "https://rsms.me/inter/",
+      "role": "latin-sans"
+    },
+    {
+      "id": "source-sans-bold",
+      "family": "Source Sans 3",
+      "weight": 700,
+      "url": "https://raw.githubusercontent.com/adobe-fonts/source-sans/release/TTF/SourceSans3-Bold.ttf",
+      "license_url": "https://raw.githubusercontent.com/adobe-fonts/source-sans/release/LICENSE.md",
+      "source_page": "https://github.com/adobe-fonts/source-sans",
+      "role": "latin-sans"
+    },
+    {
+      "id": "source-serif-bold",
+      "family": "Source Serif 4",
+      "weight": 700,
+      "url": "https://raw.githubusercontent.com/adobe-fonts/source-serif/release/TTF/SourceSerif4-Bold.ttf",
+      "license_url": "https://raw.githubusercontent.com/adobe-fonts/source-serif/release/LICENSE.md",
+      "source_page": "https://github.com/adobe-fonts/source-serif",
+      "role": "latin-serif"
+    },
+    {
+      "id": "jetbrains-mono-regular",
+      "family": "JetBrains Mono",
+      "weight": 400,
+      "url": "https://raw.githubusercontent.com/JetBrains/JetBrainsMono/master/fonts/ttf/JetBrainsMono-Regular.ttf",
+      "license_url": "https://raw.githubusercontent.com/JetBrains/JetBrainsMono/master/OFL.txt",
+      "source_page": "https://www.jetbrains.com/lp/mono/",
+      "role": "latin-code"
+    },
+    {
+      "id": "noto-sans-sc-medium",
+      "family": "Noto Sans CJK SC",
+      "weight": 500,
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Medium.otf",
+      "license_url": "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/LICENSE",
+      "source_page": "https://github.com/notofonts/noto-cjk",
+      "role": "cjk-sans"
+    },
+    {
+      "id": "inter-semibold",
+      "family": "Inter",
+      "weight": 600,
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter%5Bopsz,wght%5D.ttf",
+      "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/OFL.txt",
+      "source_page": "https://rsms.me/inter/",
+      "role": "latin-sans"
+    }
+  ],
+  "pairings": [
+    {
+      "id": "clear",
+      "east_asian": "Noto Sans CJK SC",
+      "latin": "Inter",
+      "use": "Clean mixed-language explanations and comparisons; regular body, real bold emphasis."
+    },
+    {
+      "id": "editorial",
+      "east_asian": "Noto Serif CJK SC",
+      "latin": "Source Serif 4",
+      "use": "Reflective narrative, quotations and editorial content; test density at actual reading scale."
+    },
+    {
+      "id": "humanist",
+      "east_asian": "Noto Sans CJK SC",
+      "latin": "Source Sans 3",
+      "use": "Longer explanatory text and warm, open Latin forms."
+    }
+  ],
+  "selection": "Choose for the brief, existing template and actual text. These are starting points, not a font rotation or mandatory house style."
+}

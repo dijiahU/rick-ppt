@@ -13,7 +13,7 @@ assert before['remaining']==0,'This test requires the exhausted local fixture ac
 assert all(j['title']=='本地额度测试' for j in before['jobs']),'Refuse non-fixture account'
 assert all('language' in j for j in before['jobs'])
 def submit(language,ui='en',signed=True):
-    data={'title':'Local language test','brief':'This must not run as a real task.','pages':5,'style':'Designer choice','requestKey':str(uuid.uuid4()),'language':language}
+    data={'title':'Local language test','brief':'This must not run as a real task.','execution_backend':'codex','pages':5,'style':'Designer choice','requestKey':str(uuid.uuid4()),'language':language}
     headers={'Content-Type':'application/json','Origin':BASE,'X-UI-Language':ui}
     request=urllib.request.Request(BASE+'/api/jobs',data=json.dumps(data).encode(),headers=headers)
     client=opener if signed else urllib.request.build_opener(urllib.request.ProxyHandler({}))

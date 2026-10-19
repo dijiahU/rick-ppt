@@ -5,6 +5,7 @@ import tempfile
 import threading
 import time
 from urllib.parse import urlsplit,parse_qs
+from attachments import MAX_FILE
 
 class WorkerHTTPError(RuntimeError):
     def __init__(self,action,*,status=0,curl=0,reason='request failed',retryable=False):
@@ -24,8 +25,8 @@ def request(cfg,path,body=b'{}',lease=None,raw=False):
     if lease:headers['X-Job-Lease']=lease
     if isinstance(body,bytes) and body[:2]==b'PK':headers['Content-Type']='application/vnd.openxmlformats-officedocument.presentationml.presentation'
     if isinstance(body,bytes) and body[:8]==b'\x89PNG\r\n\x1a\n':headers['Content-Type']='image/png'
-    limit=5 if action=='poll' else 10 if action in ('heartbeat','progress','preview','trace') else 180 if action=='bundle' else 20 if action=='claim' else 45
-    maximum=10*1024*1024 if raw else 1024*1024
+    limit=5 if action=='poll' else 10 if action in ('heartbeat','progress','preview','trace','usage') else 180 if action=='bundle' else 20 if action=='claim' else 45
+    maximum=MAX_FILE if raw and action=='attachment' else 10*1024*1024 if raw else 1024*1024
     # Claim can assign a different job if its response is lost. Retry/requeue is
     # version-conditional and requires an explicit operator decision on ambiguity.
     # Heartbeats and previews already have their own bounded background retries.

@@ -1,5 +1,6 @@
 import { env } from 'cloudflare:workers';
 import { getChatGPTUser } from '@/app/chatgpt-auth';
+import {executionAvailability} from './execution-backend';
 export function database() { return env.DB; }
 export function files() { return env.FILES; }
 export const json = (value: unknown, status = 200) => Response.json(value, {status, headers:{'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
@@ -16,4 +17,9 @@ export async function workerAuthorized(request: Request) {
 export async function workerOnline() {
   const row=await database().prepare('SELECT heartbeat FROM worker WHERE id = ?').bind('primary').first<{heartbeat:number}>();
   return !!row && row.heartbeat > Date.now()-90000;
+}
+export async function workerStatus() {
+  const row=await database().prepare('SELECT heartbeat,execution_backends FROM worker WHERE id=?').bind('primary').first<{heartbeat:number;execution_backends:string|null}>();
+  const online=!!row && row.heartbeat>Date.now()-90000;
+  return {online,executionAvailability:executionAvailability(row?.execution_backends,online)};
 }

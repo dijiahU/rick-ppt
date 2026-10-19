@@ -25,6 +25,19 @@ class NativeCanvasTests(unittest.TestCase):
         with zipfile.ZipFile(PLUGIN/'skills/pptx/assets/blank.pptx') as archive:archive.extractall(self.workspace)
         Image.new('RGB',(200,100),'blue').save(self.root/'image.png')
 
+    def test_chart_uses_explicit_latin_and_chinese_fonts_for_axes_values_and_defaults(self):
+        result=canvas.add_bar_chart(self.workspace,1,['中文 A','中文 B'],[12,24],'示例次数',
+            ['557799','AA7744'],(1,1,7,3),font_family='Times New Roman',
+            east_asian_font_family='SimSun',font_size=18)
+        tree=canvas.parse(self.workspace/result['chart']);ns={'c':canvas.C,'a':canvas.A}
+        for selector in ['c:txPr','.//c:catAx/c:txPr','.//c:valAx/c:txPr','.//c:dLbls/c:txPr']:
+            text=tree.find(selector,ns);self.assertIsNotNone(text,selector)
+            self.assertEqual(text.find('.//a:latin',ns).get('typeface'),'Times New Roman')
+            self.assertEqual(text.find('.//a:ea',ns).get('typeface'),'SimSun')
+        with zipfile.ZipFile(self.workspace/result['workbook']) as workbook:
+            data=workbook.read('xl/worksheets/sheet1.xml').decode()
+            self.assertIn('中文 A',data);self.assertIn('24',data)
+
     def test_borderless_native_groups_accept_handles_and_click_together(self):
         a=canvas.add_shape(self.workspace,1,(1,1,2,1),geometry='ellipse',fill=None,stroke='202020',line_width=1,name='Observed state')
         b=canvas.add_image(self.workspace,1,self.root/'image.png',(4,1,2,1),fit='contain',layer='front',task_root=self.root)

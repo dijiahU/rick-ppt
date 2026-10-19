@@ -81,11 +81,24 @@ class AttachmentsTests(unittest.TestCase):
                 with self.assertRaises((OSError,ValueError)):
                     receive({}, {'id':str(uuid.uuid4()),'lease':'l','attachments':[self.item]},Path(root),lambda *a,**k:self.fail('Must not overwrite a bad existing input'),recover=True)
     def test_limits_and_ids(self):
-        for change in [{'id':'../../x'},{'ext':'exe'},{'size':11*1024*1024},{'sha256':'bad'},{'size':True}]:
+        for change in [{'id':'../../x'},{'ext':'exe'},{'size':20*1024*1024+1},{'sha256':'bad'},{'size':True}]:
             with self.assertRaises((ValueError,TypeError)):metadata([{**self.item,**change}])
-        with self.assertRaises(ValueError):metadata([self.item]*4)
+        with self.assertRaises(ValueError):metadata([{**self.item,'id':str(uuid.uuid4())} for _ in range(11)])
         with self.assertRaises(ValueError):metadata([self.item]*2)
         self.assertEqual(metadata(None),[])
+    def test_ten_attachments_and_two_hundred_mb_total(self):
+        items=[{**self.item,'id':str(uuid.uuid4()),'size':20*1024*1024} for _ in range(10)]
+        self.assertEqual(len(metadata(items)),10)
+        self.assertEqual(metadata([{**self.item,'size':20*1024*1024}])[0]['size'],20*1024*1024)
+        with self.assertRaises(ValueError):metadata(items+[{**self.item,'id':str(uuid.uuid4())}])
+        with self.assertRaises(ValueError):metadata([{**item,'size':item['size']+(1 if i==0 else 0)} for i,item in enumerate(items)])
+    def test_receive_ten_images(self):
+        image=Image.new('RGB',(10,10));out=io.BytesIO();image.save(out,format='PNG');data=out.getvalue()
+        items=[{**self.item,'id':str(uuid.uuid4()),'name':f'image-{i}.png','ext':'png','size':len(data),'sha256':hashlib.sha256(data).hexdigest()} for i in range(10)]
+        with tempfile.TemporaryDirectory() as root:
+            result=receive({}, {'id':str(uuid.uuid4()),'lease':'l','attachments':items},Path(root),lambda *a,**k:data)
+            self.assertEqual(len(result),10)
+            self.assertTrue(all((Path(root)/item['path']).read_bytes()==data for item in result))
     def archive(self,extra):
         out=io.BytesIO()
         with zipfile.ZipFile(out,'w') as z:

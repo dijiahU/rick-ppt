@@ -8,17 +8,18 @@ const modules={'./slide-limits.mjs':limits,'@/lib/slide-limits.mjs':limits};
 modules['@/lib/conversation']={ensureConversation:async()=>{throw Error('Legacy route must not require conversation storage without a revision fence');}};
 function load(path){const code=ts.transpileModule(readFileSync(new URL('../'+path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const exports={};new Function('require','exports',code)(name=>{assert.ok(modules[name],name);return modules[name];},exports);return exports;}
 const db=new DatabaseSync(':memory:');
-db.exec('CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,attachments TEXT,status TEXT,result_key TEXT,lease TEXT);');
+db.exec('CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,attachments TEXT,status TEXT,result_key TEXT,lease TEXT,summary TEXT);');
 const binding={prepare(sql){let args=[];const s={bind(...v){args=v;return s;},async first(){return db.prepare(sql).get(...args)??null;}};return s;}};
 const objects=new Map();let failIndex=false,reads=0;
 const storage={async put(key,data){if(failIndex&&key.endsWith('/index.json')){failIndex=false;throw Error('index write unavailable');}objects.set(key,typeof data==='string'?data:new TextDecoder().decode(data));},async get(key){reads++;const text=objects.get(key);return text===undefined?null:{text:async()=>text,json:async()=>JSON.parse(text),body:new Response(text).body};}};
 const token='synthetic-worker-credential-at-least-32-chars';let user=null;
 modules['cloudflare:workers']={env:{DB:binding,FILES:storage,WORKER_TOKEN:token,ADMIN_USER_ID:'rick'}};
 modules['@/app/chatgpt-auth']={getChatGPTUser:async()=>user};
-modules['./admin-policy']=load('lib/admin-policy.ts');
+modules['./admin-policy']=load('lib/admin-policy.ts');modules['./admin-accounts']=load('lib/admin-accounts.ts');
+modules['./execution-backend']=load('lib/execution-backend.ts');modules['@/lib/execution-backend']=modules['./execution-backend'];
 for(const name of ['server','admin','attachments','progress','queries','admin-trace']){modules['@/lib/'+name]=load('lib/'+name+'.ts');modules['./'+name]=modules['@/lib/'+name];}
 const post=load('app/api/worker/[id]/route.ts').POST,get=load('app/api/admin/jobs/[id]/trace/route.ts').GET;
-const id=crypto.randomUUID();db.prepare('INSERT INTO jobs VALUES(?,?,?,?,?,?)').run(id,'owner','[]','running',null,'lease-one');
+const id=crypto.randomUUID();db.prepare('INSERT INTO jobs VALUES(?,?,?,?,?,?,?)').run(id,'owner','[]','running',null,'lease-one',null);
 const params={params:Promise.resolve({id})};
 const event=n=>({seq:n,at:n,stage:'research',kind:'command',label:'Shell command',state:'completed',command:'python inspect.py',output:'30 slides',exitCode:0});
 const batch=(n,e=event(n))=>({version:1,chunk:n,events:[e]});

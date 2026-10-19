@@ -30,6 +30,14 @@ if not (source/'skills/pptx/assets/single-file-policy.json').is_file():
     required+=('skills/pptx/references/interactive-authoring.md','runtime/dist/preview.html','runtime/dist/content.html','runtime/config.json','runtime/manifests/manifest.addin.xml')
 for relative in required:
     if (source/relative).read_bytes()!=(target/relative).read_bytes():raise RuntimeError('Runtime mismatch: '+relative)
+for relative in ('skills/pptx/scripts/font_assets.py','skills/pptx/assets/font-catalog.json','skills/pptx/references/fonts.md'):
+    if (source/relative).is_file() and (source/relative).read_bytes()!=(target/relative).read_bytes():raise RuntimeError('Runtime font mismatch: '+relative)
+for relative in ('skills/pptx/scripts/tool_prepare.py','skills/pptx/scripts/review_index.py',
+                 'skills/pptx/scripts/native_batch.py','skills/pptx/references/native-batch.md',
+                 'skills/pptx/scripts/planning_commit.py','skills/pptx/references/planning-commit.md',
+                 'skills/pptx/scripts/native_pages.py','skills/pptx/references/native-pages.md',
+                 'skills/pptx/references/tool-preparation.md','skills/pptx/references/review-packet.md'):
+    if (source/relative).is_file() and (source/relative).read_bytes()!=(target/relative).read_bytes():raise RuntimeError('Runtime prepared-tool mismatch: '+relative)
 cfg['plugin']=str(target)
 cfg['blank']=str(target/'skills/pptx/assets/blank.pptx')
 if args.python:cfg['python']=str(args.python.absolute())

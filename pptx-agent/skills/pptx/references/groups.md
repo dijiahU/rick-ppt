@@ -14,3 +14,8 @@ python scripts/native_structure.py --workspace WORKSPACE --slide 1 anchor --conn
 ```
 
 Use the configured Python and the installed absolute script path. Group members must have one parent and be adjacent in drawing order; the helper rejects ambiguous changes. It preserves child coordinates, IDs, relationships and animation targets. Anchoring requires an actual `p:cxnSp` connector and connection sites valid for the endpoint shape geometry; choose those indices explicitly. Preserve its existing native path/geometry. Export and render afterward, checking the original coordinates and connector direction. Anchors support later editing; static rendering is not proof of PowerPoint drag behavior.
+
+For Windows WPS, compare endpoint coordinates with the actual geometry-specific
+connection sites after all group transforms. Do not bind to unsupported group
+sites or rely on automatic rerouting. Use an explicit editable native path if a
+complex route cannot be bound faithfully; see [Windows WPS compatibility](windows-wps.md).

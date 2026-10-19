@@ -1,12 +1,14 @@
 """Offline transport faults and execution-lifecycle regressions; no real jobs."""
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
 import threading
 import time
 import unittest
+from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from contextlib import redirect_stdout
 from unittest.mock import patch
 from resilience import request,WorkerHTTPError,HeartbeatLost,LeaseKeeper
@@ -38,6 +40,27 @@ class TransportTests(unittest.TestCase):
     def test_attachment_retry_returns_original_bytes(self):
         result,calls=self.invoke('attachment',[(0,7,b''),(200,0,b'original\x00bytes')],raw=True)
         self.assertEqual(result,b'original\x00bytes');self.assertEqual(len(calls),2)
+
+    def test_attachment_download_bound_matches_file_admission(self):
+        for action,maximum in [('attachment',20*1024*1024),('draft-source',10*1024*1024)]:
+            _,calls=self.invoke(action,[(200,0,b'original')],raw=True)
+            command=calls[0][0]
+            self.assertEqual(command[command.index('--max-filesize')+1],str(maximum))
+
+    def test_actual_twenty_mb_attachment_download(self):
+        data=b'x'*(20*1024*1024)
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self,*args):pass
+            def do_POST(self):
+                self.rfile.read(int(self.headers.get('Content-Length','0')))
+                self.send_response(200);self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
+        server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        try:
+            with patch.dict(os.environ,{'NO_PROXY':'127.0.0.1','no_proxy':'127.0.0.1'}):
+                received=request({'site':f'http://127.0.0.1:{server.server_port}','token':'SYNTHETIC'},'/api/worker/test?action=attachment',lease='synthetic',raw=True)
+            self.assertEqual(received,data)
+        finally:server.shutdown();server.server_close();thread.join(timeout=2)
 
     def test_claim_and_operator_retry_never_reissued_automatically(self):
         for action in ('claim','retry','heartbeat'):

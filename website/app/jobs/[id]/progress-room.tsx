@@ -2,6 +2,10 @@
 import {useEffect,useMemo,useState} from 'react';
 import QueueStatus from '@/app/queue-status';
 import Conversation from './conversation';
+import ConversationHistory from '@/app/admin/conversation-history';
+import AttachmentPreviews from '@/app/attachment-previews';
+import {uploadMessages} from '@/lib/upload-i18n';
+import type {Attachment} from '@/lib/attachments';
 import PauseControl from './pause-control';
 import DraftDownload from './draft-download';
 import InteractiveDownload from './interactive-download';
@@ -12,9 +16,11 @@ import {creationWords} from '@/lib/creation-i18n';
 import {progressNotes,previewVersion} from '@/lib/creation-progress';
 import type {QueueHealth} from '@/lib/queue-state';
 import {LanguagePicker,useLanguage} from '@/app/language';
+import {executionLabel,executionWords} from '@/lib/execution-backend-i18n';
+import type {ExecutionBackend} from '@/lib/execution-backend';
 import {taskModeMessages} from '@/lib/task-mode-i18n';
 import type {ActivityEvent,Progress} from '@/lib/progress';
-type Data={draft:Draft|null;queue:QueueHealth|null;queuePosition:number|null;title:string;brief:string;pages:number;status:string;pausePending:boolean;createdAt:number;updatedAt:number;download:boolean;scope:'user'|'admin';canInspectExecution?:boolean;progress:Progress|null};
+type Data={attachments:Attachment[];draft:Draft|null;queue:QueueHealth|null;queuePosition:number|null;title:string;brief:string;pages:number;execution_backend:ExecutionBackend|null;status:string;pausePending:boolean;createdAt:number;updatedAt:number;download:boolean;scope:'user'|'admin';canInspectExecution?:boolean;progress:Progress|null};
 const words={
  en:['Back to studio','Task activity','Events','Sources','Slide previews','All','Search','Opened links','Files','Execution','Media','Render & review','Progress notes','Lifecycle','Filter activity or URL','Newest first','Oldest first','Live · refreshes every 3 seconds','Finished · saved activity','Reconnect failed. Retrying…','No recorded activity yet.','No matching activity.','Original request','Sign in to view this task','Task unavailable or access denied','Started','Completed','Failed','Updated','Recent activity (up to 500 events). Older tasks may have fewer details. Tool events and public progress notes—not a screen broadcast.','No source links recorded yet.','View full screen','Last worker update is over two minutes old.','Refresh now','Waiting in queue','Download PPTX','Recorded action','Agent progress note'],
  'zh-CN':['返回工作室','任务执行详情','活动记录','来源链接','页面预览','全部','搜索','打开的链接','文件','执行操作','素材','渲染与检查','进度说明','任务状态','搜索活动内容或网址','最新在前','最早在前','实时更新 · 每 3 秒同步','任务结束 · 已保存记录','连接失败，正在重试…','尚未收到活动记录。','没有符合条件的活动。','原始需求','登录后查看此任务','任务不存在或无权访问','已开始','已完成','失败','更新时间','最多保留最近 500 条活动。旧任务可能缺少详细记录；这里展示真实工具事件和进度说明，不是屏幕直播。','尚未记录来源链接。','全屏查看','执行端超过两分钟未更新，请留意任务是否中断。','立即刷新','正在排队','下载 PPTX','实际操作记录','Agent 进度说明'],
@@ -47,7 +53,9 @@ export default function ProgressRoom({id}:{id:string}){
  {data&&<DraftDownload draft={data.draft??null} base={base} locale={locale}/>}
  {error&&<p className="error" role="alert">{w[19]}</p>}{data?.status==='running'&&Date.now()-data.updatedAt>120000&&<p className="error">{w[32]}</p>}
  {data?.queue&&<QueueStatus queue={data.queue} position={data.queuePosition} createdAt={data.createdAt}/>}
+ {data?.canInspectExecution&&<p className="fineprint">{executionWords[locale].label}: {executionLabel(data.execution_backend,locale)}</p>}
  {data&&<details className="room-brief"><summary>{w[22]}</summary><p className="fineprint">{data.pages===0?taskModeMessages[locale].edit:taskModeMessages[locale].create} · {data.pages===0?taskModeMessages[locale].automatic:`${t.pages}: ${data.pages}`}</p><p>{data.brief}</p></details>}
+ {!!data?.attachments?.length&&<details className="room-attachments"><summary>{uploadMessages[locale].references} · {data.attachments.length}</summary><AttachmentPreviews files={data.attachments} hrefFor={file=>`${base}/attachments/${file.id}`}/></details>}
  {data?.canInspectExecution&&<p><a className="download" href={`/admin/jobs/${id}/trace`}>管理员执行记录 · 命令、输出与审核 →</a></p>}
  <div className="room-layout"><section className="room-main"><nav className="room-tabs" aria-label={w[1]}>{[['story',cw.overview,notes.length],['events',w[2],events?.length||0],['sources',w[3],sources.length],['previews',w[4],data?.progress?.previews.length||0]].map(([key,title,count])=><button key={key} onClick={()=>setTab(String(key))} aria-pressed={tab===key}>{title} <span>{count}</span></button>)}</nav>
  {tab==='story'&&data&&<CreationStory key={id} progress={data.progress} pages={data.pages} status={data.status} base={base}/>}
@@ -55,6 +63,6 @@ export default function ProgressRoom({id}:{id:string}){
  {!visible.length?<p className="room-empty">{events?.length?w[21]:data?.status==='queued'?w[34]:w[20]}</p>:<ol className="room-events">{visible.map(e=><li key={e.seq}><div className="event-stamp"><span>#{e.seq}</span><time>{new Date(e.at).toLocaleTimeString(locale)}</time></div><article><div className="event-heading"><strong>{e.category?w[5+kinds.indexOf(e.category)]:t.activities[e.code]}</strong>{e.state&&<span className={`event-state ${e.state}`}>{w[25+['started','completed','failed'].indexOf(e.state)]}</span>}</div>{e.detail&&<p>{e.detail}</p>}{e.url&&<a className="event-url" href={e.url} target="_blank" rel="noopener noreferrer">{e.url} ↗</a>}<small>{e.reported?w[37]:w[36]}</small></article></li>)}</ol>}</>}
  {tab==='sources'&&<div className="room-sources">{!sources.length?<p>{w[30]}</p>:sources.map(([url,info])=><article key={url}><strong>{new URL(url).hostname}</strong><a href={url} target="_blank" rel="noopener noreferrer">{url} ↗</a><small>{new Date(info.at).toLocaleTimeString(locale)} · {info.count} {w[2]}</small></article>)}</div>}
  {tab==='previews'&&<div className="room-previews">{!data?.progress?.previews.length?<p>{t.noProgress}</p>:data.progress.previews.map(n=><PreviewLink key={n} href={`${base}/preview/${n}?v=${previewVersion(data.progress!,n)}`} label={`${t.slide} ${n}`}><img src={`${base}/preview/${n}?v=${previewVersion(data.progress!,n)}`} alt={`${t.slide} ${n}`} loading="lazy"/><span>{t.slide} {n} · {w[31]}</span></PreviewLink>)}</div>}
- </section><aside className="room-aside">{data?.scope==='user'&&<Conversation id={id} status={data.status} updatedAt={data.updatedAt} hasDraft={!!data.draft} pausePending={data.pausePending} onResume={()=>setRefresh(n=>n+1)}/>}<h2>{w[28]}</h2><p>{data?.progress?new Date(data.progress.updatedAt).toLocaleString(locale):'—'}</p><div aria-live="polite"><strong>{terminal?label(data!.status):latestNote?.phase?cw.phase[latestNote.phase]:events?.length?t.activities[events[events.length-1].code]:t.waiting}</strong><p>{latestNote?.detail||''}</p>{!terminal&&latestNote?.next&&<p><strong>{cw.next}</strong><br/>{latestNote.next}</p>}</div><p className="fineprint">{w[29]}</p></aside></div></>}
+ </section><aside className="room-aside">{data?.scope==='admin'&&<ConversationHistory key={id} id={id}/>} {data?.scope==='user'&&<Conversation id={id} status={data.status} updatedAt={data.updatedAt} hasDraft={!!data.draft} pausePending={data.pausePending} onResume={()=>setRefresh(n=>n+1)}/>}<h2>{w[28]}</h2><p>{data?.progress?new Date(data.progress.updatedAt).toLocaleString(locale):'—'}</p><div aria-live="polite"><strong>{terminal?label(data!.status):latestNote?.phase?cw.phase[latestNote.phase]:events?.length?t.activities[events[events.length-1].code]:t.waiting}</strong><p>{latestNote?.detail||''}</p>{!terminal&&latestNote?.next&&<p><strong>{cw.next}</strong><br/>{latestNote.next}</p>}</div><p className="fineprint">{w[29]}</p></aside></div></>}
  </main>;
 }

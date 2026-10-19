@@ -29,7 +29,7 @@ def load_profile(path):
     path=Path(path).resolve(strict=True);info=path.stat()
     if not stat.S_ISREG(info.st_mode) or info.st_size>65536:raise ValueError('Invalid model profile file')
     data=json.loads(path.read_text())
-    allowed={'model','base_url','api_key','api_key_env','wire_api','web_search','image_generation','reasoning_effort','auxiliary_tools','service_tier'}
+    allowed={'model','base_url','api_key','api_key_env','wire_api','web_search','image_generation','reasoning_effort','auxiliary_tools','service_tier','responses_transport'}
     if not isinstance(data,dict) or set(data)-allowed:raise ValueError('Unknown model profile fields')
     model=data.get('model');url=data.get('base_url')
     if not isinstance(model,str) or not model.strip() or len(model)>200 or any(ord(c)<32 for c in model):raise ValueError('A valid model ID is required')
@@ -51,6 +51,7 @@ def load_profile(path):
     effort=data.get('reasoning_effort')
     if effort is not None and effort not in ('minimal','low','medium','high','xhigh'):raise ValueError('Invalid reasoning_effort')
     if data.get('service_tier') is not None and data['service_tier'] not in ('auto','default','fast','priority'):raise ValueError('Invalid service_tier')
+    if data.get('responses_transport','buffered') not in ('buffered','streaming'):raise ValueError('Invalid responses_transport')
     return {**data,'model':model.strip(),'base_url':url.rstrip('/'),'api_key':key,'wire_api':data.get('wire_api','responses')}
 
 def public_identity(profile):
@@ -60,16 +61,38 @@ def public_identity(profile):
       'reasoning_effort':profile.get('reasoning_effort')}
     if profile.get('auxiliary_tools','disabled')!='disabled':identity['auxiliary_tools']=profile['auxiliary_tools']
     if profile.get('service_tier') is not None:identity['service_tier']=profile['service_tier']
+    if 'responses_transport' in profile:identity['responses_transport']=profile['responses_transport']
     return identity
 
 def retained_tools(profile):return bool(profile and profile.get('auxiliary_tools')=='existing_backend')
 
-def profile_for_task(state_root,task_id,profile,existing):
+def available_backends(cfg):
+    """Advertise actual host routes; a configured API never replaces Codex."""
+    return ['api','codex'] if cfg.get('_model_profile') else ['codex']
+
+
+def profile_for_task(state_root,task_id,profile,existing,*,execution_backend=None):
+    if execution_backend not in (None,'api','codex'):raise ValueError('Invalid task execution_backend')
+    selection=Path(state_root)/task_id/'execution-choice.json'
+    if selection.exists():
+        pinned=json.loads(selection.read_text())['execution_backend']
+        if execution_backend is not None and execution_backend!=pinned:
+            raise ValueError('An existing task cannot change execution backend')
+        execution_backend=pinned
     path=Path(state_root)/task_id/'model-backend.json'
     # Historical/default-provider admissions keep their original provider on resume.
     # A backend receipt may already exist before journal initialization succeeded.
-    if not path.exists():return None if existing else profile
-    if json.loads(path.read_text()).get('backend')=='codex-default':return None
+    if not path.exists():
+        if existing:
+            if execution_backend=='api':raise ValueError('An existing default task cannot switch to API')
+            return None
+        if execution_backend=='codex':return None
+        if execution_backend=='api' and profile is None:raise ValueError('API backend is not configured; no fallback was performed')
+        return profile
+    if json.loads(path.read_text()).get('backend')=='codex-default':
+        if execution_backend=='api':raise ValueError('This task is pinned to local Codex')
+        return None
+    if execution_backend=='codex':raise ValueError('This task is pinned to API')
     if json.loads(path.read_text())!=public_identity(profile):
         raise ValueError('Restore the original external API profile to resume this task')
     return profile
@@ -86,14 +109,25 @@ def overrides(profile):
         config['features.fast_mode']=profile['service_tier'] in ('fast','priority')
     return config
 
-def bind_task(state_root,task_id,profile,existing):
+def bind_task(state_root,task_id,profile,existing,*,execution_backend=None):
     # Host-only directory, outside the model workspace and checkpoint blobs.
     identity=public_identity(profile);folder=Path(state_root)/task_id;folder.mkdir(parents=True,exist_ok=True)
     path=folder/'model-backend.json'
+    if execution_backend not in (None,'api','codex'):raise ValueError('Invalid task execution_backend')
+    if execution_backend=='api' and profile is None:raise ValueError('API task requires an API profile')
+    if execution_backend=='codex' and profile is not None:raise ValueError('Local Codex task cannot use an API profile')
+    choice=folder/'execution-choice.json'
+    if choice.exists():
+        pinned=json.loads(choice.read_text())['execution_backend']
+        if execution_backend is not None and pinned!=execution_backend:raise ValueError('Task execution choice is immutable')
+        if (pinned=='api')!=(profile is not None):raise ValueError('Model provider differs from pinned execution choice')
     if path.exists():
         if json.loads(path.read_text())!=identity:raise ValueError('Task belongs to another model/API. Use a new task for comparison, or restore its original model profile to resume.')
-        return
-    if existing and profile is not None:raise ValueError('An existing default-model task cannot silently resume under another API. Create a new comparison task.')
-    body=(json.dumps(identity,sort_keys=True)+'\n').encode()
-    fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
-    with os.fdopen(fd,'wb') as out:out.write(body)
+    else:
+        if existing and profile is not None:raise ValueError('An existing default-model task cannot silently resume under another API. Create a new comparison task.')
+        body=(json.dumps(identity,sort_keys=True)+'\n').encode()
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as out:out.write(body)
+    if execution_backend is not None and not choice.exists():
+        fd=os.open(choice,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'w') as out:json.dump({'execution_backend':execution_backend},out)

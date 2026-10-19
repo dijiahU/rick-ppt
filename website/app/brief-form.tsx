@@ -1,22 +1,27 @@
 'use client';
 import {useCallback,useEffect,useState,useRef} from 'react';
+import {executionWords,executionLabel} from '@/lib/execution-backend-i18n';
+import type {ExecutionBackend} from '@/lib/execution-backend';
 import {quotaMessages} from '@/lib/quota-i18n';
 import {queueWords} from '@/lib/queue-i18n';
 import {taskModeMessages,sourceFileLabels} from '@/lib/task-mode-i18n';
 import {hasEditableDeck,resolvePages,MAX_SLIDES,type TaskMode} from '@/lib/task-mode';
 import {pageCountMessages} from '@/lib/page-count-i18n';
 import FileUpload from './file-upload';
+import AttachmentPreviews from './attachment-previews';
+import {uploadFiles,discardUploads} from '@/lib/upload-client';
 import {uploadMessages} from '@/lib/upload-i18n';
 import type {Attachment} from '@/lib/attachments';
 import {useLanguage} from './language';
 import {resolvePresentationLanguage,languageResolutionMessages} from '@/lib/presentation-language';
 import {displaySummary,isLocale,languages,styleValues,type Locale,type Messages} from '@/lib/i18n';
-type Job={id:string;title:string;status:string;created_at:number;summary:string|null;download:boolean;language:Locale|null;attachments:Attachment[]};
+type Job={id:string;title:string;status:string;created_at:number;summary:string|null;download:boolean;language:Locale|null;execution_backend:ExecutionBackend|null;attachments:Attachment[]};
 type Account={signedIn:boolean;admin?:boolean;unlimited?:boolean;remaining?:number|null;online?:boolean;jobs?:Job[]};
 export default function BriefForm(){
  const {locale,t}=useLanguage();const u=uploadMessages[locale];const q=quotaMessages[locale];
  const [attachments,setAttachments]=useState<File[]>([]);
  const [mode,setMode]=useState<TaskMode>('create');const m=taskModeMessages[locale];
+ const ew=executionWords[locale];
  const [account,setAccount]=useState<Account|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(false),[busy,setBusy]=useState(false);
  const [pptOverride,setPptOverride]=useState<Locale|null>(null);
  const [pageInput,setPageInput]=useState('10'),[briefText,setBriefText]=useState(''),[titleText,setTitleText]=useState('');
@@ -26,10 +31,10 @@ export default function BriefForm(){
  const refresh=useCallback(async()=>{try{const response=await fetch('/api/account',{cache:'no-store'});if(!response.ok)throw Error();setAccount(await response.json());}catch{setError('account');}},[]);
  useEffect(()=>{void refresh();const timer=setInterval(()=>void refresh(),12000);return()=>clearInterval(timer);},[refresh]);
  async function submit(event:React.FormEvent<HTMLFormElement>){event.preventDefault();if(busy)return;if(mode==='create'&&pageChoice.error){setError(pageChoice.error);return;}if(mode==='edit'&&!hasEditableDeck(attachments)){setError('source');return;}setBusy(true);setError('');setNotice(false);const data=new FormData(event.currentTarget);data.set('mode',mode);if(mode==='edit')data.delete('pages');requestKey.current??=crypto.randomUUID();
-  data.set('language',pptLanguage);data.set('requestKey',requestKey.current);for(const file of attachments)data.append('files',file);
-  try{const response=await fetch('/api/jobs',{method:'POST',headers:{'X-UI-Language':locale},body:data});const result=await response.json() as {code?:string};if(!response.ok){setError(result.code&&(['upload','source','pagesRange','pagesAmbiguous'].includes(result.code)||Object.hasOwn(t.errors,result.code))?result.code:'submit');return;}requestKey.current=null;formRef.current?.reset();setPageInput('10');setBriefText('');setTitleText('');setMode('create');setAttachments([]);setNotice(true);await refresh();}catch{setError('submit');}finally{setBusy(false);}}
+  data.set('language',pptLanguage);data.set('requestKey',requestKey.current);
+  try{const uploadIds=await uploadFiles(attachments,`job:${requestKey.current}`,{locale});const payload={...Object.fromEntries(data),pages:mode==='create'?pageChoice.pages:undefined,uploadIds};const response=await fetch('/api/jobs',{method:'POST',headers:{'X-UI-Language':locale,'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await response.json() as {code?:string};if(!response.ok){setError(result.code&&(['upload','source','pagesRange','pagesAmbiguous','execution_backend','execution_backend_locked'].includes(result.code)||Object.hasOwn(t.errors,result.code))?result.code:'submit');return;}void discardUploads(uploadIds,`job:${requestKey.current}`);requestKey.current=null;formRef.current?.reset();setPageInput('10');setBriefText('');setTitleText('');setMode('create');setAttachments([]);setNotice(true);await refresh();}catch{setError('submit');}finally{setBusy(false);}}
  const hasQuota=account?.unlimited===true||(account?.remaining??0)>0;
- const errorText=error==='pagesRange'||error==='pagesAmbiguous'?pw[error]:error==='source'?m.missing:error==='quota'&&account?.unlimited?q.full:error==='upload'?u.error:error==='account'?t.accountError:error==='submit'?t.submitError:Object.hasOwn(t.errors,error)?t.errors[error as keyof Messages['errors']]:'';
+ const errorText=error==='execution_backend'?ew.missing:error==='execution_backend_locked'?ew.locked:error==='execution_backend_unavailable'?ew.unavailable:error==='pagesRange'||error==='pagesAmbiguous'?pw[error]:error==='source'?m.missing:error==='quota'&&account?.unlimited?q.full:error==='upload'?u.error:error==='account'?t.accountError:error==='submit'?t.submitError:Object.hasOwn(t.errors,error)?t.errors[error as keyof Messages['errors']]:'';
  return <><div className="account-bar">{account===null?t.loading:account.signedIn?<><span>{account.unlimited?q.label:<>{t.remaining}: <strong>{account.remaining}</strong> / 10</>}</span><a href="/signout-with-chatgpt?return_to=/">{t.signout}</a></>:<><span>{t.signinHint}</span><a href="/signin-with-chatgpt?return_to=/">{t.signin}</a></>}</div>
  {account?.admin&&<aside className="admin-shortcut"><a href="/admin">{queueWords[locale].allTasks} ↗</a><p>{queueWords[locale].adminHelp}</p></aside>}
  {account?.signedIn&&<p className="fineprint">{account.online?t.online:t.offline}</p>}
@@ -40,6 +45,6 @@ export default function BriefForm(){
  <FileUpload files={attachments} onChange={setAttachments} title={mode==='edit'?sourceFileLabels[locale]:undefined}/>
  <p className="fineprint" role="status" aria-live="polite">{languageResolutionMessages[locale][languageChoice.source]}: <strong lang={pptLanguage}>{languages[pptLanguage]}</strong></p>
  <button disabled={busy||!account?.signedIn||!hasQuota}>{busy?(attachments.length?u.uploading:t.submitting):!account?.signedIn?t.loginFirst:!hasQuota?t.exhausted:account.unlimited?q.submit:t.submit}</button></fieldset><p className="fineprint">{account?.unlimited?q.note:t.quotaNote}</p><p role="alert" className="error">{errorText}</p><p role="status" className="success">{notice?(account?.unlimited?q.submitted:t.submitted):''}</p></form>
- {account?.signedIn&&<section className="history"><p className="eyebrow">{t.private}</p><h2>{t.history}</h2>{!account.jobs?.length?<p className="fineprint">{t.empty}</p>:account.jobs.map(job=><article key={job.id}><div className="job-heading"><h3>{job.title}</h3><span className={`status status-${job.status}`}>{Object.hasOwn(t.statuses,job.status)?t.statuses[job.status as keyof Messages['statuses']]:t.unknownStatus}</span></div><p>{new Date(job.created_at).toLocaleString(locale)}{isLocale(job.language)&&<> · {t.pptLanguage}: <span lang={job.language}>{languages[job.language]}</span></>}</p>{job.summary&&<p>{displaySummary(job.summary,t)}</p>}{!!job.attachments?.length&&<div className="reference-links"><span>{u.references}:</span>{job.attachments.map(file=><a key={file.id} href={`/api/jobs/${job.id}/attachments/${file.id}`}>{file.name} ↓</a>)}</div>}<p><a className="download" href={`/jobs/${job.id}`}>{t.details} →</a></p>{job.download&&<a className="download" href={`/api/jobs/${job.id}/download`}>{t.download}</a>}</article>)}</section>}
+ {account?.signedIn&&<section className="history"><p className="eyebrow">{t.private}</p><h2>{t.history}</h2>{!account.jobs?.length?<p className="fineprint">{t.empty}</p>:account.jobs.map(job=><article key={job.id}><div className="job-heading"><h3>{job.title}</h3><span className={`status status-${job.status}`}>{Object.hasOwn(t.statuses,job.status)?t.statuses[job.status as keyof Messages['statuses']]:t.unknownStatus}</span></div><p>{new Date(job.created_at).toLocaleString(locale)}{account.admin&&<> · {executionLabel(job.execution_backend,locale)}</>}{isLocale(job.language)&&<> · {t.pptLanguage}: <span lang={job.language}>{languages[job.language]}</span></>}</p>{job.summary&&<p>{displaySummary(job.summary,t)}</p>}{!!job.attachments?.length&&<div className="reference-files"><p className="fineprint">{u.references}</p><AttachmentPreviews files={job.attachments} hrefFor={file=>`/api/jobs/${job.id}/attachments/${file.id}`}/></div>}<p><a className="download" href={`/jobs/${job.id}`}>{t.details} →</a></p>{job.download&&<a className="download" href={`/api/jobs/${job.id}/download`}>{t.download}</a>}</article>)}</section>}
  </>;
 }

@@ -10,6 +10,11 @@ Current production policy delivers one standalone native PPTX. Author pages in
 order, seek relevant design knowledge/material when the task benefits, and run
 independent content/visual reviews in parallel on the same frozen candidate.
 The visual review checks style against content, purpose, audience and viewing mode.
+One main author owns all native edits and design continuity. Concrete later-page
+search/reference/illustration work can run asynchronously through
+[material preparation](PREFETCH.md); known URLs download with `--submit-only`.
+Ready material still needs the author's inspection and selection. Helpers do not
+author parts, and the separate parallel-authoring prototype is not enabled.
 Expression is chosen from the actual content, evidence, audience, purpose, viewing
 mode and supplied constraints. New presentations require meaningful native click
 reveals; multi-step explanation uses an entry/click/final-view plan. Static covers
@@ -62,6 +67,19 @@ anchored connectors and scaled reading previews support editing and review.
 Historical browser-scene/portable-bundle instructions below describe older versions;
 the single-file production profile disables those paths. Native runtime staging
 does not require building their browser assets.
+
+Current tool runtimes prepare `tool-quickstart.md` and `tool-manifest.json` before
+planning, using the exact configured Python and installed CLI/native-canvas
+interfaces. They leave content, design and branch choices unselected. Frozen
+review packets include `review-index.json`, `review-objects.json` and native-state
+contact sheets. Blind and visual reviewers receive all 900-pixel pages in their
+first multimodal API request; detail images remain available. Source review uses
+the sealed blind report and checks every page's claims against actual sources,
+opening images where meaning or uncertainty requires it. Existing role isolation,
+hash-bound receipts and review judgments remain in force. Corrections bootstrap
+from the host-verified frozen PPTX, preserving its native parts and retained
+partial repairs instead of regenerating an older draft. Historical runtimes keep
+their compatible packet and validated-delivery paths.
 
 New default-provider tasks use `gpt-6.1-sol` with `high` reasoning. Both values are
 pinned in each task's private model receipt and reused on recovery. Existing

@@ -1,0 +1,23 @@
+// Lifecycle of the actual runtime, with deterministic frames and a renderer fixture.
+import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import ts from 'typescript';
+const modules={};function load(path){const exports={};new Function('require','exports',ts.transpileModule(readFileSync(new URL('../'+path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(name=>modules[name],exports);return exports;}
+modules['./water-model']=load('lib/water-model.ts');const instances=[];
+class Renderer{constructor(canvas,field){this.field=field;this.draws=0;this.disposals=0;instances.push(this);}resize(){}draw(){this.draws++;}dispose(){this.disposals++;}}
+modules['./water-renderer']={WaterRenderer:Renderer};const {createWaterRuntime}=load('lib/water-runtime.ts');
+const frames=new Map();let seq=0;globalThis.requestAnimationFrame=fn=>{frames.set(++seq,fn);return seq;};globalThis.cancelAnimationFrame=id=>frames.delete(id);
+const doc=new EventTarget();doc.hidden=false;globalThis.document=doc;const preference=new EventTarget();preference.matches=false;globalThis.window={devicePixelRatio:2,matchMedia:()=>preference};
+const observers=[];globalThis.ResizeObserver=class{constructor(cb){this.cb=cb;observers.push(this);}observe(){}disconnect(){this.disconnected=true;}};globalThis.IntersectionObserver=class{constructor(cb){this.cb=cb;observers.push(this);}observe(){}disconnect(){this.disconnected=true;}};
+const canvas=new EventTarget();const ctx=new Proxy({},{get:(target,key)=>target[key]??(()=>{})});const spray={getContext:()=>ctx};
+const cards=Array.from({length:6},()=>({offsetWidth:800,offsetHeight:450,style:{removeProperty(key){delete this[key];}}}));
+const stage={clientWidth:1200,clientHeight:560,dataset:{},querySelector:name=>name==='.water-canvas'?canvas:spray,querySelectorAll:()=>cards};
+function tick(now){const item=frames.entries().next().value;assert.ok(item);frames.delete(item[0]);item[1](now);}
+const runtime=createWaterRuntime(stage,0);assert.equal(stage.dataset.waterReady,'true');assert.equal(frames.size,1);tick(1000);runtime.setActive(1);runtime.surge(1);assert.ok(instances[0].field.velocity.some(v=>v!==0));const before=cards[1].style.transform;tick(1017);assert.notEqual(cards[1].style.transform,before);assert.ok(instances[0].draws>0);
+runtime.setPaused(true);runtime.setPaused(false);instances[0].field.height.fill(3);instances[0].field.velocity.fill(0);tick(1034);
+const activeY=Number(cards[1].style.transform.match(/,(-?[\d.]+)px,0\)/)[1]);assert.ok(Math.abs(activeY)<=3.2,'Even a strong wave should move the centered card by only a few pixels');
+runtime.setPaused(true);assert.equal(frames.size,0);assert.equal(stage.dataset.waterMotion,'still');const energy=instances[0].field.energy();runtime.disturb(.5,.5,1);assert.equal(instances[0].field.energy(),energy);runtime.setActive(2);assert.ok(cards[2].style.transform.includes('0.00px'));runtime.setPaused(false);assert.equal(frames.size,1);
+doc.hidden=true;doc.dispatchEvent(new Event('visibilitychange'));assert.equal(frames.size,0);doc.hidden=false;doc.dispatchEvent(new Event('visibilitychange'));assert.equal(frames.size,1);
+const visibility=observers.find(o=>o instanceof IntersectionObserver);visibility.cb([{isIntersecting:false}]);assert.equal(frames.size,0);visibility.cb([{isIntersecting:true}]);assert.equal(frames.size,1);
+preference.matches=true;preference.dispatchEvent(new Event('change'));assert.equal(frames.size,0);preference.matches=false;preference.dispatchEvent(new Event('change'));assert.equal(frames.size,1);
+canvas.dispatchEvent(new Event('webglcontextlost',{cancelable:true}));assert.equal(frames.size,0);assert.equal(instances[0].disposals,1);assert.equal(stage.dataset.waterRenderer,'fallback');canvas.dispatchEvent(new Event('webglcontextrestored'));assert.equal(instances.length,2);assert.equal(frames.size,1);assert.equal(stage.dataset.waterRenderer,'webgl');
+runtime.dispose();assert.equal(frames.size,0);assert.equal(instances[1].disposals,1);assert.ok(observers.every(o=>o.disconnected));assert.ok(cards.every(c=>!c.style.transform));assert.equal(stage.dataset.waterReady,undefined);doc.dispatchEvent(new Event('visibilitychange'));preference.dispatchEvent(new Event('change'));assert.equal(frames.size,0);runtime.dispose();assert.equal(instances[1].disposals,1);
+console.log('PASS: real runtime frame scheduling, wave-driven motion, pause/resume, input suppression while paused, hidden/offscreen/reduced-motion suspension, WebGL loss/restoration, observer/listener/renderer teardown and idempotent disposal.');

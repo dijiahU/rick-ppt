@@ -72,7 +72,9 @@ class AuxiliaryTools:
             def event(value):
                 events.append(value)
                 capture(self.trajectory,'emit','auxiliary.event',{'request_id':ident,'event':value})
-            with AppServer(cwd=workspace,config=config,on_event=event,tick=self.tick) as server:
+            meter=self.cfg.get('_usage_ledger')
+            usage_options={'on_usage':meter.codex_sink(self.cfg.get('_usage_stage','auxiliary')+'.'+tool,config['model'])} if meter else {}
+            with AppServer(cwd=workspace,config=config,on_event=event,tick=self.tick,**usage_options) as server:
                 thread=server.start_thread()['thread']['id']
                 turn=server.start_turn(thread,prompt)['id']
                 result=server.wait_turn(thread,turn,timeout=300 if tool=='pptx_generate_image' else 150)
@@ -85,9 +87,18 @@ class AuxiliaryTools:
                     if self.importer:imported.imported=dict(self.importer.imported)
                     before=set(imported.imported);imported.import_images()
                     output['files']=[r for key,r in imported.imported.items() if key not in before]
-                    if self.importer:self.importer.imported=imported.imported
+                    # The author and async material broker share this registry.
+                    # Preserve its identity so a synchronous image import cannot
+                    # leave later publication working from an obsolete snapshot.
+                    if self.importer:self.importer.imported.update(imported.imported)
                     if not output['files']:return self.reply(False,'No actual generated PNG was imported; do not claim generation succeeded')
-                self.calls.append({'tool':tool,'model':config['model'],'seconds':round(time.monotonic()-started,3),'usage':server.usage.get((thread,turn),{})})
+                observed_tools={}
+                for event in events:
+                    kind=(event.get('item') or {}).get('type')
+                    if event.get('type')=='item.completed' and kind not in (None,'agent_message','plan'):
+                        observed_tools[kind]=observed_tools.get(kind,0)+1
+                self.calls.append({'tool':tool,'model':config['model'],'seconds':round(time.monotonic()-started,3),
+                    'usage':server.usage.get((thread,turn),{}),'tool_events':observed_tools})
                 folder=self.job/'retained-tool-evidence';folder.mkdir(exist_ok=True)
                 # Use the same no-follow atomic publication as other host outputs.
                 from web_media import WebMediaBroker

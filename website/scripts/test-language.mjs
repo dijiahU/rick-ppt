@@ -21,14 +21,14 @@ const attachmentMigration=new URL('../drizzle/0003_conscious_bug.sql',import.met
 db.exec(existsSync(attachmentMigration)?readFileSync(attachmentMigration,'utf8'):'ALTER TABLE jobs ADD attachments TEXT');
 assert.equal(db.prepare("SELECT language FROM jobs WHERE id='legacy'").get().language,null);
 // Queue recovery returns summary; mirror that production column in the fixture.
-db.exec('ALTER TABLE jobs ADD COLUMN summary TEXT');
+db.exec('ALTER TABLE jobs ADD COLUMN summary TEXT; ALTER TABLE jobs ADD COLUMN execution_backend TEXT');
 let i=0;for(const language of Object.keys(languages)){
- const id=String(++i);const args=[id,'test',id,'中文主题','中文需求内容',5,'Designer choice',language,null,i,i,0,'test'];
+ const id=String(++i);const args=[id,'test',id,'中文主题','中文需求内容',5,'Designer choice',language,'codex',null,i,i,0,'test'];
  assert.equal(db.prepare(INSERT_JOB).get(...args).id,id);
  assert.equal(db.prepare(INSERT_JOB).get(...args),undefined);
- const task=db.prepare(CLAIM_JOB).get('lease',i);assert.equal(task.language,language);assert.equal(task.title,'中文主题');
+ const task=db.prepare(CLAIM_JOB).get('lease',i,0,1);assert.equal(task.language,language);assert.equal(task.title,'中文主题');
  db.prepare("UPDATE jobs SET status='complete' WHERE id=?").run(id);
 }
-for(let n=6;n<=10;n++)assert.ok(db.prepare(INSERT_JOB).get(String(n),'test',String(n),'title','brief',5,'test','en',null,n,n,0,'test'));
-assert.equal(db.prepare(INSERT_JOB).get('11','test','11','title','brief',5,'test','en',null,11,11,0,'test'),undefined);
+for(let n=6;n<=10;n++)assert.ok(db.prepare(INSERT_JOB).get(String(n),'test',String(n),'title','brief',5,'test','en','codex',null,n,n,0,'test'));
+assert.equal(db.prepare(INSERT_JOB).get('11','test','11','title','brief',5,'test','en','codex',null,11,11,0,'test'),undefined);
 console.log('PASS: five complete dictionaries, locale allowlist, lossless migration, immutable language through SQL queue, idempotency and 10-trial quota');

@@ -22,7 +22,8 @@ The Sites development sign-in is a simulated local account, never a production u
 Initialize a fresh local database with:
 
 ```
-npx wrangler d1 execute DB --config scripts/local-db.json --local --persist-to .wrangler/state --file drizzle/0000_absurd_virginia_dare.sql
+npx wrangler d1 execute DB --config scripts/local-db.json --local --persist-to .wrangler/state --file drizzle/0000_absurd_mongoose.sql
+npx wrangler d1 execute DB --config scripts/local-db.json --local --persist-to .wrangler/state --file drizzle/0001_misty_tyger_tiger.sql
 ```
 
 Run scripts/test-local.py with Python 3.11 to test local auth, CSRF, validation,
@@ -36,6 +37,32 @@ polls /api/worker, claims one job, renews its lease, then uploads a validated PP
 Three-minute stale jobs fail rather than replay automatically. A thirty-minute execution budget
 is enforced by the bridge. Website remains available when the bridge is offline; queued jobs wait.
 The local runner source and credential are not part of this public site repository.
+
+The form preselects local Codex (Astra, high) for new submissions and after reset; API remains selectable. Each submitted request must include `execution_backend: "api" | "codex"`. Historical task labels retain their original generic route description.
+Missing/invalid values are rejected before
+quota admission; the choice is retained through revision, retry and resume.
+Historical rows stay nullable and display “method not recorded”, with no inferred
+default. An idempotency key cannot be reused to switch methods.
+
+Workers advertise `execution_backends: ["api", "codex"]` (or the subset actually
+available) in their claim request and may refresh it with job heartbeats. Only
+eligible jobs are claimed in FIFO order, using the existing ID tie-break and
+global three-slot limit. Workers without this capability field may claim only
+legacy null rows. The account API exposes boolean `executionAvailability`,
+never provider credentials or configuration. An online unavailable method is
+disabled in the form; an offline worker still permits explicit queued requests.
+
+The nullable fields are appended by Drizzle migration `0001_misty_tyger_tiger`.
+Sites applies schema migrations before deploying the Worker. Do not add these
+columns during request handling or rewrite historical rows. Run each local SQL
+migration once; the fresh-database commands above must not target hosted D1.
+
+Local validation includes `scripts/test-execution-backend.mjs` (actual route
+handlers with isolated SQLite/R2), covering authorization, required choice,
+quota/idempotency, immutable route, worker compatibility, availability, preserved
+editing scope, FIFO and concurrency. `scripts/test-task-mode-form.mjs` renders
+the actual form in five languages and checks required blank selection,
+unavailability, offline queuing and truthful historical labels.
 
 Anonymous visitors can read the landing page, not account history or downloads.
 Do not store confidential material here. No user-provided shell commands are executed by the web server.
@@ -180,3 +207,58 @@ Final delivery records can arrive after completion under the same lease, without
 changing the task status or quota. Public progress remains a separate allowlisted
 summary. No new database migration, sharing policy, or authentication is required.
 Validation: `scripts/test-admin-trace.mjs` and `scripts/test-trace-room.mjs`.
+
+## Reference uploads
+
+New-task inputs and conversation messages accept up to 10 attachments, 20 MiB per
+file and 200 MiB combined. The UI displays these as MB, matching the existing
+binary size calculations. The browser uploads files sequentially to `/api/uploads`
+with a `job:<requestKey>` or `message:<jobId>:<messageId>` scope, then submits only
+the returned `uploadIds` with the normal task/message JSON. Ownership, scope,
+expiry, count, sizes and stored metadata are checked server-side. Final objects
+are copied through R2 streams, so the entire input never enters Worker memory.
+
+Confirmed clients delete their temporary uploads; missing acknowledgements remain
+safe to retry. Unconfirmed temporary objects are valid for 24 hours and are kept
+for retry/recovery; the expiry check does not itself delete abandoned objects.
+Legacy direct multipart submissions retain a 20 MiB aggregate request limit;
+larger inputs must use the staged upload route. Uploading references does not
+create a task or consume another task quota. Production receivers use the same
+10-file / 20 MiB each / 200 MiB combined metadata bounds.
+
+Validation: `scripts/test-staged-uploads.mjs` transfers actual 200 MiB inputs
+through both real handlers with isolated SQLite and disposable disk-backed R2,
+checks streaming copies and tests scope/owner/expiry checks, cleanup and retries.
+
+Image attachments have clickable thumbnails in the selection list, task history,
+task details, conversations and the administrator view. The existing preview
+dialog offers fit-to-screen and original-size scrolling. PNG/JPEG preview
+responses opt in with `preview=1`; other files and ordinary links remain downloads.
+Owner and administrator routes retain separate authorization and private caching.
+Validation: `scripts/test-attachment-previews.mjs` and conversation route tests.
+
+Word, PDF and UTF-8 text/Markdown/CSV attachments also open in the preview dialog.
+PDF uses the browser's page viewer; Word shows a bounded text-content preview,
+including both languages, with original formatting/images retained in the download.
+Office XML is read locally in the browser; no external document viewer receives
+the files. Only the Word body XML is decompressed, within archive/text bounds,
+and extracted text is rendered as text rather than executable HTML. Long previews
+are explicitly marked as excerpts. PPTX attachments remain downloads.
+Validation: `scripts/test-document-preview.mjs`, also run against the uploaded
+course Word file without copying that private document into the source repository.
+
+## Internal model usage
+
+The administrator task detail includes a private usage ledger. Worker uploads to
+`POST /api/worker/:id/usage` require its credential and the current task lease.
+`GET /api/admin/jobs/:id/usage` authorizes administrators before reading storage.
+The additive `task_usage` table initializes on first authenticated use. Public
+job, conversation and progress APIs do not expose these records.
+
+API requests and local Codex turns are separate. Receipt IDs make uploads
+idempotent; versioned cumulative local snapshots replace earlier snapshots.
+Historical attempts survive resume. Missing usage/cost stays unknown. Configured
+supplier rates and calculated token costs are frozen per API receipt; search,
+image and other charges are not inferred. No automatic charging is enabled.
+Host price setup and limitations are documented in the companion runner USAGE.md.
+Validation: `node scripts/test-usage.mjs` (isolated SQLite and actual route auth).

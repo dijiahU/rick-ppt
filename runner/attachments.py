@@ -9,12 +9,14 @@ import zipfile
 from PIL import Image
 
 EXTENSIONS={'pdf','pptx','docx','txt','md','csv','png','jpg','jpeg'}
-MAX_FILE=10*1024*1024
+MAX_FILES=10
+MAX_FILE=20*1024*1024
+MAX_TOTAL=200*1024*1024
 
 def metadata(value):
     if value is None:return []
     if isinstance(value,str):value=json.loads(value)
-    if not isinstance(value,list) or len(value)>3:raise ValueError('Invalid attachment list')
+    if not isinstance(value,list) or len(value)>MAX_FILES:raise ValueError('Invalid attachment list')
     result=[]
     for item in value:
         if not isinstance(item,dict):raise ValueError('Invalid attachment metadata')
@@ -25,7 +27,7 @@ def metadata(value):
         if type(size) is not int or not 0<size<=MAX_FILE:raise ValueError('Invalid attachment size')
         if not isinstance(digest,str) or not re.fullmatch('[0-9a-f]{64}',digest):raise ValueError('Invalid attachment checksum')
         result.append(dict(id=ident,name=name,ext=ext,size=size,sha256=digest))
-    if len({x['id'] for x in result})!=len(result) or sum(x['size'] for x in result)>20*1024*1024:raise ValueError('Attachment limits exceeded')
+    if len({x['id'] for x in result})!=len(result) or sum(x['size'] for x in result)>MAX_TOTAL:raise ValueError('Attachment limits exceeded')
     return result
 
 def validate_content(data,ext):

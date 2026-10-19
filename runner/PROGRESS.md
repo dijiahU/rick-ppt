@@ -14,6 +14,10 @@ records reach the site; raw assistant messages and research notes are not publis
    Open the returned PNG, repair/rerender before the next page. Do not publish
    review-state copies as actual deck pages. The host replaces final previews with
    independently verified final renders.
+   Keep one main author for all page designs and edits. Use PREFETCH.md to start
+   concrete later-page source/material preparation, then continue the current
+   page. Check several request IDs near use; do not wait for the entire queue or
+   repeatedly poll. Inspect and select returned material before using it.
 4. Republish outline.json whenever page content/order changes. Previews affected
    by a content change are cleared until their new native render arrives.
 5. The host runs independent content and visual reviews after the author draft.

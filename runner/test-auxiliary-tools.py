@@ -1,6 +1,9 @@
 import json,tempfile,unittest
+import io
 from pathlib import Path
 from unittest.mock import patch
+from PIL import Image
+from assets import AssetImporter
 import auxiliary_tools as a
 
 class FakeServer:
@@ -39,5 +42,19 @@ class Tests(unittest.TestCase):
     def test_transport_failure_is_an_explicit_tool_failure(self):
         with patch.object(a,'AppServer',side_effect=a.TransportError('private error contents')):result=self.aux.handle({'tool':'pptx_search_sources','arguments':{'request':'Evidence'}})
         self.assertFalse(result['success']);self.assertNotIn('private error',result['contentItems'][0]['text'])
+    def test_sync_generation_keeps_shared_registry_and_actual_asset(self):
+        generated=self.job/'generated/thread';generated.mkdir(parents=True)
+        blob=io.BytesIO();Image.new('RGB',(8,8),'blue').save(blob,format='PNG')
+        (generated/'exec-11111111-1111-1111-1111-111111111111.png').write_bytes(blob.getvalue())
+        shared={};author=AssetImporter(self.job);author.imported=shared
+        aux=a.AuxiliaryTools(self.cfg,self.job,importer=author)
+        def importer(job,**kw):return AssetImporter(job,generated_root=generated.parent,**kw)
+        with patch.object(a,'AppServer',FakeServer),patch.object(a,'AssetImporter',side_effect=importer):
+            result=aux.handle({'tool':'pptx_generate_image','arguments':{'request':'Original concept'}})
+        self.assertTrue(result['success']);self.assertIs(author.imported,shared)
+        self.assertEqual(len(shared),1)
+        index=json.loads((self.job/'assets/index.json').read_text())['images']
+        self.assertEqual(index,list(shared.values()))
+        self.assertEqual((self.job/'assets'/index[0]['file']).read_bytes(),blob.getvalue())
 
 if __name__=='__main__':unittest.main()

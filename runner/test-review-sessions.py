@@ -1,4 +1,6 @@
 """Completed-pass recovery tests; no website, model, native renderer or live task."""
+import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -7,12 +9,13 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from progress import Reporter
 from review_sessions import (ReviewRole, ReviewSessionError, _load_attempt, _publish,
-                             _read_record, encoded)
+                             _read_record, encoded, file_receipt, environment_receipt)
 from workflow import Execution,validate_report
 
 
@@ -52,6 +55,7 @@ class ReviewRecoveryTests(unittest.TestCase):
                                     environment=lambda root:{},render_requests=lambda *args,**kwargs:None)
         self.artifact=b'EXACT FROZEN PPTX FIXTURE'
         self.calls=[];self.failure=None;self.mutate=None
+        self.source_identity=None
         self.run=self.execution()
 
     def execution(self):
@@ -59,6 +63,7 @@ class ReviewRecoveryTests(unittest.TestCase):
         run=Execution(self.bridge,self.cfg,self.task,self.job,SimpleNamespace(check=lambda:None),reporter)
         self.addCleanup(run.trace.close)
         run.phase=self.phase
+        run.render_source_identity=self.source_identity
         return run
 
     def phase(self,name,prompt,**kwargs):
@@ -103,6 +108,17 @@ class ReviewRecoveryTests(unittest.TestCase):
         evidence_prompt=next(prompt for name,_,prompt in self.calls if name.startswith('content-evidence'))
         self.assertIn('read the actual exported notes',evidence_prompt)
 
+    def test_legacy_packet_keeps_historical_policy_prompt_for_report_reuse(self):
+        self.review()
+        reference=self.plugin/'skills/pptx/references'
+        prompts={name:prompt for name,_,prompt in self.calls}
+        self.assertIn(f' Read {reference}/content-review.md. First audience pass:',prompts['content-first-1'])
+        self.assertIn(f' Read {reference}/content-review.md, request.json and original attachments.',prompts['content-evidence-1'])
+        self.assertIn(f' Read {reference}/visual-review.md and request.json. Check sequence',prompts['visual-1'])
+        self.assertTrue(all('Trusted content-review policy:' not in p and 'Trusted visual-review policy:' not in p for p in prompts.values()))
+        self.review(self.execution())
+        self.assertEqual(len(self.calls),3)
+
     def test_v3_visual_review_requires_actual_design_assessment(self):
         catalog=self.plugin/'skills/pptx/assets/workflow-choices.json';catalog.parent.mkdir();catalog.write_text('{"version":3}')
         with self.assertRaisesRegex(ValueError,'audience fit'):self.review()
@@ -111,12 +127,190 @@ class ReviewRecoveryTests(unittest.TestCase):
         value['design_assessment']['sequence']=''
         with self.assertRaises(ValueError):validate_report(value,2,require_design=True)
 
+    def test_historical_prepared_index_keeps_routing_prompt_and_cached_reports(self):
+        images=[]
+        for number,path in enumerate(self.pages,1):
+            body=Path(path).read_bytes();name=f'reading-page-{number}.png'
+            (self.packet/name).write_bytes(body)
+            images.append({'path':name,'page':number,'sha256':hashlib.sha256(body).hexdigest(),'bytes':len(body)})
+        (self.packet/'review-index.json').write_text(json.dumps({
+            'schema':'native-review-index/v1','reading_pages':images,'state_contacts':[],
+            'page_contacts':[],'slides':[{'page':number,'text':'Actual page text'} for number in (1,2)]}))
+        self.review()
+        for _,_,prompt in self.calls:
+            self.assertIn('Read references/workflow-branches.md in the plugin',prompt)
+            self.assertNotIn('Applicable review routing is defined here',prompt)
+            self.assertNotIn('ROLE-SCOPED SUPPLEMENTAL EVIDENCE',prompt)
+        recovered=self.execution();self.review(recovered)
+        self.assertEqual(len(self.calls),3)
+        self.assertTrue(all(stage['reused_validated_report'] for stage in recovered.stages))
+
     def test_reviewers_share_the_saved_output_language_with_author(self):
         self.task['language']='fr';self.payload['language']='fr'
         self.review()
         for _,_,prompt in self.calls:
             self.assertIn('French (fr)',prompt)
             self.assertIn('saved selection governs output language',prompt)
+
+    def test_absolute_attachment_paths_are_local_to_evidence_and_visual_contexts(self):
+        self.payload['attachments'][0]['path']=str(self.job/'references/source.txt')
+        original=self.phase
+        def inspect(name,prompt,**kwargs):
+            root=kwargs['root']
+            if name.startswith(('content-evidence','visual')):
+                request=json.loads((root/'request.json').read_text())
+                self.assertEqual(request['attachments'][0]['path'],'references/source.txt')
+                self.assertEqual((root/request['attachments'][0]['path']).read_text(),'Original source attachment')
+            # Existing fixture validates the saved request on the evidence pass.
+            saved=self.payload
+            self.payload={**saved,'attachments':[{**saved['attachments'][0],'path':'references/source.txt'}]}
+            try:return original(name,prompt,**kwargs)
+            finally:self.payload=saved
+        self.run.phase=inspect
+        self.review()
+        self.assertTrue(Path(self.payload['attachments'][0]['path']).is_absolute())
+
+    def test_recovered_attachment_aliases_resolve_without_exposing_author_root(self):
+        previous=self.root/'previous-author'
+        self.payload['attachments'][0]['path']=str(previous/'references/source.txt')
+        self.run.journal=SimpleNamespace(state={'input_revision':0,'plugin_version':'fixture-v1',
+            'recoveries':{'known':{'previous_workspace':str(previous),'workspace':str(self.job)}}})
+        root=self.bridge.prepare(self.cfg)
+        self.run.reviewer_request(root,self.payload)
+        self.assertEqual(json.loads((root/'request.json').read_text())['attachments'][0]['path'],'references/source.txt')
+        self.assertEqual((root/'references/source.txt').read_text(),'Original source attachment')
+        self.assertFalse((root/'source-notes.md').exists())
+
+    def test_attachment_outside_verified_task_roots_is_rejected(self):
+        outside=self.root/'unrelated.txt';outside.write_text('Not a task original')
+        self.payload['attachments'][0]['path']=str(outside)
+        root=self.bridge.prepare(self.cfg)
+        with self.assertRaisesRegex(ValueError,'outside this task'):
+            self.run.reviewer_request(root,self.payload)
+
+    def environment(self, **changes):
+        value={'source_sha256':'a'*64,'requested_fonts':['Noto Sans CJK SC'],
+               'resolved_fonts':{'Noto Sans CJK SC':'Noto Sans CJK SC'},
+               'renderer_image':'fixture-renderer:1','renderer_version':'fixture 1',
+               'dpi':100,'input_path':'/tmp/pptx-lab-job-first/preview.pptx'}
+        value.update(changes)
+        (self.packet/'render-environment.json').write_text(json.dumps(value,indent=2))
+        return value
+
+    def test_temporary_root_relocation_reuses_completed_reports(self):
+        self.environment();self.review()
+        self.environment(input_path='/private/var/folders/ab/user/T/pptx-lab-resume-second/preview.pptx')
+        resumed=self.execution();self.review(resumed)
+        self.assertEqual(len(self.calls),3)
+        self.assertTrue(all(stage['reused_validated_report'] for stage in resumed.stages))
+
+    def test_render_conditions_and_unknown_fields_still_invalidate(self):
+        for change in ({'resolved_fonts':{'Noto Sans CJK SC':'Fallback Sans'}},
+                       {'renderer_version':'fixture 2'},{'renderer_image':'fixture-renderer:2'},
+                       {'dpi':120},{'source_sha256':'b'*64},{'unknown_condition':'new'}):
+            with self.subTest(change=change):
+                self.environment();self.review();before=len(self.calls)
+                self.environment(**change);self.review(self.execution())
+                self.assertEqual(len(self.calls),before+3)
+                # This subcase's next baseline may safely reuse existing receipts.
+
+    def source_packages(self):
+        hashes={}
+        for date in ((2020,1,1,0,0,0),(2026,10,13,0,0,0)):
+            data=io.BytesIO()
+            with zipfile.ZipFile(data,'w') as archive:
+                item=zipfile.ZipInfo('ppt/slides/slide1.xml',date)
+                archive.writestr(item,b'<native>same parts</native>')
+            body=data.getvalue()
+            # Synthetic host resolver independently verifies actual ZIP entry
+            # payloads, rather than believing environment self-claims.
+            with zipfile.ZipFile(io.BytesIO(body)) as archive:
+                parts={name:hashlib.sha256(archive.read(name)).hexdigest() for name in archive.namelist()}
+            hashes[hashlib.sha256(body).hexdigest()]=hashlib.sha256(encoded(parts)).hexdigest()
+        self.source_identity=hashes.get;self.run.render_source_identity=self.source_identity
+        return list(hashes)
+
+    def legacy_review(self):
+        # Emulate the old byte-based environmental identity and role contexts.
+        # Old files are not rewritten into new receipts after this fixture run.
+        with patch('review_sessions.environment_receipt',side_effect=lambda body,*args:file_receipt(body)):
+            return self.review()
+
+    def test_legacy_completed_reports_reuse_only_verified_repacked_source(self):
+        first,second=self.source_packages()
+        self.environment(source_sha256=first);self.legacy_review()
+        old={str(p):p.read_bytes() for p in (self.root/'records/review-sessions').rglob('*.json')}
+        self.environment(source_sha256=second,input_path='/tmp/pptx-lab-resume-second/preview.pptx')
+        resumed=self.execution();self.review(resumed)
+        self.assertEqual(len(self.calls),3)
+        self.assertTrue(all(stage['reused_validated_report'] for stage in resumed.stages))
+        for name,body in old.items():self.assertEqual(Path(name).read_bytes(),body)
+
+    def test_legacy_environment_can_be_verified_from_completed_context(self):
+        first,second=self.source_packages()
+        self.environment(source_sha256=first);self.legacy_review()
+        for path in (self.root/'records/review-sessions').rglob('environment-*.json'):path.unlink()
+        self.environment(source_sha256=second);self.review(self.execution())
+        self.assertEqual(len(self.calls),3)
+
+    def test_legacy_pending_pass_remains_pending_after_equivalent_repack(self):
+        first,second=self.source_packages();self.environment(source_sha256=first)
+        self.failure='content-evidence'
+        with self.assertRaises(TimeoutError):self.legacy_review()
+        pending=next(s for s in self.attempts() if s['context']['role']=='content-evidence')
+        self.environment(source_sha256=second);self.failure=None;self.review(self.execution())
+        self.assertEqual([name for name,_,_ in self.calls],
+            ['content-first-1','content-evidence-1','content-evidence-1','visual-1'])
+        old_pending=[s for s in self.attempts() if s.get('thread_id')==pending['thread_id']]
+        self.assertEqual(old_pending[0]['status'],'pending')
+
+    def test_legacy_tampered_report_is_rejected_even_with_verified_source_alias(self):
+        first,second=self.source_packages();self.environment(source_sha256=first);self.legacy_review()
+        path=next(p for p in (self.root/'records/review-sessions').rglob('report-*.json') if 'content-first' in p.parts)
+        path.write_text('{"forged":"report"}')
+        self.environment(source_sha256=second)
+        with self.assertRaisesRegex(ReviewSessionError,'checksum'):self.review(self.execution())
+        self.assertEqual(len(self.calls),3)
+
+    def test_legacy_changed_source_without_zip_proof_is_not_reused(self):
+        self.environment();self.legacy_review()
+        self.environment(source_sha256='b'*64)
+        self.review(self.execution());self.assertEqual(len(self.calls),6)
+
+    def test_legacy_raw_environment_tampering_is_rejected(self):
+        first,second=self.source_packages();self.environment(source_sha256=first);self.legacy_review()
+        stored=next((self.root/'records/review-sessions').rglob('environment-*.json'))
+        stored.write_text('{"source_sha256":"forged"}')
+        self.environment(source_sha256=second)
+        with self.assertRaisesRegex(ReviewSessionError,'environment checksum'):
+            self.review(self.execution())
+        self.assertEqual(len(self.calls),3)
+
+    def test_font_file_paths_are_not_normalized_as_machine_noise(self):
+        self.environment(font_file='/tmp/pptx-lab-job-first/custom-font.ttf');self.review()
+        self.environment(font_file='/tmp/pptx-lab-resume-second/custom-font.ttf')
+        self.review(self.execution());self.assertEqual(len(self.calls),6)
+
+    def test_attachment_original_checksum_is_checked_before_review(self):
+        self.payload['attachments'][0]['sha256']='f'*64
+        with self.assertRaisesRegex(ValueError,'attachment checksum changed'):
+            self.review()
+        # Source material is prepared before the blind model call. A corrupt
+        # attachment fails locally without spending a blind API request.
+        self.assertEqual([name for name,_,_ in self.calls],[])
+
+    def test_verified_source_does_not_override_environment_self_claims(self):
+        first,_=self.source_packages()
+        value=self.environment(source_sha256=first,source_parts_sha256='f'*64)
+        with self.assertRaisesRegex(ReviewSessionError,'disagrees'):
+            environment_receipt(json.dumps(value).encode(),self.source_identity)
+
+    def test_legacy_repack_does_not_hide_changed_pixels_or_requirements(self):
+        first,second=self.source_packages();self.environment(source_sha256=first);self.legacy_review()
+        self.environment(source_sha256=second);Path(self.pages[0]).write_bytes(b'CHANGED PIXELS')
+        self.review(self.execution());self.assertEqual(len(self.calls),6)
+        self.payload['brief']='CHANGED REQUIREMENT';self.review(self.execution())
+        self.assertEqual([name for name,_,_ in self.calls[-2:]],['content-evidence-1','visual-1'])
 
     def attempts(self):
         return [_load_attempt(path.parent)[0] for path in (self.root/'records/review-sessions').rglob('00000000-*.json')]

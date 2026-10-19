@@ -145,6 +145,28 @@ use accessible author teaching or excerpts when full access is unavailable.
 
 ## Choose assets for their explanatory job
 
+### Prepare ahead without splitting authorship
+
+One main author maintains the deck's narrative, visual direction and sequential
+native edits. Independent searches, source inspection and candidate asset work
+can overlap current-page composition when the host exposes asynchronous helpers.
+After resolving evidence essential to planning, submit concrete later-page needs
+in a batch and continue authoring; planning may retain the existing planned
+asset status until acquisition. Choose lookahead by dependencies, without a
+fixed page count or search quota. Check several results near their point of use;
+never busy-poll or wait for every later asset before starting the deck.
+
+Give each request stable page IDs, its specific question/purpose, source limits
+and the needed asset role. Helpers do not set the page's final composition or edit
+the deck, outline or author notes. The main author inspects returned evidence and
+actual files, chooses them, records provenance/application and updates the plan.
+Prepared is not accepted or visually inspected by the author. Preserve actual
+inspection limits, generated/documentary distinctions, existing acquisition
+limits and failure routes. Reuse valid completed work on resume; changed relevant
+inputs need a fresh decision, not automatic regeneration. Ordinary chat is not a
+content revision. When no async helper exists, batch independent available tool
+calls without inventing a background capability.
+
 - When a chosen image establishes a real identity/place/event, inspect its provenance and context. Generated imagery is illustrative, never documentary evidence.
 - When choosing a scientific/mechanical visual, ground its geometry, relationships and labels in authoritative evidence; simplification must preserve the mechanism.
 - For quantitative comparisons, select a representation that supports the actual comparison and required editability, with units and traceable data; no automatic chart/table choice.

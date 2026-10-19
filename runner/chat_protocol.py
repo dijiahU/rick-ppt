@@ -325,8 +325,10 @@ def response_sse_events(response):
         start['status'] = 'in_progress'
         if item['type'] == 'message':
             start['content'] = []
-        else:
+        elif item['type'] in ('function_call', 'custom_tool_call'):
             start['input' if item['type'] == 'custom_tool_call' else 'arguments'] = ''
+        elif item['type'] == 'reasoning' and 'summary' in start:
+            start['summary'] = []
         emit('response.output_item.added', output_index=index, item=start)
         if item['type'] == 'message':
             for ci, part in enumerate(item['content']):
@@ -336,16 +338,34 @@ def response_sse_events(response):
                 common = {'item_id': item['id'], 'output_index': index, 'content_index': ci}
                 emit('response.content_part.added', **common, part=empty)
                 prefix = 'response.refusal' if text_kind == 'refusal' else 'response.output_text'
-                emit(prefix + '.delta', **common, delta=part[text_kind])
+                for offset in range(0, len(part[text_kind]), 8192):
+                    emit(prefix + '.delta', **common, delta=part[text_kind][offset:offset + 8192])
                 emit(prefix + '.done', **common, **{text_kind: part[text_kind]})
                 emit('response.content_part.done', **common, part=part)
-        else:
+        elif item['type'] in ('function_call', 'custom_tool_call'):
             custom = item['type'] == 'custom_tool_call'
             field = 'input' if custom else 'arguments'
             prefix = 'response.custom_tool_call_input' if custom else 'response.function_call_arguments'
             common = {'item_id': item['id'], 'output_index': index}
-            emit(prefix + '.delta', **common, delta=item[field])
+            for offset in range(0, len(item[field]), 8192):
+                emit(prefix + '.delta', **common, delta=item[field][offset:offset + 8192])
             emit(prefix + '.done', **common, **{field: item[field]})
+        elif item['type'] == 'reasoning':
+            for si, summary in enumerate(item.get('summary', [])):
+                common = {'item_id': item['id'], 'output_index': index, 'summary_index': si}
+                empty = copy.deepcopy(summary)
+                empty['text'] = ''
+                emit('response.reasoning_summary_part.added', **common, part=empty)
+                text = summary.get('text', '')
+                for offset in range(0, len(text), 8192):
+                    emit('response.reasoning_summary_text.delta', **common, delta=text[offset:offset + 8192])
+                emit('response.reasoning_summary_text.done', **common, text=text)
+                emit('response.reasoning_summary_part.done', **common, part=summary)
+        # Native hosted/state items are opaque. Carry their original item bytes
+        # in output_item.done and the terminal response without inventing tool
+        # arguments or dropping encrypted reasoning state.
         emit('response.output_item.done', output_index=index, item=item)
-    emit('response.incomplete' if response['status'] == 'incomplete' else 'response.completed', response=response)
+    if response['status'] not in ('completed', 'incomplete', 'failed'):
+        raise ProtocolError('Cannot replay a nonterminal response')
+    emit('response.' + response['status'], response=response)
     return events

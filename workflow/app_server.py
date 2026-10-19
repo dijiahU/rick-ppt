@@ -230,7 +230,8 @@ class AppServer:
                  command: list[str] | None = None, on_event: Callable[[dict], None] | None = None,
                  on_public: Callable[[dict], None] | None = None, tick: Callable[[], None] | None = None,
                  secrets: tuple[str, ...] = (), request_timeout: float = 30, max_line: int = MAX_LINE,
-                 provider_env: dict | None = None, on_tool_call: Callable[[dict], dict] | None = None):
+                 provider_env: dict | None = None, on_tool_call: Callable[[dict], dict] | None = None,
+                 on_usage: Callable[[dict], None] | None = None):
         self.cwd = Path(cwd).resolve(strict=True)
         self.config = copy.deepcopy(config)
         self.env = child_environment(self.cwd, env)
@@ -244,6 +245,7 @@ class AppServer:
         self.command = command or command_for(self.config)
         self.on_event, self.on_public, self.tick = on_event, on_public, tick
         self.on_tool_call = on_tool_call
+        self.on_usage = on_usage
         self.secrets, self.request_timeout, self.max_line = secrets, request_timeout, max_line
         self.process = None
         self._queue = queue.Queue(maxsize=4096)
@@ -368,6 +370,13 @@ class AppServer:
         if self.on_public:
             self.on_public(event)
 
+    def _report_usage(self, event: dict):
+        try:
+            self.on_usage(copy.deepcopy(event))
+        except Exception:
+            # Accounting failure must not trigger a second model generation.
+            print('Usage receipt capture failed; inspect private host storage.', flush=True)
+
     def _assistant(self, params: dict, item: dict | None = None, *, completed=False):
         key = (params.get("threadId"), params.get("turnId"), item.get("id") if item else params.get("itemId"))
         message = self._messages.setdefault(key, {"text": "", "phase": None, "completed": False, "published": ""})
@@ -450,6 +459,8 @@ class AppServer:
                 if turn.get("error"):
                     event["error"] = {"message": "Codex turn failed", **error_metadata(turn["error"])}
                 self._emit(event)
+                if self.on_usage:
+                    self._report_usage(event)
         elif method == "thread/tokenUsage/updated":
             key = (thread_id, turn_id)
             usage = params.get("tokenUsage", {})
@@ -463,6 +474,8 @@ class AppServer:
             for out, source in names.items():
                 current[out] += max(0, int(total.get(source, 0)) - int(previous.get(source, 0))) if previous is not None else max(0, int(last.get(source, 0)))
             self._usage_last_total[key] = copy.deepcopy(total)
+            if self.on_usage:
+                self._report_usage({'thread_id': thread_id, 'turn_id': turn_id, 'usage': copy.deepcopy(current)})
         elif method == "item/agentMessage/delta":
             self._assistant(params)
         elif method in ("item/started", "item/completed"):
@@ -558,8 +571,19 @@ class AppServer:
         return result
 
     def start_turn(self, thread_id: str, text: str, *, client_message_id: str | None = None,
-                   output_schema: dict | None = None, request_id: str | None = None) -> dict:
+                   output_schema: dict | None = None, request_id: str | None = None,
+                   images: list[Path | str] | None = None) -> dict:
         params = {"threadId": thread_id, "input": [{"type": "text", "text": text}]}
+        for name in images or []:
+            path = Path(name)
+            if not path.is_absolute():
+                path = self.cwd / path
+            resolved = path.resolve(strict=True)
+            if path.is_symlink() or not resolved.is_relative_to(self.cwd) or not resolved.is_file():
+                raise TransportError("Initial image must be a regular task-local file")
+            if resolved.suffix.lower() not in (".png", ".jpg", ".jpeg", ".webp"):
+                raise TransportError("Unsupported initial image format")
+            params["input"].append({"type": "localImage", "path": str(resolved), "detail": "high"})
         if client_message_id:
             params["clientUserMessageId"] = client_message_id
         if output_schema is not None:
