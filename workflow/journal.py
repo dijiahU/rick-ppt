@@ -60,6 +60,7 @@ class Limits:
     files: int = 25000
     record_bytes: int = 32 * 1024 * 1024
     message_bytes: int = 64 * 1024
+    message_attachments: int = 10
     messages: int = 5000
     events: int = 100000
 
@@ -698,8 +699,10 @@ class Journal:
         if type(changes_input) is not bool:
             raise ValueError("changes_input must be boolean")
         attachments = copy.deepcopy(attachments or [])
-        if len(attachments) > 3 or not text.strip() and not attachments:
-            raise ValueError("Empty message or too many attachments")
+        if len(attachments) > self.limits.message_attachments:
+            raise ValueError(f"Message has more than {self.limits.message_attachments} attachments")
+        if not text.strip() and not attachments:
+            raise ValueError("Empty message")
         seen = set()
         for item in attachments:
             if not isinstance(item, dict) or not {"id", "path", "sha256", "bytes"}.issubset(item) or set(item) - {"id", "path", "sha256", "bytes", "name", "media_type"}:

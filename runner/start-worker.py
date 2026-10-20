@@ -61,6 +61,8 @@ def main():
                     raise SystemExit('Loaded runtime differs from selected settings; inspect the private receipt.')
                 if active['status']=='ready':
                     print('Background worker ready:',child.pid,'runtime:',active['version']);return
+                if active['status']=='waiting_for_renderer':
+                    print('Background worker started:',child.pid,'waiting for rendering dependencies; queued tasks are preserved.');return
                 if active['status']=='waiting':
                     print('Successor configured:',child.pid,'runtime:',active['version'],'waiting for active jobs in',old_pid);return
             time.sleep(.1)

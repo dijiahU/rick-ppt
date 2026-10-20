@@ -7,6 +7,7 @@ import argparse
 import copy
 import hashlib
 import io
+import importlib.util
 import json
 import re
 from pathlib import Path
@@ -17,6 +18,19 @@ from urllib.parse import urlsplit
 
 CATALOG = Path(__file__).resolve().parents[1] / 'assets/workflow-choices.json'
 MAX_PLAN_BYTES = 512 * 1024
+
+
+def _load_timing_reader():
+    # Resolve beside this immutable plugin, never through host sys.path or an
+    # installed legacy native_builds/native_timing module of the same name.
+    path=Path(__file__).with_name('native_timing.py')
+    spec=importlib.util.spec_from_file_location('_pptx_decision_native_timing',path)
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.appear_steps
+
+
+_appear_steps=_load_timing_reader()
 
 
 def load_catalog():
@@ -216,12 +230,14 @@ def _page_evidence(data):
             shape_ids={node.get('id') for node in tree.iter(f'{{{p}}}cNvPr')}
             reveal_steps=[]
             if timing is not None and any(node.get('evt')=='onNext' for node in timing.iter(f'{{{p}}}cond')):
+                simple_steps=_appear_steps(tree)
                 for effect in timing.iter(f'{{{p}}}cTn'):
                     if effect.get('nodeType')!='clickEffect':continue
                     step_targets=[node.get('spid') for node in effect.iter(f'{{{p}}}spTgt')]
                     entrance=any(node.get('presetClass')=='entr' for node in effect.iter(f'{{{p}}}cTn'))
                     behavior=any(node.tag in {f'{{{p}}}'+kind for kind in ('set','anim','animEffect','animMotion','animScale','animRot')} for node in effect.iter())
                     if entrance and behavior and step_targets and all(ident in shape_ids for ident in step_targets):reveal_steps.append(step_targets)
+                if simple_steps is not None:reveal_steps=simple_steps
             evidence.append({'assets': hashes, 'playable': playable, 'click_reveal': bool(reveal_steps), 'reveal_steps':reveal_steps,'internal_navigation': navigation,'notes':notes})
     return evidence
 

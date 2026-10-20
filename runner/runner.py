@@ -67,6 +67,7 @@ def settings():
         if not data.get(key): raise RuntimeError(f'Missing setting: {key}')
     if not data['site'].startswith('https://'): raise RuntimeError('HTTPS required')
     if len(data['token'])<32: raise RuntimeError('Worker token too short')
+    data['progressive_canvas']=True
     data['single_file_pptx']=True
     data['parallel_reviews']=True
     return data
@@ -499,7 +500,7 @@ def _run_job_locked(cfg,task,lease,job,journal,recovery_plan):
         record(trajectory,'emit','task.input',payload)
         record(trajectory,'snapshot',job,'task.initial')
         journal.checkpoint(job,reason='task_inputs_ready')
-        reporter=Reporter(cfg,task,job,request,explicit_previews=True)
+        reporter=Reporter(cfg,task,job,request,explicit_previews=True,canvas_root=trajectory.root if trajectory else None)
         Conversation(cfg,task,job,journal,request,reporter=reporter).checkpoint(phase='recovered' if recovery_plan else 'research',force=True)
         print('Starting content-first job',task['id'],'in',job,flush=True)
         while True:
@@ -513,6 +514,13 @@ def _run_job_locked(cfg,task,lease,job,journal,recovery_plan):
             if result.get('bundle'):
                 bundle=read_scoped(job,Path(result['bundle']),250*1024*1024)
                 request(cfg,f'/api/worker/{task["id"]}/bundle?action=bundle',bundle,task['lease'])
+            # Editor snapshots reuse this export's actual renders. A missing old
+            # render or a preview-network failure never discards a valid delivery.
+            try:
+                from canvas_snapshot import publish as publish_canvas
+                publish_canvas(cfg,task,job,artifact,request,rendered=result.pop('canvas_render',None))
+            except Exception as canvas_error:
+                print('Canvas snapshot deferred:',type(canvas_error).__name__,flush=True)
             try:
                 from delivery import deliver
                 deliver(cfg,task,artifact,result['revision'],request,check=lease.check)
@@ -614,11 +622,21 @@ def main():
     signal.signal(signal.SIGTERM,drain)
     signal.signal(signal.SIGINT,drain)
     self_test(cfg)
-    write_runtime_receipt(ROOT,cfg,'ready')
-    print('Bridge ready; up to 3 tasks run concurrently.',flush=True)
+    from renderer_health import RendererReadiness,start_heartbeat
+    render_health=RendererReadiness(on_state=lambda ready,reason:write_runtime_receipt(ROOT,cfg,'ready' if ready else 'waiting_for_renderer'))
+    render_health.ready()
+    print('Bridge started; rendering dependencies checked before each queue admission.',flush=True)
     from model_backend import available_backends
     claim_body=json.dumps({'execution_backends':available_backends(cfg)}).encode()
-    serve(lambda:request(cfg,'/api/worker',body=claim_body).get('job'),lambda task:execute_task(cfg,task),stopping,
-          lambda error:print('Bridge error:',type(error).__name__,public_text(str(error)),flush=True),once=args.once)
+    worker_heartbeat=start_heartbeat(render_health,lambda path,body:request(cfg,path,body=body),available_backends(cfg),stopping) if not args.once else None
+    from native_edit_worker import start as start_native_editor
+    native_editor=start_native_editor(cfg,request,stopping) if not args.once else None
+    try:
+        serve(lambda:render_health.claim(lambda:request(cfg,'/api/worker',body=claim_body).get('job')),lambda task:execute_task(cfg,task),stopping,
+              lambda error:print('Bridge error:',type(error).__name__,public_text(str(error)),flush=True),once=args.once)
+    finally:
+        stopping.set()
+        if worker_heartbeat:worker_heartbeat.join(timeout=30)
+        if native_editor:native_editor.join(timeout=240)
 
 if __name__=='__main__':main()

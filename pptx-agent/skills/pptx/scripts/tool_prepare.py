@@ -140,6 +140,7 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
         'validate': [interpreter, cli, '--workspace', parts_arg, 'validate'],
         'render_page': [interpreter, cli, '--workspace', parts_arg, 'render', '1'],
         'export': [interpreter, cli, '--workspace', parts_arg, 'export', 'exports/CHOSEN_VERSION.pptx'],
+        'compatibility': [interpreter, str(SCRIPTS / 'compatibility.py'), '--workspace', parts_arg],
         'decision_scaffold': [interpreter, str(SCRIPTS / 'workflow_decisions.py'), '--template', '--outline', 'outline.json'],
         'planning_check': [interpreter, str(SCRIPTS / 'workflow_decisions.py'), '--plan', 'decision-plan.json', '--outline', 'outline.json', '--stage', 'planning'],
     }
@@ -194,6 +195,9 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
     lines += ['```', '', 'SELECTED_SOURCE / CHOSEN_VERSION and page 1 are replaceable examples, not template/style selections.',
               'The manifest contains exact CLI arguments, native_canvas Python signatures and current decision options.',
               'add_text uses font_file,size,ink and x/y/width/max_height; box belongs to other helpers. Use returned object handles for links/groups/reveals.',
+              'Text checks actual glyph coverage and writes explicit noAutofit. Connector sites are geometry-specific: rect/roundRect/diamond right=3,left=1; ellipse right=6,left=2. Anchors must agree with transformed endpoints. Anchor to a verified child, not an unspecified group site.',
+              'Native reveal writes one entrance row per object: clickEffect then synchronized withEffect rows. Do not put multiple shape targets inside one preset effect. The state parser rejects ambiguous legacy rows rather than inventing initial visibility.',
+              'Export saves a hash-bound compatibility report in the session and state.last_compatibility. Fix affected connector/text findings within scope; inventory is not target-viewer certification and must not restyle unrelated source pages.',
               'Before edits take a snapshot. A failed multi-object script can leave earlier changes saved: inspect or restore before retry; never append hardcoded IDs.',
               'Write outline.slides, not outline.pages. Generate the unselected scaffold only after outline IDs/order exist. Do not infer aesthetics from choice counts.',
               'workflow_decisions.py --template prints JSON to stdout only. It never creates decision-plan.json; save/fill it explicitly or use manifest.decision_scaffold after refreshing.',

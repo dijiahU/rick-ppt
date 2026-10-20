@@ -37,7 +37,9 @@ python3.11 -m venv .venv
 
 `pptx-agent/` 包含插件、测试和必要资源；`workflow/` 包含持久日志与 Codex app-server 传输；`runner/` 包含隔离的制作执行端；`website/` 是已上线网站的源码快照。历史交互运行时和相关文档保留供旧版本分析，当前单文件工作流不启用它们。用户任务、账号凭证、运行日志和本地配置不上传。
 
-网站支持制作中的聊天、修改意见、附件、暂停、版本下载和断点续做。普通聊天保留已经完成的审核，实际修改使旧审核失效；恢复验证检查点，上传超时核对准确文件哈希和修订号，已审核成品可只重传。运行说明见 [runner/README.md](runner/README.md)。历史逐项进度见 [执行清单](docs/interactive-runtime-plan.md)。
+网站支持制作中的聊天、修改意见、附件预览、暂停与恢复、版本下载、已完成页面的直接编辑，以及内容和视觉审核结果。首页提供带水波切换的交互案例和醒目的左右切换箭头。普通聊天保留已经完成的审核，实际修改使旧审核失效；恢复验证检查点，上传超时核对准确文件哈希和修订号，已审核成品可只重传。运行说明见 [runner/README.md](runner/README.md)。历史逐项进度见 [执行清单](docs/interactive-runtime-plan.md)。
+
+网页前端、任务 API、数据库迁移和测试都在 [website/](website/)，与插件和本地执行端分别维护。当前源码已同步线上 v41（2026-10-20）；Sites 的生产发布记录与此 GitHub 仓库是两个独立的交付记录。克隆源码仍需自行配置账号登录、数据库、文件存储与私密运行参数，不能仅打开一个 HTML 文件就启动完整服务。
 
 技术说明：[架构](docs/interactive-architecture.md)、[兼容性](docs/interactive-compatibility.md)、[PowerPoint 实测清单](docs/manual-powerpoint-verification.md)。
 

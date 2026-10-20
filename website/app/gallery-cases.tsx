@@ -1,17 +1,19 @@
 'use client';
 import {useEffect,useId,useRef,useState} from 'react';
+import {usePaintDrag} from './use-paint-drag';
 import TransformerDiagram,{diagramObjects} from './transformer-diagram';
 import type {GalleryCopy} from '@/lib/gallery-i18n';
 import type {LandingCopy} from '@/lib/landing-i18n';
 type CaseProps={g:GalleryCopy;c:LandingCopy;active?:boolean};
 export function ScientificCase({g,c}:CaseProps){
- const [split,setSplit]=useState(48),[zoom,setZoom]=useState(false),[selected,setSelected]=useState<string|null>(null),[overrides,setOverrides]=useState<Record<string,{label?:string;fill?:string}>>({});
+ const paint=usePaintDrag();
+ const [zoom,setZoom]=useState(false),[selected,setSelected]=useState<string|null>(null),[overrides,setOverrides]=useState<Record<string,{label?:string;fill?:string}>>({});
  const dialog=useRef<HTMLDialogElement>(null);const opener=useRef<HTMLButtonElement>(null);const editorId=useId();
  useEffect(()=>{if(!zoom||!dialog.current)return;const element=dialog.current;element.showModal();const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{element.close();document.body.style.overflow=previous;opener.current?.focus();};},[zoom]);
- function drag(event:React.PointerEvent<HTMLDivElement>){const bounds=event.currentTarget.parentElement!.getBoundingClientRect();if(bounds.width>0)setSplit(Math.max(0,Math.min(100,Math.round((event.clientX-bounds.left)/bounds.width*100))));}
+
  const object=diagramObjects.find(obj=>obj.id===selected);const fill=object?(overrides[object.id]?.fill??object.fill):'#f1dfbd';
  function change(value:{label?:string;fill?:string}){if(!selected)return;setOverrides(old=>({...old,[selected]:{...old[selected],...value}}));}
- function reset(){setOverrides({});setSplit(48);setSelected(null);}
+ function reset(){setOverrides({});paint.reset();setSelected(null);}
  function inspector(scope:string){if(!object)return null;return <section className="science-inspector" aria-label={c.object}>
  <div className="science-inspector-head"><span><i style={{background:fill}}/>{c.object}</span><button type="button" className="science-editor-close" aria-label={c.close} onClick={()=>setSelected(null)}>×</button></div>
  <label htmlFor={`${editorId}-${scope}`}>{c.editLabel}<textarea id={`${editorId}-${scope}`} rows={2} maxLength={60} value={overrides[object.id]?.label??object.label} onChange={event=>change({label:event.target.value})}/></label>
@@ -19,10 +21,10 @@ export function ScientificCase({g,c}:CaseProps){
  <div className="science-inspector-foot"><p>{g.paintEditHint}</p><button type="button" className="science-reset" onClick={reset}>{g.reset} ↺</button></div>
  </section>;}
  const shared={selected:selected??undefined,overrides};
- return <div className={`science-case${selected?' is-editing':''}`}><div className="science-margin"><span>FIGURE 01</span><h3>The<br/>Transformer</h3><p>{g.detail}</p><span className="science-note">{g.objects}</span><div className="science-palette" aria-hidden="true"><i/><i/><i/><i/></div></div><div className="science-painting">
- <TransformerDiagram compact monochrome label={c.wire} interactiveLabel={c.object} onSelect={setSelected} {...shared}/><div className="science-colour" aria-hidden="true" inert style={{clipPath:`inset(0 ${100-split}% 0 0)`}}><TransformerDiagram compact label={c.figureCaption} {...shared}/></div>
- <div className="paint-divider" aria-hidden="true" style={{left:`${split}%`}} onPointerDown={event=>{event.currentTarget.setPointerCapture(event.pointerId);drag(event);}} onPointerMove={event=>{if(event.currentTarget.hasPointerCapture(event.pointerId))drag(event);}} onPointerUp={event=>{event.currentTarget.releasePointerCapture(event.pointerId);}}><span>↔</span><small>{g.paint}</small></div>
- </div>{inspector('inline')}<div className="science-source"><a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noreferrer">Vaswani et al. · 2017 · Fig. 1 ↗</a></div><div className="science-tools"><label><span>{g.paint}</span><input aria-label={g.paint} type="range" min="0" max="100" step="0.1" value={split} onChange={event=>setSplit(Number(event.target.value))}/></label><button className="science-edit-open" type="button" aria-pressed={!!selected} onClick={()=>setSelected(old=>old?null:'encoder-attention')}>{g.editDiagram} ✎</button><button ref={opener} className="science-zoom-open" type="button" onClick={()=>setZoom(true)}>{g.zoom} ↗</button></div>
+ return <div className={`science-case${selected?' is-editing':''}`}><div className="science-margin"><span>FIGURE 01</span><h3>The<br/>Transformer</h3><p>{g.detail}</p><span className="science-note">{g.objects}</span><div className="science-palette" aria-hidden="true"><i/><i/><i/><i/></div></div><div className="science-painting" ref={paint.paintingRef}>
+ <TransformerDiagram compact monochrome label={c.wire} interactiveLabel={c.object} onSelect={setSelected} {...shared}/><div className="science-colour" aria-hidden="true" inert><TransformerDiagram compact label={c.figureCaption} {...shared}/></div>
+ <div className="paint-divider" aria-hidden="true" {...paint.divider}><span>↔</span><small>{g.paint}</small></div>
+ </div>{inspector('inline')}<div className="science-source"><a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noreferrer">Vaswani et al. · 2017 · Fig. 1 ↗</a></div><div className="science-tools"><label><span>{g.paint}</span><input aria-label={g.paint} type="range" min="0" max="100" step="0.1" defaultValue={paint.initial} ref={paint.rangeRef} {...paint.range}/></label><button className="science-edit-open" type="button" aria-pressed={!!selected} onClick={()=>setSelected(old=>old?null:'encoder-attention')}>{g.editDiagram} ✎</button><button ref={opener} className="science-zoom-open" type="button" onClick={()=>setZoom(true)}>{g.zoom} ↗</button></div>
  {zoom&&<dialog className="diagram-dialog science-dialog" ref={dialog} aria-label={g.zoom} onCancel={()=>setZoom(false)} onClick={event=>{if(event.target===event.currentTarget)setZoom(false);}}><div className="diagram-dialog-head"><span>Transformer / Fig. 1</span><button autoFocus type="button" onClick={()=>setZoom(false)}>{g.close} ×</button></div><div className={`science-zoom-body${selected?' is-editing':''}`}><div className="diagram-dialog-art"><TransformerDiagram label={c.figureCaption} interactiveLabel={c.object} onSelect={setSelected} {...shared}/></div>{inspector('zoom')}</div><p>{g.sourceNote}</p></dialog>}
  </div>;
 }

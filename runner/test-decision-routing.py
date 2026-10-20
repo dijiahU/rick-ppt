@@ -8,7 +8,7 @@ import tempfile
 import unittest
 import zipfile
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from PIL import Image
 
 from decision_routing import choice_policy, check_decisions, needs_content_revision, pin_decision_contract, write_design_packet,admitted_click_requirement,click_reveal_required
@@ -62,6 +62,16 @@ def deck(data=b'IMAGE', used_page=1, clicks=False):
 
 
 class DecisionTests(unittest.TestCase):
+    def test_host_uses_selected_plugin_timing_reader_despite_legacy_imports(self):
+        # This is how a long-lived host can have an older authoring install in
+        # sys.modules. The selected plugin must not import its timing reader.
+        legacy=SimpleNamespace()
+        with patch.dict(sys.modules,{'native_builds':legacy,'native_timing':legacy}):
+            policy=choice_policy({'plugin':str(PLUGIN)})
+            evidence=policy._page_evidence(deck(clicks=True))
+        self.assertEqual(evidence[0]['reveal_steps'],[['2']])
+        self.assertFalse(evidence[1]['click_reveal'])
+
     def check(self, value, **kwargs):
         kwargs.setdefault('require_click_reveal',False)
         return POLICY.validate_plan(value, outline(), **kwargs)

@@ -178,6 +178,29 @@ class ConversationTests(unittest.TestCase):
         self.assertEqual(self.journal.state["input_revision"], first_revision)
         self.assertEqual(self.server.deliveries, [row["id"]])
 
+    def test_ten_chat_attachments_survive_journal_and_deduplicated_model_delivery(self):
+        data=b'Untrusted supplied reference.'
+        items=[self.attachment(data,name=f'reference-{i}.txt') for i in range(10)]
+        row=self.row(kind='chat',body='Read these references',attachments=items)
+        self.website.rows=[row]
+        for item in items:self.website.attachments[(row['id'],item['id'])]=data
+        self.poll();self.poll()
+        saved=self.journal.state['inbox'][row['id']]
+        self.assertEqual(len(saved['attachments']),10)
+        self.assertFalse(saved['changes_input'])
+        self.assertEqual(self.server.deliveries,[row['id']])
+        self.assertEqual(len([c for c in self.website.calls if c[0]=='attachment']),10)
+        for attached in saved['attachments']:
+            self.assertEqual((self.job/attached['path']).read_bytes(),data)
+
+    def test_eleven_attachments_are_rejected_without_accepting_message(self):
+        items=[self.attachment(name=f'reference-{i}.txt') for i in range(11)]
+        row=self.row(attachments=items)
+        self.website.rows=[row]
+        with self.assertRaises(ValueError):self.poll()
+        self.assertNotIn(row['id'],self.journal.state['inbox'])
+        self.assertFalse(self.server.deliveries)
+
     def test_changed_content_under_same_id_is_rejected(self):
         row = self.row()
         self.website.rows = [row]

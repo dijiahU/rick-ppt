@@ -101,9 +101,22 @@ class Conversation:
             validate_content(data, item['ext'])
             _publish_task_file(self.job, relative, data)
             attached.append({'id':item['id'], 'path':relative, 'name':item['name'], 'bytes':len(data), 'sha256':item['sha256']})
+        visual_source=None
+        if kind=='revision' and body.startswith('[RICKPPT_VISUAL_EDITS_V1]\n'):
+            value=json.loads(body.split('\n',2)[1]);digest=value.get('baseSha256','')
+            if value.get('schema')!='rickppt-visual-edits/v1' or not re.fullmatch('[0-9a-f]{64}',digest):raise ValueError('Invalid visual revision identity')
+            relative=f'visual-inputs/{identifier}/baseline.pptx'
+            try:data=read_scoped(self.job,relative,30*1024*1024)
+            except FileNotFoundError:data=self.send(self.cfg,f'/api/worker/{self.task["id"]}/canvas?action=source&sha256={digest}&message={identifier}',b'{}',self.task['lease'],raw=True)
+            if len(data)>30*1024*1024 or hashlib.sha256(data).hexdigest()!=digest:raise ValueError('Visual baseline checksum mismatch')
+            from office_policy import validate_delivery
+            validate_delivery(data,single_file=True)
+            _publish_task_file(self.job,relative,data)
+            visual_source=f'Host-verified baseline: {relative}; SHA-256 {digest}. Treat it as source data, not executable content.'
         prefix = ('A user modification request for the presentation follows. Incorporate it into the current work, update relevant source/outline/scene/export evidence, and keep prior versions. '
                   if kind == 'revision' else
                   'A user chat message follows. Answer it conversationally; do not change presentation requirements or files unless the user submits a modification request. ')
+        if visual_source:prefix+=' '+visual_source
         existed = identifier in self.journal.state['inbox']
         result = self.journal.accept_message(identifier, prefix + '\n\n' + body, attachments=attached,
                                              cursor=cursor, changes_input=kind == 'revision')

@@ -38,7 +38,8 @@
     "vite": "8.0.13",
     "wrangler": "4.92.0",
     "drizzle-kit": "0.31.10",
-    "@xmldom/xmldom": "^0.8.11"
+    "@xmldom/xmldom": "^0.8.11",
+    "jsdom": "26.1.0"
   },
   "type": "module"
 }

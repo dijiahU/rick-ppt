@@ -98,6 +98,16 @@ class ProductionBridge(unittest.TestCase):
         self.assertIn('--wait-for-worker',calls[0][0]);self.assertEqual(calls[0][1]['env']['PPTX_RUNNER_PLUGIN'],str(self.plugin))
         self.assertIn('waiting for active jobs',output.getvalue())
 
+    def test_startup_waits_for_renderer_without_reporting_ready_or_failing_launch(self):
+        module=self.launcher()
+        def popen(command,**kwargs):
+            (self.worker/'runtime-8010.local.json').write_text(json.dumps({'pid':8010,'plugin':str(self.plugin),'version':'new','status':'waiting_for_renderer'}))
+            return SimpleNamespace(pid=8010,poll=lambda:None)
+        with patch.object(module.sys,'argv',['start-worker.py']),patch.object(module.fcntl,'flock'),patch.object(module.subprocess,'Popen',side_effect=popen),contextlib.redirect_stdout(io.StringIO()) as output:
+            module.main()
+        self.assertIn('waiting for rendering dependencies',output.getvalue())
+        self.assertNotIn('Background worker ready',output.getvalue())
+
     def test_second_reload_does_not_spawn_duplicate_successor(self):
         module=self.launcher()
         (self.worker/'handoff.local.json').write_text(json.dumps({'pid':8009,'plugin':str(self.plugin)}))

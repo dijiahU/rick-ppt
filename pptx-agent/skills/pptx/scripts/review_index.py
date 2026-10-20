@@ -108,6 +108,12 @@ def write_review_index(inventory, render, destination, reveal_steps):
         support = 'unsupported' if steps is None else 'simple_whole_shape_appear' if steps else 'static'
         reveal = {'support': support, 'click_groups': None if steps is None else [
             {'after_clicks': index + 1, 'target_ids': group} for index, group in enumerate(steps)],
+            'click_count':None if steps is None else len(steps),
+            'click_objects':None if steps is None else [
+                {'click':index+1,'targets':[
+                    {key:obj.get(key) for key in ('id','kind','name','text')}
+                    for identifier in group for obj in shapes if obj['id']==identifier]}
+                for index,group in enumerate(steps)],
             'initially_visible_ids': None if steps is None else initial_objects(shapes, steps),
             'effect_count': len(page['effect_nodes']), 'timing_target_count': len(page['timing_targets']),
             'state_frame_paths': page_frames,

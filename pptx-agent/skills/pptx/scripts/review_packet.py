@@ -120,28 +120,8 @@ def collect_interactive(ws, destination):
 
 
 def simple_appear_steps(tree):
-    """Conservative support for click-controlled visibility builds, not arbitrary timing."""
-    timing=tree.find('p:timing',NS)
-    if timing is None:return []
-    if any(local(n) in ('anim','animEffect','animMotion','animRot','animScale','audio','video','cmd') for n in timing.iter()):return None
-    effects=[n for n in timing.iter() if local(n)=='cTn' and n.get('nodeType') in ('clickEffect','withEffect','afterEffect')]
-    if not effects or any(n.get('nodeType')!='clickEffect' or n.get('presetClass')!='entr' or n.get('presetID')!='1' for n in effects):return None
-    groups=[]
-    for effect in effects:
-        actions=effect.findall('p:childTnLst/p:set',NS)
-        if not actions:return None
-        ids=[]
-        for action in actions:
-            attrs=action.findall('p:cBhvr/p:attrNameLst/p:attrName',NS)
-            value=action.find('p:to/p:strVal',NS);target=action.find('p:cBhvr/p:tgtEl/p:spTgt',NS)
-            if len(attrs)!=1 or attrs[0].text!='style.visibility' or value is None or value.get('val')!='visible' or target is None:return None
-            if len(target):return None  # Paragraph/text-range animation is not whole-shape reveal.
-            ids.append(target.get('spid'))
-        groups.append(ids)
-    all_ids=[i for g in groups for i in g]
-    targets=[n.get('spid') for n in timing.iter() if local(n)=='spTgt']
-    if targets!=all_ids or len(set(all_ids))!=len(all_ids):return None
-    return groups
+    from native_builds import appear_steps
+    return appear_steps(tree)
 
 
 def state_previews(root,parts,destination):

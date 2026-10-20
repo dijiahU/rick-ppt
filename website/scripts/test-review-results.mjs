@@ -1,0 +1,35 @@
+// Real routes and storage projection, with isolated SQLite/R2 and synthetic identities.
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {DatabaseSync} from 'node:sqlite';
+import ts from 'typescript';
+import * as limits from '../lib/slide-limits.mjs';
+const modules={'./slide-limits.mjs':limits};
+function load(path){const exports={};new Function('require','exports',ts.transpileModule(readFileSync(new URL('../'+path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(name=>{assert.ok(modules[name],name);return modules[name];},exports);return exports;}
+const db=new DatabaseSync(':memory:');db.exec('CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,lease TEXT,status TEXT);INSERT INTO jobs VALUES (\'task\',\'owner\',\'private-lease\',\'running\');');
+const binding={prepare(sql){let args=[];const s={bind(...v){args=v;return s;},async first(){return db.prepare(sql).get(...args)??null;}};return s;}};
+let user=null,admin=false,reads=0;const objects=new Map();
+modules['cloudflare:workers']={env:{DB:binding,FILES:{async get(key){reads++;const text=objects.get(key);return text===undefined?null:{json:async()=>JSON.parse(text)};}}}};
+modules['@/app/chatgpt-auth']={getChatGPTUser:async()=>user?{userId:user}:null};modules['@/lib/admin']={isAdmin:async()=>admin};
+modules['./execution-backend']=load('lib/execution-backend.ts');modules['@/lib/server']=load('lib/server.ts');modules['@/lib/attachments']=load('lib/attachments.ts');
+modules['@/lib/admin-trace']=load('lib/admin-trace.ts');modules['@/lib/review-results']=load('lib/review-results.ts');
+const {publicReview}=modules['@/lib/review-results'];const get=load('app/api/jobs/[id]/reviews/route.ts').GET;
+const report={summary:'Clear argument <script>alert(1)</script>',pages_reviewed:[1,2],findings:[{id:'R1',pages:[2],severity:'required',observation:'Caption is wrong.',impact:'It changes the actor.',recommendation:'Correct the caption.',reasoning:'PRIVATE_REASONING'}],limitations:['Windows playback not verified.']};
+const event={seq:1,at:1000,stage:'content-evidence-1',kind:'note',label:'Assistant update',state:'completed',detail:JSON.stringify(report)};
+const parsed=publicReview(event);assert.equal(parsed.requiredCount,1);assert.equal(parsed.kind,'content-evidence');assert.equal(parsed.verified,false);assert.equal(JSON.stringify(parsed).includes('PRIVATE_REASONING'),false);
+for(const patch of [{stage:'author'},{label:'Random message'},{kind:'command'},{detail:'ordinary prose'},{truncated:true},{detail:JSON.stringify({...report,findings:[{...report.findings[0],pages:[51]}]})}])assert.equal(publicReview({...event,...patch}),null);
+const receipt={schema:'rickppt-review/v1',kind:'visual',artifactSha256:'a'.repeat(64),revision:3,round:2,requiredCount:2,suggestionCount:5,truncated:true,report};
+const verified=publicReview({...event,kind:'review',label:'Validated review result',detail:JSON.stringify(receipt)});assert.equal(verified.artifactSha256,'a'.repeat(64));assert.equal(verified.revision,3);assert.equal(verified.requiredCount,2);assert.equal(verified.truncated,true);
+assert.equal(publicReview({...event,kind:'review',label:'Validated review result',detail:JSON.stringify({...receipt,revision:-1})}),null);
+const privateText=publicReview({...event,detail:JSON.stringify({...report,summary:'Review /Users/rick/private.txt Bearer synthetic-private-secret api_key=privatevalue'})});assert.ok(!JSON.stringify(privateText).includes('/Users/'));assert.ok(!JSON.stringify(privateText).includes('synthetic-private-secret'));assert.ok(!JSON.stringify(privateText).includes('privatevalue'));
+const params={params:Promise.resolve({id:'task'})};const read=after=>get(new Request('https://local.test/api/jobs/task/reviews?after='+after),params);
+assert.equal((await read(0)).status,401);assert.equal(reads,0);user='other';assert.equal((await read(0)).status,404);assert.equal(reads,0);user='owner';assert.equal((await (await read(0)).json()).available,false);
+const prefix='admin-traces/task/private-lease/';objects.set(prefix+'index.json',JSON.stringify({chunks:6,events:6,updatedAt:1000,finished:true}));
+for(let n=1;n<=6;n++)objects.set(prefix+String(n).padStart(5,'0')+'.json',JSON.stringify({version:1,chunk:n,events:[n===1?{...event,kind:'command',command:'PRIVATE_COMMAND',output:'PRIVATE_OUTPUT'}:{...event,seq:n}]}));
+const snapshot=db.prepare('SELECT * FROM jobs').get();const first=await (await read(0)).json();assert.equal(first.reports.length,4);assert.equal(first.nextChunk,5);assert.equal(first.totalChunks,6);const second=await (await read(5)).json();assert.equal(second.reports.length,1);assert.equal(second.finished,true);
+const result=JSON.stringify(first);for(const value of ['PRIVATE_COMMAND','PRIVATE_OUTPUT','PRIVATE_REASONING','private-lease','user_id','command','thread_id'])assert.ok(!result.includes(value),value);
+assert.equal((await read('../other')).status,400);admin=true;user='admin';assert.equal((await read(0)).status,200);admin=false;assert.equal((await read(0)).status,404);
+user='owner';db.exec("UPDATE jobs SET lease='new-attempt'");const empty=await (await read(0)).json();assert.equal(empty.available,false);assert.notEqual(empty.attempt,first.attempt);
+db.exec("UPDATE jobs SET lease='private-lease',status='complete'");assert.equal((await read(0)).status,200);assert.equal(db.prepare('SELECT status FROM jobs').get().status,'complete');assert.equal(snapshot.status,'running');
+objects.delete(prefix+'00001.json');assert.equal((await read(0)).status,503);db.close();
+console.log('PASS: owner/admin read isolation before storage, bounded pagination, legacy and version-bound report projections, required/suggestion counts, playback limitations, no raw trace/reasoning/credentials, attempt isolation and terminal reads without job mutations.');

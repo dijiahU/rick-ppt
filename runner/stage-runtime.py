@@ -22,6 +22,11 @@ if not target.exists():
     target.parent.mkdir(parents=True,exist_ok=True)
     shutil.copytree(source,target,ignore=shutil.ignore_patterns('.venv','node_modules','__pycache__','.pytest_cache','test-results'))
 required=('skills/pptx/SKILL.md','skills/pptx/references/content.md','skills/pptx/references/research-and-assets.md','skills/pptx/references/content-review.md','skills/pptx/references/visual-review.md','skills/pptx/scripts/native_builds.py','skills/pptx/scripts/review_packet.py','skills/pptx/assets/blank.pptx')
+if (source/'skills/pptx/scripts/compatibility.py').is_file():
+    required+=('skills/pptx/scripts/compatibility.py','skills/pptx/scripts/native_structure.py',
+               'skills/pptx/scripts/pptx_core/package.py','skills/pptx/references/windows-wps.md')
+if (source/'skills/pptx/scripts/native_timing.py').is_file():
+    required+=('skills/pptx/scripts/native_timing.py',)
 if (source/'skills/pptx/assets/workflow-choices.json').is_file():
     required+=('skills/pptx/assets/workflow-choices.json','skills/pptx/references/workflow-branches.md','skills/pptx/scripts/workflow_decisions.py')
     if json.loads((source/'skills/pptx/assets/workflow-choices.json').read_text())['version']>=3:

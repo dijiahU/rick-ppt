@@ -1,5 +1,7 @@
 'use client';
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
+import {taskControlWords} from './pause-control';
+import {visualEditDisplay} from '@/lib/visual-edits';
 import {useLanguage} from '@/app/language';
 import AttachmentPreviews,{SelectedAttachment} from '@/app/attachment-previews';
 import {uploadFiles,discardUploads} from '@/lib/upload-client';
@@ -13,10 +15,10 @@ const words={
  es:['Trabajar con Codex','Pregunta o cambia la presentación mientras se crea.','Solicitar cambios','Conversar','Tu mensaje…','Adjuntar archivos','Enviar','Enviando','Guardado','Recibido por Codex','Aplicado','Tú','Añade contexto o haz una pregunta.','Conexión interrumpida. Reintentando…','Envío sin confirmar. Reintenta.','10 archivos, 20 MB cada uno, 200 MB en total.','Continuar desde el punto guardado','Continúa para procesar los mensajes nuevos. Se conservan las versiones anteriores.','Punto guardado','Versiones','Paquete interactivo','Quitar','No se pudo continuar. Actualiza y reintenta.','Mensaje guardado, esperando al servicio.','Los archivos se envían con el mensaje.','Se muestran los últimos 200 mensajes.','Todavía no hay un punto guardado ni PPT provisional utilizable.','Hay un PPT provisional. Continúa desde él para aplicar tus cambios.','Continuar desde el PPT provisional'],
  ja:['Codex と一緒に作成','作成中に質問、変更依頼、ファイル追加ができます。','変更依頼','チャット','メッセージを入力…','ファイル添付','送信','送信中','保存済み','Codex が受信','反映済み','あなた','背景情報を追加したり質問してください。','再接続中…','送信を確認できません。再試行できます。','10ファイルまで、各20 MB、合計200 MB。','保存地点から再開','新しいメッセージを処理するため再開します。以前の版は保持されます。','再開地点を保存済み','過去の版','インタラクティブ資料','削除','再開できません。更新して再試行してください。','保存済み。実行側の受信待ちです。','ファイルはメッセージとともに送信されます。','最新200件を表示しています。','使用できる保存地点または進捗版 PPT はまだありません。','進捗版 PPT があります。最新の変更依頼を反映するため、この版から続行できます。','進捗版 PPT から続行'],
 };
-export default function Conversation({id,status,updatedAt,hasDraft,pausePending=false,onResume}:{id:string;status:string;updatedAt:number;hasDraft:boolean;pausePending?:boolean;onResume:()=>void}){
+export default function Conversation({id,status,hasDraft}:{id:string;status:string;hasDraft:boolean}){
  const {locale}=useLanguage(),w=words[locale];const [data,setData]=useState<Snapshot>({messages:[],recovery:null,versions:[]});
  const [text,setText]=useState(''),[kind,setKind]=useState<'chat'|'revision'>('revision'),[attachments,setAttachments]=useState<File[]>([]);
- const [sending,setSending]=useState(false),[progress,setProgress]=useState(0),[error,setError]=useState(''),[offline,setOffline]=useState(false),[resuming,setResuming]=useState(false),[refresh,setRefresh]=useState(0);
+ const [sending,setSending]=useState(false),[progress,setProgress]=useState(0),[error,setError]=useState(''),[offline,setOffline]=useState(false),[refresh,setRefresh]=useState(0);
  const messageId=useRef<string|null>(null),picker=useRef<HTMLInputElement>(null),transcript=useRef<HTMLDivElement>(null),requestRef=useRef<XMLHttpRequest|null>(null);
  const followLatest=useRef(true);
  useEffect(()=>{let active=true;const controller=new AbortController();let timer:ReturnType<typeof setTimeout>;
@@ -37,13 +39,13 @@ export default function Conversation({id,status,updatedAt,hasDraft,pausePending=
    void discardUploads(uploadIds,`message:${id}:${clientId}`);followLatest.current=true;setData(current=>({...current,messages:[...current.messages.filter(m=>m.id!==value.message.id),value.message].sort((a,b)=>a.seq-b.seq)}));setText('');setAttachments([]);messageId.current=null;setRefresh(n=>n+1);
   }catch(e){setError(e instanceof Error?e.message:w[14]);}finally{setSending(false);requestRef.current=null;}
  }
- async function resume(){setResuming(true);setError('');try{const response=await fetch(`/api/jobs/${id}/resume`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expectedUpdatedAt:updatedAt})});if(!response.ok){const value=await response.json() as {error?:string};throw Error(value.error||w[22]);}onResume();setRefresh(n=>n+1);}catch(e){setError(e instanceof Error?e.message:w[22]);}finally{setResuming(false);}}
+
  const terminal=['complete','failed','paused','delivery_pending'].includes(status);
  return <section className="conversation" aria-label={w[0]}>
   <div className="conversation-heading"><div><p className="eyebrow">LIVE CONVERSATION</p><h2>{w[0]}</h2></div><span className={`conversation-connection ${offline?'offline':''}`} aria-label={offline?w[13]:'Connected'}>●</span></div><p className="fineprint">{w[1]}</p>
   {offline&&<p className="error" role="status">{w[13]}</p>}
   <div ref={transcript} className="conversation-transcript" role="log" aria-live="polite" aria-relevant="additions text" onScroll={event=>{const node=event.currentTarget;followLatest.current=node.scrollHeight-node.scrollTop-node.clientHeight<180;}}>
-   {!data.messages.length?<p className="conversation-empty">{w[12]}</p>:data.messages.map(m=><article className={`conversation-message ${m.role}`} key={m.id} data-message-id={m.id}><header><strong>{m.role==='user'?w[11]:'Codex'}</strong><time dateTime={new Date(m.createdAt).toISOString()}>{new Date(m.createdAt).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'})}</time></header><p>{m.body}</p>{m.attachments.length>0&&<AttachmentPreviews files={m.attachments} hrefFor={file=>`/api/jobs/${id}/conversation?message=${m.id}&file=${file.id}`}/>}{m.role==='user'&&<small className={`message-status ${m.status}`}>{m.kind==='revision'?w[2]:w[3]} · {m.status==='applied'?w[10]:m.status==='received'?w[9]:w[8]}</small>}</article>)}
+   {!data.messages.length?<p className="conversation-empty">{w[12]}</p>:data.messages.map(m=><article className={`conversation-message ${m.role}`} key={m.id} data-message-id={m.id}><header><strong>{m.role==='user'?w[11]:'Codex'}</strong><time dateTime={new Date(m.createdAt).toISOString()}>{new Date(m.createdAt).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'})}</time></header><p>{visualEditDisplay(m.body,locale==='zh-CN')??m.body}</p>{m.attachments.length>0&&<AttachmentPreviews files={m.attachments} hrefFor={file=>`/api/jobs/${id}/conversation?message=${m.id}&file=${file.id}`}/>}{m.role==='user'&&<small className={`message-status ${m.status}`}>{m.kind==='revision'?w[2]:w[3]} · {(m.status==='applied'||m.body.startsWith('[RICKPPT_VISUAL_EDITS_V1]\n')&&m.body.includes('"directSave":true'))?w[10]:m.status==='received'?w[9]:w[8]}</small>}</article>)}
   </div>{data.messages.length>=200&&<p className="fineprint">{w[25]}</p>}
   <form className="conversation-composer" onSubmit={event=>{event.preventDefault();void send();}} onDragOver={event=>event.preventDefault()} onDrop={event=>{event.preventDefault();if(!sending)addFiles([...event.dataTransfer.files]);}}>
    <div className="conversation-modes">{(['revision','chat'] as const).map((value,index)=><button key={value} type="button" aria-pressed={kind===value} disabled={sending} onClick={()=>{changed();setKind(value);}}>{w[index+2]}</button>)}</div>
@@ -53,7 +55,7 @@ export default function Conversation({id,status,updatedAt,hasDraft,pausePending=
    <div className="conversation-send"><button type="button" onClick={()=>picker.current?.click()} disabled={sending}>＋ {w[5]}</button><button className="conversation-submit" disabled={sending||(!text.trim()&&!attachments.length)} type="submit">{sending?`${w[7]} ${progress}%`:`${w[6]} ↑`}</button></div>
    {sending&&<progress max={100} value={progress} aria-label={w[7]}/>}<p className="fineprint">{w[15]} {w[24]}</p>
   </form>{error&&<p className="error" role="alert">{error}</p>}
-  {terminal&&<div className="conversation-recovery"><p>{status==='delivery_pending'?(locale==='zh-CN'?'成品已通过审核，交付尚未确认。继续时优先重传同一份成品。':'The reviewed PPTX is preserved. Resume to retry its delivery.'):data.recovery?.resumable?w[17]:hasDraft?w[27]:w[26]}</p><button disabled={resuming||pausePending||(!data.recovery?.resumable&&!hasDraft&&status!=='paused')} onClick={()=>void resume()}>{resuming?'…':status==='delivery_pending'?(locale==='zh-CN'?'重试交付':'Retry delivery'):data.recovery?.resumable?w[16]:w[28]} ↗</button></div>}
+  {terminal&&<div className="conversation-recovery"><p>{status==='delivery_pending'?(locale==='zh-CN'?'成品已通过审核，交付尚未确认。继续时优先重传同一份成品。':'The reviewed PPTX is preserved. Resume to retry its delivery.'):data.recovery?.resumable||hasDraft?taskControlWords[locale].elsewhere:w[26]}</p></div>}
   {data.recovery&&<p className="fineprint">{w[18]} · {new Date(data.recovery.updatedAt).toLocaleTimeString(locale)}</p>}
   {data.versions.length>0&&<details className="conversation-versions"><summary>{w[19]} ({data.versions.length})</summary><ul>{data.versions.map(v=><li key={v.id}><time>{new Date(v.created_at).toLocaleString(locale)}</time>{!!v.pptx&&<a href={`/api/jobs/${id}/versions/${v.id}`}>PPTX ↓</a>}{!!v.bundle&&<a href={`/api/jobs/${id}/versions/${v.id}?kind=bundle`}>{w[20]} ↓</a>}</li>)}</ul></details>}
  </section>;

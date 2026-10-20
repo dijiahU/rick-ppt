@@ -9,7 +9,7 @@ Each site-scoped account has ten lifetime queue admissions. Failed executions st
 Atomic admission enforces quota, idempotency, and a maximum of 100 outstanding jobs.
 Only the authenticated owner can list or download their jobs. Worker API uses a separate secret.
 
-Task details poll owner-authorized progress every five seconds. The bridge uploads only
+Task details poll owner-authorized progress every three seconds. The bridge uploads only
 allowlisted activity codes, timestamps, and task-scoped PNG previews, never raw commands,
 reasoning, model messages or local paths. Progress is stored on the job in D1; PNGs live in R2
 and require the same owner authorization as downloads. Old tasks have no invented history.
@@ -33,14 +33,16 @@ Do not run this test against production. Migrations are bundled for Sites deploy
 ## Execution bridge
 
 WORKER_TOKEN must be a Sites runtime secret, never a browser variable. A separate local bridge
-polls /api/worker, claims one job, renews its lease, then uploads a validated PPTX or reports failure.
-Three-minute stale jobs fail rather than replay automatically. A thirty-minute execution budget
-is enforced by the bridge. Website remains available when the bridge is offline; queued jobs wait.
+polls /api/worker, executes up to three isolated jobs, renews their leases, then uploads validated PPTX files or reports failure.
+Three-minute stale jobs fail rather than replay automatically. The bridge enforces bounded execution.
+Website remains available when the bridge is offline; queued jobs wait.
 The local runner source and credential are not part of this public site repository.
 
-The form preselects local Codex (Astra, high) for new submissions and after reset; API remains selectable. Each submitted request must include `execution_backend: "api" | "codex"`. Historical task labels retain their original generic route description.
-Missing/invalid values are rejected before
-quota admission; the choice is retained through revision, retry and resume.
+Ordinary users do not choose API versus local Codex. Admission selects local Codex
+(Astra, high) when available; an API-only live worker can receive automatic admissions.
+Client backend hints are ignored for ordinary users. Administrators can pin a method,
+with invalid explicit values rejected before quota admission. The admitted method is
+retained through revision, retry and resume. Historical task labels retain their original generic route description.
 Historical rows stay nullable and display “method not recorded”, with no inferred
 default. An idempotency key cannot be reused to switch methods.
 
@@ -50,7 +52,7 @@ eligible jobs are claimed in FIFO order, using the existing ID tie-break and
 global three-slot limit. Workers without this capability field may claim only
 legacy null rows. The account API exposes boolean `executionAvailability`,
 never provider credentials or configuration. An online unavailable method is
-disabled in the form; an offline worker still permits explicit queued requests.
+used for automatic routing; administrators can still submit explicitly pinned queued requests.
 
 The nullable fields are appended by Drizzle migration `0001_misty_tyger_tiger`.
 Sites applies schema migrations before deploying the Worker. Do not add these
@@ -58,7 +60,7 @@ columns during request handling or rewrite historical rows. Run each local SQL
 migration once; the fresh-database commands above must not target hosted D1.
 
 Local validation includes `scripts/test-execution-backend.mjs` (actual route
-handlers with isolated SQLite/R2), covering authorization, required choice,
+handlers with isolated SQLite/R2), covering authorization, server-owned routing,
 quota/idempotency, immutable route, worker compatibility, availability, preserved
 editing scope, FIFO and concurrency. `scripts/test-task-mode-form.mjs` renders
 the actual form in five languages and checks required blank selection,
@@ -67,6 +69,20 @@ unavailability, offline queuing and truthful historical labels.
 Anonymous visitors can read the landing page, not account history or downloads.
 Do not store confidential material here. No user-provided shell commands are executed by the web server.
 The Sites dispatcher owns /signin-with-chatgpt, /callback and /signout-with-chatgpt.
+
+## Current task workspace (v41 source snapshot)
+
+The home page includes six interactive samples with water effects, prominent previous/next
+arrows and a position indicator. Users can view attachments and conversation history,
+pause/resume saved work, and edit supported native text, formatting, shapes and images.
+Finished pages can become editable while the rest of a deck is still being produced.
+Unsupported connected/animated operations remain scoped revision requests.
+
+The Review results tab exposes structured content/source and visual findings to the
+task owner and administrators, with page numbers, required/suggestion distinctions,
+recommendations, limitations and candidate identity when recorded. It never exposes
+the underlying administrator command trace. Independent service heartbeats keep
+worker presence separate from rendering readiness and queue admission.
 
 ## Validation
 

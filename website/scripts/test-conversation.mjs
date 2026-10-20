@@ -54,6 +54,7 @@ const versionParams={params:Promise.resolve({id,version:lease})};assert.equal((a
 db.exec('ALTER TABLE jobs ADD COLUMN attachments TEXT');
 modules['@/lib/slide-limits.mjs']={MAX_SLIDES:50,MAX_PROGRESS_BYTES:1000000};
 modules['@/lib/progress']={parseProgress:()=>null};modules['@/lib/queries']={RETRY_JOB:'SELECT 1'};modules['@/lib/admin-trace']={storeTrace:()=>Response.json({ok:true})};
+modules['./server']=modules['@/lib/server'];modules['@/lib/native-edit-storage']=load('lib/native-edit-storage.ts');
 const complete=load('app/api/worker/[id]/route.ts').POST;
 const second=crypto.randomUUID(),secondLease=crypto.randomUUID(),lateMessage=crypto.randomUUID();
 db.prepare("INSERT INTO jobs(id,user_id,status,lease,updated_at) VALUES (?,'owner','running',?,100)").run(second,secondLease);

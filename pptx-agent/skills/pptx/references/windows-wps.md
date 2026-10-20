@@ -31,6 +31,18 @@ without actual target-viewer evidence. Preserve historical files and scoped edit
 
 ## Arrow and group geometry
 
+The native authoring helper now rejects inconsistent bindings before writing:
+`rect`, `roundRect` and `diamond` use top/left/bottom/right sites 0/1/2/3;
+`ellipse` has eight sites, with top/left/bottom/right at 0/2/4/6. Diagonal sites
+are on the ellipse, not its bounding-box corners. `triangle` has six sites with
+its top vertex at 0 and side midpoints at 1/5; its literal `adj` is respected.
+Coordinates are compared in
+slide space after object/group flips, rotation and group scaling. Known sites
+must agree with the drawn endpoints within two EMU (rounding tolerance).
+Unsupported preset/custom/inherited sites and group endpoints are not guessed:
+choose an actual supported child as endpoint, or an explicit editable unbound
+path. The check does not certify target-viewer routing or dragging behavior.
+
 - For anchored connectors, ensure `stCxn/endCxn` target the intended shape IDs and
   valid connection sites of their actual geometry. Compare the written endpoint
   coordinates with those sites after all parent/group transforms. Anchors and the
@@ -48,6 +60,19 @@ without actual target-viewer evidence. Preserve historical files and scoped edit
   indiscriminately. Preserve supplied geometry and unrelated source objects.
 
 ## Verification scope
+
+Every normal export saves a read-only `compatibility-HASH.json` in the session,
+with the exact exported artifact SHA-256; `state.json.last_compatibility` points
+to it. It inventories font families and declared embedded-font resource links,
+and identifies affected slide parts/object IDs for inconsistent bindings,
+unsupported bindings, negative extents and symbol-font icons. It does not mutate
+source objects, embed fonts, certify licenses/glyphs or block historical exports.
+Resolve concrete findings in the authorized edit scope during existing authoring
+and review; do not restyle unrelated inherited objects to silence inventory.
+For diagnostics before export run `python PLUGIN/skills/pptx/scripts/compatibility.py
+--workspace WORKSPACE`. New native text checks the selected actual font's glyph
+coverage, explicitly disables automatic fitting and pins paragraph-end fonts;
+this prevents silent missing-glyph measurement but does not provide recipient fonts.
 
 Check structure and preview geometry first. Reuse existing previews and repair only
 affected objects. If Windows WPS is available, compare the affected pages in its

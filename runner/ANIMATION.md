@@ -23,6 +23,11 @@ click groups against its entry/click/final plan. Check that context persists,
 labels/connectors and supporting evidence enter together, translations do not
 reveal answers early, and the final page is readable. Fix affected objects in the
 current page; reuse its normal final render.
+Use one native entrance row per object: `clickEffect` for the first target and
+`withEffect` for the other targets in that click. Never combine different shape
+targets inside a single preset entrance row. It can leave later targets visible
+at entry in WPS even when a synthetic state preview looks correct. Use the exposed
+native helper rather than reimplementing its timing tree.
 
 The existing frozen-candidate visual review reuses the host review packet's batch
 initial/middle/pre-final simulations for supported simple Appear builds, plus the
@@ -30,6 +35,10 @@ existing final render and complete click-group inventory. Samples are not every
 click. Inspect contacts first and targeted frames for concrete issues; do not
 regenerate unchanged evidence, rerender the whole deck after each page/click, or
 add another review stage.
+The state parser verifies supported click/with-previous synchronization and wait
+conditions before rendering. Legacy multi-target entrance rows and unknown timing
+must be reported as unsupported. The review index also gives the full per-click
+object names/text; compare actual members with labels, connectors and translations.
 
 Actual WPS/PowerPoint playback is conditional on an explicit request, a required
 playback contract or a concrete compatibility concern, and a suitable exposed

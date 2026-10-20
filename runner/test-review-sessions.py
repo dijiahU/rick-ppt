@@ -150,7 +150,7 @@ class ReviewRecoveryTests(unittest.TestCase):
         self.review()
         for _,_,prompt in self.calls:
             self.assertIn('French (fr)',prompt)
-            self.assertIn('saved selection governs output language',prompt)
+            self.assertRegex(prompt,r'saved selection governs (?:the primary )?output language')
 
     def test_absolute_attachment_paths_are_local_to_evidence_and_visual_contexts(self):
         self.payload['attachments'][0]['path']=str(self.job/'references/source.txt')

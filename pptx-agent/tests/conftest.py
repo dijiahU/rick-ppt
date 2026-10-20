@@ -1,8 +1,6 @@
 from pathlib import Path
 import sys
 
-sys.path.append(str(Path(__file__).resolve().parents[1] / "skills/pptx/scripts"))
-
 import pytest
 from PIL import Image
 from pptx import Presentation
@@ -10,6 +8,7 @@ from pptx.util import Inches
 from pptx.chart.data import CategoryChartData
 from pptx.enum.chart import XL_CHART_TYPE
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills/pptx/scripts"))
 from pptx_core.package import unpack
 
 

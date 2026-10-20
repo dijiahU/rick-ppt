@@ -151,9 +151,13 @@ class JournalTests(unittest.TestCase):
         source = HERE.parent / "runner" / "runner.py"
         spec = importlib.util.spec_from_file_location("journal_test_runner", source)
         module = importlib.util.module_from_spec(spec)
-        with patch.object(sys, "path", [str(source.parent), *sys.path]):
-            spec.loader.exec_module(module)
-            importlib.import_module("durable")
+        # Production resolves lazy sibling imports during _run_job too, after
+        # the module bootstrap. Keep this test's path for its full lifetime.
+        search_path = patch.object(sys, "path", [str(source.parent), *sys.path])
+        search_path.start()
+        self.addCleanup(search_path.stop)
+        spec.loader.exec_module(module)
+        importlib.import_module("durable")
         return module
 
     def test_runner_retries_empty_initialization_and_retains_pending_artifacts(self):
@@ -437,6 +441,30 @@ j.bind_session('thread-committed', 'turn-committed')
             j.accept_message("m2", "", attachments=[{**attachment, "path": "../../secret"}])
         with self.assertRaises(ValueError):
             j.accept_message("m3", "", attachments=[{**attachment, "password": "do not accept arbitrary metadata"}])
+
+    def test_ten_message_attachments_are_durable_and_idempotent(self):
+        j=self.open()
+        files=[{'id':f'file-{i}','path':f'attachments/{i}.txt','sha256':'0'*64,'bytes':10} for i in range(10)]
+        saved=j.accept_message('m1','',attachments=files)
+        sequence=j.state['sequence']
+        self.assertEqual(j.accept_message('m1','',attachments=files),saved)
+        self.assertEqual(j.state['sequence'],sequence)
+        j.close();self.journal=None
+        j=self.open()
+        self.assertEqual(len(j.state['inbox']['m1']['attachments']),10)
+
+    def test_eleven_message_attachments_fail_before_journal_state_changes(self):
+        j=self.open();before=copy.deepcopy(j.state)
+        files=[{'id':f'file-{i}','path':f'attachments/{i}.txt','sha256':'0'*64,'bytes':10} for i in range(11)]
+        with self.assertRaisesRegex(ValueError,'more than 10 attachments'):
+            j.accept_message('m1','',attachments=files)
+        self.assertEqual(j.state,before)
+
+    def test_message_attachment_limit_can_be_configured_explicitly(self):
+        j=self.open(limits=Limits(message_attachments=2))
+        files=[{'id':f'file-{i}','path':f'attachments/{i}.txt','sha256':'0'*64,'bytes':10} for i in range(3)]
+        with self.assertRaisesRegex(ValueError,'more than 2 attachments'):
+            j.accept_message('m1','References',attachments=files)
 
     def test_corrupt_blob_rejected_before_creating_recovery_directory(self):
         j = self.start()

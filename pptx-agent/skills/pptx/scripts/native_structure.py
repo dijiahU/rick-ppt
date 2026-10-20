@@ -1,6 +1,7 @@
 """Explicit native groups and connector endpoints; preserves existing shape IDs."""
 import argparse
 import json
+import math
 import os
 from pathlib import Path
 from lxml import etree
@@ -34,6 +35,103 @@ def bounds(node):
     return tuple(int(off.get(k)) for k in ('x','y'))+tuple(int(ext.get(k)) for k in ('cx','cy'))
 
 
+def _xfrm(node):
+    path='p:grpSpPr/a:xfrm' if local(node)=='grpSp' else 'p:spPr/a:xfrm'
+    xf=node.find(path,NS)
+    if xf is None:xf=node.find('p:xfrm',NS)
+    if xf is None:raise PptxError('Object has no explicit transform; inherited geometry is unverified')
+    return xf
+
+
+def _orient(point,xf):
+    """DrawingML flips precede clockwise rotation, about the object's centre."""
+    off,ext=xf.find('a:off',NS),xf.find('a:ext',NS)
+    if off is None or ext is None:raise PptxError('Incomplete native transform')
+    cx=int(off.get('x'))+int(ext.get('cx'))/2
+    cy=int(off.get('y'))+int(ext.get('cy'))/2
+    dx,dy=point[0]-cx,point[1]-cy
+    if xf.get('flipH') in ('1','true'):dx=-dx
+    if xf.get('flipV') in ('1','true'):dy=-dy
+    angle=math.radians(int(xf.get('rot','0'))/60000)
+    return cx+dx*math.cos(angle)-dy*math.sin(angle),cy+dx*math.sin(angle)+dy*math.cos(angle)
+
+
+def slide_point(node,u,v):
+    """Map normalized object coordinates through every parent group to slide EMU."""
+    x,y,w,h=bounds(node)
+    if w<0 or h<0:raise PptxError('Negative native extent; use explicit flips')
+    point=_orient((x+u*w,y+v*h),_xfrm(node))
+    for parent in node.iterancestors():
+        if local(parent)!='grpSp':continue
+        xf=_xfrm(parent);off=xf.find('a:off',NS);ext=xf.find('a:ext',NS)
+        child_off=xf.find('a:chOff',NS);child_ext=xf.find('a:chExt',NS)
+        if any(n is None for n in (off,ext,child_off,child_ext)):
+            raise PptxError('Group transform needs off/ext/chOff/chExt')
+        cw,ch=int(child_ext.get('cx')),int(child_ext.get('cy'))
+        ew,eh=int(ext.get('cx')),int(ext.get('cy'))
+        if min(cw,ch,ew,eh)<=0:raise PptxError('Group extents must be positive')
+        point=(int(off.get('x'))+(point[0]-int(child_off.get('x')))*ew/cw,
+               int(off.get('y'))+(point[1]-int(child_off.get('y')))*eh/ch)
+        point=_orient(point,xf)
+    return point
+
+
+def connection_point(node,index):
+    """Known preset sites, in ECMA presetShapeDefinitions order (NOT uniform).
+
+    Source: apache/poi poi/src/main/resources/org/apache/poi/sl/draw/geom/
+    presetShapeDefinitions.xml. Unsupported/adjusted/custom sites are never guessed.
+    """
+    if type(index) is not int or index<0:raise PptxError('Invalid connection-site index')
+    if local(node)=='grpSp':
+        raise PptxError('Group connection sites are unverified; anchor to the intended child shape or use an explicit native path')
+    geom=node.find('p:spPr/a:prstGeom',NS)
+    if geom is None:raise PptxError('Custom or inherited connection sites are unverified; use an explicit native path')
+    preset=geom.get('prst')
+    if preset in ('rect','roundRect','diamond'):
+        sites=[(.5,0),(0,.5),(.5,1),(1,.5)]
+    elif preset=='ellipse':
+        d=math.sqrt(.5)/2
+        sites=[(.5,0),(.5-d,.5-d),(0,.5),(.5-d,.5+d),
+               (.5,1),(.5+d,.5+d),(1,.5),(.5+d,.5-d)]
+    elif preset=='triangle':
+        # ECMA triangle has six sites; adj moves its top vertex horizontally.
+        adjustment=.5
+        for guide in geom.findall('a:avLst/a:gd',NS):
+            if guide.get('name')!='adj':continue
+            tokens=guide.get('fmla','').split()
+            if len(tokens)!=2 or tokens[0]!='val':raise PptxError('Triangle adjustment formula is unverified')
+            try:adjustment=max(0,min(1,int(tokens[1])/100000))
+            except ValueError:raise PptxError('Triangle adjustment is not an integer')
+        sites=[(adjustment,0),(adjustment/2,.5),(0,1),(adjustment,1),(1,1),(.5+adjustment/2,.5)]
+    else:raise PptxError(f'Connection sites for {preset!r} are unverified; use an explicit native path')
+    if index>=len(sites):raise PptxError(f'{preset} has {len(sites)} connection sites (0–{len(sites)-1}), got {index}')
+    return slide_point(node,*sites[index])
+
+
+def connector_points(node):
+    geom=node.find('p:spPr/a:prstGeom',NS)
+    if geom is None or geom.get('prst') not in ('line','straightConnector1',
+            'bentConnector2','bentConnector3','bentConnector4','bentConnector5',
+            'curvedConnector2','curvedConnector3','curvedConnector4','curvedConnector5'):
+        raise PptxError('Connector endpoint geometry is unverified')
+    return slide_point(node,0,0),slide_point(node,1,1)
+
+
+def check_connection(tree,connector,start,end,start_site,end_site):
+    node=shape(tree,connector)
+    if local(node)!='cxnSp':raise PptxError('Use a native p:cxnSp connector, not a line-shaped p:sp')
+    if len({str(connector),str(start),str(end)})!=3:raise PptxError('Connector endpoints must be distinct objects')
+    expected=[connection_point(shape(tree,start),start_site),connection_point(shape(tree,end),end_site)]
+    actual=connector_points(node)
+    for label,wanted,drawn in zip(('start','end'),expected,actual):
+        if math.dist(wanted,drawn)>2:
+            raise PptxError(f'Connector {label} geometry disagrees with its connection site: '
+                            f'expected slide EMU ({wanted[0]:.0f}, {wanted[1]:.0f}), '
+                            f'got ({drawn[0]:.0f}, {drawn[1]:.0f}). '
+                            'Correct the coordinates/site, or use an explicit unbound native path.')
+
+
 def group(tree,ids,name):
     if len(ids)<2 or len(set(ids))!=len(ids) or not name.strip():raise PptxError('A named group needs distinct member IDs')
     members=[shape(tree,identifier) for identifier in ids];parent=members[0].getparent()
@@ -61,6 +159,9 @@ def group(tree,ids,name):
 
 
 def anchor(tree,connector,start,end,start_site,end_site):
+    # Validate both endpoints before changing either binding. A permissive viewer
+    # may show the saved line; another may reroute it to the mismatched site.
+    check_connection(tree,connector,start,end,start_site,end_site)
     node=shape(tree,connector)
     if local(node)!='cxnSp':raise PptxError('Use a native p:cxnSp connector, not a line-shaped p:sp')
     if len({str(connector),str(start),str(end)})!=3:raise PptxError('Connector endpoints must be distinct objects')

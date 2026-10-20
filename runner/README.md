@@ -6,6 +6,20 @@
 
 Website: https://rickppt.aaarickmorty.chatgpt.site
 
+Finished-page editing is available while the main author continues. The host
+publishes only real rendered pages, bound to the exact private native source;
+unfinished pages remain placeholders. Deterministic native saves run on the
+separate editor queue without a model request. Page fingerprints permit a draft
+from an earlier version when its affected pages are unchanged. A save rebases
+only those pages onto the latest growing package, then protects them in subsequent
+previews and the frozen review candidate. The author continues later pages rather
+than restoring an older whole-deck snapshot. Explicit page revisions through
+“Ask Agent” release that page's protection. Native saves and pending revisions
+fence delivery; delivery commits briefly close new save admission. Historical
+completed artifacts retain their editor and exact delivered-source paths.
+Implementation: `progressive_canvas.py`, `user_pages.py`, `native_edit_worker.py`
+and website `lib/progressive-canvas.ts` / `lib/progressive-native-finish.ts`.
+
 Current production policy delivers one standalone native PPTX. Author pages in
 order, seek relevant design knowledge/material when the task benefits, and run
 independent content/visual reviews in parallel on the same frozen candidate.
@@ -91,7 +105,15 @@ The public site uses ChatGPT account login, with ten lifetime queue admissions p
 Administrators retain their existing unlimited admission policy. This local bridge
 runs up to three tasks concurrently using the local saved Codex login. The durable
 workflow uses Codex app-server for live steering and compatible thread recovery.
-Keep the Mac awake and Docker running. No launch-at-login service is installed.
+Keep the Mac awake. Rick’s Mac has a user LaunchAgent for login startup and periodic worker liveness checks. Before taking a queued task, the worker checks the Docker engine and the installed pptx-lab-renderer:1 image. If Docker is not ready, it requests Docker Desktop startup and keeps tasks queued without a model call. A missing renderer image is reported rather than silently downloaded. Dependency checks are cached briefly; user pause and existing lease fencing are preserved.
+
+Image checks recheck the equivalent `docker.io/library/pptx-lab-renderer:1` local reference after a short-name failure; Docker Desktop has returned a false missing-image response while the image was listed and runnable. Both probes are bounded and never pull an image. The login service watchdog uses the same fallback.
+
+`service-watchdog.py` is the source of the Mac login-session service keeper. Run it with the configured Python interpreter from a user LaunchAgent at a 15-second interval. It checks the existing Amphetamine/Power Protect sleep setting, local proxy transport, Docker, renderer, worker process and website connectivity; it can request app/worker startup with throttling. It does not install Power Protect, add sudo permissions, change proxy configuration, resume failed jobs or run models. Keep actual LaunchAgent plists and proxy settings private. The production host may keep a launcher copy outside this checkout; the source supports either that layout or a checkout's `runner/` directory.
+
+An independent thread posts `/api/worker?action=heartbeat` every 20 seconds, including while rendering dependencies block queue admission or all execution slots are occupied. This authenticated endpoint updates only worker presence/capabilities; it never claims or expires jobs or charges quota. A dependency-blocked worker advertises no ready execution backends. Default/no-action requests retain the existing claim contract. Deploy the heartbeat endpoint before starting this runner revision; older servers ignored the action parameter. Runtime reloads still drain active jobs before handoff.
+
+The website's Review results tab exposes public structured review reports to task owners and administrators, using an authorized projection of the existing trace transport. After a validated review returns, `public_review.py` publishes bounded report excerpts with the exact frozen artifact hash, input revision and review round. Full originals remain archived. Older structured reviewer records are readable with an explicit missing-version label. Neither report reads nor public-envelope publication start a new review or change task completion semantics.
 
 ## Start
 
