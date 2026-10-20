@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
+import {visualEditDisplay} from '@/lib/visual-edits';
 import {useLanguage} from '@/app/language';
 import AttachmentPreviews from '@/app/attachment-previews';
 import type {Message} from '@/lib/conversation';
@@ -17,7 +18,7 @@ export function ConversationMessages({id,messages}:{id:string;messages:Message[]
  const {locale}=useLanguage(),w=words[locale];
  return <>{!messages.length?<p className="admin-chat-empty">{w[8]}</p>:messages.map(m=><article className={`admin-chat-message ${m.role}`} key={m.id} data-message-id={m.id}>
   <header><strong>{m.role==='user'?w[1]:w[2]}</strong><time dateTime={new Date(m.createdAt).toISOString()}>{new Date(m.createdAt).toLocaleString(locale)}</time></header>
-  {m.body&&<p className="admin-chat-body">{m.body}</p>}
+  {m.body&&<p className="admin-chat-body">{visualEditDisplay(m.body,locale==='zh-CN')??m.body}</p>}
   {!!m.attachments.length&&<AttachmentPreviews files={m.attachments} hrefFor={file=>`/api/admin/jobs/${id}/conversation?message=${m.id}&file=${file.id}`}/>}
   {m.role==='user'&&<small className={`admin-chat-status ${m.status}`}>{m.kind==='revision'?w[3]:w[4]} · {m.status==='applied'?w[7]:m.status==='received'?w[6]:w[5]}</small>}
  </article>)}</>;

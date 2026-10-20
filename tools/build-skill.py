@@ -14,8 +14,8 @@ SOURCE = REPO / 'pptx-agent/skills/pptx'
 OVERLAY = REPO / 'tools/skill-packaging/rick-pptx'
 OVERLAY_FILES = ('SKILL.md', 'agents/openai.yaml', 'references/environment.md',
                  'scripts/doctor.py', 'scripts/native_policy.py', 'scripts/requirements.txt')
-SCRIPTS = ('pptx.py', 'native_canvas.py', 'native_builds.py', 'native_structure.py',
-           'workflow_decisions.py', 'design_references.py', 'review_packet.py', 'inspect_formulas.py', 'font_assets.py')
+SCRIPTS = ('pptx.py', 'native_canvas.py', 'native_builds.py', 'native_timing.py', 'native_structure.py', 'compatibility.py',
+           'workflow_decisions.py', 'design_references.py', 'review_packet.py', 'review_index.py', 'inspect_formulas.py', 'font_assets.py')
 CORE = ('__init__.py', 'common.py', 'cli.py', 'package.py', 'renderer.py',
         'manifest.py', 'validator.py', 'relationships.py', 'snapshots.py', 'diff.py')
 REFERENCES = ('content.md', 'content-review.md', 'visual-review.md', 'research-and-assets.md',

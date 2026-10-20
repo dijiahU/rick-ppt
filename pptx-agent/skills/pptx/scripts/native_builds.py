@@ -48,12 +48,19 @@ def set_builds(tree,steps,replace=False):
     seq=element(element(root,'childTnLst'),'seq',concurrent='1',nextAc='seek')
     main=ctn(seq,dur='indefinite',nodeType='mainSeq')
     children=element(main,'childTnLst')
+    group_id=0
     for step in steps:
         click=ctn(element(children,'par'),fill='hold');condition(click,'indefinite')
         offset=ctn(element(element(click,'childTnLst'),'par'),fill='hold');condition(offset,'0')
-        effect=ctn(element(element(offset,'childTnLst'),'par'),presetID='1',presetClass='entr',presetSubtype='0',fill='hold',nodeType='clickEffect');condition(effect,'0')
-        effects=element(effect,'childTnLst')
-        for ident in step:
+        rows=element(offset,'childTnLst')
+        for index,ident in enumerate(step):
+            # A preset entrance is one object effect, not a bag of visibility
+            # actions. Otherwise a viewer may initialize only the first target
+            # as hidden, leaving later targets visible before their click.
+            effect=ctn(element(rows,'par'),presetID='1',presetClass='entr',presetSubtype='0',
+                       fill='hold',grpId=str(group_id),nodeType='clickEffect' if index==0 else 'withEffect')
+            condition(effect,'0');group_id+=1
+            effects=element(effect,'childTnLst')
             action=element(effects,'set');behavior=element(action,'cBhvr');ctn(behavior,dur='1',fill='hold')
             element(element(behavior,'tgtEl'),'spTgt',spid=str(ident))
             element(element(behavior,'attrNameLst'),'attrName').text='style.visibility'
@@ -61,6 +68,9 @@ def set_builds(tree,steps,replace=False):
     for name,event in (('prevCondLst','onPrev'),('nextCondLst','onNext')):
         cond=element(element(seq,name),'cond',evt=event,delay='0');element(element(cond,'tgtEl'),'sldTgt')
     return timing
+
+
+from native_timing import appear_steps
 
 
 if __name__=='__main__':

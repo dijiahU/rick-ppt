@@ -4,6 +4,7 @@ No slide templates, card backgrounds, automatic font shrinking or style defaults
 Choose composition yourself; snapshot, validate, render and inspect afterward.
 """
 import argparse
+from functools import lru_cache
 import io
 import json
 import math
@@ -131,17 +132,45 @@ def script_runs(text):
         else:runs.append((role,char))
     return runs
 
-def native_font_name(path,index):
+@lru_cache(maxsize=64)
+def _font_info(path,index,mtime,size):
     # PowerPoint uses legacy family/subfamily style linking. Pillow may return
     # the typographic family instead: then a Medium/SemiBold file can render as
     # regular/bold under the same family, despite different measured metrics.
     from fontTools.ttLib import TTFont
     with TTFont(str(path),fontNumber=index,lazy=True) as font:
-        return font['name'].getDebugName(1),font['name'].getDebugName(2)
+        family,style=font['name'].getDebugName(1),font['name'].getDebugName(2)
+        if not family or not style:raise ValueError('Selected font lacks a native family/style name')
+        return family,style,frozenset((font.getBestCmap() or {}).keys())
+
+
+def font_info(path,index=0):
+    path=Path(path).resolve(strict=True);stat=path.stat()
+    return _font_info(str(path),index,stat.st_mtime_ns,stat.st_size)
+
+
+def native_font_name(path,index):
+    return font_info(path,index)[:2]
+
+
+def check_glyphs(text,font_file,index=0,latin_font=None,latin_index=0):
+    """Do not measure tofu and silently rely on a different viewer's fallback."""
+    east=font_info(font_file,index)
+    latin=font_info(latin_font,latin_index) if latin_font else east
+    missing={}
+    for role,chunk in script_runs(text):
+        selected=east if role=='ea' else latin
+        for char in chunk:
+            if char.isspace() or unicodedata.category(char)=='Cf' or char in ('\ufe0e','\ufe0f'):continue
+            if ord(char) not in selected[2]:missing.setdefault(selected[0],set()).add(char)
+    if missing:
+        details='; '.join(f'{family}: '+', '.join(f'{ch} (U+{ord(ch):04X})' for ch in sorted(chars)) for family,chars in missing.items())
+        raise ValueError('Selected font is missing glyphs: '+details+'. Choose an actual covering face or use native geometry for graphical arrows/icons; do not rely on fallback.')
 
 def text_measure(text,font_file,size,width,*,index=0,padding=.04,line_spacing=1.12,latin_font=None,latin_index=0):
     if not isinstance(text,str) or not text.strip() or not all(math.isfinite(x) for x in (size,width,padding,line_spacing)) or size<=0 or width<=2*padding or padding<0 or line_spacing<1:
         raise ValueError('Invalid text measurement input')
+    check_glyphs(text,font_file,index,latin_font,latin_index)
     font=ImageFont.truetype(str(font_file),round(size*4),index=index)
     latin=ImageFont.truetype(str(latin_font),round(size*4),index=latin_index) if latin_font else font
     def length(value):
@@ -179,7 +208,7 @@ def add_text(workspace,number,text,font_file,size,ink,*,x,y,width,max_height,ind
     _,path,tree,shapes=page(workspace,number);ident=next_id(tree)
     sp=node(shapes,P,'sp');nv=node(sp,P,'nvSpPr');node(nv,P,'cNvPr',id=ident,name=name);node(nv,P,'cNvSpPr',txBox=1);node(nv,P,'nvPr')
     pr=node(sp,P,'spPr');transform(pr,(x,y,width,measure['height']));node(node(pr,A,'prstGeom',prst='rect'),A,'avLst');node(pr,A,'noFill');node(node(pr,A,'ln'),A,'noFill')
-    body=node(sp,P,'txBody');node(body,A,'bodyPr',wrap='none',anchor='t',lIns=round(padding*EMU),rIns=round(padding*EMU),tIns=round(padding*EMU),bIns=round(padding*EMU));node(body,A,'lstStyle')
+    body=node(sp,P,'txBody');body_pr=node(body,A,'bodyPr',wrap='none',anchor='t',lIns=round(padding*EMU),rIns=round(padding*EMU),tIns=round(padding*EMU),bIns=round(padding*EMU));node(body_pr,A,'noAutofit');node(body,A,'lstStyle')
     for line in measure['lines']:
         p=node(body,A,'p');pp=node(p,A,'pPr');node(node(pp,A,'lnSpc'),A,'spcPts',val=round(measure['line_points']*100));node(node(pp,A,'spcAft'),A,'spcPts',val=0)
         for role,chunk in (script_runs(line) if latin_font else [('ea',line)]):
@@ -187,7 +216,8 @@ def add_text(workspace,number,text,font_file,size,ink,*,x,y,width,max_height,ind
             node(rp,A,'latin',typeface=measure['latin_family']);node(rp,A,'ea',typeface=measure['font_family']);node(rp,A,'cs',typeface=measure['latin_family'])
             t=node(run,A,'t');t.text=chunk
             if chunk!=chunk.strip():t.set('{http://www.w3.org/XML/1998/namespace}space','preserve')
-        node(p,A,'endParaRPr',sz=round(size*100))
+        ending=node(p,A,'endParaRPr',sz=round(size*100))
+        node(ending,A,'latin',typeface=measure['latin_family']);node(ending,A,'ea',typeface=measure['font_family']);node(ending,A,'cs',typeface=measure['latin_family'])
     write(path,tree);return {**handle(workspace,number,ident),**measure}
 
 def relations(root,path):

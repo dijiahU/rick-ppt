@@ -18,6 +18,7 @@ modules['@/app/chatgpt-auth']={getChatGPTUser:async()=>user};
 modules['./admin-policy']=load('lib/admin-policy.ts');modules['./admin-accounts']=load('lib/admin-accounts.ts');
 modules['./execution-backend']=load('lib/execution-backend.ts');modules['@/lib/execution-backend']=modules['./execution-backend'];
 for(const name of ['server','admin','attachments','progress','queries','admin-trace']){modules['@/lib/'+name]=load('lib/'+name+'.ts');modules['./'+name]=modules['@/lib/'+name];}
+modules['./server']=modules['@/lib/server'];modules['@/lib/native-edit-storage']=load('lib/native-edit-storage.ts');
 const post=load('app/api/worker/[id]/route.ts').POST,get=load('app/api/admin/jobs/[id]/trace/route.ts').GET;
 const id=crypto.randomUUID();db.prepare('INSERT INTO jobs VALUES(?,?,?,?,?,?,?)').run(id,'owner','[]','running',null,'lease-one',null);
 const params={params:Promise.resolve({id})};

@@ -2,6 +2,9 @@
 import {useEffect,useMemo,useState} from 'react';
 import QueueStatus from '@/app/queue-status';
 import Conversation from './conversation';
+import CanvasWorkbench from './canvas-workbench';
+import ReviewResults,{ReviewStatus} from './review-results';
+import {reviewWords} from '@/lib/review-i18n';
 import ConversationHistory from '@/app/admin/conversation-history';
 import AttachmentPreviews from '@/app/attachment-previews';
 import {uploadMessages} from '@/lib/upload-i18n';
@@ -33,7 +36,7 @@ const kinds=['all','search','source','file','command','media','render','note','l
 export default function ProgressRoom({id}:{id:string}){
  const {locale,t}=useLanguage(),w=words[locale],cw=creationWords[locale];
  const [data,setData]=useState<Data|null>(null),[error,setError]=useState(false),[denied,setDenied]=useState(0),[refresh,setRefresh]=useState(0);
- const [tab,setTab]=useState('story'),[filter,setFilter]=useState('all'),[query,setQuery]=useState(''),[newest,setNewest]=useState(false);
+ const [tab,setTab]=useState('canvas'),[filter,setFilter]=useState('all'),[query,setQuery]=useState(''),[newest,setNewest]=useState(false);
  useEffect(()=>{let active=true;const controller=new AbortController();let timer:ReturnType<typeof setTimeout>;
   async function poll(){try{const r=await fetch(`/api/jobs/${encodeURIComponent(id)}/progress`,{cache:'no-store',signal:controller.signal});if([401,403,404].includes(r.status)){if(active){setDenied(r.status);setData(null);}return;}if(!r.ok)throw Error();const value=await r.json() as Data;if(!active)return;setData(value);setError(false);setDenied(0);if((!['complete','failed','paused','delivery_pending'].includes(value.status)||value.pausePending))timer=setTimeout(poll,3000);}catch{if(active){setError(true);timer=setTimeout(poll,6000);}}}
   void poll();return()=>{active=false;controller.abort();clearTimeout(timer);};
@@ -44,11 +47,13 @@ export default function ProgressRoom({id}:{id:string}){
  const sources=useMemo(()=>{const map=new Map<string,{at:number;count:number}>();for(const e of events||[]){if(e.url){const prior=map.get(e.url);map.set(e.url,{at:e.at,count:(prior?.count||0)+1});}}return [...map];},[events]);
  const base=data?.scope==='admin'?`/api/admin/jobs/${id}`:`/api/jobs/${id}`;
  const terminal=!!data&&['complete','failed','paused','delivery_pending'].includes(data.status);
+ const rw=reviewWords[locale]||reviewWords.en;
+ const reviewing=data?.status==='running'&&Object.values(data.progress?.reviews||{}).includes('reviewing');
  const label=(status:string)=>Object.hasOwn(t.statuses,status)?t.statuses[status as keyof typeof t.statuses]:t.unknownStatus;
  return <main className="progress-room"><header><a className="brand" href="/">rickppt</a><div><a href="/">← {w[0]}</a><LanguagePicker/></div></header>
  <p className="eyebrow">LIVE WORKSPACE / {w[1]}</p><h1>{data?.title||w[1]}</h1>
  {denied?<section className="room-empty"><p>{denied===401?w[23]:w[24]}</p>{denied===401&&<a href={`/signin-with-chatgpt?return_to=${encodeURIComponent('/jobs/'+id)}`}>{t.signin} →</a>}</section>:<>
- <div className="room-status"><span className={`status status-${data?.status||'queued'}`}>{data?label(data.status):t.loading}</span><span>{terminal?w[18]:w[17]}</span><button onClick={()=>setRefresh(n=>n+1)}>{w[33]}</button>{data&&(data.scope==='user'||data.canInspectExecution)&&<PauseControl id={id} status={data.status} updatedAt={data.updatedAt} pending={data.pausePending} locale={locale} onChange={()=>setRefresh(n=>n+1)}/>} {data?.download&&<a className="download" href={`${base}/download`}>{w[35]} ↓</a>}</div>
+ <div className="room-status"><span className={`status status-${data?.status||'queued'}`}>{data?(reviewing?rw.reviewing:data.download&&['queued','running'].includes(data.status)?(locale==='zh-CN'?'正在修改 · 原版可下载':'Editing · previous version available'):label(data.status)):t.loading}</span><span>{terminal?w[18]:w[17]}</span><button onClick={()=>setRefresh(n=>n+1)}>{w[33]}</button>{data&&(data.scope==='user'||data.canInspectExecution)&&<PauseControl id={id} status={data.status} updatedAt={data.updatedAt} pending={data.pausePending} hasDraft={!!data.draft} allowResume={data.scope==='user'} locale={locale} onChange={()=>setRefresh(n=>n+1)}/>} {data?.download&&<a className="download" href={`${base}/download`}>{w[35]} ↓</a>}</div>
  {data?.download&&<InteractiveDownload base={base} locale={locale}/>}
  {data&&<DraftDownload draft={data.draft??null} base={base} locale={locale}/>}
  {error&&<p className="error" role="alert">{w[19]}</p>}{data?.status==='running'&&Date.now()-data.updatedAt>120000&&<p className="error">{w[32]}</p>}
@@ -57,12 +62,15 @@ export default function ProgressRoom({id}:{id:string}){
  {data&&<details className="room-brief"><summary>{w[22]}</summary><p className="fineprint">{data.pages===0?taskModeMessages[locale].edit:taskModeMessages[locale].create} · {data.pages===0?taskModeMessages[locale].automatic:`${t.pages}: ${data.pages}`}</p><p>{data.brief}</p></details>}
  {!!data?.attachments?.length&&<details className="room-attachments"><summary>{uploadMessages[locale].references} · {data.attachments.length}</summary><AttachmentPreviews files={data.attachments} hrefFor={file=>`${base}/attachments/${file.id}`}/></details>}
  {data?.canInspectExecution&&<p><a className="download" href={`/admin/jobs/${id}/trace`}>管理员执行记录 · 命令、输出与审核 →</a></p>}
- <div className="room-layout"><section className="room-main"><nav className="room-tabs" aria-label={w[1]}>{[['story',cw.overview,notes.length],['events',w[2],events?.length||0],['sources',w[3],sources.length],['previews',w[4],data?.progress?.previews.length||0]].map(([key,title,count])=><button key={key} onClick={()=>setTab(String(key))} aria-pressed={tab===key}>{title} <span>{count}</span></button>)}</nav>
+ {data&&<ReviewStatus progress={data.progress} onOpen={()=>setTab('reviews')}/>}
+ <div className={`room-layout${tab==='canvas'?' workbench-open':''}`}><section className="room-main"><nav className="room-tabs" aria-label={w[1]}>{[['canvas',locale==='zh-CN'?'设计工作台':'Design workspace',data?.progress?.previews.length||0],['reviews',rw.title,null],['story',cw.overview,notes.length],['events',w[2],events?.length||0],['sources',w[3],sources.length],['previews',w[4],data?.progress?.previews.length||0]].map(([key,title,count])=><button key={key} onClick={()=>setTab(String(key))} aria-pressed={tab===key}>{title} {count!==null&&<span>{count}</span>}</button>)}</nav>
+ {tab==='reviews'&&data&&<ReviewResults id={id} status={data.status}/>}
+ {tab==='canvas'&&data&&<CanvasWorkbench id={id} status={data.status} progress={data.progress} onSubmitted={()=>setRefresh(n=>n+1)} conversation={data.scope==='user'?<Conversation id={id} status={data.status} hasDraft={!!data.draft}/>:<ConversationHistory id={id}/>}/>}
  {tab==='story'&&data&&<CreationStory key={id} progress={data.progress} pages={data.pages} status={data.status} base={base}/>}
  {tab==='events'&&<><div className="room-controls"><label className="sr-only" htmlFor="activity-query">{w[14]}</label><input id="activity-query" type="search" placeholder={w[14]} value={query} onChange={e=>setQuery(e.target.value)}/><button onClick={()=>setNewest(v=>!v)}>{newest?w[15]:w[16]} ↕</button></div><div className="room-filters">{kinds.map((k,i)=><button key={k} aria-pressed={filter===k} onClick={()=>setFilter(k)}>{w[5+i]}</button>)}</div>
  {!visible.length?<p className="room-empty">{events?.length?w[21]:data?.status==='queued'?w[34]:w[20]}</p>:<ol className="room-events">{visible.map(e=><li key={e.seq}><div className="event-stamp"><span>#{e.seq}</span><time>{new Date(e.at).toLocaleTimeString(locale)}</time></div><article><div className="event-heading"><strong>{e.category?w[5+kinds.indexOf(e.category)]:t.activities[e.code]}</strong>{e.state&&<span className={`event-state ${e.state}`}>{w[25+['started','completed','failed'].indexOf(e.state)]}</span>}</div>{e.detail&&<p>{e.detail}</p>}{e.url&&<a className="event-url" href={e.url} target="_blank" rel="noopener noreferrer">{e.url} ↗</a>}<small>{e.reported?w[37]:w[36]}</small></article></li>)}</ol>}</>}
  {tab==='sources'&&<div className="room-sources">{!sources.length?<p>{w[30]}</p>:sources.map(([url,info])=><article key={url}><strong>{new URL(url).hostname}</strong><a href={url} target="_blank" rel="noopener noreferrer">{url} ↗</a><small>{new Date(info.at).toLocaleTimeString(locale)} · {info.count} {w[2]}</small></article>)}</div>}
  {tab==='previews'&&<div className="room-previews">{!data?.progress?.previews.length?<p>{t.noProgress}</p>:data.progress.previews.map(n=><PreviewLink key={n} href={`${base}/preview/${n}?v=${previewVersion(data.progress!,n)}`} label={`${t.slide} ${n}`}><img src={`${base}/preview/${n}?v=${previewVersion(data.progress!,n)}`} alt={`${t.slide} ${n}`} loading="lazy"/><span>{t.slide} {n} · {w[31]}</span></PreviewLink>)}</div>}
- </section><aside className="room-aside">{data?.scope==='admin'&&<ConversationHistory key={id} id={id}/>} {data?.scope==='user'&&<Conversation id={id} status={data.status} updatedAt={data.updatedAt} hasDraft={!!data.draft} pausePending={data.pausePending} onResume={()=>setRefresh(n=>n+1)}/>}<h2>{w[28]}</h2><p>{data?.progress?new Date(data.progress.updatedAt).toLocaleString(locale):'—'}</p><div aria-live="polite"><strong>{terminal?label(data!.status):latestNote?.phase?cw.phase[latestNote.phase]:events?.length?t.activities[events[events.length-1].code]:t.waiting}</strong><p>{latestNote?.detail||''}</p>{!terminal&&latestNote?.next&&<p><strong>{cw.next}</strong><br/>{latestNote.next}</p>}</div><p className="fineprint">{w[29]}</p></aside></div></>}
+ </section><aside className="room-aside">{tab!=='canvas'&&<>{data?.scope==='admin'&&<ConversationHistory key={id} id={id}/>} {data?.scope==='user'&&<Conversation id={id} status={data.status} hasDraft={!!data.draft}/>}<h2>{w[28]}</h2><p>{data?.progress?new Date(data.progress.updatedAt).toLocaleString(locale):'—'}</p><div aria-live="polite"><strong>{terminal?label(data!.status):latestNote?.phase?cw.phase[latestNote.phase]:events?.length?t.activities[events[events.length-1].code]:t.waiting}</strong><p>{latestNote?.detail||''}</p>{!terminal&&latestNote?.next&&<p><strong>{cw.next}</strong><br/>{latestNote.next}</p>}</div><p className="fineprint">{w[29]}</p></>}</aside></div></>}
  </main>;
 }

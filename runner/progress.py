@@ -55,7 +55,7 @@ def read_scoped(root, path, limit):
     finally:os.close(fd)
 
 class Reporter:
-    def __init__(self,cfg,task,job,send,*,explicit_previews=False):
+    def __init__(self,cfg,task,job,send,*,explicit_previews=False,canvas_root=None):
         self.cfg,self.task,self.job,self.send=cfg,task,job,send
         self.explicit_previews=explicit_previews
         self.events=[];self.seq=0;self.offset=0;self.previews={};self.pending={};self.last_sent=0;self.dirty=True
@@ -63,6 +63,10 @@ class Reporter:
         self.journal_offset=0;self.journal_identity=None;self.notes=[];self.urgent=False
         self.outline=None;self.preview_content={};self.pending_content={}
         self.reviews={'content':'pending','visual':'pending'}
+        self.canvas=None;self.canvas_inputs={}
+        if canvas_root:
+            from progressive_canvas import ProgressiveCanvas
+            self.canvas=ProgressiveCanvas(cfg,task,canvas_root,send)
         self.drafts=DraftProgress(cfg,task,job,lambda *args:self.send(*args))
         self.event('started')
 
@@ -225,6 +229,7 @@ class Reporter:
                             version=value.get('contentVersion')
                             if self.outline and version!=page_version(self.outline,slide):continue
                             self.pending[slide]=(self.job,Path(pages[0]));self.pending_content[slide]=version;self.urgent=True
+                            if self.canvas:self.canvas_inputs[slide]=rendered.get('source_hash')
                     except (ValueError,TypeError,AttributeError):continue
         except (OSError,ValueError):pass
 
@@ -232,6 +237,7 @@ class Reporter:
         # Scan/validate/upload in one background thread, including restored jobs
         # that enter private review and only call flush rather than public poll.
         self.drafts.poll()
+        if self.canvas:self.canvas.poll()
         if not force and time.monotonic()-self.last_sent<(1 if self.urgent else 5):return
         self.last_sent=time.monotonic()
         base=f'/api/worker/{self.task["id"]}'
@@ -249,6 +255,7 @@ class Reporter:
                     self.send(self.cfg,base+f'?action=preview&slide={slide}',data,self.task['lease'])
                     self.previews[slide]=digest;self.dirty=True
                     self.event('rendered',state='completed',category='render',phase='rendering',slide=slide)
+                if self.canvas and slide in self.canvas_inputs:self.canvas.offer(slide,self.canvas_inputs.pop(slide),data)
                 if self.outline:self.preview_content[slide]=page_version(self.outline,slide)
                 del self.pending[slide]
             except (OSError,ValueError):del self.pending[slide]

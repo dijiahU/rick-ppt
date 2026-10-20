@@ -14,7 +14,8 @@ from pptx_core.package import unpack
 
 
 SCRIPTS = Path(batch.__file__).parent
-FONT = next((path for path in [Path('/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc'),
+FONT = next((path for path in [Path('/System/Library/Fonts/Supplemental/Songti.ttc'),
+                              Path('/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc'),
                               Path('/System/Library/Fonts/Supplemental/Arial.ttf'),
                               Path('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf')]
              if path.is_file()), None)
@@ -55,8 +56,8 @@ def full_document():
                     {'op': 'group', 'id': 'pair', 'slide': 1, 'members': ['first', 'second'], 'name': 'Semantic pair'},
                     {'op': 'image', 'id': 'image', 'slide': 1, 'source': 'asset.png',
                      'box': [8, 2, 1, 1], 'fit': 'cover', 'layer': 'front'},
-                    {'op': 'connector', 'id': 'link', 'slide': 1, 'start': 'pair', 'end': 'image',
-                     'points': [6, 2.5, 8, 2.5], 'start_site': 1, 'end_site': 0,
+                    {'op': 'connector', 'id': 'link', 'slide': 1, 'start': 'second', 'end': 'image',
+                     'points': [6, 2.5, 8, 2.5], 'start_site': 6, 'end_site': 1,
                      'ink': '445566', 'line_width': 1.5, 'arrow': 'triangle', 'name': 'Meaningful connection'},
                     {'op': 'bars', 'id': 'data', 'slide': 1, 'labels': ['前', '后'],
                      'values': [40, 63], 'unit': '示例次数', 'colors': ['557799', 'AA7744'],
@@ -81,7 +82,7 @@ def test_full_batch_preserves_native_group_connections_reveals_and_editable_char
     pair = tree.find(f'.//p:grpSp/p:nvGrpSpPr/p:cNvPr[@id="{handles["pair"]["shape_id"]}"]', ns).getparent().getparent()
     assert {node.get('id') for node in pair.findall('p:sp/p:nvSpPr/p:cNvPr', ns)} == {
         str(handles['first']['shape_id']), str(handles['second']['shape_id'])}
-    assert tree.find('.//a:stCxn', ns).get('id') == str(handles['pair']['shape_id'])
+    assert tree.find('.//a:stCxn', ns).get('id') == str(handles['second']['shape_id'])
     assert tree.find('.//a:endCxn', ns).get('id') == str(handles['image']['shape_id'])
     assert {node.get('spid') for node in tree.findall('.//p:spTgt', ns)} == {
         str(handles[key]['shape_id']) for key in ('pair', 'image', 'link', 'data')}

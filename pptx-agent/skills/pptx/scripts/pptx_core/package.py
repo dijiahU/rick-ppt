@@ -183,6 +183,8 @@ def export(ws, output=None):
         ws.state["last_validation"] = {"at": now(), **result.to_dict()}
         ws.save()
         result.require()
+        from compatibility import inspect as inspect_compatibility
+        compatibility=inspect_compatibility(ws.root)
         source = Path(ws.state["source"])
         wanted = Path(output).absolute() if output else source.with_name(source.stem + "-edited.pptx")
         resolved = wanted.resolve()
@@ -211,5 +213,9 @@ def export(ws, output=None):
                     suffix += 1
             ws.state.update(baseline=before, native_dirty=False, dirty=ws.state["interactive_dirty"], changed_files=[], changed_slides=[],
                             last_render=rendered, latest_output=str(dest), stop_failures=0)
+            compatibility.update(artifact=str(dest),artifact_sha256=sha256(dest))
+            report_path=ws.home/("compatibility-"+compatibility['artifact_sha256'][:12]+".json")
+            atomic_json(report_path,compatibility)
+            ws.state['last_compatibility']={'report':str(report_path),**compatibility}
             ws.save()
         return dest

@@ -18,6 +18,7 @@ modules['@/app/chatgpt-auth']={getChatGPTUser:async()=>null};
 modules['./execution-backend']=load('lib/execution-backend.ts');modules['@/lib/execution-backend']=modules['./execution-backend'];
 for(const name of ['server','attachments','progress','queries'])modules['@/lib/'+name]=load('lib/'+name+'.ts');
 modules['@/lib/admin-trace']=load('lib/admin-trace.ts');
+modules['./server']=modules['@/lib/server'];modules['@/lib/native-edit-storage']=load('lib/native-edit-storage.ts');
 const worker=load('app/api/worker/[id]/route.ts').POST;
 function seed(status='failed',result=null){const id=crypto.randomUUID();db.prepare('INSERT INTO jobs VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,'owner','request-'+id,'Original title','Original brief',1,'test','en','[{"original":"reference"}]',status,10,100,'old-lease','interrupted',result,'old-progress',null);return id;}
 function call(id,action,{token=WORKER_TOKEN,lease='old-lease',body='{}'}={}){return worker(new Request('https://local.test/api/worker/'+id+'?action='+action,{method:'POST',headers:{Authorization:'Bearer '+token,'X-Job-Lease':lease,'Content-Length':String(new TextEncoder().encode(body).length)},body}),{params:Promise.resolve({id})});}

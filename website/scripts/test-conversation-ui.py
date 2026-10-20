@@ -122,7 +122,7 @@ async def run(base, site, output):
         await worker('checkpoint',{'checkpointId':str(uuid.uuid4()),'runId':str(uuid.uuid4()),'phase':'author','pluginVersion':'0.2.0','resumable':True,'revision':saved['seq'],'lastMessageSeq':saved['seq']})
         update("UPDATE jobs SET status='failed',updated_at=? WHERE id=?",(int(time.time()*1000),))
         await page.reload(wait_until='networkidle')
-        await panel.get_by_role('button',name='Resume from checkpoint').click()
+        await page.locator('.room-status').get_by_role('button',name='Resume',exact=True).click()
         await expect(page.locator('.room-status .status')).to_contain_text('queue',ignore_case=True,timeout=12000)
         await page.set_viewport_size({'width':390,'height':844})
         await page.wait_for_function(at_end,timeout=5000)

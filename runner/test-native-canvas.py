@@ -52,13 +52,13 @@ class NativeCanvasTests(unittest.TestCase):
     def test_connector_handles_preserve_native_endpoint_identity(self):
         def obj(x):return canvas.add_shape(self.workspace,1,(x,1,2,1),geometry='ellipse',fill=None,stroke='202020',line_width=1,name='State')
         a,b=obj(1),obj(4)
-        c=canvas.add_connector(self.workspace,1,a,b,points=(3,1.5,4,1.5),start_site=3,end_site=1,ink='202020',line_width=2,arrow='triangle',name='Change')
+        c=canvas.add_connector(self.workspace,1,a,b,points=(3,1.5,4,1.5),start_site=6,end_site=2,ink='202020',line_width=2,arrow='triangle',name='Change')
         tree=canvas.parse(self.workspace/'ppt/slides/slide1.xml')
         self.assertEqual(tree.find('.//{'+canvas.A+'}stCxn').get('id'),str(a['shape_id']))
         self.assertEqual(tree.find('.//{'+canvas.A+'}endCxn').get('id'),str(b['shape_id']))
         before=(self.workspace/'ppt/slides/slide1.xml').read_bytes()
         for bad in (None,{'workspace':str(self.workspace),'slide':2,'shape_id':a['shape_id']},999):
-            with self.assertRaises(Exception):canvas.add_connector(self.workspace,1,bad,b,points=(3,1.5,4,1.5),start_site=3,end_site=1,ink='202020',line_width=2,arrow='triangle',name='Invalid')
+            with self.assertRaises(Exception):canvas.add_connector(self.workspace,1,bad,b,points=(3,1.5,4,1.5),start_site=6,end_site=2,ink='202020',line_width=2,arrow='triangle',name='Invalid')
             self.assertEqual((self.workspace/'ppt/slides/slide1.xml').read_bytes(),before)
 
     def test_nonadjacent_group_does_not_reorder_unrelated_objects(self):

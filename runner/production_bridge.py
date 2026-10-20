@@ -60,7 +60,10 @@ def write_runtime_receipt(root,cfg,status):
     catalog=plugin/'skills/pptx/assets/workflow-choices.json'
     body['decision_contract_version']=json.loads(catalog.read_text()).get('version') if catalog.is_file() else None
     body['new_deck_click_reveal_required']=bool(catalog.is_file() and json.loads(catalog.read_text()).get('requirements',{}).get('new_deck_click_reveal'))
+    body['renderer_readiness_gate']=(Path(root)/'renderer_health.py').is_file()
+    body['native_direct_editor_available']=all((Path(root)/name).is_file() for name in ('native_editor.py','native_edit_worker.py'))
     body['native_canvas_available']=(plugin/'skills/pptx/scripts/native_canvas.py').is_file()
+    body['compatibility_diagnostics_available']=(plugin/'skills/pptx/scripts/compatibility.py').is_file()
     body['reference_notes_available']=(plugin/'skills/pptx/scripts/design_references.py').is_file()
     body['font_assets_available']=(plugin/'skills/pptx/scripts/font_assets.py').is_file() and (Path(root)/'font-proxy.py').is_file()
     body['page_authoring']='single-main-author-in-order'

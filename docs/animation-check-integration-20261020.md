@@ -1,0 +1,9 @@
+# Animation check integration repair, 2026-10-20
+
+The selected plugin workflow_decisions reader imported native_builds by a generic module name. The production host resolved an older installed authoring module, which had no appear_steps. The CLI used the selected native_builds but passed stdlib ElementTree nodes to a reader using lxml QName/getparent/iterancestors APIs. An actual 25-page task finished native authoring and then failed at its authored decision check.
+
+Extracted the read-only simple-Appear reader into native_timing.py, with no authoring/package dependencies and parser-neutral parent traversal. native_builds retains its public appear_steps entry point. workflow_decisions loads the reader by its exact sibling file path in the selected immutable plugin, bypassing host sys.path and cached modules of the same name. Added this dependency to standalone packaging and immutable stage hash checks.
+
+Regression evidence: 32 native timing/index/compatibility tests and 26 host decision tests pass. Coverage includes stdlib/lxml equivalence, unknown/legacy timing rejection, ancestor/child conflicts and an already-loaded legacy module. Both host and packaged CLI passed the actual authored decision check on the preserved 25-page candidate (SHA-256 aa72a1e3e48a6f7bf22c90a65aa0c7cbe1dfcb8495f0bb15964c580b494f71ee). The actual candidate has 18 click pages, no legacy multi-target entrances, and 10 geometrically valid anchored connectors; only SimSun/Times New Roman are declared. This is structural evidence, not player verification or independent visual-review completion.
+
+Runtime 0.1.0+codex.20261020animcheck, worker 31801 confirmed ready. Existing task explicitly requeued with its exact failed-attempt timestamp and original backend preserved. No historical source or export overwritten.

@@ -31,6 +31,13 @@ timing is preserved unless `--replace` is explicitly selected within editing sco
 It is a small convenience, not a restriction to Appear; use verified OOXML for Fade,
 emphasis, paths or more complex behavior when the explanation benefits.
 
+Each object receives its own preset entrance row. The first object of a click
+uses `clickEffect`; the others use `withEffect` in the same zero-delay click
+branch. Never put several different shape targets in one preset entrance row:
+some viewers may initialize only the first target as hidden, leaving the others
+visible at entry. For example, revealing table rows 1+2, then 3, then 4+5 must not
+leave rows 2 and 5 already visible. A valid target ID list alone cannot detect this.
+
 ## Animation check within authoring and visual review
 
 Use the fast path by default; a separate slideshow session or animation review
@@ -52,6 +59,12 @@ needed to resolve a concrete issue. These samples do not cover every click; insp
 the complete group list and create a targeted extra state only when it is necessary.
 Do not generate another packet or duplicate unchanged evidence. Keep temporary
 state copies separate from the deliverable and its page numbering.
+The supported-state reader verifies explicit click/with-previous rows, target
+identity and wait/delay structure before making simulations. Legacy multi-target
+entrance rows, automatic/delayed sequences or unknown timing are unsupported,
+not an assumed click sequence or a pass. The index includes readable per-click
+object names/text as well as IDs. Compare that list with the intended semantic
+units; a correct time tree does not establish that the author's groups are sensible.
 
 Actual WPS/PowerPoint slideshow playback is a targeted diagnostic when explicitly
 requested, required by the task's playback contract, or needed to resolve a concrete

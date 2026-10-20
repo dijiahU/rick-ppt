@@ -21,6 +21,7 @@ const binding={prepare(sql){let args=[];const statement={bind(...values){args=va
 modules['@/lib/server']={database:()=>binding,files:()=>({async put(key,data){objects.set(key,new Uint8Array(data));if(failPut)throw Error('simulated partial R2 failure');},async get(key){const data=objects.get(key);return data?{body:new Response(data).body}:null;},async delete(keys){for(const key of Array.isArray(keys)?keys:[keys])objects.delete(key);}}),json:(v,status=200)=>Response.json(v,{status}),userId:async()=>currentUser,sameOrigin:r=>r.headers.get('Origin')===new URL(r.url).origin,workerStatus:async()=>({online:false,executionAvailability:{api:false,codex:false}}),workerAuthorized:async r=>r.headers.get('Authorization')==='Bearer local-test-token'};
 modules['@/lib/admin-trace']=load('lib/admin-trace.ts');
 modules['@/lib/staged-uploads']=load('lib/staged-uploads.ts');
+modules['./server']=modules['@/lib/server'];modules['@/lib/native-edit-storage']=load('lib/native-edit-storage.ts');
 const submit=load('app/api/jobs/route.ts').POST,download=load('app/api/jobs/[id]/attachments/[file]/route.ts').GET,worker=load('app/api/worker/[id]/route.ts').POST;
 function request({key=crypto.randomUUID(),files=[new File(['Café reference material'],'référence.txt')],origin='https://local.test'}={}){const form=new FormData();for(const [k,v] of Object.entries({title:'Test attachment',brief:'Use these references for a French deck.',pages:'5',style:'Designer choice',language:'fr',execution_backend:'codex',requestKey:key}))form.set(k,v);for(const file of files)form.append('files',file);return new Request('https://local.test/api/jobs',{method:'POST',headers:{Origin:origin,'X-UI-Language':'fr'},body:form});}
 currentUser=null;assert.equal((await submit(request())).status,401);currentUser='owner';assert.equal((await submit(request({origin:'https://evil.test'}))).status,403);
@@ -125,6 +126,7 @@ for(const format of ['multipart','json']){
  assert.equal((await post('action=preview&slide=51',png)).status,400);
  const progress={updatedAt:1,events:[],previews:[30],previewVersions:{30:'0123456789abcdef'},outline:{revision:'0123456789abcdef',title:'历史课件',purpose:'学习历史',slides:Array.from({length:30},(_,i)=>({id:`s${i+1}`,title:`主题 ${i+1}`,summary:'历史事件及其原因'}))}};
  assert.equal((await post('action=progress',JSON.stringify(progress))).status,200);
+ modules['@/lib/visual-edits']=load('lib/visual-edits.ts');modules['./visual-edits']=modules['@/lib/visual-edits'];modules['@/lib/canvas-storage']=load('lib/canvas-storage.ts');
  const preview=load('app/api/jobs/[id]/preview/[slide]/route.ts').GET;
  const previewParams={params:Promise.resolve({id,slide:'30'})};
  assert.equal((await preview(new Request('https://local.test'),previewParams)).status,200);

@@ -17,6 +17,7 @@ const token='local-synthetic-worker-token-over-32-characters';
 const modules={'./slide-limits.mjs':limits,'@/lib/slide-limits.mjs':limits,'cloudflare:workers':{env:{DB:binding,WORKER_TOKEN:token,FILES:{async put(k,v){objects.set(k,new Uint8Array(v));},async delete(keys){for(const k of Array.isArray(keys)?keys:[keys])objects.delete(k);},async head(){return null;}}}},'@/app/chatgpt-auth':{getChatGPTUser:async()=>user?{userId:user}:null},'@/lib/admin':{isAdmin:async()=>admin}};
 function load(path){const code=ts.transpileModule(readFileSync(new URL('../'+path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const exports={};new Function('require','exports',code)(name=>{assert.ok(modules[name],name);return modules[name];},exports);return exports;}
 for(const name of ['execution-backend','server','i18n','execution-backend-i18n','attachments','queries','task-mode','task-mode-i18n','page-count-i18n','upload-i18n','progress','conversation','drafts','job-status','admin-trace','staged-uploads']){modules['@/lib/'+name]=load('lib/'+name+'.ts');modules['./'+name]=modules['@/lib/'+name];}
+modules['./server']=modules['@/lib/server'];modules['@/lib/native-edit-storage']=load('lib/native-edit-storage.ts');
 const submit=load('app/api/jobs/route.ts').POST,claim=load('app/api/worker/route.ts').POST,account=load('app/api/account/route.ts').GET,resume=load('app/api/jobs/[id]/resume/route.ts').POST,message=load('app/api/jobs/[id]/conversation/route.ts').POST,worker=load('app/api/worker/[id]/route.ts').POST;
 const base='https://local.test';
 function fields(backend='api',key=crypto.randomUUID()){return {title:'LOCAL backend fixture',brief:'Explain this local-only test example.',pages:5,style:'test',language:'en',requestKey:key,execution_backend:backend};}
@@ -24,6 +25,23 @@ function request(body,origin=base){return new Request(base+'/api/jobs',{method:'
 function claimRequest(body={},secret=token){return new Request(base+'/api/worker',{method:'POST',headers:{Authorization:'Bearer '+secret,'Content-Type':'application/json'},body:JSON.stringify(body)});}
 function taskRequest(id,body,path='resume'){return new Request(base+`/api/jobs/${id}/${path}`,{method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify(body)});}
 const count=()=>db.prepare('SELECT COUNT(*) n FROM jobs WHERE user_id=?').get(user).n;
+
+// A dependency-blocked worker stays online without claiming queued work or
+// reaping stale work. Invalid/auth failures cannot write a heartbeat.
+function pulse(body={execution_backends:[]},secret=token,action='heartbeat'){
+ return claim(new Request(base+'/api/worker?action='+action,{method:'POST',headers:{Authorization:'Bearer '+secret,'Content-Type':'application/json'},body:JSON.stringify(body)}));
+}
+assert.equal((await pulse({},'wrong')).status,401);
+assert.equal((await pulse({},token,'unknown')).status,400);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM worker').get().n,0);
+db.prepare("UPDATE jobs SET status='running',updated_at=1,lease='unchanged-lease' WHERE id='legacy'").run();
+const blocked=await pulse();assert.deepEqual(await blocked.json(),{ok:true,ready:false});
+assert.deepEqual({...db.prepare("SELECT status,updated_at,lease FROM jobs WHERE id='legacy'").get()},{status:'running',updated_at:1,lease:'unchanged-lease'});
+assert.equal(count(),0);assert.equal(db.prepare("SELECT execution_backends FROM worker WHERE id='primary'").get().execution_backends,'[]');
+db.prepare("UPDATE jobs SET status='queued',lease=NULL WHERE id='legacy'").run();
+assert.deepEqual(await (await pulse({execution_backends:['codex']})).json(),{ok:true,ready:true});
+assert.equal(db.prepare("SELECT status FROM jobs WHERE id='legacy'").get().status,'queued');
+db.prepare("UPDATE jobs SET status='complete' WHERE id='legacy'").run();db.prepare('DELETE FROM worker').run();
 
 user=null;assert.equal((await submit(request(fields()))).status,401);assert.deepEqual(await (await account()).json(),{signedIn:false});
 user='owner';assert.equal((await submit(request(fields(),'https://evil.test'))).status,403);assert.equal((await claim(claimRequest({},'wrong'))).status,401);

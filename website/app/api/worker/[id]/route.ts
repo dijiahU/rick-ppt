@@ -1,3 +1,4 @@
+import {ensureNativeEdits} from '@/lib/native-edit-storage';
 import {MAX_SLIDES,MAX_PROGRESS_BYTES} from '@/lib/slide-limits.mjs';
 import { database,files,json,workerAuthorized } from '@/lib/server';
 import { parseProgress } from '@/lib/progress';
@@ -53,10 +54,11 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   if(action==='delivery-reset'){
     await db.prepare("UPDATE jobs SET summary=NULL WHERE id=? AND lease=? AND status='running' AND summary='delivery_pending'").bind(id,lease).run();return json({ok:true});
   }
+  if(action==='delivery-ready'||action==='complete')await ensureNativeEdits();
   if(action==='delivery-ready'){
     if(completionRevision===null||expectedDigest===null)return json({error:'Delivery identity required'},400);
     await ensureConversation();
-    const ready=await db.prepare("UPDATE jobs SET summary='delivery_pending',updated_at=? WHERE id=? AND lease=? AND status='running' AND NOT EXISTS(SELECT 1 FROM task_messages WHERE job_id=? AND role='user' AND kind='revision' AND (status<>'applied' OR seq>?))").bind(Date.now(),id,lease,id,completionRevision).run();
+    const ready=await db.prepare("UPDATE jobs SET summary='delivery_pending',updated_at=? WHERE id=? AND lease=? AND status='running' AND NOT EXISTS(SELECT 1 FROM task_messages WHERE job_id=? AND role='user' AND kind='revision' AND (status<>'applied' OR seq>?)) AND NOT EXISTS(SELECT 1 FROM native_edits WHERE job_id=jobs.id AND status IN ('queued','running'))").bind(Date.now(),id,lease,id,completionRevision).run();
     if(ready.meta.changes)return json({ok:true});
     const current=await db.prepare("SELECT id FROM jobs WHERE id=? AND lease=? AND status='running'").bind(id,lease).first();
     return current?json({error:'New revision awaits processing'},412):json({error:'Lease expired'},409);
@@ -119,8 +121,8 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
     const key=resultKey;
     await files().put(key,bytes,{httpMetadata:{contentType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'},customMetadata:{sha256:digest,...(completionRevision!==null?{revision:String(completionRevision)}:{})}});
     const result=completionRevision===null?
-      await db.prepare("UPDATE jobs SET status='complete',result_key=?,summary='complete',updated_at=? WHERE id=? AND lease=? AND status='running'").bind(key,Date.now(),id,lease).run():
-      await db.prepare("UPDATE jobs SET status='complete',result_key=?,summary='complete',updated_at=? WHERE id=? AND lease=? AND status='running' AND NOT EXISTS(SELECT 1 FROM task_messages WHERE job_id=? AND role='user' AND kind='revision' AND (status<>'applied' OR seq>?))").bind(key,Date.now(),id,lease,id,completionRevision).run();
+      await db.prepare("UPDATE jobs SET status='complete',result_key=?,summary='complete',updated_at=? WHERE id=? AND lease=? AND status='running' AND NOT EXISTS(SELECT 1 FROM native_edits WHERE job_id=jobs.id AND status IN ('queued','running'))").bind(key,Date.now(),id,lease).run():
+      await db.prepare("UPDATE jobs SET status='complete',result_key=?,summary='complete',updated_at=? WHERE id=? AND lease=? AND status='running' AND NOT EXISTS(SELECT 1 FROM task_messages WHERE job_id=? AND role='user' AND kind='revision' AND (status<>'applied' OR seq>?)) AND NOT EXISTS(SELECT 1 FROM native_edits WHERE job_id=jobs.id AND status IN ('queued','running'))").bind(key,Date.now(),id,lease,id,completionRevision).run();
     if(!result.meta.changes){
       const completed=await db.prepare("SELECT id FROM jobs WHERE id=? AND lease=? AND status='complete' AND result_key=?").bind(id,lease,key).first();
       if(completed){await recordVersion();return json({ok:true});}

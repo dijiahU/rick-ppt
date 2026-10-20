@@ -25,6 +25,7 @@ modules['@/lib/server']={json,database:()=>({prepare(sql){assert.match(sql,/^SEL
 modules['@/lib/admin']={adminGate:async()=>user==='admin'?null:json({error:'Denied'},user?403:401)};
 modules['@/lib/attachments']=load('lib/attachments.ts');
 modules['@/lib/conversation']=load('lib/conversation.ts');
+modules['@/lib/visual-edits']=load('lib/visual-edits.ts');
 const route=load('app/api/admin/jobs/[id]/conversation/route.ts');assert.deepEqual(Object.keys(route).sort(),['GET','dynamic']);
 function read(id=job,query=''){return route.GET(new Request(`https://local.test/api/admin/jobs/${id}/conversation${query}`),{params:Promise.resolve({id})});}
 for(user of [null,'first-user','other-user']){

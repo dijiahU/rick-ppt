@@ -1,12 +1,28 @@
 'use client';
-import {useState} from 'react';
-const words={en:['Pause task','Stopping…','Stop requested. Saving progress.','Paused. No further work will start until you resume.','Could not pause. Refresh and retry.'],
- 'zh-CN':['暂停任务','正在停止…','已请求停止，正在保存进度。','已暂停。只有点击继续后才会重新制作。','暂停失败，请刷新后重试。'],
- fr:['Mettre en pause','Arrêt…','Arrêt demandé. Sauvegarde en cours.','En pause jusqu’à votre reprise.','Actualisez et réessayez.'],
- es:['Pausar tarea','Deteniendo…','Guardando el progreso.','Pausada hasta que la reanudes.','Actualiza y reintenta.'],
- ja:['タスクを一時停止','停止中…','進捗を保存しています。','再開するまで作業は停止します。','更新して再試行してください。']};
-export default function PauseControl({id,status,updatedAt,pending,locale,onChange}:{id:string;status:string;updatedAt:number;pending:boolean;locale:keyof typeof words;onChange:()=>void}){
- const [busy,setBusy]=useState(false),[error,setError]=useState(''),w=words[locale];
- async function pause(){setBusy(true);setError('');try{const r=await fetch(`/api/jobs/${id}/pause`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expectedUpdatedAt:updatedAt})});if(!r.ok)throw Error(w[4]);onChange();}catch{setError(w[4]);}finally{setBusy(false);}}
- return <>{['queued','running'].includes(status)&&<button disabled={busy} onClick={()=>void pause()}>{busy?w[1]:w[0]}</button>}{status==='paused'&&<span role="status">{pending?w[2]:w[3]}</span>}{error&&<span role="alert">{error}</span>}</>;
+import {useEffect,useRef,useState} from 'react';
+const words={
+ en:{pause:'Pause task',stopping:'Stopping…',saving:'Stop requested. Saving progress.',paused:'Paused. Use Resume to continue.',pauseError:'Could not pause. Refresh and retry.',resume:'Resume',resuming:'Resuming…',retry:'Retry delivery',resumeError:'Could not resume. Refresh and retry.',checking:'Checking saved progress…',hint:'Not completed? Use Resume to continue from your saved progress. You do not need to submit a new task.',unavailable:'No saved checkpoint or progress PPT is available for this attempt. Contact Rick for help.',group:'Task controls',elsewhere:'Use Resume beside Pause at the top to continue from your saved progress.'},
+ 'zh-CN':{pause:'暂停任务',stopping:'正在停止…',saving:'已请求停止，正在保存进度。',paused:'已暂停，点击上方“继续制作”即可恢复。',pauseError:'暂停失败，请刷新后重试。',resume:'继续制作',resuming:'正在恢复…',retry:'重试交付',resumeError:'未能恢复，请刷新后重试。',checking:'正在检查保存的进度…',hint:'显示“未完成”时，可点击“继续制作”从保存的进度恢复，无需重新提交任务。',unavailable:'这次执行还没有可用断点或进度 PPT，请联系 Rick 协助恢复。',group:'任务操作',elsewhere:'请使用页面顶部、暂停旁边的“继续制作”，从保存的进度恢复。'},
+ fr:{pause:'Mettre en pause',stopping:'Arrêt…',saving:'Arrêt demandé. Sauvegarde en cours.',paused:'En pause. Cliquez sur Reprendre pour continuer.',pauseError:'Impossible de mettre en pause. Actualisez et réessayez.',resume:'Reprendre',resuming:'Reprise…',retry:'Réessayer la livraison',resumeError:'Reprise impossible. Actualisez et réessayez.',checking:'Vérification de la sauvegarde…',hint:'Non terminé ? Cliquez sur Reprendre pour continuer depuis la sauvegarde, sans soumettre une nouvelle demande.',unavailable:'Aucun point de reprise ni PPT provisoire disponible. Contactez Rick.',group:'Actions de la tâche',elsewhere:'Utilisez Reprendre à côté de Mettre en pause, en haut de la page, pour continuer.'},
+ es:{pause:'Pausar tarea',stopping:'Deteniendo…',saving:'Guardando el progreso.',paused:'Pausada. Pulsa Reanudar para continuar.',pauseError:'No se pudo pausar. Actualiza y reintenta.',resume:'Reanudar',resuming:'Reanudando…',retry:'Reintentar entrega',resumeError:'No se pudo reanudar. Actualiza y reintenta.',checking:'Comprobando el progreso guardado…',hint:'¿Sin completar? Pulsa Reanudar para continuar desde el progreso guardado, sin enviar una tarea nueva.',unavailable:'No hay un punto guardado ni PPT provisional disponible. Contacta con Rick.',group:'Acciones de la tarea',elsewhere:'Usa Reanudar junto a Pausar tarea, en la parte superior, para continuar.'},
+ ja:{pause:'一時停止',stopping:'停止中…',saving:'進捗を保存しています。',paused:'一時停止中です。「再開」で続行できます。',pauseError:'停止できません。更新して再試行してください。',resume:'再開',resuming:'再開中…',retry:'納品を再試行',resumeError:'再開できません。更新して再試行してください。',checking:'保存済みの進捗を確認中…',hint:'未完了の場合は「再開」で保存済みの進捗から続行できます。新しい依頼の送信は不要です。',unavailable:'使用できる保存地点または進捗版 PPT がありません。Rick にお問い合わせください。',group:'タスク操作',elsewhere:'ページ上部の一時停止の隣にある「再開」から続行できます。'}
+};
+export const taskControlWords=words;
+export default function PauseControl({id,status,updatedAt,pending,hasDraft=false,allowResume=true,locale,onChange}:{id:string;status:string;updatedAt:number;pending:boolean;hasDraft?:boolean;allowResume?:boolean;locale:keyof typeof words;onChange:()=>void}){
+ const [busy,setBusy]=useState<'pause'|'resume'|null>(null),[error,setError]=useState(''),[checkpoint,setCheckpoint]=useState<{key:string;resumable:boolean;unavailable?:boolean}|null>(null),inFlight=useRef(false),w=words[locale];
+ const terminal=['complete','failed','paused','delivery_pending'].includes(status),key=`${id}:${status}:${updatedAt}`;
+ useEffect(()=>{if(!terminal||!allowResume)return;const controller=new AbortController();let active=true;
+  void fetch(`/api/jobs/${id}/conversation`,{cache:'no-store',signal:controller.signal}).then(async response=>{if(!response.ok)throw Error();const data=await response.json() as {recovery?:{resumable?:boolean}|null};if(active)setCheckpoint({key,resumable:data.recovery?.resumable===true});}).catch(()=>{if(active)setCheckpoint({key,resumable:false,unavailable:true});});
+  return()=>{active=false;controller.abort();};
+ },[id,status,updatedAt,terminal,allowResume,key]);
+ const checked=checkpoint?.key===key,canResume=allowResume&&terminal&&!pending&&(status==='paused'||status==='delivery_pending'||hasDraft||(checked&&checkpoint.resumable));
+ async function act(action:'pause'|'resume'){
+  if(inFlight.current)return;inFlight.current=true;setBusy(action);setError('');
+  try{const r=await fetch(`/api/jobs/${id}/${action}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expectedUpdatedAt:updatedAt})});if(!r.ok){const value=await r.json().catch(()=>null) as {error?:string}|null;throw Error(value?.error||(action==='pause'?w.pauseError:w.resumeError));}onChange();}
+  catch(e){setError(e instanceof Error?e.message:action==='pause'?w.pauseError:w.resumeError);}finally{inFlight.current=false;setBusy(null);}
+ }
+ return <><span className="task-controls" role="group" aria-label={w.group}><button type="button" disabled={!!busy||!['queued','running'].includes(status)} onClick={()=>void act('pause')}>{busy==='pause'?w.stopping:w.pause}</button><button type="button" className="task-resume" disabled={!!busy||!canResume} onClick={()=>void act('resume')}>{busy==='resume'?w.resuming:status==='delivery_pending'?w.retry:w.resume}</button></span>
+ {status==='paused'&&<span className="task-control-note" role="status">{pending?w.saving:w.paused}</span>}
+ {status==='failed'&&allowResume&&<p className="task-resume-hint" role="status">{canResume?w.hint:!checked?w.checking:checkpoint?.unavailable?w.resumeError:w.unavailable}</p>}
+ {error&&<span className="task-control-error" role="alert">{error}</span>}</>;
 }

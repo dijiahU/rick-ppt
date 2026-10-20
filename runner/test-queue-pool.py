@@ -13,13 +13,13 @@ class PoolTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path=Path(directory)/'queue.sqlite'
             with sqlite3.connect(path) as db:
-                db.execute('CREATE TABLE jobs(id TEXT,status TEXT,lease TEXT,updated_at INTEGER,created_at INTEGER,title TEXT,brief TEXT,pages INTEGER,style TEXT,language TEXT,attachments TEXT,summary TEXT)')
+                db.execute('CREATE TABLE jobs(id TEXT,status TEXT,lease TEXT,updated_at INTEGER,created_at INTEGER,title TEXT,brief TEXT,pages INTEGER,style TEXT,language TEXT,execution_backend TEXT,attachments TEXT,summary TEXT)')
                 db.executemany("INSERT INTO jobs(id,status,created_at) VALUES (?,'queued',?)",[(str(i),i) for i in range(20)])
             barrier=threading.Barrier(12)
             def claim(i):
                 with sqlite3.connect(path,timeout=10) as db:
                     barrier.wait(3)
-                    return db.execute(query,(str(i),1)).fetchone()
+                    return db.execute(query,(str(i),1,1,1)).fetchone()
             with ThreadPoolExecutor(max_workers=12) as pool:rows=list(pool.map(claim,range(12)))
             accepted=[row for row in rows if row]
             self.assertEqual(len(accepted),3);self.assertEqual(len({row[0] for row in accepted}),3)

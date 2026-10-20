@@ -31,6 +31,10 @@ For mixed Chinese/English, pass the actual Chinese file as --font and English fi
 as --latin-font (or latin_font in Python). Measurement uses both files and output
 keeps separate editable runs with actual East Asian/Latin names. For a .ttc face, choose --font-index explicitly. Essential qualifiers and explanations
 remain visible; the helper cannot judge which words to remove.
+Missing glyphs in the selected Chinese/Latin faces are rejected before writing,
+including during batch preflight. Choose a real covering face rather than relying
+on fallback. Text writes explicit `a:noAutofit` and paragraph-end font names so
+another viewer does not need to infer them; this is not font embedding.
 
 ## Image and editable-type integration
 
@@ -82,6 +86,13 @@ chosen connection sites, ink/width, arrow and explicit start/end coordinates;
 inspect routing and labels in production renders and target PowerPoint. reveal
 accepts lists of handles per meaningful click, including separate objects sharing
 a click without changing their drawing order.
+Connection sites are geometry-specific: rect/roundRect/diamond right=3,left=1;
+ellipse right=6,left=2 (eight total). Exact endpoint coordinates are checked after
+all parent/group transforms. Unsupported/group sites are rejected; anchor to
+the intended supported child or use a fixed editable native path. An existing
+historical mismatch is diagnosed, never silently repaired at export. Read the
+hash-bound compatibility report recorded in session state after export; see
+[Windows WPS compatibility](windows-wps.md).
 
 ```python
 # Import native_canvas from the exposed plugin scripts directory.
