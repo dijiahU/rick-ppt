@@ -13,6 +13,8 @@ def launch_environment(worker,credentials,environ=None):
     if not manifest.get('version'):raise ValueError('Staged plugin has no version')
     if (plugin/'skills/pptx/assets/workflow-choices.json').is_file():
         required=['skills/pptx/references/workflow-branches.md','skills/pptx/scripts/workflow_decisions.py']
+        if json.loads((plugin/'skills/pptx/assets/workflow-choices.json').read_text()).get('version',0)>=4:
+            required+=['skills/pptx/assets/workflow-choices-v3.json']
         if json.loads((plugin/'skills/pptx/assets/workflow-choices.json').read_text()).get('version',0)>=3:
             required+=['skills/pptx/references/native-canvas.md','skills/pptx/scripts/native_canvas.py','skills/pptx/scripts/design_references.py']
         for relative in required:

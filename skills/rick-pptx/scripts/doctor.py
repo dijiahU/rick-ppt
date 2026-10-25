@@ -16,7 +16,7 @@ def main():
             checks[module] = True
         except ImportError:
             checks[module] = False
-    for name in ('assets/blank.pptx', 'assets/workflow-choices.json', 'references/workflow-branches.md'):
+    for name in ('assets/blank.pptx', 'assets/workflow-choices.json', 'assets/workflow-choices-v3.json', 'references/workflow-branches.md'):
         checks[name] = (root / name).is_file()
     try:
         from pptx_core.renderer import executables

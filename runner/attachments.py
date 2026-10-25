@@ -48,7 +48,13 @@ def validate_content(data,ext):
                 path=PurePosixPath(entry.filename)
                 if path.is_absolute() or '..' in path.parts or '\\' in entry.filename or entry.flag_bits&1:raise ValueError('Unsafe Office archive')
                 if entry.file_size>20*1024*1024 or entry.file_size>max(entry.compress_size,1)*1000:raise ValueError('Compressed attachment limit exceeded')
-                if 'vbaproject' in entry.filename.lower() or '/embeddings/' in entry.filename.lower():raise ValueError('Active embedded content is unsupported')
+                if 'vbaproject' in entry.filename.lower() or (ext!='pptx' and '/embeddings/' in entry.filename.lower()):raise ValueError('Active embedded content is unsupported')
+        if ext=='pptx':
+            # Native charts carry passive XLSX data under ppt/embeddings.
+            # Apply the existing content-aware output policy instead of treating
+            # every embedding as executable. Keep original attachment bytes.
+            from office_policy import validate_delivery
+            validate_delivery(data)
     elif ext=='pdf':
         if not data.startswith(b'%PDF-'):raise ValueError('Invalid PDF')
     elif ext=='png':

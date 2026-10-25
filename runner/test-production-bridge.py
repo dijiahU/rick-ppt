@@ -16,6 +16,12 @@ import production_bridge as bridge
 
 
 class ProductionBridge(unittest.TestCase):
+    def test_v4_launch_requires_legacy_catalog_for_historical_recovery(self):
+        catalog=self.plugin/'skills/pptx/assets/workflow-choices.json'
+        catalog.write_text('{"version":4}')
+        with self.assertRaisesRegex(ValueError,'workflow-choices-v3.json'):
+            bridge.launch_environment(self.worker,self.credentials,{})
+
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name).resolve();self.worker=self.root/'worker';self.worker.mkdir()

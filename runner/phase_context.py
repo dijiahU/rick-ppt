@@ -76,9 +76,11 @@ def prepared_phase_context(cfg, job, stage):
         for name in ('outline.json', 'source-notes.md', 'decision-plan.json', 'repair-target.json'):
             add(job, name, kind='author_state')
     add(skill, 'SKILL.md', kind='installed_instruction')
-    add(skill, 'references/content.md', kind='installed_instruction')
+    if stage == 'research':
+        add(skill, 'references/content.md', kind='installed_instruction')
     add(skill, 'references/workflow-branches.md', kind='installed_instruction')
-    add(skill, 'references/content-led-composition.md', kind='installed_instruction')
+    if stage != 'research':
+        add(skill, 'references/content-led-composition.md', kind='installed_instruction')
     add(skill, 'assets/workflow-choices.json', kind='installed_contract')
     # These are host-owned instructions, not copies the task author can rewrite.
     host = Path(__file__).resolve().parent

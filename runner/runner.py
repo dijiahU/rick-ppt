@@ -159,13 +159,16 @@ def prepare(cfg):
             'use':'Select listed task/page/asset/behavior branch IDs and execute their actions. Validate planning, then selected assets/behavior against the authored PPTX. No blank choices, invented category or automatic template rotation.'}
         if json.loads(catalog.read_text())['version']>=3:
             skill=Path(cfg['plugin'])/'skills/pptx'
-            capabilities['workflow_decisions'].update(version=3,
+            capabilities['workflow_decisions'].update(version=json.loads(catalog.read_text())['version'],
                 new_deck_click_reveal_required=cfg.get('_native_reveal_required',bool(json.loads(catalog.read_text()).get('requirements',{}).get('new_deck_click_reveal'))),
                 reference_register='decision-plan.json.references',reference_notes=str(skill/'scripts/design_references.py'),
                 use='Choose audience strategy and actual canvas composition. Record work/title/creator/source/inspection/observed/borrowed/page applications; write applied references into final slide notes. Choice counts do not establish design quality.')
             capabilities['native_canvas']={'guide':str(skill/'references/native-canvas.md'),
                 'helper':str(skill/'scripts/native_canvas.py'),
                 'use':'Measure text using an installed font; create editable type without default card backgrounds; crop and layer actual task images; create editable one-unit bars; use returned workspace/slide/object handles for explicit shapes, anchored connections, borderless semantic grouping and click reveals. Choose typography/color/geometry yourself and inspect the actual render.'}
+        if json.loads(catalog.read_text())['version'] >= 4:
+            capabilities['workflow_decisions'].update(mode='delivery-contract-open-design',
+                use='Record exact page coverage, protected template elements, behavior/assets and actual reference applications. Composition/style/form are open choices, not required categories. Tools derive page reference links and notes; actual visual quality is reviewed on rendered pages.')
         (job/'capabilities.json').write_text(json.dumps(capabilities,indent=2))
     prepare_fonts(job)
     font_catalog=ROOT/'render-fonts.local.json'

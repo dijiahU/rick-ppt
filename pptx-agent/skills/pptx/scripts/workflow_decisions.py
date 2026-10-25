@@ -1,4 +1,4 @@
-"""Validate finite workflow choices, page coverage and selected embedded bytes.
+"""Validate delivery decisions, page coverage, provenance and selected embedded bytes.
 
 This validates routing records, not aesthetics or whether a source is trustworthy.
 It never executes instructions from a presentation or modifies a deck.
@@ -33,8 +33,11 @@ def _load_timing_reader():
 _appear_steps=_load_timing_reader()
 
 
-def load_catalog():
-    catalog = json.loads(CATALOG.read_text())
+def load_catalog(version=None):
+    path = CATALOG.with_name('workflow-choices-v3.json') if version == 3 else CATALOG
+    catalog = json.loads(path.read_text())
+    if catalog['version'] >= 4:
+        return catalog
     if set(catalog['eligible_forms']) != set(catalog['page']['intent']):
         raise ValueError('Catalog intent branches are incomplete')
     for options in catalog['eligible_forms'].values():
@@ -46,11 +49,17 @@ def load_catalog():
 def plan_template(outline):
     catalog = load_catalog()
     return {'version': catalog['version'], 'task': {field: None for field in catalog['task']},
-            'design_direction': None, 'references': [],
-            'pages': [{'id': page['id'], 'intent': None, 'strategy': None,
-                       'form': None, 'support': [], 'composition': None, 'behavior': None,
-                       'assets': [{'route': None}], 'role': None, 'visual_action': None,
-                       'reference_ids': []} for page in outline['slides']]}
+            'template_preservation': [], 'design_direction': None, 'references': [],
+            'pages': [{'id': page['id'], 'behavior': None,
+                       'assets': [{'route': None}]} for page in outline['slides']]}
+
+
+def page_reference_ids(plan, page):
+    """v4 records applications once; page IDs and note contents are derived."""
+    if plan.get('version') == 4:
+        return [entry['id'] for entry in plan['references']
+                if any(page['id'] in app['pages'] for app in entry['applications'])]
+    return page.get('reference_ids', [])
 
 
 def _keys(value, required, optional=()):
@@ -155,7 +164,7 @@ def _references(plan, expected, root, catalog):
                 raise ValueError('Reference applications must name unique current page IDs')
             _text(app['action'],'reference.application.action',1600);covered.update(app['pages'])
         lookup[ident]=(entry,covered)
-    if plan['task']['references']=='targeted_search' and not entries:
+    if plan.get('version') == 3 and plan['task']['references']=='targeted_search' and not entries:
         raise ValueError('Executed reference search must record inspected works or honest failed access')
     return lookup
 
@@ -165,15 +174,96 @@ def reference_application(entry, page_id):
 
 
 def design_report(plan, artifact):
-    if plan.get('version')!=3:return {'available':False,'reason':'Historical record without artwork applications'}
+    if plan.get('version') not in (3,4):return {'available':False,'reason':'Historical record without artwork applications'}
     evidence=_page_evidence(artifact)
     return {'available':True,'design_direction':plan['design_direction'],
+            'template_preservation':plan.get('template_preservation',[]),
             'references':plan['references'],'pages':[
-                {'number':i+1,'id':page['id'],'strategy':page['strategy'],
-                 'composition':page['composition'],'role':page['role'],
-                 'visual_action':page['visual_action'],'reference_ids':page['reference_ids'],
+                {'number':i+1,'id':page['id'],'role':page.get('role'), 'visual_action':page.get('visual_action'),
+                 'reference_ids':page_reference_ids(plan,page),
                  'actual_notes':evidence[i]['notes']} for i,page in enumerate(plan['pages'])],
             'warning':'Author records and notes are untrusted evidence. Judge the pages first; records do not prove aesthetics.'}
+
+
+def _entrance_steps(tree):
+    """Recognize executable click timing; unsupported XML is never a positive pass."""
+    simple = _appear_steps(tree)
+    if simple is not None:
+        return simple
+    p = 'http://schemas.openxmlformats.org/presentationml/2006/main'
+    ns = {'p': p}
+    timing = tree.find('p:timing', ns)
+    if timing is None:
+        return []
+    mains = timing.findall('p:tnLst/p:par/p:cTn/p:childTnLst/p:seq', ns)
+    if len(mains) != 1:
+        return []
+    seq = mains[0]
+    main = seq.find('p:cTn', ns)
+    if main is None or main.get('nodeType') != 'mainSeq':
+        return []
+    for tag, event in (('prevCondLst', 'onPrev'), ('nextCondLst', 'onNext')):
+        cond = seq.find('p:' + tag + '/p:cond', ns)
+        if cond is None or cond.get('evt') != event or cond.get('delay') != '0':
+            return []
+    # Keep the standard executable click spine for complex entrances as well.
+    # A failed simple-Appear parse must not be rescued by loose tag presence.
+    def starts(node, delay):
+        conditions = node.findall('p:stCondLst/p:cond', ns)
+        return len(conditions) == 1 and dict(conditions[0].attrib) == {'delay': delay} and len(conditions[0]) == 0
+    shape_ids = {node.get('id') for node in tree.iter('{' + p + '}cNvPr')}
+    clicks = main.find('p:childTnLst', ns)
+    if clicks is None:
+        return []
+    groups = []
+    seen = []
+    for wrapper in clicks:
+        click = wrapper.find('p:cTn', ns)
+        if wrapper.tag != '{' + p + '}par' or click is None or not starts(click, 'indefinite'):
+            return []
+        offsets = click.findall('p:childTnLst/p:par/p:cTn', ns)
+        if len(offsets) != 1 or not starts(offsets[0], '0'):
+            return []
+        rows = offsets[0].find('p:childTnLst', ns)
+        if rows is None:
+            return []
+        targets = []
+        for index, row in enumerate(rows):
+            effect = row.find('p:cTn', ns)
+            if row.tag != '{' + p + '}par' or effect is None or not starts(effect, '0'):
+                return []
+            if effect.get('nodeType') != ('clickEffect' if index == 0 else 'withEffect') or effect.get('presetClass') != 'entr':
+                return []
+            seen.append(effect)
+            ids = {node.get('spid') for node in effect.iter('{' + p + '}spTgt')}
+            actions = [n for n in effect.iter() if n.tag in {
+                '{' + p + '}' + k for k in ('set', 'anim', 'animEffect', 'animMotion', 'animScale', 'animRot')}]
+            if len(ids) != 1 or not ids <= shape_ids or not actions:
+                return []
+            # Preset 1 with only set behavior is simple Appear. If its strict
+            # reader rejected it, it is not a valid generic entrance alternative.
+            if effect.get('presetID') == '1' and all(action.tag == '{' + p + '}set' for action in actions):
+                return []
+            for action in actions:
+                behavior = action.find('p:cBhvr', ns)
+                if behavior is None or behavior.find('p:cTn', ns) is None or behavior.find('p:tgtEl/p:spTgt', ns) is None:
+                    return []
+                if action.tag == '{' + p + '}set':
+                    names = behavior.findall('p:attrNameLst/p:attrName', ns)
+                    value = action.find('p:to/p:strVal', ns)
+                    if not names or action.find('p:to', ns) is None:
+                        return []
+                    if any(name.text == 'style.visibility' for name in names) and (value is None or value.get('val') != 'visible'):
+                        return []
+            targets.extend(sorted(ids))
+        if targets:
+            groups.append(targets)
+    all_effects = [n for n in timing.iter('{' + p + '}cTn') if n.get('nodeType') in ('clickEffect','withEffect','afterEffect')]
+    ids = [ident for group in groups for ident in group]
+    if all_effects != seen or len(ids) != len(set(ids)):
+        return []
+    return groups
+
 
 
 def _page_evidence(data):
@@ -226,35 +316,71 @@ def _page_evidence(data):
                                 pass
                 if item.get('Type', '').endswith('/slide'):
                     navigation = True
-            timing = tree.find(f'{{{p}}}timing')
-            shape_ids={node.get('id') for node in tree.iter(f'{{{p}}}cNvPr')}
-            reveal_steps=[]
-            if timing is not None and any(node.get('evt')=='onNext' for node in timing.iter(f'{{{p}}}cond')):
-                simple_steps=_appear_steps(tree)
-                for effect in timing.iter(f'{{{p}}}cTn'):
-                    if effect.get('nodeType')!='clickEffect':continue
-                    step_targets=[node.get('spid') for node in effect.iter(f'{{{p}}}spTgt')]
-                    entrance=any(node.get('presetClass')=='entr' for node in effect.iter(f'{{{p}}}cTn'))
-                    behavior=any(node.tag in {f'{{{p}}}'+kind for kind in ('set','anim','animEffect','animMotion','animScale','animRot')} for node in effect.iter())
-                    if entrance and behavior and step_targets and all(ident in shape_ids for ident in step_targets):reveal_steps.append(step_targets)
-                if simple_steps is not None:reveal_steps=simple_steps
+            # Inherited visible pictures/backgrounds are real page assets too.
+            # Follow only the layout/master chain, never unrelated package media.
+            inherited_seen = set()
+            master_visible = tree.get('showMasterSp', '1') not in ('0', 'false')
+            has_background = tree.find(f'{{{p}}}cSld/{{{p}}}bg') is not None
+            def inherit(part, relation_type, include_master):
+                nonlocal has_background
+                if part in inherited_seen:
+                    return
+                inherited_seen.add(part)
+                node = ET.fromstring(archive.read(part))
+                rp = posixpath.join(posixpath.dirname(part), '_rels', posixpath.basename(part) + '.rels')
+                relations = ET.fromstring(archive.read(rp)) if rp in archive.namelist() else []
+                roots = []
+                if relation_type == 'slideLayout' or include_master:
+                    shapes = node.find(f'{{{p}}}cSld/{{{p}}}spTree')
+                    if shapes is not None:
+                        roots.append(shapes)
+                background = node.find(f'{{{p}}}cSld/{{{p}}}bg')
+                if not has_background and background is not None:
+                    roots.append(background)
+                    has_background = True
+                used_ids = {value for root in roots for item in root.iter() for key, value in item.attrib.items()
+                            if key in (f'{{{r}}}embed', f'{{{r}}}id')}
+                for relation in relations:
+                    if relation.get('TargetMode') == 'External':
+                        continue
+                    target = resolve(posixpath.dirname(part), relation.get('Target', ''))
+                    if relation.get('Id') in used_ids and target.startswith('ppt/media/'):
+                        if target not in hash_cache:
+                            hash_cache[target] = hashlib.sha256(archive.read(target)).hexdigest()
+                        hashes.add(hash_cache[target])
+                    if relation.get('Type', '').endswith('/slideMaster'):
+                        inherit(target, 'slideMaster', include_master and node.get('showMasterSp', '1') not in ('0', 'false'))
+            for relation in rels:
+                if relation.get('TargetMode') != 'External' and relation.get('Type', '').endswith('/slideLayout'):
+                    inherit(resolve(posixpath.dirname(name), relation.get('Target', '')), 'slideLayout', master_visible)
+            reveal_steps = _entrance_steps(tree)
             evidence.append({'assets': hashes, 'playable': playable, 'click_reveal': bool(reveal_steps), 'reveal_steps':reveal_steps,'internal_navigation': navigation,'notes':notes})
     return evidence
 
 
 def validate_plan(plan, outline, *, stage='planning', root=None, artifact=None,
                   generation_enabled=True, search_enabled=True, mode='create', require_variation=None, allow_legacy=True, require_click_reveal=None):
-    catalog = load_catalog()
+    current = load_catalog()
     if stage not in ('planning', 'authored'):
         raise ValueError('Unknown decision validation stage')
-    # Historical execution records remain readable without mutating checkpoint bytes.
-    legacy = isinstance(plan,dict) and type(plan.get('version')) is int and plan['version'] in (1,2)
-    if legacy:
-        if not allow_legacy:raise ValueError('New tasks require the current design contract; historical records cannot bypass it')
-        plan=_historical_plan(plan,mode)
-    _keys(plan, ('version', 'task', 'pages','design_direction','references'))
-    if type(plan['version']) is not int or plan['version'] != catalog['version']:
+    version = plan.get('version') if isinstance(plan, dict) else None
+    if type(version) is not int or version not in (1, 2, 3, current['version']):
         raise ValueError('Unsupported decision-plan version')
+    legacy = version < current['version']
+    if legacy and not allow_legacy:
+        raise ValueError('New tasks require the current delivery contract; preserve historical contracts only on recovery')
+    if version in (1, 2):
+        plan = _historical_plan(plan, mode)
+    free_design = plan['version'] >= 4
+    catalog = current if free_design else load_catalog(3)
+    _keys(plan, ('version', 'task', 'pages', 'design_direction', 'references'),
+          ('template_preservation',) if free_design else ())
+    if free_design:
+        preservation = plan.get('template_preservation')
+        if not isinstance(preservation, list) or len(preservation) > 64:
+            raise ValueError('Record template_preservation as the actual protected elements, or [] without a template')
+        for item in preservation:
+            _text(item, 'template_preservation', 1600)
     task = plan['task']
     _keys(task, tuple(catalog['task']))
     for field, options in catalog['task'].items():
@@ -262,12 +388,12 @@ def validate_plan(plan, outline, *, stage='planning', root=None, artifact=None,
     if task['operation'] != mode:
         raise ValueError('Operation must match the existing create/edit task entry')
     if require_click_reveal is None:
-        require_click_reveal=bool(catalog.get('requirements',{}).get('new_deck_click_reveal')) and not legacy
-    require_click_reveal=bool(require_click_reveal) and mode=='create' and require_variation is not False
-    if not search_enabled and (task['research'] != 'supplied_only' or task['references'] == 'targeted_search'):
+        require_click_reveal = bool(current.get('requirements', {}).get('new_deck_click_reveal')) and not legacy
+    require_click_reveal = bool(require_click_reveal) and mode == 'create' and require_variation is not False
+    if not search_enabled and (task['research'] != 'supplied_only' or task.get('references') == 'targeted_search'):
         raise ValueError('Search is unavailable; select permitted supplied/available branches')
-    if task['style'] == 'supplied_system' and task['references'] != 'preserve_supplied':
-        raise ValueError('supplied_system must use preserve_supplied references')
+    if not free_design and task['style'] == 'supplied_system' and task['references'] != 'preserve_supplied':
+        raise ValueError('Historical supplied_system must use preserve_supplied references')
     expected = [page['id'] for page in outline['slides']]
     pages = plan['pages']
     if not isinstance(pages, list) or len(pages) != len(expected):
@@ -282,35 +408,49 @@ def validate_plan(plan, outline, *, stage='planning', root=None, artifact=None,
         if len(evidence) != len(pages):
             raise ValueError('Artifact page order/count differs from the decision plan')
     signatures = set()
-    if require_click_reveal and not any(page.get('behavior')=='click_reveal' for page in pages):
-        raise ValueError('New presentations require content-led native click reveals; an entirely static deck cannot be delivered')
     asset_hashes = {}
     for index, page in enumerate(pages):
-        _keys(page, ('id', 'intent', 'strategy','form', 'support', 'composition', 'behavior', 'assets', 'role','visual_action','reference_ids'))
-        for field, options in catalog['page'].items():
-            _enum(page[field], options, 'page.' + field)
-        _text(page['role'], 'page.role')
-        _text(page['visual_action'],'page.visual_action',1600)
-        ids=page['reference_ids']
-        if not isinstance(ids,list) or any(not isinstance(ident,str) for ident in ids) or len(ids)!=len(set(ids)):
+        if free_design:
+            _keys(page, ('id', 'behavior', 'assets'),
+                  ('role', 'visual_action', 'intent', 'strategy', 'form', 'support', 'composition', 'reference_ids'))
+            _enum(page['behavior'], catalog['page']['behavior'], 'page.behavior')
+            for field in ('role', 'visual_action', 'intent', 'strategy', 'form', 'composition'):
+                if field in page:
+                    _text(page[field], 'page.' + field, 1600)
+            if 'support' in page:
+                if not isinstance(page['support'], list) or len(page['support']) > 32:
+                    raise ValueError('Optional support must be a list of descriptions')
+                for item in page['support']:
+                    _text(item, 'page.support', 1600)
+        else:
+            _keys(page, ('id', 'intent', 'strategy','form', 'support', 'composition', 'behavior', 'assets', 'role','visual_action','reference_ids'))
+            for field, options in catalog['page'].items():
+                _enum(page[field], options, 'page.' + field)
+            _text(page['role'], 'page.role')
+            _text(page['visual_action'], 'page.visual_action', 1600)
+        ids = page_reference_ids(plan, page)
+        if 'reference_ids' in page and page['reference_ids'] != ids:
+            raise ValueError('Optional page reference IDs must agree with the reference applications')
+        if not isinstance(ids, list) or any(not isinstance(ident, str) for ident in ids) or len(ids) != len(set(ids)):
             raise ValueError('Page reference IDs must be a unique list')
         for ident in ids:
             if ident not in references or page['id'] not in references[ident][1]:
-                raise ValueError('Page reference lacks an inspected work and matching application: '+page['id'])
+                raise ValueError('Page reference lacks an inspected work and matching application: ' + page['id'])
             if evidence is not None:
-                entry=references[ident][0];notes=' '.join(evidence[index]['notes'].split())
-                for value in (ident,entry['title'],entry['creator'],entry['source'],entry['observed'],entry['borrowed'],reference_application(entry,page['id'])):
+                entry = references[ident][0]; notes = ' '.join(evidence[index]['notes'].split())
+                for value in (ident, entry['title'], entry['creator'], entry['source'], entry['observed'], entry['borrowed'], reference_application(entry, page['id'])):
                     if ' '.join(value.split()) not in notes:
-                        raise ValueError('Final slide notes must record artwork, creator, source, observation, borrowed principle and application: '+page['id'])
-        if page['form'] not in catalog['eligible_forms'][page['intent']]:
-            raise ValueError('Primary form is outside the selected intent branch: ' + page['id'])
-        support = page['support']
-        if not isinstance(support, list) or len(support) > len(catalog['page']['form']):
-            raise ValueError('support must be a list of form choices')
-        for form in support:
-            _enum(form, catalog['page']['form'], 'page.support')
-        if len(set(support)) != len(support) or page['form'] in support:
-            raise ValueError('Duplicate primary/support choices')
+                        raise ValueError('Final slide notes must record artwork, creator, source, observation, borrowed principle and application: ' + page['id'])
+        support = page.get('support', [])
+        if not free_design:
+            if page['form'] not in catalog['eligible_forms'][page['intent']]:
+                raise ValueError('Primary form is outside the selected intent branch: ' + page['id'])
+            if not isinstance(support, list) or len(support) > len(catalog['page']['form']):
+                raise ValueError('support must be a list of form choices')
+            for form in support:
+                _enum(form, catalog['page']['form'], 'page.support')
+            if len(set(support)) != len(support) or page['form'] in support:
+                raise ValueError('Duplicate primary/support choices')
         assets = page['assets']
         if not isinstance(assets, list) or not assets or len(assets) > 32:
             raise ValueError('Select at least one asset route, including explicit none')
@@ -350,28 +490,31 @@ def validate_plan(plan, outline, *, stage='planning', root=None, artifact=None,
                 raise ValueError('Unresolved assets must not claim a ready file')
         if 'none' in routes and len(assets) != 1:
             raise ValueError('none cannot be combined with other asset routes')
-        forms = {page['form'], *support}
+        forms = {page.get('form'), *support}
         file_routes=routes & {'supplied','web_import','generate'}
-        if page['composition'] in ('image_field','image_with_type','annotated_visual') and not file_routes:
+        if not free_design and page['composition'] in ('image_field','image_with_type','annotated_visual') and not file_routes:
             raise ValueError('Chosen image composition needs an actual file asset')
-        if page['strategy']=='observe' and not ({'documentary_image','embedded_media'} & forms) and task['references']!='preserve_supplied':
+        if not free_design and page['strategy']=='observe' and not ({'documentary_image','embedded_media'} & forms) and task['references']!='preserve_supplied':
             raise ValueError('Object/state observation requires real visual evidence, not an invented illustration or prose map')
         for form, kind in [('documentary_image', 'documentary'), ('original_illustration', 'illustrative'), ('embedded_media', 'media')]:
-            if form in forms and kind not in kinds:
+            if not free_design and form in forms and kind not in kinds:
                 raise ValueError('Chosen form lacks its matching asset route: ' + form)
-        if page['behavior'] == 'embedded_playback' and 'embedded_media' not in forms:
-            raise ValueError('embedded_playback requires embedded_media')
+        if page['behavior'] == 'embedded_playback' and 'media' not in kinds:
+            raise ValueError('embedded_playback requires an actual media asset')
         if evidence is not None and page['behavior'] in ('click_reveal', 'internal_navigation'):
             if not evidence[index][page['behavior']]:
                 raise ValueError('Selected native behavior is missing on page: ' + page['id'])
-        signatures.add((page['form'], page['composition']))
+        if not free_design:
+            signatures.add((page['form'], page['composition']))
+    if require_click_reveal and not any(page.get('behavior')=='click_reveal' for page in pages):
+        raise ValueError('New presentations require content-led native click reveals; an entirely static deck cannot be delivered')
     for ident,(_,covered) in references.items():
-        if {page['id'] for page in pages if ident in page['reference_ids']}!=covered:
+        if {page['id'] for page in pages if ident in page_reference_ids(plan,page)}!=covered:
             raise ValueError('Reference applications and actual page reference IDs disagree: '+ident)
-    variation = task['operation'] == 'create' and task['references'] != 'preserve_supplied' if require_variation is None else require_variation
-    if variation and len(pages) > 1 and len(signatures) < 2:
+    variation = task['operation'] == 'create' and task.get('references') != 'preserve_supplied' if require_variation is None else require_variation
+    if not free_design and variation and len(pages) > 1 and len(signatures) < 2:
         raise ValueError('New multi-page decks cannot select one form/composition throughout')
-    return {'version': plan['version'], 'pages': len(pages), 'distinct_form_layouts': len(signatures),
+    return {'version': plan['version'], 'pages': len(pages), 'distinct_form_layouts': None if free_design else len(signatures),
             'stage': stage, 'embedded_assets_checked': evidence is not None,'legacy_record':legacy,
             'references_recorded':len(references),'artistic_transfer_requires_visual_review':True,'click_reveal_required':require_click_reveal}
 

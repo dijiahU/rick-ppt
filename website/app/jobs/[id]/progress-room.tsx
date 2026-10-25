@@ -36,7 +36,7 @@ const kinds=['all','search','source','file','command','media','render','note','l
 export default function ProgressRoom({id}:{id:string}){
  const {locale,t}=useLanguage(),w=words[locale],cw=creationWords[locale];
  const [data,setData]=useState<Data|null>(null),[error,setError]=useState(false),[denied,setDenied]=useState(0),[refresh,setRefresh]=useState(0);
- const [tab,setTab]=useState('canvas'),[filter,setFilter]=useState('all'),[query,setQuery]=useState(''),[newest,setNewest]=useState(false);
+ const [tab,setTab]=useState('story'),[filter,setFilter]=useState('all'),[query,setQuery]=useState(''),[newest,setNewest]=useState(false);
  useEffect(()=>{let active=true;const controller=new AbortController();let timer:ReturnType<typeof setTimeout>;
   async function poll(){try{const r=await fetch(`/api/jobs/${encodeURIComponent(id)}/progress`,{cache:'no-store',signal:controller.signal});if([401,403,404].includes(r.status)){if(active){setDenied(r.status);setData(null);}return;}if(!r.ok)throw Error();const value=await r.json() as Data;if(!active)return;setData(value);setError(false);setDenied(0);if((!['complete','failed','paused','delivery_pending'].includes(value.status)||value.pausePending))timer=setTimeout(poll,3000);}catch{if(active){setError(true);timer=setTimeout(poll,6000);}}}
   void poll();return()=>{active=false;controller.abort();clearTimeout(timer);};
@@ -63,7 +63,7 @@ export default function ProgressRoom({id}:{id:string}){
  {!!data?.attachments?.length&&<details className="room-attachments"><summary>{uploadMessages[locale].references} · {data.attachments.length}</summary><AttachmentPreviews files={data.attachments} hrefFor={file=>`${base}/attachments/${file.id}`}/></details>}
  {data?.canInspectExecution&&<p><a className="download" href={`/admin/jobs/${id}/trace`}>管理员执行记录 · 命令、输出与审核 →</a></p>}
  {data&&<ReviewStatus progress={data.progress} onOpen={()=>setTab('reviews')}/>}
- <div className={`room-layout${tab==='canvas'?' workbench-open':''}`}><section className="room-main"><nav className="room-tabs" aria-label={w[1]}>{[['canvas',locale==='zh-CN'?'设计工作台':'Design workspace',data?.progress?.previews.length||0],['reviews',rw.title,null],['story',cw.overview,notes.length],['events',w[2],events?.length||0],['sources',w[3],sources.length],['previews',w[4],data?.progress?.previews.length||0]].map(([key,title,count])=><button key={key} onClick={()=>setTab(String(key))} aria-pressed={tab===key}>{title} {count!==null&&<span>{count}</span>}</button>)}</nav>
+ <div className={`room-layout${tab==='canvas'?' workbench-open':''}`}><section className="room-main"><nav className="room-tabs" aria-label={w[1]}>{[['story',cw.overview,notes.length],['canvas',locale==='zh-CN'?'设计工作台':'Design workspace',data?.progress?.previews.length||0],['events',w[2],events?.length||0],['reviews',rw.title,null],['sources',w[3],sources.length],['previews',w[4],data?.progress?.previews.length||0]].map(([key,title,count])=><button key={key} onClick={()=>setTab(String(key))} aria-pressed={tab===key}>{title} {count!==null&&<span>{count}</span>}</button>)}</nav>
  {tab==='reviews'&&data&&<ReviewResults id={id} status={data.status}/>}
  {tab==='canvas'&&data&&<CanvasWorkbench id={id} status={data.status} progress={data.progress} onSubmitted={()=>setRefresh(n=>n+1)} conversation={data.scope==='user'?<Conversation id={id} status={data.status} hasDraft={!!data.draft}/>:<ConversationHistory id={id}/>}/>}
  {tab==='story'&&data&&<CreationStory key={id} progress={data.progress} pages={data.pages} status={data.status} base={base}/>}
