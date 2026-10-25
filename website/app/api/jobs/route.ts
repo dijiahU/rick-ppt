@@ -1,5 +1,6 @@
 import {database,files,json,userId,sameOrigin,workerStatus} from '@/lib/server';
 import {INSERT_JOB} from '@/lib/queries';
+import {ensureModelAccounts,resolveFunding,sameFunding,type Funding} from '@/lib/model-accounts';
 import {isAdmin} from '@/lib/admin';
 import {isLocale,messages,type Messages} from '@/lib/i18n';
 import {uploadMessages} from '@/lib/upload-i18n';
@@ -22,7 +23,7 @@ export async function POST(request:Request){
   if(type.startsWith('multipart/form-data')){
    const raw=await boundedBody(request,MAX_INLINE_BYTES+128*1024);
    const form=await new Response(raw,{headers:{'Content-Type':type}}).formData();
-   body={...Object.fromEntries(['title','brief','style','language','requestKey','execution_backend'].map(key=>[key,form.get(key)])),mode:form.get('mode')??undefined,pages:Number(form.get('pages'))};
+   body={...Object.fromEntries(['title','brief','style','language','requestKey','execution_backend'].map(key=>[key,form.get(key)])),mode:form.get('mode')??undefined,pages:Number(form.get('pages')),modelAccount:form.has('modelAccount')?JSON.parse(String(form.get('modelAccount'))):undefined};
    const entries=form.getAll('files');
    if(entries.some(x=>typeof x==='string'))return fail('upload',400);
    uploads=entries as File[];
@@ -44,9 +45,13 @@ export async function POST(request:Request){
  if(typeof title!=='string'||!title.trim()||title.length>120||typeof brief!=='string'||brief.trim().length<10||brief.length>12000||typeof style!=='string'||style.length>80||!isLocale(language)||typeof requestKey!=='string'||!/^[a-f0-9-]{36}$/.test(requestKey))return fail('invalid',400);
  if(pages===null)return json({error:pageCountMessages[locale][choice.error??'pagesRange'],code:choice.error??'pagesRange'},400);
  if(!validFiles(uploads)||uploads.reduce((sum,f)=>sum+f.size,0)>MAX_INLINE_BYTES||(uploads.length&&body.uploadIds!==undefined))return fail('upload',400);
- const db=database();const prior=await db.prepare('SELECT id,execution_backend FROM jobs WHERE user_id=? AND request_key=?').bind(user,requestKey).first();
- if(prior)return requestedBackend==null||prior.execution_backend===requestedBackend?json(prior):locked();
- const executionBackend=requestedBackend??automaticExecutionBackend(await workerStatus());
+ const db=database();await ensureModelAccounts();let funding:Funding|null;
+ try{funding=await resolveFunding(user,body.modelAccount);}catch{return json({error:'Select a connected model account and an available model',code:'model_account'},400);}
+ const prior=await db.prepare('SELECT id,execution_backend FROM jobs WHERE user_id=? AND request_key=?').bind(user,requestKey).first();
+ const matches=async(row:Record<string,unknown>)=>(requestedBackend==null||row.execution_backend===requestedBackend)&&await sameFunding(String(row.id),funding);
+ if(prior)return await matches(prior)?json(prior):locked();
+ if(funding&&requestedBackend==='codex')return locked();
+ const executionBackend=funding?'api':requestedBackend??automaticExecutionBackend(await workerStatus());
  let staged:StagedAttachment[];try{staged=await resolveUploads(user,`job:${requestKey}`,body.uploadIds);}catch{return fail('upload',400);}
  if(pages===0&&!hasEditableDeck([...uploads,...staged.map(x=>x.meta)]))return json({error:taskModeMessages[locale].missing,code:'source'},400);
  const count=await db.prepare('SELECT COUNT(*) AS n FROM jobs WHERE user_id=?').bind(user).first<{n:number}>();
@@ -64,10 +69,20 @@ export async function POST(request:Request){
  try{
   for(const upload of staged){const key=attachmentKey(id,upload.meta.id);stored.push(key);await copyUpload(upload,key);}
   for(const {meta,data} of payloads){const key=attachmentKey(id,meta.id);stored.push(key);await files().put(key,data,{httpMetadata:{contentType:'application/octet-stream'}});}
-  const row=await db.prepare(INSERT_JOB).bind(id,user,requestKey,title.trim(),brief.trim(),pages,style,language,executionBackend,JSON.stringify(metadata),now,now,unlimited?1:0,user).first();
+  const args=[id,user,requestKey,title.trim(),brief.trim(),pages,style,language,executionBackend,JSON.stringify(metadata),now,now,unlimited?1:0,user];
+  let row;
+  if(funding){
+   // D1 batch is transactional: a worker sees both job and funding, or neither.
+   const guarded=INSERT_JOB.replace('ON CONFLICT',`AND EXISTS(SELECT 1 FROM model_accounts WHERE id=? AND user_id=? AND provider=? AND revoked_at IS NULL) ON CONFLICT`);
+   const results=await db.batch([
+    db.prepare(guarded).bind(...args,funding.credentialId,user,funding.provider),
+    db.prepare(`INSERT INTO task_funding(job_id,user_id,credential_id,provider,model,version,created_at) SELECT id,user_id,?,?,?,1,? FROM jobs WHERE id=? AND user_id=?`).bind(funding.credentialId,funding.provider,funding.model,now,id,user),
+   ]);
+   row=results[0].results?.[0];
+  }else row=await db.prepare(INSERT_JOB).bind(...args).first();
   if(row){admitted=true;return json(row,201);}
   const repeated=await db.prepare('SELECT id,execution_backend FROM jobs WHERE user_id=? AND request_key=?').bind(user,requestKey).first();
-  if(repeated)return requestedBackend==null||repeated.execution_backend===requestedBackend?json(repeated):locked();
+  if(repeated)return await matches(repeated)?json(repeated):locked();
   return fail('quota',429);
  }catch{
   // A lost DB response must not delete files from a successfully committed job.

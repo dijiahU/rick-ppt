@@ -21,7 +21,7 @@ export function validSignature(ext:string,data:Uint8Array){
  if(['jpg','jpeg'].includes(ext))return start([255,216,255]);
  try{const text=new TextDecoder('utf-8',{fatal:true}).decode(data);return !text.includes('\0');}catch{return false;}
 }
-export async function boundedBody(request:Request,max:number){
+export async function boundedBody(request:Pick<Request,'headers'|'body'>,max:number){
  const length=Number(request.headers.get('Content-Length'));if(length>max)throw Error('size');
  const reader=request.body?.getReader();if(!reader)return new Uint8Array();
  const chunks:Uint8Array[]=[];let total=0;

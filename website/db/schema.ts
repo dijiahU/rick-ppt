@@ -48,3 +48,11 @@ export const taskUsage = sqliteTable('task_usage', {
  inputTokens:integer('input_tokens'),outputTokens:integer('output_tokens'),cachedInputTokens:integer('cached_input_tokens'),cacheWriteTokens:integer('cache_write_tokens'),reasoningTokens:integer('reasoning_tokens'),totalTokens:integer('total_tokens'),costMicrousd:integer('cost_microusd'),
  payload:text('payload').notNull(),createdAt:integer('created_at').notNull(),updatedAt:integer('updated_at').notNull(),
 },t=>[primaryKey({columns:[t.jobId,t.eventId]}),index('task_usage_job_created').on(t.jobId,t.createdAt,t.eventId)]);
+
+export const modelAccounts = sqliteTable('model_accounts', {
+ id:text('id').primaryKey(),userId:text('user_id').notNull(),provider:text('provider').notNull(),label:text('label').notNull(),
+ keyHint:text('key_hint').notNull(),secret:text('secret').notNull(),models:text('models').notNull(),createdAt:integer('created_at').notNull(),revokedAt:integer('revoked_at'),
+},t=>[index('model_accounts_user').on(t.userId,t.revokedAt)]);
+export const taskFunding = sqliteTable('task_funding', {
+ jobId:text('job_id').primaryKey(),userId:text('user_id').notNull(),credentialId:text('credential_id').notNull(),provider:text('provider').notNull(),model:text('model').notNull(),version:integer('version').notNull().default(1),createdAt:integer('created_at').notNull(),
+});

@@ -6,5 +6,6 @@ declare namespace Cloudflare {
     ADMIN_EMAIL?: string;
     ADMIN_USER_ID?: string;
     REVIEW_TOKEN?: string;
+    BYOK_ENCRYPTION_KEY?: string;
   }
 }

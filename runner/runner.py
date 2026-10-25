@@ -387,6 +387,11 @@ def _run_job(cfg,task,lease):
     from durable import HOST_JOURNAL_LIMITS
     from model_backend import bind_task,profile_for_task,task_default_model,task_default_reasoning_effort,DEFAULT_TASK_MODEL,DEFAULT_TASK_REASONING_EFFORT
     cfg=dict(cfg)
+    from customer_models import customer_profile
+    customer=customer_profile(state_root,task,lambda path,**options:request(cfg,path,**options))
+    if customer is not None:
+        cfg['_model_profile']=customer
+        cfg['_customer_funded']=True
     selected=profile_for_task(state_root,task['id'],cfg.get('_model_profile'),existing,
                               execution_backend=task.get('execution_backend'))
     if selected is None:cfg.pop('_model_profile',None)
@@ -398,7 +403,7 @@ def _run_job(cfg,task,lease):
     from decision_routing import pin_decision_contract,admitted_click_requirement
     cfg['_choice_min_version']=pin_decision_contract(cfg,state_root,task['id'],existing)
     cfg['_native_reveal_required']=admitted_click_requirement(state_root,task['id'])
-    with Journal(state_root,task['id'],plugin_version=None if existing else version,secrets=(cfg['token'],task['lease']),limits=HOST_JOURNAL_LIMITS) as journal:
+    with Journal(state_root,task['id'],plugin_version=None if existing else version,secrets=tuple(s for s in (cfg['token'],task['lease'],(selected or {}).get('api_key')) if s),limits=HOST_JOURNAL_LIMITS) as journal:
         plan=None
         if journal.state.get('snapshot_id'):
             from recovery_workspace import relocate_task
@@ -630,7 +635,7 @@ def main():
     render_health.ready()
     print('Bridge started; rendering dependencies checked before each queue admission.',flush=True)
     from model_backend import available_backends
-    claim_body=json.dumps({'execution_backends':available_backends(cfg)}).encode()
+    claim_body=json.dumps({'execution_backends':available_backends(cfg),'funding_version':1}).encode()
     worker_heartbeat=start_heartbeat(render_health,lambda path,body:request(cfg,path,body=body),available_backends(cfg),stopping) if not args.once else None
     from native_edit_worker import start as start_native_editor
     native_editor=start_native_editor(cfg,request,stopping) if not args.once else None

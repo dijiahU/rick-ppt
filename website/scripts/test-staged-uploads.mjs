@@ -29,7 +29,7 @@ const bucket={
 };
 const base='https://test.local',modules={'./slide-limits.mjs':limits,'@/lib/slide-limits.mjs':limits,'@/lib/admin':{isAdmin:async()=>false},'cloudflare:workers':{env:{DB:binding,FILES:bucket,WORKER_TOKEN:'local-test-worker-token-more-than-thirty-two'}},'@/app/chatgpt-auth':{getChatGPTUser:async()=>user?{userId:user}:null}};
 function load(path){const code=ts.transpileModule(readFileSync(new URL('../'+path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const exports={};new Function('require','exports',code)(name=>{assert.ok(modules[name],name);return modules[name];},exports);return exports;}
-for(const name of ['execution-backend','server','i18n','execution-backend-i18n','attachments','queries','task-mode','task-mode-i18n','page-count-i18n','upload-i18n','progress','conversation','admin-trace','staged-uploads','upload-client']){modules['@/lib/'+name]=load('lib/'+name+'.ts');modules['./'+name]=modules['@/lib/'+name];}
+for(const name of ['execution-backend','server','model-providers','model-accounts','i18n','execution-backend-i18n','attachments','queries','task-mode','task-mode-i18n','page-count-i18n','upload-i18n','progress','conversation','admin-trace','staged-uploads','upload-client']){modules['@/lib/'+name]=load('lib/'+name+'.ts');modules['./'+name]=modules['@/lib/'+name];}
 const {POST:stage,DELETE:discard}=load('app/api/uploads/route.ts'),submit=load('app/api/jobs/route.ts').POST;
 const {POST:send,GET:read}=load('app/api/jobs/[id]/conversation/route.ts');
 const download=load('app/api/jobs/[id]/attachments/[file]/route.ts').GET;

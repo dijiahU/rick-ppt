@@ -1,5 +1,6 @@
 import {database,json,userId,sameOrigin} from '@/lib/server';
 import {boundedBody} from '@/lib/attachments';
+import {ensureModelAccounts} from '@/lib/model-accounts';
 import {ensureConversation} from '@/lib/conversation';
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){
  const user=await userId();if(!user)return json({error:'请先登录。'},401);if(!sameOrigin(request))return json({error:'来源无效。'},403);
@@ -8,6 +9,9 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
  await ensureConversation();const db=database();
  const job=await db.prepare('SELECT status,summary,updated_at,execution_backend FROM jobs WHERE id=? AND user_id=?').bind(id,user).first<{status:string;summary:string|null;updated_at:number;execution_backend:string|null}>();
  if(!job)return json({error:'任务不存在。'},404);
+ await ensureModelAccounts();
+ const funding=await db.prepare('SELECT credential_id FROM task_funding WHERE job_id=? AND user_id=?').bind(id,user).first();
+ if(funding&&!await db.prepare('SELECT id FROM model_accounts WHERE id=? AND user_id=? AND revoked_at IS NULL').bind(funding.credential_id,user).first())return json({error:'Model account disconnected. This task cannot use another account.',code:'model_account_disconnected'},409);
  if(body.execution_backend!==undefined&&body.execution_backend!==job.execution_backend)return json({error:'任务提交后的制作方式不能更改。',code:'execution_backend_locked'},409);
  if(job.status==='queued'||job.status==='running')return json({ok:true,status:job.status,execution_backend:job.execution_backend});
  if(job.status==='paused'&&job.summary==='pause_requested'&&Date.now()-job.updated_at<180000)return json({error:'正在停止计算并保存进度，请稍后继续。'},409);

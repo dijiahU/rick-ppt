@@ -15,6 +15,8 @@ modules['./language']={useLanguage:()=>({locale,t:modules['@/lib/i18n'].messages
 modules['@/lib/upload-client']={uploadFiles:async()=>[]};
 modules['./attachment-previews']={default:()=>null};
 modules['./file-upload']={default:({title})=>React.createElement('p',null,title||'Optional references')};
+modules['./model-accounts.css']={};
+modules['./model-accounts']=load('app/model-accounts.tsx');
 const Form=load('app/brief-form.tsx').default;
 for(locale of Object.keys(modules['@/lib/i18n'].languages)){
  for(mode of ['create','edit']){

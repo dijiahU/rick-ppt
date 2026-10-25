@@ -72,6 +72,8 @@ def write_runtime_receipt(root,cfg,status):
     body['usage_ledger_available']=(Path(root)/'usage_ledger.py').is_file()
     body['usage_recording']='private-provider-receipts'
     body['automatic_charging']=False
+    body['customer_api_accounts_available']=(Path(root)/'customer_models.py').is_file()
+    body['funding_contract_version']=1 if body['customer_api_accounts_available'] else None
     body['material_prefetch_available']=all((Path(root)/name).is_file() for name in ('material_prefetch.py','prefetch-proxy.py','PREFETCH.md'))
     target=Path(root)/('runtime-'+str(os.getpid())+'.local.json')
     pending=target.with_suffix('.pending')

@@ -26,6 +26,7 @@ export const messages:Record<Locale,Messages>={
 };
 export const styleValues=['Designer choice','Restrained editorial','Warm cinematic','Clear academic'];
 export function displaySummary(value:string,t:Messages){
+ if(value==='model_account_disconnected')return t===messages['zh-CN']?'模型账户已断开，任务已暂停。':'Model account disconnected; the task is paused.';
  if(value==='delivery_pending')return t.statuses.delivery_pending;
  if(['complete','演示文稿已完成。请下载并检查实际内容与排版。'].includes(value))return t.completedSummary;
  if(['failed','这次任务未能完成，请联系 Rick 查看执行记录。'].includes(value))return t.failedSummary;

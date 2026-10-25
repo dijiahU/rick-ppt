@@ -46,6 +46,15 @@ class ResponsesProxy(ChatProxy):
         # Stateful IDs, reasoning items, encrypted content, namespaces, image
         # inputs and JSON schemas pass through untouched on the native route.
         request = copy.deepcopy(body)
+        if self.profile.get('customer_funded'):
+            # Do not put private instructions into customer-readable stored API
+            # conversations. app-server supplies explicit history for this route.
+            if request.get('conversation') is not None or request.get('previous_response_id') is not None:
+                raise ValueError('Customer API mode requires explicit history, not stored conversations')
+            request['store']=False
+            include=request.setdefault('include',[])
+            if not isinstance(include,list):raise ValueError('Malformed include configuration')
+            if 'reasoning.encrypted_content' not in include:include.append('reasoning.encrypted_content')
         # Stream from the provider to avoid waiting for the entire generation
         # before the upstream HTTP connection has observable response data.
         # Delivery to app-server remains atomic after full validation.

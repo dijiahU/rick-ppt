@@ -54,6 +54,8 @@ class AuxiliaryTools:
             return self.reply(False,'Retained tool failed: '+type(error).__name__+'; keep the unmet requirement explicit')
 
     def execute(self,tool,request,references,files):
+        if self.cfg.get('_customer_funded') or (self.cfg.get('_model_profile') or {}).get('customer_funded'):
+            return self.reply(False,'This customer API account has no connected search/image-generation service. Use supplied task materials and public URLs; do not use the operator account or claim missing evidence was acquired.')
         started=time.monotonic();ident=uuid.uuid4().hex
         capture(self.trajectory,'emit','auxiliary.request',{'id':ident,'tool':tool,'request':request,'reference_files':references})
         if self.reporter:self.reporter.event('working','Searching source material' if tool=='pptx_search_sources' else 'Generating illustration',state='started',category='search' if tool=='pptx_search_sources' else 'media')

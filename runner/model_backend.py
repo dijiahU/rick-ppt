@@ -62,6 +62,7 @@ def public_identity(profile):
     if profile.get('auxiliary_tools','disabled')!='disabled':identity['auxiliary_tools']=profile['auxiliary_tools']
     if profile.get('service_tier') is not None:identity['service_tier']=profile['service_tier']
     if 'responses_transport' in profile:identity['responses_transport']=profile['responses_transport']
+    if profile.get('customer_funded'):identity.update(customer_funded=True,store=False)
     return identity
 
 def retained_tools(profile):return bool(profile and profile.get('auxiliary_tools')=='existing_backend')

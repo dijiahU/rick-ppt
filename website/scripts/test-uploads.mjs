@@ -22,6 +22,8 @@ modules['@/lib/server']={database:()=>binding,files:()=>({async put(key,data){ob
 modules['@/lib/admin-trace']=load('lib/admin-trace.ts');
 modules['@/lib/staged-uploads']=load('lib/staged-uploads.ts');
 modules['./server']=modules['@/lib/server'];modules['@/lib/native-edit-storage']=load('lib/native-edit-storage.ts');
+modules['cloudflare:workers']={env:{}};modules['./server']=modules['@/lib/server'];
+modules['./model-providers']=modules['@/lib/model-providers']=load('lib/model-providers.ts');modules['@/lib/model-accounts']=load('lib/model-accounts.ts');
 const submit=load('app/api/jobs/route.ts').POST,download=load('app/api/jobs/[id]/attachments/[file]/route.ts').GET,worker=load('app/api/worker/[id]/route.ts').POST;
 function request({key=crypto.randomUUID(),files=[new File(['Café reference material'],'référence.txt')],origin='https://local.test'}={}){const form=new FormData();for(const [k,v] of Object.entries({title:'Test attachment',brief:'Use these references for a French deck.',pages:'5',style:'Designer choice',language:'fr',execution_backend:'codex',requestKey:key}))form.set(k,v);for(const file of files)form.append('files',file);return new Request('https://local.test/api/jobs',{method:'POST',headers:{Origin:origin,'X-UI-Language':'fr'},body:form});}
 currentUser=null;assert.equal((await submit(request())).status,401);currentUser='owner';assert.equal((await submit(request({origin:'https://evil.test'}))).status,403);

@@ -1,0 +1,7 @@
+.model-accounts{margin:18px 0;border:1px solid var(--line,#cbd5d8);border-radius:14px;background:rgba(255,255,255,.45)}
+.model-accounts>summary{padding:16px;cursor:pointer;font-weight:600;line-height:1.5}
+.model-accounts>summary span{margin-left:10px;font-size:12px;background:#dce9e9;border-radius:20px;padding:2px 7px}
+.model-accounts-body{padding:0 18px 10px}.model-accounts-body form{margin-top:16px}
+.model-account-row{display:flex;align-items:center;justify-content:space-between;gap:14px;border-top:1px solid #d4dede;padding:12px 0}
+.model-account-row small{display:block;color:#647780;margin-top:4px}.model-accounts .model-account-disconnect{width:auto;margin:0;background:transparent;color:inherit;border:1px solid #acbec4;padding:7px 12px;border-radius:8px;font-size:13px}
+.model-account-picker{border-block:1px solid #d4dede;padding:15px 0;margin:0 0 20px}
