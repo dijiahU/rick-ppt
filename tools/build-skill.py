@@ -52,7 +52,7 @@ def build(output):
         inputs.append(path)
     for directory, names in [('scripts', SCRIPTS), ('scripts/pptx_core', CORE),
                              ('references', REFERENCES),
-                             ('assets', ('blank.pptx', 'workflow-choices.json', 'single-file-policy.json', 'font-catalog.json'))]:
+                             ('assets', ('blank.pptx', 'workflow-choices.json', 'workflow-choices-v3.json', 'single-file-policy.json', 'font-catalog.json'))]:
         for name in names:
             path = SOURCE / directory / name
             copy(path, target / directory / name)

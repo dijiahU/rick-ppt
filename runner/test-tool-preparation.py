@@ -114,9 +114,11 @@ class ToolPreparationTests(unittest.TestCase):
         self.assertEqual((self.root / 'outline.json').read_text(), data)
         scaffold = value['decision_scaffold']
         self.assertTrue(all(v is None for v in scaffold['task'].values()))
-        for field in ('intent', 'strategy', 'form', 'composition', 'behavior'):
-            self.assertIsNone(scaffold['pages'][0][field])
-        self.assertEqual(value['decision_contract']['eligible_forms'], helper._module('workflow_decisions').load_catalog()['eligible_forms'])
+        self.assertEqual(set(scaffold['pages'][0]), {'id','behavior','assets'})
+        self.assertIsNone(scaffold['pages'][0]['behavior'])
+        self.assertEqual(value['decision_contract']['page_options'], {'behavior':['static','click_reveal','internal_navigation','embedded_playback']})
+        self.assertEqual(value['decision_contract']['page_fields'], ['id','behavior','assets'])
+        self.assertNotIn('eligible_forms', value['decision_contract'])
 
     def test_actual_reference_paths_and_local_progress_location(self):
         (self.root / 'references').mkdir()

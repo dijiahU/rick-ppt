@@ -13,16 +13,15 @@ Write one task-local JSON file, such as `planning-input.json`:
       {"id": "page-1", "title": "Page title", "summary": "Substantive public explanation", "section": "Optional section"}
     ]
   },
-  "decisions": {"version": 3, "task": {}, "design_direction": "...", "references": [], "pages": []},
+  "decisions": {"version": 4, "task": {}, "template_preservation": [], "design_direction": "...", "references": [], "pages": []},
   "source_notes": "# Source notes\n\nOriginal Markdown evidence, qualifications, design applications and native build plan.\n"
 }
 ```
 
-The `decisions` above only illustrates nesting; `{}` and `[]` are **not valid
-completed decisions**. Supply the full existing v3 task, page and reference fields,
-with every applicable branch chosen by the author. Use the exact task/page IDs
-from the prepared planning context/catalog and [workflow-branches.md](workflow-branches.md).
-There are no inferred choices or new planning categories. `outline.slides` is the
+The decisions object uses the compact v4 delivery contract in
+[workflow-branches.md](workflow-branches.md): exact task/page IDs, protected template
+elements, behavior, assets and actual reference applications. Composition/style are
+open author choices, not mandatory design categories. `outline.slides` is the
 ordered page array; `pages` is not an outline alias.
 
 Run the prepared interpreter invocation once:

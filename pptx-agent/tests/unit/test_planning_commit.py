@@ -16,8 +16,8 @@ def bundle(mode='create'):
             'outline': {'title': '原生PPT', 'purpose': '解释编辑路径', 'style': '继承模板的字体和背景', 'slides': [
                 {'id': 'intro', 'title': '问题', 'summary': '  从用户已有文件开始。\n保持原文换行。 ', 'section': '背景', 'presentationMode': 'native'},
                 {'id': 'space', 'title': '关系', 'summary': '展示包、页面与引用之间的关系。'}]},
-            'decisions': {'version': 3, 'design_direction': '以提问开篇，再以空间关系解释文件结构。', 'references': [],
-                'task': {'operation': mode, 'viewing': 'dual_use', 'research': 'supplied_only', 'references': 'use_available', 'style': 'analytical', 'palette': 'semantic', 'typography': 'installed_role_system'},
+            'decisions': {'version': 4, 'template_preservation': [], 'design_direction': '以提问开篇，再以空间关系解释文件结构。', 'references': [],
+                'task': {'operation': mode, 'viewing': 'dual_use', 'research': 'supplied_only'},
                 'pages': [
                     {'id': 'intro', 'intent': 'introduce', 'strategy': 'read', 'form': 'typography', 'support': [], 'composition': 'type_statement', 'behavior': 'static', 'assets': [{'route': 'none'}], 'role': '认识问题。', 'visual_action': '主要问题通过大字与留白建立焦点。', 'reference_ids': []},
                     {'id': 'space', 'intent': 'show_space', 'strategy': 'relate', 'form': 'diagram', 'support': ['typography'], 'composition': 'relational_map', 'behavior': 'click_reveal', 'assets': [{'route': 'source_grounded_native'}], 'role': '理解引用关系。', 'visual_action': '按照真实依赖位置布置对象，以连接线和点击顺序解释关系。', 'reference_ids': []}]}}
@@ -54,7 +54,7 @@ def test_valid_create_preserves_all_authored_content_and_input(tmp_path):
 
 def test_template_scoped_edit_keeps_static_repeated_expression_and_permissions(tmp_path):
     doc = bundle('edit')
-    doc['decisions']['task'].update(style='supplied_system', references='preserve_supplied', palette='inherited', typography='inherited')
+    doc['decisions']['template_preservation']=['Preserve supplied template background, logo and font requirements.']
     second = copy.deepcopy(doc['decisions']['pages'][0])
     second['id'] = 'space'
     doc['decisions']['pages'][1] = second
@@ -69,7 +69,7 @@ def test_template_scoped_edit_keeps_static_repeated_expression_and_permissions(t
 
 @pytest.mark.parametrize('change,match', [
     (lambda d: d['outline'].update(pages=d['outline'].pop('slides')), 'missing "slides"'),
-    (lambda d: d['decisions']['pages'][1].update(form='invented'), 'Invalid choice'),
+    (lambda d: d['decisions']['pages'][1].update(behavior='invented'), 'Invalid choice'),
     (lambda d: d['decisions']['pages'][1].update(behavior='static'), 'entirely static'),
     (lambda d: d['decisions']['task'].update(operation='edit'), 'Operation must match'),
     (lambda d: d['outline']['slides'][1].update(id='intro'), 'unique'),
@@ -177,6 +177,8 @@ def test_legacy_is_explicit_and_original_decision_bytes_meaning_is_retained(tmp_
     doc = bundle()
     plan = doc['decisions']
     plan['version'] = 2
+    plan.pop('template_preservation')
+    plan['task'].update(references='use_available',style='analytical',palette='semantic',typography='installed_role_system')
     plan.pop('design_direction')
     plan.pop('references')
     for page in plan['pages']:
@@ -184,7 +186,7 @@ def test_legacy_is_explicit_and_original_decision_bytes_meaning_is_retained(tmp_
             page.pop(field)
         page.update(layout='focus', density='balanced', behavior='static')
     source = write(tmp_path, doc)
-    with pytest.raises(ValueError, match='current design contract'):
+    with pytest.raises(ValueError, match='current delivery contract'):
         tool.commit_bundle(tmp_path, source)
     assert tool.commit_bundle(tmp_path, source, allow_legacy=True)['legacy_record']
     assert json.loads((tmp_path / 'decision-plan.json').read_bytes()) == plan

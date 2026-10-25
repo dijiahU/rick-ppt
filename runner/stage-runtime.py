@@ -29,6 +29,8 @@ if (source/'skills/pptx/scripts/native_timing.py').is_file():
     required+=('skills/pptx/scripts/native_timing.py',)
 if (source/'skills/pptx/assets/workflow-choices.json').is_file():
     required+=('skills/pptx/assets/workflow-choices.json','skills/pptx/references/workflow-branches.md','skills/pptx/scripts/workflow_decisions.py')
+    if json.loads((source/'skills/pptx/assets/workflow-choices.json').read_text())['version']>=4:
+        required+=('skills/pptx/assets/workflow-choices-v3.json',)
     if json.loads((source/'skills/pptx/assets/workflow-choices.json').read_text())['version']>=3:
         required+=('skills/pptx/references/native-canvas.md','skills/pptx/references/content-led-composition.md','skills/pptx/references/animations.md','skills/pptx/scripts/native_canvas.py','skills/pptx/scripts/design_references.py')
 if not (source/'skills/pptx/assets/single-file-policy.json').is_file():

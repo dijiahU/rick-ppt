@@ -7,9 +7,27 @@ agents. This adds no planning/review stage or mandatory search per page.
 
 Resolve facts essential to the outline and overall direction before committing
 them. Once later-page needs are concrete, start their preparation and continue
-the current page. Choose useful lookahead from dependencies and actual progress;
+the current page. Prepare actual visual assets as well as factual/design references:
+identify the subject/frame and explanatory use, not just a palette inspiration.
+Prefer useful imagery and visible outputs over later prose placeholders. Generation is optional for suitable hypothetical scenes/concepts/effects, not an
+automatic response to failed search or a page without a picture. Historical and
+documentary imagery must be authentic; omit optional unavailable images and keep
+sourced text/native analytical diagrams rather than generate historical recreations.
+For appropriate original illustration, the selected generate route need not wait
+for failed search. Keep generated material clearly illustrative, never fake real
+interfaces or cases. Choose useful lookahead from dependencies and actual progress;
 do not wait for the whole deck's material or prescribe a fixed lookahead count.
 An urgent unresolved fact affecting the current page still needs verification.
+
+Assign complementary questions rather than duplicate topic summaries. Requests
+may discover surprising relevant uses, outputs, creator experiences or cross-field
+visual precedents as well as verify a specific fact; those are optional leads,
+not a fixed roster. Permit useful source/keyword expansion within the selected
+research route instead of restricting every search to official material. Request
+source locations, concrete observations, conditions and inspection limits. Several summaries of the same underlying source
+do not provide independent confirmation. The main author compares the returned
+evidence, resolves consequential disagreements and writes the explanation; helpers
+do not decide the final claim or page sequence. Reuse answers already obtained.
 
 Use the task's exact Python interpreter. Both local and API authors have this CLI:
 

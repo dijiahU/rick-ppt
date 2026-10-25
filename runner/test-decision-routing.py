@@ -10,12 +10,15 @@ import zipfile
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from PIL import Image
+from lxml import etree as E
 
 from decision_routing import choice_policy, check_decisions, needs_content_revision, pin_decision_contract, write_design_packet,admitted_click_requirement,click_reveal_required
 from workflow import validate_report, _run_workflow
 
 PLUGIN = Path(__file__).resolve().parents[1] / 'pptx-agent'
 POLICY = choice_policy({'plugin': str(PLUGIN)})
+sys.path.insert(0,str(PLUGIN/'skills/pptx/scripts'))
+from native_builds import set_builds
 P = 'http://schemas.openxmlformats.org/presentationml/2006/main'
 R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 A = 'http://schemas.openxmlformats.org/drawingml/2006/main'
@@ -53,9 +56,10 @@ def deck(data=b'IMAGE', used_page=1, clicks=False):
         archive.writestr('ppt/_rels/presentation.xml.rels', '<Relationships><Relationship Id="r1" Target="slides/slide9.xml"/><Relationship Id="r2" Target="/ppt/slides/slide4.xml"/></Relationships>')
         for page, number in ((1, 9), (2, 4)):
             image = '<a:blip r:embed="img"/>' if page == used_page else ''
-            timing = '<p:timing><p:cond evt="onNext"/><p:cTn nodeType="clickEffect" presetClass="entr"><p:childTnLst><p:set><p:cBhvr><p:tgtEl><p:spTgt spid="2"/></p:tgtEl></p:cBhvr></p:set></p:childTnLst></p:cTn></p:timing>' if clicks and page == 1 else ''
             shape='<p:sp><p:nvSpPr><p:cNvPr id="2" name="Explanation"/></p:nvSpPr></p:sp>'
-            archive.writestr(f'ppt/slides/slide{number}.xml', f'<p:sld xmlns:p="{P}" xmlns:a="{A}" xmlns:r="{R}">{shape}{image}{timing}</p:sld>')
+            tree=E.fromstring(f'<p:sld xmlns:p="{P}" xmlns:a="{A}" xmlns:r="{R}">{shape}{image}</p:sld>'.encode())
+            if clicks and page == 1:set_builds(tree,[[2]])
+            archive.writestr(f'ppt/slides/slide{number}.xml', E.tostring(tree))
             archive.writestr(f'ppt/slides/_rels/slide{number}.xml.rels', f'<Relationships><Relationship Id="img" Type="{R}/image" Target="../media/asset.png"/></Relationships>')
         archive.writestr('ppt/media/asset.png', data)
     return stream.getvalue()
@@ -91,7 +95,7 @@ class DecisionTests(unittest.TestCase):
         value=plan();value['task']['operation']='edit';self.check(value,mode='edit',require_click_reveal=True)
 
     def test_click_requirement_is_pinned_and_old_admissions_do_not_change(self):
-        cfg={'plugin':str(PLUGIN)}
+        cfg={'plugin':str(PLUGIN),'_choice_min_version':3}
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);pin_decision_contract(cfg,root,'new',False)
             self.assertTrue(admitted_click_requirement(root,'new'))
@@ -174,11 +178,11 @@ class DecisionTests(unittest.TestCase):
         self.check(value)
 
     def test_new_contract_is_pinned_outside_task_and_historical_tasks_are_preserved(self):
-        cfg={'plugin':str(PLUGIN)}
+        cfg={'plugin':str(PLUGIN),'_choice_min_version':3}
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)
-            self.assertEqual(pin_decision_contract(cfg,root,'new',False),3)
-            self.assertEqual(pin_decision_contract(cfg,root,'new',True),3)
+            self.assertEqual(pin_decision_contract(cfg,root,'new',False),4)
+            self.assertEqual(pin_decision_contract(cfg,root,'new',True),4)
             self.assertIsNone(pin_decision_contract(cfg,root,'historical',True))
             job=root/'job';job.mkdir();(job/'decision-plan.json').write_text(json.dumps(legacy_plan()))
             with self.assertRaisesRegex(ValueError,'pinned design contract'):check_decisions(cfg,job,outline(),stage='planning')
@@ -189,7 +193,7 @@ class DecisionTests(unittest.TestCase):
         value = POLICY.plan_template(outline())
         self.assertEqual([page['id'] for page in value['pages']], ['intro', 'space'])
         self.assertTrue(all(choice is None for choice in value['task'].values()))
-        self.assertTrue(all(page['form'] is None and page['assets'][0]['route'] is None for page in value['pages']))
+        self.assertTrue(all(page['behavior'] is None and 'form' not in page and page['assets'][0]['route'] is None for page in value['pages']))
         with self.assertRaises(ValueError): self.check(value)
 
     def test_eligibility_and_host_scope_cannot_be_evaded(self):
@@ -285,7 +289,7 @@ class DecisionTests(unittest.TestCase):
             self.check(value,stage='authored',root=root,artifact=deck(data=body))
 
     def test_host_requires_record_for_new_work_and_keeps_legacy_receipts(self):
-        cfg = {'plugin': str(PLUGIN),'_native_reveal_required':False}
+        cfg = {'plugin': str(PLUGIN),'_native_reveal_required':False,'_choice_min_version':3}
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             self.assertIsNone(check_decisions(cfg, root, outline(), stage='planning', required=False))

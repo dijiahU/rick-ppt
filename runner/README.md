@@ -40,29 +40,18 @@ their behavior contract. No default medium, layout, density, style or asset-acqu
 when they help; inspect and embed selected assets, preserve required editability
 and distinguish original illustration from documentary evidence. Reviews judge
 actual task fit, not adherence to a preferred visual recipe.
-Each page must have an explicit expression choice and explanatory role. New
-multi-page decks require purposeful differences across the sequence instead of
-one repeated treatment; recoloring is insufficient. Comparable material can keep
-consistent encoding. No fixed rotation or requirement to use every option.
-Critical decisions use the finite [workflow branch protocol](../pptx-agent/skills/pptx/references/workflow-branches.md)
-and its versioned choice catalog. Task entry has only create/edit and follows the
-existing host mode; ordinary missing material is handled in its source/asset branch,
-without a mandatory input-completeness gate. Agents record decision-plan.json alongside the
-public outline, selecting task/page/asset/behavior branch IDs and executing their
-entry conditions and actions. The host validates exact page coverage, eligibility,
-tool availability, planned variation and selected bytes/native behavior on the
-actual authored page. Invalid/missing selections stop acceptance before independent
-review; this is an execution contract, not an aesthetic score. Review findings
-select content_revision, native_repair or retain_suggestion; implementation-only
-findings do not force full content research. Existing approved-byte recovery and
-legacy reports keep their compatibility path. No additional audience review stage.
-The v3 contract selects audience strategy and concrete canvas composition instead
-of free-form layout/density labels. Authors retain typography, color, crop, scale,
-overlap and rhythm decisions. Image/type combinations and deliberately designed
-pure-text pages are explicit; repeated prose-box language is judged on actual pages.
-Applied artistic/design/teaching references record exact work/title/creator/source,
-actual inspection, observation, borrowed principle and page action. A protected
-host admission receipt prevents new tasks bypassing v3 with historical records.
+Design each page for its actual explanatory role. Judge the finished sequence for
+coherence, useful progression and craft; related comparisons can retain consistent
+encoding. Visual choices are provisional during authoring, not a categorical gate.
+Delivery decisions use the [compact v4 contract](../pptx-agent/skills/pptx/references/workflow-branches.md).
+The host checks exact page coverage, operation/source permissions, assets, reference
+notes and native behavior. Actual protected template elements are recorded separately
+from the open visual direction. Composition/style/form are author choices without
+mandatory design categories or eligibility combinations. Actual renders and existing
+independent review judge craft, audience fit, coherence and reference transfer.
+New admissions pin v4; previously admitted v1–v3 records and frozen delivery receipts
+retain historical recovery behavior. No layout rotation, artist quota or new stage.
+
 `design_references.py` writes applied records into affected slide notes before
 export; the host verifies final notes and actual selected asset bytes. Scoped
 reference images/notes reach visual review after initial canvas judgment, while
@@ -460,6 +449,14 @@ outside the capture boundary. `test-trajectory-artifacts.py` covers these guaran
 
 
 ## Content-led composition release
+
+The 2026-10-20 design-craft update makes first-render emphasis and visible
+relationships an explicit part of ordinary authoring, checks recurring
+title/quote/body grammar at section boundaries using saved previews, and asks the
+existing visual review for concrete editorial refinements as well as defects.
+Planning stays provisional until the current page's wording and composition are
+resolved together. See `../docs/design-craft-workflow-20261020.md` for scope and
+validation. No additional stage, schema, aesthetic score or layout quota is added.
 
 Version 0.1.0+codex.20261009composition2 keeps the existing four stages, v3 decision
 contract, sequential pages, separate bounded reviews and reviewed-hash single-PPTX

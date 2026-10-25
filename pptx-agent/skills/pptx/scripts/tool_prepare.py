@@ -173,11 +173,14 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
         'commands': commands, 'pptx_cli': _cli_contract(),
         'native_canvas': {name: _parameters(getattr(canvas, name)) for name in
                           ('text_measure', 'add_text', 'add_image', 'add_shape', 'add_connector', 'semantic_group', 'reveal', 'add_bar_chart')},
-        'decision_contract': {'version': catalog['version'], 'top_level_fields': ['version', 'task', 'pages', 'design_direction', 'references'],
+        'decision_contract': {'version': catalog['version'], 'top_level_fields': ['version', 'task', 'template_preservation', 'pages', 'design_direction', 'references'],
                               'task_options': catalog['task'], 'page_options': catalog['page'],
-                              'eligible_forms': catalog['eligible_forms'], 'asset_options': catalog['asset'],
+                              'asset_options': catalog['asset'],
                               'reference_options': catalog['reference'],
-                              'page_fields': ['id', 'intent', 'strategy', 'form', 'support', 'composition', 'behavior', 'assets', 'role', 'visual_action', 'reference_ids'],
+                              'page_fields': ['id', 'behavior', 'assets'],
+                              'optional_page_fields': ['role', 'visual_action', 'intent', 'strategy', 'form', 'support', 'composition', 'reference_ids'],
+                              'design_choices': 'Optional free descriptions; no design taxonomy or form eligibility gate.',
+                              'reference_associations': 'Derived from references[].applications[].pages; record each application once.',
                               'reference_fields': ['id', 'kind', 'title', 'creator', 'source', 'inspection', 'evidence', 'observed', 'borrowed', 'applications'],
                               'reference_source': 'Credential-free HTTPS URL or exact task-relative path; no human-label prefix.',
                               'native_asset_records': 'none/source_grounded_native records contain only route.',
@@ -185,7 +188,7 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
         'outline_fields': {'required': ['title', 'purpose', 'slides'], 'page_required': ['id', 'title', 'summary']},
         'command_outputs': {'decision_scaffold': 'Prints unselected JSON to stdout; does not create decision-plan.json. Save/fill it explicitly.'},
         'decision_scaffold': scaffold, 'scaffold_error': scaffold_error, 'attachments': attachments,
-        'authority': 'Interface preparation only. The author selects content, visual expression and explicit branches; unchanged validators and reviews remain authoritative.'}
+        'authority': 'Interface preparation only. The author selects content and visual expression; validators check delivery records, assets and behavior; reviews judge the actual result.'}
     lines = ['# Task tool quickstart', '', 'Read SKILL.md and task requirements. This guide prepares interfaces, not content or design.',
              '', f'Use this interpreter for every script and inline patch: `{interpreter}`. Do not use bare python/python3.',
              f'Parts directory: `{parts_dir}`' if parts_dir else 'No native workspace selected yet. Choose the task-appropriate source, unpack it, then refresh with the returned workspace path.',
@@ -202,13 +205,13 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
               'Write outline.slides, not outline.pages. Generate the unselected scaffold only after outline IDs/order exist. Do not infer aesthetics from choice counts.',
               'workflow_decisions.py --template prints JSON to stdout only. It never creates decision-plan.json; save/fill it explicitly or use manifest.decision_scaffold after refreshing.',
               'reference.source is the exact HTTPS URL or actual attachment path below; provenance labels go in title/observed. Ready file assets need file/kind/status/origin; native/no-asset records only route.',
-              'Choose and execute every required finite branch yourself. Preserve source invariants, meaningful native reveals, sequential authoring, actual rendering and independent reviews.', '']
+              'Record the required delivery decisions; choose visual expression freely within user scope. Preserve source invariants, meaningful native reveals, sequential authoring, actual rendering and independent reviews.', '']
     if planning_script.is_file():
         manifest['planning_commit'] = {
             'guide': str(SCRIPTS.parent / 'references/planning-commit.md'),
             'command': commands['planning_commit'],
             'document': {'version': 1, 'outline': 'Complete current outline object',
-                         'decisions': 'Complete existing v3 decision record, with author choices',
+                         'decisions': 'Complete current v4 delivery record; open design direction and explicit protected template elements',
                          'source_notes': 'Original nonempty Markdown evidence and page/build plan'},
             'options': {'mode': 'Add --mode create or edit exactly as selected by the host.',
                         'expected_pages': 'Add --expected-pages with the resolved task total when fixed.',

@@ -5,238 +5,133 @@ description: Research, create and edit standalone native PowerPoint with editabl
 
 # Native PowerPoint
 
-Use scripts/pptx.py with Python 3.11+ and installed dependencies. Use the host's
-exact interpreter from tool-manifest.json or the supplied prompt; do not substitute
-bare python/python3. Outside a host, use a verified environment's interpreter.
-Paths below are relative to this skill. Read the task's tool-quickstart.md when
-available; [tool preparation](references/tool-preparation.md) explains refresh and
-the exact session/parts directory and current API contracts. This does not replace
-any content, design, source, rendering or review requirements below.
-For a multi-object native page, [native JSON batches](references/native-batch.md)
-call installed helpers directly with chosen content/coordinates. All text height
-errors return together and failed batches leave the page unchanged. This operation
-tool has no page template or automatic design selection.
-When selecting or repairing typography, read [Actual fonts](references/fonts.md).
-Default new English/Latin text to Times New Roman and Chinese to SimSun (宋体),
-using genuine files for metrics, explicit runs and theme fonts. Additional faces
-need actual glyph/weight checks and recipient availability or verified embedding.
-Read [Windows WPS compatibility](references/windows-wps.md) for native arrows and
-cross-platform checks within existing authoring/review; Mac previews are not proof.
-Choose Chinese/Latin faces together for the content; use real files and weights,
-acquire missing OFL resources through the available host, and inspect actual mixed
-text. Preserve supplied template fonts for scoped edits.
+Use scripts/pptx.py with the host's exact Python 3.11+ interpreter from
+tool-manifest.json. Paths below are relative to this skill. Read the task's
+tool-quickstart.md for current interfaces; use installed helpers rather than
+rediscovering commands. Outside a host, verify the environment first.
 
-For new decks and substantive rewrites, follow these four stages. Stable decisions
-protect meaning, evidence and delivery; the author owns visual direction,
-typographic expression, image/type relationships and coherent sequence rhythm.
-Small edits preserve
-the supplied style, content and unaffected pages; change, render and verify only the
-authorized scope. Do not run full research for a title change. Critique changes no files.
+## Delivery boundaries
 
-## 1. Research content
+Deliver one standalone PPTX with editable essential text, analytical diagrams,
+charts and native animation. Use direct OOXML and embedded assets. Preserve original
+files and authorized edit scope. Content Add-ins, browser scenes, runnable code
+labs, local servers, macros and external media dependencies are outside this workflow.
+
+Preserve source facts, units, symbols, conditions and operation order. Distinguish
+reported results, interpretation and illustrative examples. Real interfaces,
+historical/documentary subjects and case evidence require authentic sources.
+[Research and assets](references/research-and-assets.md) covers acquisition and evidence.
+
+Default new English/Latin to Times New Roman and Chinese to SimSun (宋体), using
+genuine font metrics and explicit runs/themes. Preserve explicit user/template
+requirements. Extra faces require actual coverage/weight and recipient availability
+or verified editable embedding. Read [fonts](references/fonts.md) and
+[Windows WPS compatibility](references/windows-wps.md) when choosing or repairing
+text/connectors. Mac/static previews do not certify Windows WPS playback.
+
+## Research and plan
 
 Read [Content](references/content.md). Establish purpose, audience, viewing mode,
-language and source scope. Read actual supplied material, including relevant figures,
-examples and conditions. Search/open reliable sources for gaps and current/uncertain
-claims when allowed. A source title or search snippet is not evidence of reading.
+language and source scope. Inspect supplied material. For topic research, discover
+broadly before narrowing, deepen useful cases and verify selected claims. Targeted
+fact checking and design exploration are independent: a specified paper or a supplied
+template does not by itself prohibit relevant visual research. Honor actual
+supplied-only/offline limits and small editing scopes.
 
-Give content the first claim on effort: understanding, reading, evidence, examples,
-explanation, organization and revision. Investigate a subject enough to produce useful
-substance before investing in presentation. Match depth to the task and audience;
-there is no fixed time/token percentage, search count or mandatory opinion. Keep
-implementation simple enough to leave room for content. Host usage records are
-observations, not quality scores or acceptance gates. Never pad reading or wait to
-reach a ratio; code and passive rendering are not content work.
+Write source-notes.md for evidence, qualifications and useful reference observations.
+Write outline.json with title, purpose and ordered slides (stable id, title,
+substantive summary). Plan the explanation and a provisional visual direction;
+resolve concrete composition and visible wording while authoring each page.
+Use the requested language for public copy and notes; preserve proper names/code.
+Publish the outline through the host when available and synchronize revisions.
 
-Keep useful evidence and uncertainties in source-notes.md. Distinguish source facts,
-quotations, interpretation and illustrative examples. No invented data/citations.
-Respect supplied-only/offline instructions.
+The compact v4 decision-plan.json records the existing create/edit entry, viewing,
+factual research route, actual template elements to protect, a short design direction,
+page behavior/assets and any applied references. [Delivery decisions](references/workflow-branches.md)
+defines the exact format. Visual forms and compositions are author choices, without
+mandatory design categories or eligibility combinations. When available,
+[planning_commit](references/planning-commit.md) commits outline/decisions/notes together;
+its success satisfies the planning check. Otherwise run workflow_decisions.py
+--stage planning. Preserve historically admitted records on recovery.
 
-Read [Workflow branches](references/workflow-branches.md) and
-[the choice catalog](assets/workflow-choices.json). Select explicit task branches
-for the existing create/edit entry, viewing, research, references, style, palette
-and typography; select each
-page's intent, audience strategy, eligible primary/support forms, canvas composition,
-behavior and asset route. Record v3 decision-plan.json with exact outline IDs/order,
-the audience question/benefit, a concrete visual action, a short design direction
-and actual artwork/teaching references with page applications.
-No unspecified option, invented category or "consider X"
-in place of selection. Execute the selected route's actions and failure alternative.
-Read [Content-led composition](references/content-led-composition.md) for linked
-audience→canvas/pacing→object decisions and actual sequence checks inside these
-stages. Creative composition within a route follows content and purpose, not a uniform
-visual template. Observation of an actual object/interface/state needs real visual
-evidence, not a prose feature map.
+## Design and author
 
-Run scripts/workflow_decisions.py --stage planning before finishing the plan, and
---stage authored --artifact YOUR_EXPORT before finishing native authoring. New
-multi-page decks cannot select one form/composition throughout; category diversity
-does not establish visual diversity. Review actual audience fit and repeated
-component language even when choice IDs differ. Source/template constraints and
-scoped edits preserve the authorized scope. Use
-[Research and assets](references/research-and-assets.md) for source inspection and
-quality within the selected reference/material route; any relevant art form may
-inform that route. No fixed template rotation or demand to use all branches.
+Read [Content-led composition](references/content-led-composition.md) for the design
+brief. Give the subject an effective visual expression suited to this audience and
+purpose: concrete examples, relationships and results should become inspectable.
+Choose scale, composition, density, layering, color and image/type relationships.
+Text-led pages, imagery and detailed native diagrams can all be appropriate.
+Maintain coherent visual encoding across the deck while letting content shape pages.
 
-## 2. Write page content
+For new decks or substantive redesigns with creative latitude, actively explore
+whether relevant art/design/scientific illustration can strengthen the direction.
+Inspect the actual work and transfer useful visual relationships into current pages.
+A template protects its required elements; it does not supply every body-page design.
+Use the reference procedure in Research and assets; no artist list, reference quota
+or separate inspiration stage. Record only actually inspected/applied work.
 
-Before authoring, write outline.json with overall purpose, sections and each page's
-title and substantive explanation/evidence/example. Topic labels are insufficient.
-Use natural-language content, not fixed chapters or a compulsory opinion per page.
-Record meaning, evidence and what the audience needs to see before locking long
-slide paragraphs. Write concise visible copy around the chosen composition; keep
-essential qualifications accessible and detailed research in source notes.
-Include only a short overall style/viewing note.
+Start from the supplied template/source when required, otherwise assets/blank.pptx.
+Use one main author and make pages in presentation order. Helpers may prepare
+independent later-page evidence/assets through the host's PREFETCH.md; inspect and
+choose their results. Work with actual assets, not assumed future files.
 
-Use the requested PPT language for slides, public outline, labels and notes; preserve
-proper names/code where appropriate. Publish using the host outline helper when
-available, then continue without routine sign-off. Synchronize content/order changes.
-Public summaries are not internal reasoning or raw source notes.
+Use [native pages](references/native-pages.md), [native batches](references/native-batch.md)
+and [native canvas](references/native-canvas.md) when available for page creation,
+font measurements, shapes, image crops/layers and editable charts. Helpers implement
+chosen objects, not a universal page layout. Technical references are linked below.
 
-## 3. Make native pages
+New presentations require meaningful native click reveals. Plan entry context,
+semantic click groups, persistent orientation and a complete readable final view.
+Static covers and single-message pages are allowed; an entirely static deck or
+cosmetic title entrance does not satisfy this requirement. Read
+[Animations](references/animations.md); preserve faithful-source/scoped-edit behavior.
 
-Start from the user's PPTX for edits or a supplied blank; bundled fallback is
-assets/blank.pptx. Use direct OOXML only. Choose text, charts, tables, diagrams,
-images or media for the content and neighboring pages, not a quota. Image and type
-are combinable roles: background, beside, detail, overlapping or integrated.
-Pure-text pages still need purposeful scale, hierarchy, breaks and whitespace;
-filled cards are only for genuinely independent units. Choose the canvas treatment
-before creating reusable code; do not let a universal title/body/box helper decide
-every page's visual language. Use [native-canvas.md](references/native-canvas.md)
-for installed-font measurement, native image cropping/layering and editable bars.
-These are object capabilities without a prescribed slide template. Consult
-[Visual review](references/visual-review.md) as practical guidance. Essential text,
-data and analytical diagrams remain editable; do not flatten whole slides.
+Render and inspect each page at full size and normal reading scale before proceeding.
+Check source meaning and technical fit, and whether the intended subject, mechanism
+or comparison actually leads the page. Refine concrete weaknesses while making it.
+At natural section boundaries compare saved previews for sequence coherence and
+rhythm. Existing render checks serve this purpose; no new approval stage is needed.
+Update provisional decisions when actual material or renders justify another approach.
 
-Execute the selected behavior branch: static, click_reveal, internal_navigation
-or embedded_playback. Follow its conditions/checks in workflow-branches.md; for
-click_reveal, read [Animations](references/animations.md). New presentations must
-include meaningful native click reveals; staged processes/arguments/examples need
-an entry→click-groups→final-view plan. Static cover/single-message pages are allowed;
-an entirely static new deck or decorative title entrance is insufficient. Preserve
-existing behavior during faithful conversions/scoped edits and historical recovery.
+Register each applied outside work once with its inspected evidence and page actions.
+Before final export, use design_references.py --workspace PARTS_DIR to generate
+page reference associations/slide notes; preserve existing notes. Run
+workflow_decisions.py --stage authored --artifact YOUR_EXPORT on the exact candidate.
+This checks coverage, assets, notes and native behavior, not aesthetic quality.
 
-Read [Research and assets](references/research-and-assets.md) for imagery/media and
-check actual host capabilities. Inspect and import real assets. Reference evidence
-is required for technical structures; crude invented shapes are not a substitute
-for a requested illustration. Generated illustration is not documentary evidence.
-When the chosen expression uses assets, acquire/inspect/embed them and check their
-actual explanatory role, cropping and annotations. Reconsider a provisional plan
-if the available material or rendered result changes its suitability. Keep required
-analytical content editable; photographic/illustrative assets can be embedded.
-Record consequential substitutions or limitations. Preserve the audience need
-when acquisition fails; generic cards do not resolve an essential missing real
-interface/case display. Neither cards nor images replace every other form.
+## Review, revise and deliver
 
-Build, render and inspect each page; repair defects and publish native previews
-where available. Return to content when a visual exposes a missing explanation.
-For animated pages, check native click groups and semantic order during authoring;
-reuse the host's batch state previews in the existing visual review. Follow the
-fast-path and targeted-playback rules in [Animations](references/animations.md);
-routine animation checks do not require a separate slideshow session.
-Essential self-reading meaning must be visible without inaccessible notes.
+Use two fresh independent contexts: [content review](references/content-review.md)
+and [visual review](references/visual-review.md). Give required artifacts and the
+relevant guide, without the author's conversation. Content first reads the audience
+surface, then sources/brief. Visual review judges actual pages/sequence before
+reference claims. Reviewers do not edit; if independence is unavailable, disclose it.
 
-While finalizing the current page's wording and composition, return to targeted
-design search when a new question needs it. Apply the reference to the current
-content and verify the rendered result, keeping sequential authoring and the
-agreed visual direction. Reuse prior findings for equivalent problems.
+Report technical delivery validity and design readiness distinctly. A readable,
+accurate deck may still need concrete design refinements. Required findings concern
+explicit requirements, substantive errors/omissions, comprehension/readability or
+broken native features; discretionary artistic alternatives remain suggestions.
+Use existing bounded repair routes, not taste-score loops. Record findings/resolutions
+in review.md with reviewer and frozen artifact hash/version. Static timing/state
+inspection is not target-player playback; say exactly what was verified.
 
-Keep one main author responsible for the whole deck's visual direction and native
-page edits. When the host exposes asynchronous material preparation, read its
-PREFETCH.md and submit concrete later-page evidence/reference/asset needs while
-making the current page. Helpers return candidate material, not page designs or
-edits. Inspect and choose results before use; preserve page order and source
-constraints. Do not wait for all later assets, duplicate pending requests or add
-a new stage. See [Research and assets](references/research-and-assets.md).
+On resume inspect retained pages, exports, sources and receipts before continuing.
+Preserve historical originals and frozen reviewed bytes. Ordinary chat does not
+invalidate reviews; modification requests update only affected material. Deliver
+only the returned export path and briefly identify actual reference applications
+or honestly report that none were used.
 
-Deliver a single standalone PPTX. Use native objects, click-controlled builds,
-trigger animations, internal slide links and embedded media. Do not create Content
-Add-ins, JSON browser scenes, runnable code labs, local servers, runtime bundles,
-installers, macros, external website controls or externally linked media. Present
-code as editable explanatory text. Keep essential content readable in PowerPoint.
+## Technical references
 
-In a resumable host workflow, inspect restored artifacts before continuing. Respect
-ordered user corrections supplied by the host and answer live chat. Refresh affected
-outline, scenes, captures and exports after a correction; prior reviews certify only
-their recorded input/artifact version. Preserve earlier exports and original inputs.
+Unpack with scripts/pptx.py and retain the workspace path. Put --workspace before
+list slides / inspect N / render N / export. Take snapshots for risky changes;
+inspect partial failures before retry. Preserve IDs, relationships and untouched
+source parts. [Tool preparation](references/tool-preparation.md) explains host refresh.
 
-## 4. Independent audience reviews and revision
-
-Use two fresh reviewer contexts, not the author's conversation: host orchestration
-or independent subagents with no inherited history. Give only required artifacts and
-the relevant review reference. Reviewers do not edit the deck. If independence is
-unavailable, disclose it; self-critique cannot be labeled independent.
-
-- [Content review](references/content-review.md): first the audience surface without
-  the author's outline/rationale, then the original brief and sources.
-- [Visual review](references/visual-review.md): actual full-size pages, sequence,
-  typography, imagery, density, theme, staged reveals and media.
-
-[Observed examples](references/review-examples.md) clarify failures, not required layouts.
-Record findings/resolutions in review.md with reviewer and reviewed hash/version.
-The visual pass evaluates audience fit, actual sequence and reference transfer
-after judging the pages first; artist names and choice counts are not quality evidence.
-Fix factual errors, essential omissions, broken explanation, unreadability and
-required-media failures. Style suggestions may be retained with reasons. Recheck
-revisions, context and final order. No finding quotas or repeated taste-score loops.
-Static render/timing inspection is not playback verification. Report exactly what
-was tested; do not silently downgrade an essential requirement and declare completion.
-For image recreation and scoped edits, evaluate fidelity and authorized changes.
-Inherited source ambiguities and unrelated improvements are suggestions, not
-delivery blockers. Content and visual reviews can run independently in parallel;
-source conversion can compare directly with the original without a blind pass.
-
-When the host supplies complete current documents in the initial phase prompt,
-use that reading directly; reopen only changed/deferred material or needed detail.
-For planning, [one planning submission](references/planning-commit.md) validates
-and commits the chosen outline, decision record and source notes together; its
-successful existing planning check satisfies the planning CLI instruction above.
-Do not separately generate/read a scaffold or repeat the same validation.
-For new pages, [native page creation](references/native-pages.md) safely reuses or
-appends the next blank page from an explicitly chosen existing layout. It preserves
-the layout/master/theme chain, not source objects or timing; scoped edits retain
-their existing pages. Do not rewrite a whole-deck generator for page appends.
-During a correction, resolve source/content first and then change native objects
-in the same retained context when the host supports it. Reuse completed evidence
-and corrections; separate API conversations are not required for these actions.
-
-## Native operations
-
-Plan content and layout together in source-notes.md, then author in page order.
-Record the takeaway, evidence, must-preserve qualifiers/units/operation order,
-visual hierarchy and suitable arrangement. Keep this compact and internal;
-no separate design stage or pilot pages are required. Preserve source meaning
-when simplifying visuals. Name movable semantic groups and use anchored native
-connectors for linked nodes; see groups.md and scripts/native_structure.py.
-The review packet adds 900-pixel reading previews and factual structure inventory.
-Check formulas, labels, captions, wrapping and collisions at that scale as well
-as full size. Concrete defects require correction; taste preferences remain
-suggestions.
-
-Record actually applied work/title/creator/source, observed properties, borrowed
-ideas and concrete page applications in decision-plan.json and source-notes.md.
-Use scripts/design_references.py --workspace WORKSPACE before final export to write
-these records into affected slide notes; the authored check verifies the final
-notes, not just a sidecar file. Name the applied works and ideas briefly in the
-completion summary. Do not invent inspiration or overload the audience canvas.
-
-1. Unpack using scripts/pptx.py and retain its workspace path.
-2. Put --workspace PATH before commands: list slides, inspect N, find TEXT, refs PART.
-   Page numbers follow presentation order.
-3. Edit XML within scope; preserve untouched parts, IDs, extensions and media.
-   Never overwrite the user's source or original.pptx.
-4. Validate, render N, open the returned image, repair and rerender. Snapshot risky
-   changes; use diff to check scope and rollback for recovery.
-5. Deliver only the returned export path. Export validates/renders the package;
-   it does not certify understanding, aesthetics or untested playback.
-
-Workspace files are authoritative. Existing hooks protect originals and validate
-changes. Add no aesthetic scores, mandatory wording gates or review Stop loops.
-
-Read technical references only as needed:
-[package](references/ooxml-overview.md), [shapes](references/slides-and-shapes.md),
-[text](references/text.md), [images](references/images.md), [charts](references/charts.md),
-[groups](references/groups.md), [masters](references/masters-and-layouts.md),
+Read as needed: [package](references/ooxml-overview.md),
+[shapes](references/slides-and-shapes.md), [text](references/text.md),
+[images](references/images.md), [charts](references/charts.md),
+[groups/connectors](references/groups.md), [masters](references/masters-and-layouts.md),
 [relationships](references/relationships.md), [safe changes](references/safe-mutation-rules.md),
 [formulas](references/technical/formula-fidelity.md),
 [advanced objects](references/technical/native-capabilities.md).

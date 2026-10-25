@@ -118,7 +118,7 @@ class NativeCanvasTests(unittest.TestCase):
 
     def plan(self):
         entry={'id':'R1','kind':'artwork','title':'Fixture study','creator':'Fixture creator','source':'https://museum.example/study','inspection':'local_image','evidence':'image.png','observed':'One field and a clear focal contrast.','borrowed':'Scale contrast.','applications':[{'pages':['intro'],'action':'Make the headline dominant and retain open space.'}]}
-        return {'version':3,'task':{'operation':'create','viewing':'self_reading','research':'supplied_only','references':'use_available','style':'editorial','palette':'semantic','typography':'installed_role_system'},'design_direction':'One deliberately typographic statement with open space.','references':[entry],'pages':[{'id':'intro','intent':'introduce','strategy':'read','form':'typography','support':[],'composition':'type_statement','behavior':'static','assets':[{'route':'none'}],'role':'Recognize the central question.','visual_action':'Headline dominates an open field.','reference_ids':['R1']}]}
+        return {'version':4,'template_preservation':[],'task':{'operation':'create','viewing':'self_reading','research':'supplied_only'},'design_direction':'One deliberately typographic statement with open space.','references':[entry],'pages':[{'id':'intro','intent':'introduce','strategy':'read','form':'typography','support':[],'composition':'type_statement','behavior':'static','assets':[{'route':'none'}],'role':'Recognize the central question.','visual_action':'Headline dominates an open field.'}]}
 
     def pack(self):
         stream=io.BytesIO()

@@ -34,7 +34,7 @@ the parts directory. No source is automatically unpacked or authored by this too
 
 The manifest reads current CLI parsers, native_canvas function signatures and
 decision options. With an existing outline it includes the existing unselected
-decision scaffold. Preserve explicit finite choices, source meaning and actual
+decision scaffold. Preserve explicit delivery decisions, source meaning and actual
 reference inspection. A local reference `source` is its exact task-relative file
 path without a provenance label; record display attribution in title/observed.
 Fill observed/borrowed/applications only after inspecting the material.
