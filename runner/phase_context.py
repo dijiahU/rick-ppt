@@ -82,11 +82,11 @@ def prepared_phase_context(cfg, job, stage):
     # transactional batch delegates to, or their required parameters.
     add(job, 'tool-manifest.json', kind='interface_subset', fields=(
         'python', 'task_root', 'attachments', 'outline_fields',
-        'decision_contract', 'planning_commit', 'command_outputs')
+        'decision_contract', 'planning_commit', 'page_design', 'command_outputs')
         if stage == 'research' else (
         'python', 'task_root', 'session_dir', 'parts_dir', 'workspace_status',
         'workspace_contract', 'commands', 'native_authoring', 'native_canvas',
-        'native_batch', 'native_pages', 'decision_contract', 'command_outputs'))
+        'native_batch', 'native_pages', 'page_design', 'decision_contract', 'command_outputs'))
     add(skill, 'SKILL.md', kind='installed_instruction')
     if continuity:
         add(skill, 'references/execution-continuity.md', kind='installed_instruction')

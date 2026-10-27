@@ -60,6 +60,31 @@ class ToolPreparationTests(unittest.TestCase):
             self.assertTrue(text[name]['required'])
         self.assertEqual(value['add_text']['signature'], str(helper.inspect.signature(helper._module('native_canvas').add_text)))
 
+    def test_page_handoff_is_discoverable_without_creating_a_required_page_form(self):
+        original='Original evidence remains.\n\n```pptx-handoff\n'+json.dumps({
+            'page_id':'mechanism','question':'How is information aggregated?',
+            'preserve':['Illustrative values are not measurements'],
+            'materials':[{'file':'pending.png','role':'Pending actual detail'}]})+'\n```\n'
+        (self.root/'source-notes.md').write_text(original)
+        helper.prepare_tool_manifest(self.root)
+        value=self.read_manifest()['page_design']
+        self.assertEqual(value['context_command'][0],sys.executable)
+        self.assertFalse(value['handoff_index']['required'])
+        self.assertEqual(value['handoff_index']['pages'][0]['page_id'],'mechanism')
+        self.assertIn('preserve',value['handoff_index']['pages'][0]['fields'])
+        self.assertEqual((self.root/'source-notes.md').read_text(),original)
+        self.assertFalse((self.root/'outline.json').exists())
+
+    def test_refresh_keeps_explicit_workspace_and_reads_updated_handoff(self):
+        workspace=helper._module('pptx_core.package').unpack(
+            PLUGIN/'skills/pptx/assets/blank.pptx',self.root/'projects')
+        helper.prepare_tool_manifest(self.root,workspace=workspace.root)
+        (self.root/'source-notes.md').write_text('```pptx-handoff\n'+json.dumps({
+            'page_id':'later-page','uncertainties':['Actual material still pending']})+'\n```\n')
+        value=helper.prepare_tool_manifest(self.root)
+        self.assertEqual(value['parts_dir'],str(workspace.root))
+        self.assertEqual(self.read_manifest()['page_design']['handoff_index']['pages'][0]['page_id'],'later-page')
+
     def test_batch_entry_uses_same_interpreter_and_no_design_defaults(self):
         helper.prepare_tool_manifest(self.root)
         value = self.read_manifest()

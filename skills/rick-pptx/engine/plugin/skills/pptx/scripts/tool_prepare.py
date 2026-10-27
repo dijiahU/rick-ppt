@@ -84,6 +84,20 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
     interpreter = os.path.abspath(os.fspath(python or sys.executable))
     if not Path(interpreter).is_file() or not os.access(interpreter, os.X_OK):
         raise ValueError('Host-provided Python must be an executable file')
+    # Refreshing material pointers must not discard the author's explicit
+    # native selection. Reuse only that exact, still-valid task-local workspace;
+    # never discover another candidate or follow a historical external path.
+    previous = root / 'tool-manifest.json'
+    if workspace is None and previous.is_file():
+        try:
+            candidate = _read(previous, root).get('parts_dir')
+            given = Path(candidate) if isinstance(candidate, str) and candidate else None
+            if given and given.is_absolute() and given.is_relative_to(root) and given.resolve().is_relative_to(root):
+                selected = _module('pptx_core.package').select(given)
+                if selected.root.is_dir() and selected.home.is_relative_to(root):
+                    workspace = given
+        except (OSError, ValueError, AttributeError, KeyError, TypeError, _module('pptx_core.common').PptxError):
+            pass  # No valid retained selection; require the usual explicit refresh.
     session_dir = parts_dir = None
     if workspace is not None:
         given = Path(workspace).resolve(strict=True)
@@ -261,6 +275,27 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
                   'Names resolve group/connector/reveal targets. All explicit text-height errors return together; failures leave parts unchanged.',
                   'Use max_height="auto" only when you deliberately want measured height; numeric bounds remain strict. Check composition and overlaps in the actual render.',
                   'The batch does not create pages, choose a style or replace sequential publication/self-check/independent review.', '']
+    page_design = SCRIPTS / 'page_design.py'
+    if page_design.is_file():
+        commands['page_design_context'] = [interpreter, str(page_design), 'context', '--task-root', str(root),
+                                            '--page-id', 'ACTUAL_OUTLINE_PAGE_ID']
+        if parts_dir:
+            commands['page_design_context'] += ['--workspace', parts_dir]
+        commands['record_design_observation'] = [interpreter, str(page_design), 'record', '--task-root', str(root),
+                                                  '--page-id', 'ACTUAL_OUTLINE_PAGE_ID', '--workspace', parts_arg,
+                                                  '--input', 'CHOSEN_CONSEQUENTIAL_OBSERVATION.json']
+        manifest['page_design'] = {
+            'guide': str(SCRIPTS.parent / 'references/page-design.md'),
+            'context_command': commands['page_design_context'],
+            'record_command': commands['record_design_observation'],
+            'handoff_index': _module('page_design').handoff_index(root),
+            'notes_marker': 'Optional pptx-handoff JSON fence in source-notes.md; page_id plus only useful fields.',
+            'handoff_fields': ['question', 'evidence', 'materials', 'preserve', 'uncertainties', 'visual_opportunity'],
+            'use': 'Use supplied notes directly; retrieve this page when notes are large or material/expression is unclear. Record consequential changes only, not a per-page form or approval.',
+            'authority': 'File checks and version-bound author observations, not source authenticity, aesthetic scores or independent review passes.'}
+        lines += ['Page-specific evidence/material lookup and optional consequential design observations:',
+                  shlex.join(commands['page_design_context']),
+                  'Use current supplied notes directly when sufficient. The page_design manifest links the optional source-notes format and record command.', '']
     lines += [f'- `{a["path"]}` ({a.get("name", "attachment")})' for a in attachments]
     manifest_path = _write(root, 'tool-manifest.json', json.dumps(manifest, ensure_ascii=False, indent=2))
     guide_path = _write(root, 'tool-quickstart.md', '\n'.join(lines) + '\n')

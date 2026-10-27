@@ -94,7 +94,7 @@ def render_package(pptx, destination, slide=None, expected_pages=None):
 
 
 def render(ws, slide=None):
-    from .manifest import changed_paths, manifest
+    from .manifest import changed_paths, content_fingerprint, manifest
     from .package import pack
     from .relationships import slide_parts
     from .validator import validate
@@ -110,6 +110,17 @@ def render(ws, slide=None):
             result = render_package(pptx, ws.home / "renders", slide, total)
         if changed_paths(before, manifest(ws.root)):
             raise PptxError("Workspace changed during rendering; render again")
+        result['workspace_fingerprint'] = content_fingerprint(before)
+        result['page_numbers'] = [slide] if slide is not None else list(range(1, total + 1))
+        # Retain immutable per-page images for the author, including on resume.
+        # This is observation evidence, not an aesthetic or playback verdict.
+        previews = ws.state.setdefault('page_previews', {})
+        parts = slide_parts(ws.root)
+        for number, image in zip(result['page_numbers'], result['pages']):
+            previews[str(number)] = {'part': parts[number - 1],
+                'image': str(Path(image).relative_to(ws.home)), 'image_sha256': sha256(image),
+                'workspace_fingerprint': result['workspace_fingerprint'],
+                'source_hash': result['source_hash'], 'at': result['at']}
         ws.state["last_render"] = result
         ws.save()
         return result

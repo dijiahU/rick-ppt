@@ -18,6 +18,9 @@ design_direction and source notes: protected elements, typographic/color roles,
 diagram/image relationships and intended rhythm. Distinguish protected requirements
 from revisable visual hypotheses. Preserve tested valid choices during recovery;
 planning validation alone is not evidence of good design.
+Use the supplied evidence directly. [Page evidence and observations](page-design.md)
+can retrieve current-page material/uncertainty when notes are large or unclear;
+file availability is distinct from source authenticity and actual inspection.
 Comparable material benefits from consistent encoding; other content can change
 scale, density, emphasis and reading path. No mandatory composition categories,
 artist roster, per-page image requirement or layout rotation.
@@ -68,3 +71,7 @@ visual continuity. Use existing images rather than repeatedly rendering the deck
 Record consequential choices/changes compactly in existing notes, not another form,
 score or approval step. Incorporate independent review directions through scoped
 repairs in the same continuing designer context and preserve reviewed originals.
+When useful, the page-design helper binds a consequential observation to actual
+native inputs and an existing render, including retained/reverted attempts. These
+remain author assessments. Do not create records for every page or rerender older
+pages just to make a record current; existing independent review judges the result.

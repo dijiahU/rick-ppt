@@ -61,7 +61,7 @@ def main():
     if args.full:
         details['package_integrity']=package_integrity(root)
         checks['package_integrity']=details['package_integrity']['verified']
-        for name in ('native_batch.py','native_pages.py','planning_commit.py','tool_prepare.py','portable_workflow.py','dsh_adapter.py'):
+        for name in ('native_batch.py','native_pages.py','planning_commit.py','tool_prepare.py','page_design.py','portable_workflow.py','dsh_adapter.py'):
             checks['full_tool:'+name]=(root/'scripts'/name).is_file()
         checks['production_engine']=(root/'engine/runner/workflow.py').is_file() and (root/'engine/workflow/journal.py').is_file()
         try:

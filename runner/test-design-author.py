@@ -6,7 +6,7 @@ import copy,hashlib,json,tempfile,unittest,sys,importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock,patch
-from design_roles import role_contract,handoff_index
+from design_roles import role_contract,handoff_index,role_instruction
 from design_feedback import mark_response,optional_response,host_authorized_response,capture_metadata,restore_baseline,save_baseline,load_baseline
 from phase_context import prepared_phase_context,MAX_DOCUMENT
 from workflow import _run_workflow,_rollback_designer_response
@@ -66,6 +66,12 @@ class RoleTests(unittest.TestCase):
  def test_legacy_plugin_receives_no_role_requirement(self):
   (self.skill/'references/art-direction.md').unlink()
   self.assertIsNone(role_contract(self.cfg,'author'));self.assertNotIn('role_contract',self.packet('author'))
+ def test_pinned_older_plugin_does_not_advertise_uninstalled_page_tools(self):
+  for stage in ['research','author','repair']:
+   self.assertNotIn('page_design',role_instruction(self.cfg,stage))
+  (self.skill/'scripts/page_design.py').write_text('# actual installed capability')
+  for stage in ['research','author','repair']:
+   self.assertIn('page_design',role_instruction(self.cfg,stage))
 
 
 def report():return {'summary':'Actual audience review','pages_reviewed':[1,2],'limitations':['Playback not tested'],'findings':[]}

@@ -76,6 +76,12 @@ Search snippets, reading counts and completed downloads do not establish underst
 Build the ordered outline from that synthesis and the audience's starting knowledge.
 Choose what each page helps the audience understand and what they need to see;
 plan content and expression together without prewriting equally sized paragraphs.
+Hand over the supported conclusion/relationship, exact evidence locations, useful
+actual material with its intended role, necessary conditions and consequential
+unknowns where relevant. A provisional visual opportunity can help; final visible
+wording and composition remain the designer's decisions. For material-rich pages,
+[page evidence](page-design.md) offers optional indexed pointers inside these same
+notes. Plain notes and a supported summary remain sufficient for simple pages.
 If a text-only case is worth explaining, an original conceptual illustration,
 labeled illustrative sequence or native editable example can make it visible.
 It must preserve the supported mechanism and not masquerade as the real output or

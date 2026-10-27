@@ -58,6 +58,9 @@ leave concrete composition and visible wording to the continuing designer.
 Hand over traceable source locations, useful examples and necessary qualifications,
 not final equal-length paragraphs or fixed coordinates. The designer may refine
 expression and request focused missing evidence while preserving factual meaning.
+For material-rich pages, [page evidence](references/page-design.md) provides optional
+indexed pointers within the same notes and a current-page lookup tool. Simple
+pages and scoped edits retain their existing lightweight handoff.
 Use the requested language for public copy and notes; preserve proper names/code.
 Publish the outline through the host when available and synchronize revisions.
 
@@ -121,6 +124,8 @@ or comparison actually leads the page. Refine concrete weaknesses while making i
 At natural section boundaries compare saved previews for sequence coherence and
 rhythm. Existing render checks serve this purpose; no new approval stage is needed.
 Update provisional decisions when actual material or renders justify another approach.
+The page-design helper can bind consequential author observations to existing render
+bytes in those notes. It is optional, preserves history and grants no review pass.
 
 Register each applied outside work once with its inspected evidence and page actions.
 Before final export, use design_references.py --workspace PARTS_DIR to generate

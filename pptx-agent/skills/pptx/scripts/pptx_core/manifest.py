@@ -1,4 +1,13 @@
+import hashlib
+import json
+
 from .common import PptxError, sha256
+
+
+def content_fingerprint(files):
+    """Path/content identity, independent of timestamps or restored task paths."""
+    values = {name: entry['hash'] for name, entry in files.items()}
+    return hashlib.sha256(json.dumps(values, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 
 def manifest(root):

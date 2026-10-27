@@ -67,13 +67,14 @@ class Tests(unittest.TestCase):
                   'native_pages':{'command':['exact-python','page-helper']},
                   'native_authoring':{'module_directory':'actual-installed-scripts'},
                   'native_batch':{'operations':{'connector':'add_connector'}},
+                  'page_design':{'handoff_index':{'pages':[{'page_id':'actual','fields':['evidence','uncertainties']}]},'required':False},
                   'unrelated':'NOT FOR AUTHOR'}
         (self.job/'tool-manifest.json').write_text(json.dumps(manifest))
         for stage in ('author','repair'):
             doc=next(d for d in self.documents(prepared_phase_context(self.cfg,self.job,stage))
                      if d['path'].endswith('/tool-manifest.json'))
             value=json.loads(doc['content'])
-            for name in ('native_canvas','native_pages','native_batch','native_authoring'):
+            for name in ('native_canvas','native_pages','native_batch','native_authoring','page_design'):
                 self.assertEqual(value[name],manifest[name])
             self.assertNotIn('unrelated',value)
 

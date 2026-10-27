@@ -31,17 +31,27 @@ def role_contract(cfg,stage):
 def role_instruction(cfg,stage):
     contract=role_contract(cfg,stage)
     if contract is None:return ''
+    page_tools=(Path(cfg['plugin'])/'skills/pptx/scripts/page_design.py').is_file()
+    research_tools=('For material-rich pages, the optional page_design contract indexes those pointers inside source-notes.md; simple pages need only their supported summary. '
+                    if page_tools else '')
+    author_tools=('Use the supplied current-page evidence directly; page_design_context can retrieve exact material/gaps when notes are large or unclear. Missing optional handoff records do not stop work. '
+                  if page_tools else '')
+    observation_tools=('Record only consequential design observations/changes in existing notes, optionally bound to actual native/render bytes through page_design; these are author assessments, not independent approvals. '
+                       if page_tools else 'Record consequential design changes compactly in existing source notes. ')
     if stage=='research':
         return ('CONTENT RESEARCHER / EDITOR ROLE. Establish supported meaning, useful examples, source conditions and a coherent ordered explanation. '
-                'Hand the designer substantive page summaries, traceable evidence, actual material and consequential uncertainty through the existing outline/source notes/decision record. '
+                'Hand the designer substantive page summaries, traceable evidence with exact locators, actual material with useful roles, must-preserve conditions and consequential uncertainty through the existing outline/source notes/decision record. '
+                +research_tools+
                 'Give a provisional visual opportunity where useful, not final equal-length paragraphs or fixed coordinates. Preserve actual template/user scope. '
                 'Do not create or edit native pages in this phase. A separate continuing designer owns the whole visual sequence; source/asset helpers can prepare concrete later material.\n')
     return ('CONTINUING DECK DESIGNER / NATIVE AUTHOR ROLE. You own art direction and native implementation for this entire deck in page order, including scoped repairs. '
             'Use the content handoff as evidence and narrative, not slide-ready prose. Read the supplied art-direction.md method once; consult only relevant worked examples when needed. '
+            +author_tools+
             'Establish a provisional visual agreement in existing design_direction/source notes, then decide each page\'s inspectable subject/relationship, focus, scale and reading path. '
             'Test that agreement on the first substantive page exercising it, in normal presentation order. Actual material and renders can invalidate it: change a failed main composition before propagating it, rather than polishing or repeating it for consistency. '
             'Inspect actual artistic/design/scientific references when useful and permitted, transfer observed relationships into current objects, and reuse effective study. '
-            'Build the main composition before minor details; render, inspect and refine actual expression alongside technical fit. Keep visual continuity across the whole sequence. '
+            'Build the main composition before minor details; use the normal render to distinguish an implementation defect from a weak explanation. Repair the affected geometry/font locally, or recompose focus/scale/relationships when expression fails. '
+            'Keep visual continuity across the whole sequence. '+observation_tools+
             'The researcher/editor handles content gaps; use targeted permitted investigation when needed without repeating settled research. '
             'There is one native author, not an independent page designer per slide. Technical tools protect facts/scope/native validity; they do not choose a universal layout or rate aesthetics. '
             'Use only actual task-funded capabilities. Missing search/generation does not authorize another account or fabricated reference inspection.\n')
