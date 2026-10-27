@@ -70,6 +70,44 @@ class ToolPreparationTests(unittest.TestCase):
         self.assertEqual(value['native_batch']['document_fields'], ['version', 'batch_id', 'operations'])
         self.assertIn('does not create decision-plan.json', value['command_outputs']['decision_scaffold'])
 
+    def test_prepared_batch_contract_runs_without_reading_helper_sources(self):
+        workspace=helper._module('pptx_core.package').unpack(
+            PLUGIN/'skills/pptx/assets/blank.pptx',self.root/'projects')
+        helper.prepare_tool_manifest(self.root,workspace=workspace.root)
+        manifest=self.read_manifest()
+        operations=[]
+        for ident,box in [('left',[1,2,2,1]),('right',[4,2,2,1])]:
+            operations.append({'op':'shape','id':ident,'slide':1,'box':box,
+                               'geometry':'rect','fill':'DDEEFF','stroke':'223344','line_width':1,'name':ident})
+        operations += [
+            {'op':'group','id':'pair','slide':1,'members':['left','right'],'name':'Related modules'},
+            {'op':'connector','id':'relation','slide':1,'start':'left','end':'right',
+             'points':[3,2.5,4,2.5],'start_site':3,'end_site':1,'ink':'223344',
+             'line_width':1,'arrow':'triangle','name':'Relationship'},
+            {'op':'reveal','slide':1,'steps':[['pair','relation']]}]
+        for operation in operations:
+            params=manifest['native_batch']['operation_parameters'][operation['op']]
+            required={p['name'] for p in params if p['required']}
+            provided=set(operation)-{'op','id','slide'}
+            self.assertTrue(required<=provided)
+            self.assertTrue(provided<={p['name'] for p in params})
+        document=self.root/'page.json'
+        document.write_text(json.dumps({'version':1,'batch_id':'prepared-tools','operations':operations}))
+        command=list(manifest['commands']['native_page_batch'])
+        command[-1]=str(document)
+        first=subprocess.run(command,cwd=self.root,check=True,capture_output=True,text=True)
+        result=json.loads(first.stdout)
+        second=subprocess.run(command,cwd=self.root,check=True,capture_output=True,text=True)
+        self.assertEqual(result['handles'],json.loads(second.stdout)['handles'])
+        from lxml import etree
+        tree=etree.parse(str(workspace.root/'ppt/slides/slide1.xml'))
+        ns={'p':'http://schemas.openxmlformats.org/presentationml/2006/main',
+            'a':'http://schemas.openxmlformats.org/drawingml/2006/main'}
+        self.assertEqual(len(tree.findall('.//p:grpSp',ns)),1)
+        self.assertEqual(len(tree.findall('.//a:stCxn',ns)),1)
+        self.assertEqual(len(tree.findall('.//a:endCxn',ns)),1)
+        self.assertEqual(len(tree.findall('.//p:spTgt',ns)),2)
+
     def test_planning_and_sequential_page_tools_use_installed_interfaces(self):
         helper.prepare_tool_manifest(self.root)
         value = self.read_manifest()

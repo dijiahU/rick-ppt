@@ -53,7 +53,11 @@ def _findings_valid(value, number, digest):
             if not isinstance(finding, dict) or finding.get('severity') not in ('required', 'suggestion'):
                 return False
             required |= finding['severity'] == 'required'
-    return required
+    if required:return True
+    # Optional design work is authorized only by a matching host-private first
+    # review receipt below, never by a task-written findings file alone.
+    from design_feedback import host_authorized_response
+    return host_authorized_response(value)
 
 
 def _trusted_findings(journal, job, records, task_id, phase, baseline, number, digest):

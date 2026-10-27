@@ -60,6 +60,40 @@ class Tests(unittest.TestCase):
         self.assertIn('NEW RESOLVED EVIDENCE',text)
         self.assertNotIn('RETAINED AUTHOR EVIDENCE',text)
 
+    def test_continuity_keeps_callable_native_interfaces_for_author_and_repair(self):
+        (self.skill/'references').mkdir()
+        (self.skill/'references/execution-continuity.md').write_text('CONTINUITY')
+        manifest={'native_canvas':{'add_connector':{'parameters':[{'name':'start_site','required':True}]}},
+                  'native_pages':{'command':['exact-python','page-helper']},
+                  'native_authoring':{'module_directory':'actual-installed-scripts'},
+                  'native_batch':{'operations':{'connector':'add_connector'}},
+                  'unrelated':'NOT FOR AUTHOR'}
+        (self.job/'tool-manifest.json').write_text(json.dumps(manifest))
+        for stage in ('author','repair'):
+            doc=next(d for d in self.documents(prepared_phase_context(self.cfg,self.job,stage))
+                     if d['path'].endswith('/tool-manifest.json'))
+            value=json.loads(doc['content'])
+            for name in ('native_canvas','native_pages','native_batch','native_authoring'):
+                self.assertEqual(value[name],manifest[name])
+            self.assertNotIn('unrelated',value)
+
+    def test_callable_interfaces_survive_optional_guide_context_budget(self):
+        (self.skill/'SKILL.md').write_text('GUIDE'*1000)
+        (self.job/'tool-manifest.json').write_text(json.dumps({'native_canvas':{'add_shape':{'signature':'EXACT'}}}))
+        with patch('phase_context.MAX_CONTEXT',512):
+            text=prepared_phase_context(self.cfg,self.job,'author')
+        documents=self.documents(text)
+        self.assertTrue(any(d['path'].endswith('/tool-manifest.json') for d in documents))
+        self.assertFalse(any(d['path'].endswith('/SKILL.md') for d in documents))
+
+    def test_large_unneeded_manifest_sections_do_not_hide_compact_callable_subset(self):
+        manifest={'native_canvas':{'add_shape':{'signature':'CURRENT'}},
+                  'decision_scaffold':'unused '*MAX_DOCUMENT}
+        (self.job/'tool-manifest.json').write_text(json.dumps(manifest))
+        doc=next(d for d in self.documents(prepared_phase_context(self.cfg,self.job,'author'))
+                 if d['path'].endswith('/tool-manifest.json'))
+        self.assertEqual(json.loads(doc['content']),{'native_canvas':manifest['native_canvas']})
+
     def test_author_receives_material_status_without_source_result_payloads(self):
         (self.job/'material-prefetch').mkdir()
         index={'version':1,'requests':[{'id':'a'*32,'state':'running',

@@ -28,7 +28,11 @@ protection, subject to actual offline/supplied-only permissions.
 
 `template_preservation` names actual protected source elements/style and edit scope;
 use [] without a template. It does not force inherited body composition or prevent
-outside inspiration. `design_direction` is one compact coherent premise. Page role,
+outside inspiration. `design_direction` is one compact, provisional coherent premise.
+Revise it when actual assets or rendered pages demonstrate a better expression;
+planning validation establishes execution consistency, not aesthetic endorsement.
+Preserve actual user/source constraints and synchronize affected asset/behavior
+records when the expression changes; no new design status field is required. Page role,
 visual_action, intent, strategy, form, support and composition may optionally be
 free descriptions; none is required or checked against a design taxonomy.
 

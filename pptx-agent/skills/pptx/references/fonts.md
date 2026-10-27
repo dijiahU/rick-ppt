@@ -3,15 +3,21 @@
 Use `font-catalog.json` and `fonts/index.json` to choose from real installed files.
 For new work, Rick's default is **Times New Roman for English/Latin** and
 **SimSun (宋体) for Chinese**. Apply the pair to native runs, theme defaults,
-chart/table labels and inherited text. Preserve supplied template fonts for scoped
-edits and explicit user choices. Read [Windows WPS compatibility](windows-wps.md).
+chart/table labels and inherited text. Preserve explicit user font choices and
+actual supplied template typefaces for scoped edits. Newly recreated image text
+without a specified source typeface still uses the defaults. Descriptions such as
+"rounded", "handwritten" or "looks like" a font are uncertain visual observations,
+not an explicit font requirement or verified template font metadata; do not use
+them to justify a decorative replacement. Read [Windows WPS compatibility](windows-wps.md).
 Use size, spacing, hierarchy and real weights rather than acquiring more families.
 The default IDs are `times-new-roman-regular`, `times-new-roman-bold`,
 `times-new-roman-italic`, `times-new-roman-bold-italic`, and `simsun-regular`.
 Use actual returned family/style names; do not simulate an unavailable SimSun bold.
 Special fonts are exceptions for an explicit requirement or functional need.
-Record actual glyph coverage/weight/name plus recipient availability or verified
-editable embedding before using them. A downloaded font is not embedded.
+For a functional exception, identify the concrete need and record the actual
+family/style/weight, relevant glyph forms and coverage, plus recipient availability
+or verified editable embedding before using it. An appearance guess alone is not
+that evidence. A downloaded font is not embedded.
 
 The host prepares genuine installed default faces in `fonts/` when available,
 including the actual SimSun face extracted from its collection. Check the manifest;
@@ -55,6 +61,16 @@ text also has intentional typography: `python PLUGIN/skills/pptx/scripts/font_as
 --root . theme --workspace WORKSPACE --latin 'Times New Roman' --east-asian SimSun`.
 This changes native major/minor font schemes. Preserve the original theme during
 scoped edits unless the user asked to change it; explicit run fonts still take precedence.
+
+For a whole-page font substitution, retain versioned before/after renders and the
+actual source reference. Compare them at the normal reading scale during existing
+authoring and visual review: inspect the changed labels, glyphs, weight, wrapping,
+spacing and source fidelity. A different family name or a successful font inventory
+does not establish an improvement. If the change regresses the page, retain or
+restore the compliant earlier frozen candidate, or repair with the standard pair;
+preserve the attempted version. Review changed bytes through the existing bounded
+repair route, without a new review stage, content rewrite or imposed design style.
+Report unavailable comparison evidence honestly rather than claim it was checked.
 
 Fonts are installed inside the task, not globally by public jobs. Downloading
 does not embed fonts into a PPTX or install them on the recipient's machine.

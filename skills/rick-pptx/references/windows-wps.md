@@ -10,7 +10,10 @@ without actual target-viewer evidence. Preserve historical files and scoped edit
 - New English/Latin text, numbers and ordinary Latin punctuation use **Times New
   Roman**; Chinese text and punctuation use **SimSun (宋体)**. Set explicit run
   fonts and major/minor theme defaults, including inherited text, table cells,
-  chart categories, axes and data labels. Preserve explicit user/template choices.
+  chart categories, axes and data labels. Preserve explicit user font choices and
+  actual supplied template typefaces. Newly recreated text without a specified
+  source typeface follows the defaults; a raster reference's rounded/handwritten
+  appearance is not evidence permitting a decorative replacement.
 - Measure with genuine selected files in `fonts/index.json`. `simsun-regular` is
   the actual SimSun face, not Songti SC, Noto Serif or a renamed replacement.
   Times New Roman regular/bold/italic faces are listed separately. SimSun Regular
@@ -18,7 +21,8 @@ without actual target-viewer evidence. Preserve historical files and scoped edit
   text, punctuation, Greek/math symbols and any missing glyphs.
 - Do not acquire new families merely for decorative variety. An explicit user or
   template requirement, or a functional need such as mathematical notation, can
-  justify another font. Record its actual family, weight, glyph coverage, source,
+  justify another font. A functional exception needs a concrete need, not an
+  uncertain appearance match. Record its actual family, weight, glyph forms/coverage, source,
   and the recipient-availability or verified editable-embedding route in source
   notes. Honor embedding permissions and no-subsetting flags. A font download or
   a file in the authoring folder is not an embedded font in the PPTX.
@@ -69,6 +73,13 @@ unsupported bindings, negative extents and symbol-font icons. It does not mutate
 source objects, embed fonts, certify licenses/glyphs or block historical exports.
 Resolve concrete findings in the authorized edit scope during existing authoring
 and review; do not restyle unrelated inherited objects to silence inventory.
+When changing an entire page's fonts, compare the before/after renders with the
+actual source in that same visual pass. Identify any loss of readability, wrapping,
+glyph fidelity or hierarchy; an uncertain source-font guess cannot become a
+required restyle. Retain/restore a compliant earlier frozen candidate or correct
+the change with the standard pair, preserving earlier versions and existing review
+routes. Report a missing comparison instead of claiming it; do not add a font
+approval stage or alter content to accommodate an unsupported font choice.
 For diagnostics before export run `python SKILL_ROOT/scripts/compatibility.py
 --workspace WORKSPACE`. New native text checks the selected actual font's glyph
 coverage, explicitly disables automatic fitting and pins paragraph-end fonts;

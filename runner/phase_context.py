@@ -23,6 +23,7 @@ def prepared_phase_context(cfg, job, stage):
     if stage not in ('research', 'author', 'repair'):
         raise ValueError('Unsupported author context stage')
     job = Path(job).resolve()
+    continuity = (skill / 'references/execution-continuity.md').is_file()
     documents, deferred = [], []
     remaining = MAX_CONTEXT
 
@@ -33,10 +34,11 @@ def prepared_phase_context(cfg, job, stage):
             return
         if path.is_symlink() or not path.resolve().is_relative_to(base.resolve()):
             raise ValueError('Prepared context path escaped its input root')
-        if path.stat().st_size > MAX_DOCUMENT:
+        read_limit = 2 * 1024 * 1024 if fields is not None else MAX_DOCUMENT
+        if path.stat().st_size > read_limit:
             deferred.append(str(path))
             return
-        raw = read_scoped(base, relative, MAX_DOCUMENT)
+        raw = read_scoped(base, relative, read_limit)
         try:
             body = raw.decode('utf-8')
         except UnicodeError:
@@ -60,7 +62,7 @@ def prepared_phase_context(cfg, job, stage):
                     value = {key: value[key] for key in fields if key in value}
                 body = json.dumps(value, ensure_ascii=False, separators=(',', ':'))
         size = len(body.encode('utf-8'))
-        if size > remaining:
+        if size > MAX_DOCUMENT or size > remaining:
             deferred.append(str(path))
             return
         remaining -= size
@@ -75,11 +77,24 @@ def prepared_phase_context(cfg, job, stage):
     if stage != 'research':
         for name in ('outline.json', 'source-notes.md', 'decision-plan.json', 'repair-target.json'):
             add(job, name, kind='author_state')
+    # Exact callable interfaces belong beside task state, before optional guides.
+    # Continuity reduces repeated discovery; it must not hide the operations the
+    # transactional batch delegates to, or their required parameters.
+    add(job, 'tool-manifest.json', kind='interface_subset', fields=(
+        'python', 'task_root', 'attachments', 'outline_fields',
+        'decision_contract', 'planning_commit', 'command_outputs')
+        if stage == 'research' else (
+        'python', 'task_root', 'session_dir', 'parts_dir', 'workspace_status',
+        'workspace_contract', 'commands', 'native_authoring', 'native_canvas',
+        'native_batch', 'native_pages', 'decision_contract', 'command_outputs'))
     add(skill, 'SKILL.md', kind='installed_instruction')
+    if continuity:
+        add(skill, 'references/execution-continuity.md', kind='installed_instruction')
     if stage == 'research':
         add(skill, 'references/content.md', kind='installed_instruction')
     add(skill, 'references/workflow-branches.md', kind='installed_instruction')
     if stage != 'research':
+        add(skill, 'references/art-direction.md', kind='installed_instruction')
         add(skill, 'references/content-led-composition.md', kind='installed_instruction')
     add(skill, 'assets/workflow-choices.json', kind='installed_contract')
     # These are host-owned instructions, not copies the task author can rewrite.
@@ -93,17 +108,17 @@ def prepared_phase_context(cfg, job, stage):
     add(job, 'tool-quickstart.md', kind='task_data')
     if stage == 'research':
         add(skill, 'references/planning-commit.md', kind='installed_instruction')
-        add(job, 'tool-manifest.json', kind='interface_subset', fields=(
-            'python', 'task_root', 'attachments', 'outline_fields',
-            'decision_contract', 'planning_commit', 'command_outputs'))
     else:
-        for name in ('references/native-batch.md', 'references/native-pages.md',
-                     'references/native-canvas.md', 'references/animations.md'):
+        guides = ('references/native-batch.md',) if continuity else (
+            'references/native-batch.md', 'references/native-pages.md',
+            'references/native-canvas.md', 'references/animations.md')
+        for name in guides:
             add(skill, name, kind='installed_instruction')
-        add(job, 'tool-manifest.json', kind='interface_subset', fields=(
-            'python', 'task_root', 'session_dir', 'parts_dir', 'workspace_status',
-            'workspace_contract', 'commands', 'native_canvas', 'native_batch',
-            'native_pages', 'decision_contract', 'command_outputs'))
+    from design_roles import role_contract,handoff_index
+    role=role_contract(cfg,stage)
+    packet={'stage':stage,'documents':documents,'deferred':deferred}
+    if role is not None:
+        packet.update(role_contract=role,handoff=handoff_index(documents,deferred,stage))
     return ('\n\nHOST-PREPARED CURRENT PHASE DOCUMENTS\n'
             'The complete documents below satisfy their reading requirements in this prompt and SKILL.md. '
             'Use these supplied contents directly; do not reopen the same unchanged documents, scan tool '
@@ -114,5 +129,5 @@ def prepared_phase_context(cfg, job, stage):
             'the relevant actual files, batch independent source reads, and use permitted research for gaps. '
             'If a document changed or was deferred, read its current needed section. Do not treat delivery '
             'state or mechanical validity as evidence of factual/design quality.\n'
-            + json.dumps({'stage': stage, 'documents': documents, 'deferred': deferred},
+            + json.dumps(packet,
                          ensure_ascii=False, separators=(',', ':')))

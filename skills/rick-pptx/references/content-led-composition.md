@@ -1,57 +1,70 @@
-# Design brief and sequential craft
+# Sequential design and native craft
 
-Design for the actual content, audience, viewing mode and requested tone. Give
-important mechanisms, examples, findings or words a visual expression worth looking
-at. Let the audience inspect the subject, trace a change or judge a comparison.
-Choose the means yourself: native detail, imagery, expressive typography, layered
-composition or quiet editorial treatment can all serve that goal.
+The continuing designer owns the whole deck's visual direction and native pages.
+Read [Art direction](art-direction.md) once for the design method. Use [worked design decisions](art-direction-examples.md)
+when a relevant worked transformation would help; do not load all examples at every
+page. This guide connects that method to actual sequential authoring.
 
-## Stable direction, open composition
+## Content handoff and a visual agreement
 
-Keep a short deck-wide direction and actual template-preservation list. Reuse
-semantic colors, typographic roles and comparison encoding where useful. Resolve
-page wording, focus, proportions, density and reading path while making the current
-page; the outline's visual idea is provisional. Composition labels do not certify
-quality and are not required selections. Containers, asymmetry, large scale, close
-cropping, dense detail and negative space are available design choices.
+Read the audience brief, ordered outline, actual template, source notes and real
+capabilities. Treat research summaries as supported content, not fixed paragraphs
+to distribute across a layout. Inspect original evidence when an example or figure
+needs it. A permitted focused investigation can resolve a consequential gap;
+restarting all topic research is unnecessary.
 
-A supplied template may prescribe background/logo, typography or a full body style.
-Inspect the source and follow the actual user scope. An empty institutional frame
-usually leaves body illustration/composition open. Faithful recreation and scoped
-edits retain the requested source treatment; record the real protected elements.
+Establish one short, provisional deck-wide visual agreement in the existing
+design_direction and source notes: protected elements, typographic/color roles,
+diagram/image relationships and intended rhythm. Distinguish protected requirements
+from revisable visual hypotheses. Preserve tested valid choices during recovery;
+planning validation alone is not evidence of good design.
+Comparable material benefits from consistent encoding; other content can change
+scale, density, emphasis and reading path. No mandatory composition categories,
+artist roster, per-page image requirement or layout rotation.
 
-## Learn from actual work
+## Make the current page
 
-For new design work, explore relevant artistic/design/scientific precedents when
-they could strengthen the expression. Search can establish a direction, not only
-repair a late defect. A specified factual source or template is not a reason to
-exclude design discovery; actual offline/supplied-only limits still apply.
-Inspect the work before using it. Translate a useful relationship—scale, grouping,
-light/color, crop, spatial explanation or sequence rhythm—into the current content.
-Keep the source and application compactly in the reference register. The resulting
-page should show that transfer; an artist name or palette claim is not evidence.
-See research-and-assets.md for discovery, attribution and asset distinctions.
+Resolve the page's actual audience question and the useful subject, relationship,
+example or evidence answering it. Determine the main focus, relative scale and
+reading path before building small objects. When the choice is difficult, compare
+plausible spatial ideas briefly, then implement the suitable one.
 
-## Make and inspect
+Compose visible wording, native relationships and actual assets together. A worked
+case should make its consequential input/change/output inspectable where supported.
+An overview may appropriately summarize a process. Exact wording and quantitative
+evidence can themselves lead the page. Choose imagery when it helps this content,
+and preserve the documentary/illustrative boundary and actual source permissions.
 
-Author in order, using actual material. A worked example is often clearer when one
-concrete input, decision and changed output can be followed; general process labels
-may be enough for an overview. Choose what this audience needs. Preserve supported
-qualifiers and distinguish conceptual examples from observed results.
+Use installed native helpers for measured text, chosen geometry, crops/layers,
+charts, semantic groups and connector endpoints. They provide object capabilities,
+not a universal page arrangement. Build major structure first and refine supporting
+detail against actual measurements. Keep facts, formulas, units and necessary
+conditions rather than silently shrinking or deleting them to fit.
 
-Use the first render to assess the actual focus, explanatory relationships,
-craft and reading burden alongside correctness/fit. Refine the relevant objects
-when the intended explanation remains only in prose. Necessary wording and
-self-reading qualifications stay accessible. Inspect fine details at full size
-and the whole explanation at normal reading scale.
+For native reveals, plan entry context, meaningful semantic groups, persistent
+orientation and a complete final view. Related labels/connectors enter together;
+a semantic group needs no visible enclosing card. Reuse the existing timing and
+state-check workflow. Static evidence is distinct from actual target-player playback.
 
-At section boundaries, compare saved pages for coherence, useful progression and
-rhythm. Related comparisons can remain consistent; other pages can change scale,
-medium and emphasis. There is no prescribed layout rotation, image quota or
-universal ban on text/cards. Aim for a deliberate finished sequence, not merely
-absence of clipping. Use existing render/review steps rather than another gate.
+## Inspect expression as well as fit
 
-For native reveals, retain orientation and make each click a meaningful semantic
-unit with its labels/connectors/conditions. Inspect initial/intermediate/final
-states through existing timing checks and available playback. Semantic edit/animation
-groups need no particular visible enclosure. See animations.md for technical checks.
+Open the first actual render at normal reading scale, then uncertain details at full
+size. Ask whether the intended focus leads, the relationship is visible, and every
+prominent image/quote/diagram contributes to the explanation. If the picture still
+requires reconstructing the mechanism from paragraphs, adjust the relevant objects
+or duplicated wording. A quiet page can be finished design; more effects, arrows
+or oversized titles are not automatic improvements.
+
+Use the first substantive page exercising the proposed visual language to test it;
+a title-page render alone cannot validate the body design. If the main relationship
+fails, reconsider composition or the direction itself before propagating it to
+later pages. Cosmetic changes do not repair an invisible comparison. Update affected
+existing notes/decisions with the observed reason, without a new form or approval
+gate. Keep page order and the user's factual/template/edit scope.
+
+Correct consequential weaknesses while making the page, then continue in order.
+At natural section boundaries compare saved previews for audience progression and
+visual continuity. Use existing images rather than repeatedly rendering the deck.
+Record consequential choices/changes compactly in existing notes, not another form,
+score or approval step. Incorporate independent review directions through scoped
+repairs in the same continuing designer context and preserve reviewed originals.

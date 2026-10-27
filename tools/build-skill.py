@@ -13,17 +13,21 @@ REPO = Path(__file__).resolve().parents[1]
 SOURCE = REPO / 'pptx-agent/skills/pptx'
 OVERLAY = REPO / 'tools/skill-packaging/rick-pptx'
 OVERLAY_FILES = ('SKILL.md', 'agents/openai.yaml', 'references/environment.md',
-                 'scripts/doctor.py', 'scripts/native_policy.py', 'scripts/requirements.txt')
+                 'scripts/doctor.py', 'scripts/native_policy.py', 'scripts/requirements.txt',
+                 'scripts/requirements-dsh.txt','scripts/dsh_adapter.py',
+                 'scripts/portable_transport.py','scripts/portable_workflow.py','scripts/portable_auxiliary.py','references/full-workflow.md')
 SCRIPTS = ('pptx.py', 'native_canvas.py', 'native_builds.py', 'native_timing.py', 'native_structure.py', 'compatibility.py',
-           'workflow_decisions.py', 'design_references.py', 'review_packet.py', 'review_index.py', 'inspect_formulas.py', 'font_assets.py')
+           'workflow_decisions.py', 'design_references.py', 'review_packet.py', 'review_index.py', 'inspect_formulas.py', 'font_assets.py',
+           'native_batch.py','native_pages.py','planning_commit.py','tool_prepare.py')
 CORE = ('__init__.py', 'common.py', 'cli.py', 'package.py', 'renderer.py',
         'manifest.py', 'validator.py', 'relationships.py', 'snapshots.py', 'diff.py')
 REFERENCES = ('content.md', 'content-review.md', 'visual-review.md', 'research-and-assets.md',
-              'workflow-branches.md', 'content-led-composition.md', 'native-canvas.md',
+              'workflow-branches.md', 'content-led-composition.md', 'art-direction.md', 'art-direction-examples.md', 'execution-continuity.md', 'native-canvas.md',
               'animations.md', 'ooxml-overview.md', 'slides-and-shapes.md', 'text.md',
               'images.md', 'charts.md', 'groups.md', 'masters-and-layouts.md',
               'relationships.md', 'safe-mutation-rules.md', 'review-examples.md',
-              'technical/native-capabilities.md', 'technical/formula-fidelity.md', 'fonts.md', 'windows-wps.md')
+              'technical/native-capabilities.md', 'technical/formula-fidelity.md', 'fonts.md', 'windows-wps.md',
+              'native-batch.md','native-pages.md','planning-commit.md','tool-preparation.md','review-packet.md')
 
 
 def copy(source, target):
@@ -95,8 +99,45 @@ def build(output):
         text = text.replace('For video/audio use task-local media-embed.py and its required poster/icon;',
                             'For video/audio use direct native OOXML embedding or an actually available host helper with a poster/icon;')
         path.write_text(text)
+    # Ship the same complete production engine behind a local transport and
+    # an explicitly selected harness adapter. No settings, keys, tasks, caches,
+    # website workers or private runtime state are part of this distribution.
+    for directory in ('runner','workflow'):
+        for path in sorted((REPO/directory).iterdir()):
+            if (path.is_file() and path.suffix in ('.py','.md')
+                    and not path.name.startswith(('test-','test_'))):
+                copy(path,target/'engine'/directory/path.name);inputs.append(path)
+    for name in ('font-catalog.json',):
+        path=REPO/'runner'/name;copy(path,target/'engine/runner'/name);inputs.append(path)
+    for directory in ('render-container','media-container'):
+        for path in sorted((REPO/'runner'/directory).rglob('*')):
+            if path.is_file() and not path.is_symlink() and '__pycache__' not in path.parts:
+                copy(path,target/'engine/runner'/directory/path.relative_to(REPO/'runner'/directory));inputs.append(path)
+    plugin=target/'engine/plugin';plugin_skill=plugin/'skills/pptx'
+    for path in sorted(SOURCE.rglob('*')):
+        rel=path.relative_to(SOURCE)
+        if (not path.is_file() or path.is_symlink() or '__pycache__' in rel.parts
+                or any(part in ('node_modules','.venv') for part in rel.parts)
+                or path.suffix.lower() not in ('.py','.md','.json','.pptx','.yaml','.yml','.png','.svg')):continue
+        copy(path,plugin_skill/rel);inputs.append(path)
+    source_files = {p.relative_to(REPO).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}
+    source_digest = hashlib.sha256(json.dumps(source_files, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    version={'name':'rick-pptx-full-workflow','version':'0.1.0+portable.'+source_digest[:16],
+             'execution':'selected-harness','website_transport':'not included'}
+    version_path=plugin/'.codex-plugin/plugin.json';version_path.parent.mkdir(parents=True,exist_ok=True)
+    version_path.write_text(json.dumps(version,indent=2)+'\n')
+    (target/'assets/portable-runtime.json').write_text(json.dumps({
+        'format':1,'harness_adapters':['dsh-sdk'],'workflow':'production run_workflow',
+        'independent_reviews':True,'bounded_repairs':True,'durable_recovery':True,
+        'ordered_single_author':True,'native_click_reveals':True,
+        'codex_required_for_dsh':False,'external_capabilities':'selected DSH profile/providers',
+        'execution_os_targets':['macOS','Linux'],'verified_execution_os':['macOS'],
+        'windows_native_verified':False},indent=2)+'\n')
+    files = {p.relative_to(target).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+             for p in sorted(target.rglob('*')) if p.is_file()}
+    package_id = hashlib.sha256(json.dumps(files, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     manifest = {'format': 1, 'name': 'rick-pptx', 'native_only': True,
-                'source_files': {p.relative_to(REPO).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}}
+                'package_id': package_id, 'source_files': source_files, 'files': files}
     (target / 'assets/package-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     archive = output / 'rick-pptx.zip'
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as packed:

@@ -1,0 +1,199 @@
+{
+  "version": 3,
+  "requirements": {"new_deck_click_reveal": true},
+  "task": {
+    "operation": [
+      "create",
+      "edit"
+    ],
+    "viewing": [
+      "live",
+      "self_reading",
+      "dual_use",
+      "unspecified"
+    ],
+    "research": [
+      "supplied_only",
+      "targeted_verification",
+      "topic_research"
+    ],
+    "references": [
+      "preserve_supplied",
+      "use_available",
+      "targeted_search"
+    ],
+    "style": [
+      "editorial",
+      "analytical",
+      "image_led",
+      "expressive",
+      "supplied_system"
+    ],
+    "palette": [
+      "inherited",
+      "neutral",
+      "semantic",
+      "expressive"
+    ],
+    "typography": [
+      "inherited",
+      "installed_role_system"
+    ]
+  },
+  "page": {
+    "intent": [
+      "introduce",
+      "explain",
+      "compare",
+      "quantify",
+      "show_space",
+      "demonstrate",
+      "envision",
+      "summarize",
+      "sequence",
+      "decide"
+    ],
+    "form": [
+      "typography",
+      "documentary_image",
+      "original_illustration",
+      "diagram",
+      "data_chart",
+      "table",
+      "worked_example",
+      "storyboard",
+      "embedded_media"
+    ],
+    "behavior": [
+      "static",
+      "click_reveal",
+      "internal_navigation",
+      "embedded_playback"
+    ],
+    "strategy": [
+      "observe",
+      "relate",
+      "compare",
+      "envision",
+      "read",
+      "act"
+    ],
+    "composition": [
+      "image_field",
+      "image_with_type",
+      "type_statement",
+      "editorial",
+      "annotated_visual",
+      "relational_map",
+      "data_display",
+      "sequence",
+      "independent_panels"
+    ]
+  },
+  "eligible_forms": {
+    "introduce": [
+      "typography",
+      "documentary_image",
+      "original_illustration",
+      "worked_example",
+      "storyboard"
+    ],
+    "explain": [
+      "typography",
+      "diagram",
+      "worked_example",
+      "storyboard",
+      "documentary_image",
+      "embedded_media"
+    ],
+    "compare": [
+      "table",
+      "data_chart",
+      "diagram",
+      "documentary_image",
+      "worked_example",
+      "typography"
+    ],
+    "quantify": [
+      "data_chart",
+      "table",
+      "worked_example",
+      "diagram"
+    ],
+    "show_space": [
+      "diagram",
+      "documentary_image",
+      "original_illustration",
+      "storyboard",
+      "embedded_media"
+    ],
+    "demonstrate": [
+      "worked_example",
+      "storyboard",
+      "documentary_image",
+      "diagram",
+      "embedded_media"
+    ],
+    "envision": [
+      "original_illustration",
+      "documentary_image",
+      "typography",
+      "storyboard",
+      "diagram"
+    ],
+    "summarize": [
+      "typography",
+      "table",
+      "diagram",
+      "data_chart",
+      "worked_example"
+    ],
+    "sequence": [
+      "diagram",
+      "storyboard",
+      "worked_example",
+      "table",
+      "embedded_media"
+    ],
+    "decide": [
+      "table",
+      "data_chart",
+      "diagram",
+      "worked_example",
+      "typography"
+    ]
+  },
+  "asset": {
+    "route": [
+      "none",
+      "supplied",
+      "web_import",
+      "generate",
+      "source_grounded_native"
+    ],
+    "kind": [
+      "documentary",
+      "illustrative",
+      "media"
+    ],
+    "status": [
+      "planned",
+      "ready",
+      "unavailable"
+    ]
+  },
+  "reference": {
+    "kind": [
+      "artwork",
+      "design_work",
+      "teaching",
+      "supplied_system"
+    ],
+    "inspection": [
+      "local_image",
+      "hosted_visual",
+      "read_text",
+      "unavailable"
+    ]
+  }
+}

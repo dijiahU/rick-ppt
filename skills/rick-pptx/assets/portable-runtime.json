@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "harness_adapters": [
+    "dsh-sdk"
+  ],
+  "workflow": "production run_workflow",
+  "independent_reviews": true,
+  "bounded_repairs": true,
+  "durable_recovery": true,
+  "ordered_single_author": true,
+  "native_click_reveals": true,
+  "codex_required_for_dsh": false,
+  "external_capabilities": "selected DSH profile/providers",
+  "execution_os_targets": [
+    "macOS",
+    "Linux"
+  ],
+  "verified_execution_os": [
+    "macOS"
+  ],
+  "windows_native_verified": false
+}

@@ -171,6 +171,13 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
         'workspace_contract': {'pptx_cli': 'session_dir or parts_dir', 'native_builds': 'session_dir or parts_dir',
                                'native_canvas': 'parts_dir', 'design_references': 'parts_dir'},
         'commands': commands, 'pptx_cli': _cli_contract(),
+        'native_authoring': {
+            'python_module': 'native_canvas', 'module_directory': str(SCRIPTS),
+            'guide': str(SCRIPTS.parent / 'references/native-canvas.md'),
+            'workspace': 'parts_dir',
+            'object_handles': 'Use returned workspace/slide/shape_id handles directly for connectors, groups and reveals.',
+            'implementation': 'Use installed operations for supported objects; direct OOXML remains available for unsupported native features. No fixed page layout.',
+            'verification': 'Font coverage, text fit and endpoint checks do not establish design quality or target-player playback.'},
         'native_canvas': {name: _parameters(getattr(canvas, name)) for name in
                           ('text_measure', 'add_text', 'add_image', 'add_shape', 'add_connector', 'semantic_group', 'reveal', 'add_bar_chart')},
         'decision_contract': {'version': catalog['version'], 'top_level_fields': ['version', 'task', 'template_preservation', 'pages', 'design_direction', 'references'],
@@ -232,12 +239,19 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
                   'It safely reuses that page on retry. Do not handwrite repeated slideN/rId/sldId appends or replay a whole-deck generator.',
                   'This preserves the selected layout/master/theme, not source-page objects, notes, media, animation or background. Faithful edits keep their existing pages.', '']
     if batch_script.is_file():
+        # Derive the JSON call contract from the same functions used by the
+        # batch implementation. Do not make the model translate Python-only
+        # workspace arguments or rediscover optional/required parameter names.
+        operations = {'text': 'add_text', 'shape': 'add_shape', 'image': 'add_image',
+                      'connector': 'add_connector', 'group': 'semantic_group',
+                      'reveal': 'reveal', 'bars': 'add_bar_chart'}
         manifest['native_batch'] = {
             'guide': str(SCRIPTS.parent / 'references/native-batch.md'),
             'document_fields': ['version', 'batch_id', 'operations'], 'version': 1,
             'operation_fields': 'op,id,slide plus exact native_canvas helper parameters; reveal has no id',
-            'operations': {'text': 'add_text', 'shape': 'add_shape', 'image': 'add_image',
-                           'connector': 'add_connector', 'group': 'semantic_group', 'reveal': 'reveal', 'bars': 'add_bar_chart'},
+            'operations': operations,
+            'operation_parameters': {op: manifest['native_canvas'][name]['parameters'][2:]
+                                     for op, name in operations.items()},
             'references': 'Earlier id string or existing positive integer object ID, same page only.',
             'text_height': 'Numeric max_height is strict; explicit auto measures without shrinking.',
             'transaction': 'Checks every text first, stages all objects, commits on success, rolls back on failure; exact successful retries do not append.',

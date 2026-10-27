@@ -27,6 +27,37 @@ class TrajectoryTests(unittest.TestCase):
 
     def events(self):return [json.loads(line) for line in (self.run.root/'events.jsonl').read_text().splitlines()]
 
+    def test_execution_identity_records_versions_without_profile_secrets_or_model_claims(self):
+        from execution_identity import execution_identity
+        plugin=self.root/'plugin';skill=plugin/'skills/pptx';skill.mkdir(parents=True)
+        (plugin/'.codex-plugin').mkdir()
+        (plugin/'.codex-plugin/plugin.json').write_text('{"version":"test-v1"}')
+        (skill/'SKILL.md').write_text('Original instructions')
+        cfg={'plugin':str(plugin),'_harness_transport':'dsh-sdk',
+             '_harness_identity':{'model':'chosen-model','provider':'chosen-provider','profile':'sdk','api_key':'PRIVATE-HARNESS-KEY'},
+             '_model_profile':{'api_key':'PRIVATE-PROFILE-KEY','base_url':'https://private.test'}}
+        before=execution_identity(cfg)
+        self.assertEqual(before['model_selection']['model'],'chosen-model')
+        self.assertEqual(before['plugin']['version'],'test-v1')
+        self.assertNotIn('PRIVATE',json.dumps(before));self.assertNotIn('private.test',json.dumps(before))
+        (skill/'SKILL.md').write_text('Changed instructions')
+        self.assertNotEqual(before['plugin']['skill_sha256'],execution_identity(cfg)['plugin']['skill_sha256'])
+
+    def test_phase_summary_counts_terminal_tools_once_and_references_real_reviews(self):
+        self.run.begin('author',self.job,'Make the page',['test-harness'])
+        for output,code in [('yielded',None),('finished',0),('same terminal with more output',0)]:
+            self.run.consume({'type':'item.completed','item':{'id':'cmd','type':'command_execution',
+                              'aggregated_output':output,'exit_code':code}})
+        self.run.consume({'type':'item.completed','item':{'id':'image','type':'image_view','path':'reference.png'}})
+        child=str(uuid.uuid4())
+        self.run.emit('review.child',{'run_id':child,'role':'visual'})
+        self.run.end(result='Candidate ready')
+        manifest=self.run.checkpoint()
+        self.assertEqual(manifest['phase_summary'][0]['observed_tools'],{'command_execution':1,'image_view':1})
+        self.assertEqual(manifest['phase_summary'][0]['status'],'completed')
+        self.assertIsInstance(manifest['phase_summary'][0]['elapsed_ms'],int)
+        self.assertEqual(manifest['child_runs'],[{'run_id':child,'role':'visual'}])
+
     def test_unshortened_actions_feedback_inputs_and_versions(self):
         (self.job/'notes.txt').write_text('before')
         (self.job/'image.png').write_bytes(b'\x89PNG\r\n\x1a\n\xfffixture')

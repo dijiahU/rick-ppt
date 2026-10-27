@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Interactive Deck Bundle v1",
+  "type": "object",
+  "properties": {
+    "bundleVersion": {
+      "const": 1
+    },
+    "deckId": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,95}$"
+    },
+    "pptxHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "runtimeVersion": {
+      "type": "string",
+      "maxLength": 8192
+    },
+    "addinId": {
+      "type": "string",
+      "maxLength": 8192
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "slides": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "maxItems": 1000
+    },
+    "scenes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "maxLength": 8192
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "assets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "featurePacks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 8192
+      },
+      "maxItems": 6
+    },
+    "generatedAt": {
+      "type": "string",
+      "maxLength": 8192
+    }
+  },
+  "required": [
+    "bundleVersion",
+    "deckId",
+    "pptxHash",
+    "runtimeVersion",
+    "addinId",
+    "schemaVersion",
+    "slides",
+    "scenes",
+    "assets",
+    "featurePacks",
+    "generatedAt"
+  ],
+  "additionalProperties": false
+}

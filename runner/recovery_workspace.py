@@ -26,8 +26,9 @@ def resolve_delivery(delivery, current_root, recoveries=()):
     """
     if not isinstance(delivery,dict) or not isinstance(delivery.get('path'),str):
         raise ValueError('Missing exported delivery path')
-    root=Path(current_root).resolve(strict=True)
-    aliases={root}
+    current=Path(current_root).absolute()
+    root=current.resolve(strict=True)
+    aliases={root,current}
     for recovery in recoveries:
         if not isinstance(recovery,dict):raise ValueError('Invalid recovery history')
         for key in ('previous_workspace','workspace'):

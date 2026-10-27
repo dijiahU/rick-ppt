@@ -73,9 +73,12 @@ class PolicyTests(unittest.TestCase):
     def test_one_pptx_rejects_addins_and_external_media_but_keeps_native_navigation(self):
         for files in [{'ppt/webextensions/webextension1.xml':'<x/>'},
                       {'ppt/slides/_rels/slide1.xml.rels':'<Relationships><Relationship Type="x/video" TargetMode="External" Target="https://example.test/a.mp4"/></Relationships>'},
-                      {'ppt/slides/_rels/slide1.xml.rels':'<Relationships><Relationship Type="x/hyperlink" TargetMode="External" Target="https://example.test/lesson"/></Relationships>'}]:
+                      {'ppt/slides/_rels/slide1.xml.rels':'<Relationships><Relationship Type="x/hyperlink" TargetMode="External" Target="http://example.test/lesson"/></Relationships>'}]:
             with self.assertRaises(ValueError):validate_delivery(deck(files),single_file=True)
         validate_delivery(deck({'ppt/slides/_rels/slide1.xml.rels':'<Relationships><Relationship Type="x/slide" Target="slide2.xml"/></Relationships>','ppt/media/clip.mp4':b'embedded'}),single_file=True)
+        # Existing policy permits ordinary credential-free HTTPS hyperlinks;
+        # this does not introduce a browser runtime or external media.
+        validate_delivery(deck({'ppt/slides/_rels/slide1.xml.rels':'<Relationships><Relationship Type="x/hyperlink" TargetMode="External" Target="https://example.test/lesson"/></Relationships>'}),single_file=True)
 
     def test_fidelity_routing_excludes_substantive_rewrites(self):
         self.assertTrue(fidelity_task({'title':'将图片内容转化为可编辑ppt'}))

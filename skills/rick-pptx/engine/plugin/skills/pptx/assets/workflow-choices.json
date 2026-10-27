@@ -1,0 +1,64 @@
+{
+  "version": 4,
+  "requirements": {
+    "new_deck_click_reveal": true
+  },
+  "task": {
+    "operation": [
+      "create",
+      "edit"
+    ],
+    "viewing": [
+      "live",
+      "self_reading",
+      "dual_use",
+      "unspecified"
+    ],
+    "research": [
+      "supplied_only",
+      "targeted_verification",
+      "topic_research"
+    ]
+  },
+  "page": {
+    "behavior": [
+      "static",
+      "click_reveal",
+      "internal_navigation",
+      "embedded_playback"
+    ]
+  },
+  "asset": {
+    "route": [
+      "none",
+      "supplied",
+      "web_import",
+      "generate",
+      "source_grounded_native"
+    ],
+    "kind": [
+      "documentary",
+      "illustrative",
+      "media"
+    ],
+    "status": [
+      "planned",
+      "ready",
+      "unavailable"
+    ]
+  },
+  "reference": {
+    "kind": [
+      "artwork",
+      "design_work",
+      "teaching",
+      "supplied_system"
+    ],
+    "inspection": [
+      "local_image",
+      "hosted_visual",
+      "read_text",
+      "unavailable"
+    ]
+  }
+}

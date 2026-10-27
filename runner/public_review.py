@@ -26,5 +26,7 @@ def envelope(receipt,kind,report,revision):
 
 def publish(trace,receipt,revision):
     for kind,key in [('content-first','content_first_view'),('content-evidence','content'),('visual','visual')]:
-        trace.emit('review','Validated review result',detail=envelope(receipt,kind,receipt[key],revision))
+        report=receipt[key]
+        if key=='content_first_view' and report is None:continue
+        trace.emit('review','Validated review result',detail=envelope(receipt,kind,report,revision))
     trace.flush(force=True)

@@ -31,14 +31,14 @@ def prefetch_capability():
         'index':'material-prefetch/index.json','max_concurrent':2,'page_authoring':'single-main-author-in-order',
         'use':'Submit concrete later-page source searches or selected illustration generation, then continue the current page. Batch status/get return immediately. Inspect and choose ready results before use; assistants never edit the deck. Known media URLs use web-media-proxy.py --submit-only. Respect selected source/asset routes; reuse valid saved results and do not automatically retry failed/interrupted work.'}
 
-def prepare_fonts(job):
+def prepare_fonts(job,cfg=None):
     from font_assets import configure,copy_fonts,manifest,STARTER_IDS,prepare_default_fonts
     (job/'font-requests').mkdir(exist_ok=True)
     shutil.copyfile(ROOT/'font-proxy.py',job/'font-proxy.py')
     shutil.copyfile(ROOT/'font-catalog.json',job/'font-catalog.json')
     shutil.copyfile(ROOT/'FONTS.md',job/'FONTS.md')
     installed={x['id'] for x in manifest(job)['fonts']}
-    cache=ROOT/'font-cache.local'
+    cache=Path((cfg or {}).get('font_cache_directory',ROOT/'font-cache.local'))
     cache.mkdir(exist_ok=True)
     defaults=prepare_default_fonts(cache)
     if (cache/'fonts/index.json').is_file():copy_fonts(cache,job,[x for x in STARTER_IDS if x not in installed])
@@ -170,7 +170,7 @@ def prepare(cfg):
             capabilities['workflow_decisions'].update(mode='delivery-contract-open-design',
                 use='Record exact page coverage, protected template elements, behavior/assets and actual reference applications. Composition/style/form are open choices, not required categories. Tools derive page reference links and notes; actual visual quality is reviewed on rendered pages.')
         (job/'capabilities.json').write_text(json.dumps(capabilities,indent=2))
-    prepare_fonts(job)
+    prepare_fonts(job,cfg)
     font_catalog=ROOT/'render-fonts.local.json'
     if font_catalog.is_file():
         capabilities=json.loads((job/'capabilities.json').read_text())
@@ -440,7 +440,7 @@ def refresh_support(cfg,job):
         destination.mkdir(exist_ok=True)
     fonts=job/'fonts.conf'
     if fonts.exists():(backup/'fonts.conf').write_bytes(read_scoped(job,'fonts.conf',100000))
-    prepare_fonts(job)
+    prepare_fonts(job,cfg)
     capabilities=json.loads(read_scoped(job,'capabilities.json',2*1024*1024))
     capabilities['material_prefetch']=prefetch_capability()
     (job/'capabilities.json').write_text(json.dumps(capabilities,ensure_ascii=False,indent=2))

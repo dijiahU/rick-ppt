@@ -17,6 +17,7 @@ import threading
 import base64
 import importlib.metadata
 from trajectory_artifacts import ArtifactArchive
+from execution_identity import execution_identity, phase_summary
 
 SCHEMA='pptx-agent-trajectory/v2'
 SKIP_DIRS={'.git','.codex','.venv','node_modules','__pycache__','font-cache'}
@@ -53,6 +54,10 @@ class Trajectory(ArtifactArchive):
         self.started=time.time();self.mono=time.monotonic();self.seq=0;self.events_written=0;self.event_bytes=0;self.blob_bytes=0
         self.roots={};self.file_cache={};self.states={};self.gaps=[];self.gap_keys=set();self.phases=[]
         self.phase_id=None;self.stage='setup';self.thread=None;self.turn=0;self.offset=0;self.active={};self.seen={}
+        self.execution=execution_identity(cfg)
+        if historical:self.execution.update(mode='historical-recovery',entrypoint=None)
+        self.completed_tools=set()
+        self.child_runs=[]
         self.archive_init()
         self.register(Path(cfg['plugin']),'plugin') if cfg.get('plugin') else None
         self.emit('capture.started',{'request':{k:task[k] for k in ('id','title','brief','pages','style','language','attachments','created_at','updated_at') if k in task}})
@@ -86,6 +91,8 @@ class Trajectory(ArtifactArchive):
             self.gap_keys.add(key);self.gaps.append({'code':code,'detail':self.clean(detail),'phase_id':self.phase_id})
 
     def emit(self,kind,data):
+        if kind=='review.child' and isinstance(data,dict):
+            self.child_runs.append({k:data[k] for k in ('run_id','role') if k in data})
         self.seq+=1
         event={'schema':SCHEMA,'seq':self.seq,'run_id':self.run_id,'attempt_id':self.attempt,'phase_id':self.phase_id,
                'source_mode':'historical-recovery' if self.historical else 'live',
@@ -150,7 +157,7 @@ class Trajectory(ArtifactArchive):
         prompt_ref=self.blob(prompt.encode());before=self.snapshot(root,'phase.before')
         phase={'id':self.phase_id,'name':name,'parent_run_id':self.run_id,'resume_thread_id':parent_thread,
                'supplied_prompt':prompt_ref,'output_schema':schema,'launch_argv':command,'before_snapshot':before,
-               'started_at':int(time.time()*1000),'thread_id':None}
+               'started_at':int(time.time()*1000),'thread_id':None,'observed_tools':{}}
         self.phases.append(phase);self.emit('phase.input',phase);self.checkpoint()
 
     def consume(self,event):
@@ -178,6 +185,12 @@ class Trajectory(ArtifactArchive):
         seq=self.emit(typ,{'item':safe})
         if typ!='item.completed':self.active.setdefault(key,{'event_seq':seq,'at':int(time.time()*1000)});return
         start=self.active.pop(key,None);after=None
+        if (self.phases and kind not in ('agent_message', 'plan')
+                and key not in self.completed_tools
+                and not (kind == 'command_execution' and safe.get('exit_code') is None)):
+            self.completed_tools.add(key)
+            counts=self.phases[-1].setdefault('observed_tools',{})
+            counts[kind]=counts.get(kind,0)+1
         if kind=='mcp_tool_call' and isinstance(safe.get('result'),dict):
             for index,part in enumerate(safe['result'].get('content',[])):
                 if isinstance(part,dict) and part.get('type')=='image' and isinstance(part.get('data'),str):
@@ -214,11 +227,12 @@ class Trajectory(ArtifactArchive):
 
     def runtime(self):
         version=None
-        try:version=subprocess.run(['codex','--version'],capture_output=True,text=True,timeout=5).stdout.strip()
-        except (OSError,subprocess.SubprocessError):pass
+        if self.cfg.get('_harness_transport','app-server')=='app-server':
+            try:version=subprocess.run(['codex','--version'],capture_output=True,text=True,timeout=5).stdout.strip()
+            except (OSError,subprocess.SubprocessError):pass
         if self.cfg.get('plugin'):self.snapshot(Path(self.cfg['plugin']),'runtime.plugin')
         host=Path(__file__).resolve().parent
-        for name in ('runner.py','workflow.py','trajectory.py','trajectory_artifacts.py','trajectory_replay.py','assets.py','web_media.py','auxiliary_tools.py','model_backend.py','chat_proxy.py','chat_protocol.py','render_inputs.py','soffice-proxy.py','progress.py','outline.py','attachments.py','office_policy.py','resilience.py','render-container/Dockerfile','media-container/Dockerfile','media-container/normalize.py'):
+        for name in ('runner.py','workflow.py','phase_context.py','execution_identity.py','execution_continuity.py','trajectory.py','trajectory_artifacts.py','trajectory_replay.py','assets.py','web_media.py','auxiliary_tools.py','model_backend.py','chat_proxy.py','chat_protocol.py','render_inputs.py','soffice-proxy.py','progress.py','outline.py','attachments.py','office_policy.py','resilience.py','render-container/Dockerfile','media-container/Dockerfile','media-container/normalize.py'):
             if (host/name).is_file():self.artifact_path(host,Path(name),'runtime-source')
         packages={}
         for name in ('lxml','Pillow'):
@@ -232,12 +246,15 @@ class Trajectory(ArtifactArchive):
             except (OSError,subprocess.SubprocessError):images[name]=None
         self.emit('runtime',{'python':platform.python_version(),'system':platform.system(),'codex_version':version,
           'packages':packages,'container_image_ids':images,'model_requested':self.cfg.get('model'),'resolved_model':None,
+          'execution':self.execution,
           'configuration_source':'Recorded launch argv; CLI defaults are not inferred. Container IDs identify dependencies, not a bundled execution environment.'})
 
     def checkpoint(self):
         manifest=self.clean({'schema':SCHEMA,'task_id':self.task['id'],'run_id':self.run_id,'attempt_id':self.attempt,
           'capture_started_at':int(self.started*1000),'capture_updated_at':int(time.time()*1000),
           'status':self.status,'source_mode':'historical-recovery' if self.historical else 'live',
+          'execution':self.execution,'phase_summary':phase_summary(self.phases),
+          'child_runs':self.child_runs,
           'phases':self.phases,'event_count':self.events_written,'last_sequence':self.seq,'blob_bytes':self.blob_bytes,'raw_bytes':self.raw_bytes,'artifacts':self.artifact_count,'capture_gaps':self.gaps,
           'coverage':{'kind':'observable_agent_trajectory','exact_model_requests':False,'hidden_reasoning':False,
             'supplied_phase_prompts':not self.historical,'exposed_tool_events':True,

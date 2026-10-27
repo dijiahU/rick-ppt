@@ -6,6 +6,25 @@ interpretation and illustration. Search snippets are leads. Keep source location
 conditions and consequential uncertainty in source-notes.md. Never send private
 attachments or credentials into a public query. Honor offline/supplied-only scope.
 
+
+## Handoff to the continuing designer
+
+The researcher/editor supplies a useful explanation, not finished canvas prose.
+Keep page summaries substantive and evidence traceable: actual source locations,
+examples, must-preserve conditions, units/notation and consequential uncertainty.
+Include actual inspected reference observations and honest asset availability.
+A provisional visual opportunity helps, but the designer chooses and tests
+composition and wording against actual material/renders. Flag consequential asset
+or evidence dependencies so an idea is not mistaken for an already feasible design.
+A template's protected frame is distinct from its open content area.
+
+The continuing designer owns the whole native sequence and can request focused
+new evidence or relevant artistic study as the current page exposes a need. Read
+art-direction.md for how to inspect and transfer visual relationships; reuse useful
+study. Source/asset helpers may prepare later material without editing pages.
+Keep actual tool/account limits: an unavailable search or generation route cannot
+be replaced with the operator's account or a fabricated inspection claim.
+
 ## Design exploration
 
 For new decks or substantive redesigns with creative latitude, actively consider

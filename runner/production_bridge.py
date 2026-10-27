@@ -69,6 +69,9 @@ def write_runtime_receipt(root,cfg,status):
     body['reference_notes_available']=(plugin/'skills/pptx/scripts/design_references.py').is_file()
     body['font_assets_available']=(plugin/'skills/pptx/scripts/font_assets.py').is_file() and (Path(root)/'font-proxy.py').is_file()
     body['page_authoring']='single-main-author-in-order'
+    body['output_progress_recovery']=((plugin/'skills/pptx/references/execution-continuity.md').is_file()
+                                      and (Path(root)/'execution_continuity.py').is_file())
+    body['design_author_role']='one-continuing-deck-designer' if (plugin/'skills/pptx/references/art-direction.md').is_file() else 'legacy-author'
     body['usage_ledger_available']=(Path(root)/'usage_ledger.py').is_file()
     body['usage_recording']='private-provider-receipts'
     body['automatic_charging']=False
