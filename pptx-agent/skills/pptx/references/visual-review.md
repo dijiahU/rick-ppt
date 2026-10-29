@@ -6,6 +6,11 @@ source ambiguities, experimental gaps and unrelated scientific/style improvement
 are suggestions, not delivery blockers. Required findings must identify introduced
 errors, missing requested content, unreadability or broken requested native behavior.
 Do not turn a conversion into an unrequested rewrite. Keep the report concise.
+For an edit, use supplied edit-comparison original previews beside the candidate;
+its dependency fingerprints are scope evidence, not a visual quality verdict.
+Verify page correspondence, judge whether the requested change actually improved
+the affected region, and identify a regression concretely. Missing or ambiguous
+originals stay explicit; do not invent a before/after check.
 
 Inspect the actual rendered pages and complete sequence in a fresh context. When
 the host attaches every 900-pixel reading page up front, use those images for the
@@ -122,6 +127,17 @@ incidental image as a concrete suggestion when it is nonblocking; do not let
 audience effect and practical operation (reweight, connect, reflow, relocate the
 quote or clarify the image's role). No suggestion quota, generic "AI-like" label,
 new design direction or extra review cycle is required.
+Order useful suggestions by audience benefit. Make a consequential missing
+subject/detail, weak main composition or unresolved visual task explicit before
+peripheral polish. Explain the improvement and what must remain; retain the
+existing required/suggestion boundary and scoped source style. Factual authority
+and readable paths alone do not establish reference craft or finished design.
+Likewise, consistent colors and fonts do not establish that the main subject is
+resolved. When a chosen scene or object remains generic blocks, check whether its
+important visible features and intended audience task survive. If the subject's
+construction is the actual weakness, recommend a concrete change to that region;
+adding correspondence numbers alone may leave it unresolved. A deliberately
+simple diagram that serves its task needs no compulsory illustration detail.
 
 These are judgment prompts, not a per-page form. No fixed word, picture, font,
 animation or layout quotas. Explain the audience problem a proposed change solves.
@@ -202,6 +218,14 @@ actual renderer/font evidence and the precise verification limit.
 
 ## Return a direction the continuing designer can implement
 
+Keep an independent critical stance. Do not inherit the author's satisfaction,
+reward the effort spent, or defend a previous review. Inspect where the main
+visual task still requires avoidable prose reconstruction or looks unresolved
+for the requested use; identify the most consequential region before peripheral
+polish. An already strong page needs no invented criticism. If no technical
+defect is required but the design remains provisional, say so plainly in the
+existing assessment rather than call the presentation finished.
+
 For an observed issue, identify the actual page/region or named object, what the
 viewer struggles to see, and a feasible primary change. State which evidence,
 qualifiers, template elements or native behavior must remain and what should become
@@ -220,6 +244,16 @@ do not restrict the recommendation to local polish merely because that premise
 was recorded early. Preserve the actual authorized scope and successful regions.
 Verify actual changed evidence before
 claiming a recommendation was applied.
+
+When refinement-comparison/index.json is supplied, compare its actual prior
+page previews with the current canvas after your independent first reading.
+Reassess the old observation: is its main gap resolved, partly resolved, still
+present, or made worse? Explain the visible evidence in existing assessment or
+finding fields. Extra objects, changed bytes and author explanations are not
+proof of improvement. Do not let a few successful peripheral changes hide an
+unchanged central weakness, or assume the prior accepted page is an ideal.
+Preserve the required/suggestion boundary and bounded repair policy; this is
+the existing visual pass, not a new score, critic stage or extra iteration.
 
 For new full-design work under the continuing-designer host, first-review visual
 suggestions may receive one bounded response in the ordinary repair loop. State a

@@ -38,6 +38,22 @@ class ReviewMaterialsTests(unittest.TestCase):
             self.assertNotIn('PRIVATE AUTHOR REASONING', prompt)
             self.assertNotIn('AUTHOR DESIGN', prompt)
 
+    def test_original_comparison_images_cross_only_source_and_visual_inputs(self):
+        folder=self.root/'edit-comparison';folder.mkdir()
+        body=b'EXACT ORIGINAL PREVIEW';(folder/'before.png').write_bytes(body)
+        entry={'schema':'native-edit-comparison/v1','status':'prepared','pages':[{'page':1,
+            'before':{'path':'edit-comparison/before.png','bytes':len(body),'sha256':hashlib.sha256(body).hexdigest()}}]}
+        (folder/'index.json').write_text(json.dumps(entry))
+        for role in ('content-first','content-evidence','visual'):
+            prompt,images=prepare_review_materials(self.root,role,scoped=True,include_role_documents=True)
+            if role=='content-first':
+                self.assertNotIn('edit-comparison/before.png',images)
+                self.assertNotIn('EXACT ORIGINAL PREVIEW',prompt)
+            else:self.assertEqual(images[-1],'edit-comparison/before.png')
+        (folder/'before.png').write_bytes(b'changed')
+        with self.assertRaisesRegex(ReviewSessionError,'checksum changed'):
+            prepare_review_materials(self.root,'visual',scoped=True)
+
     def test_source_pass_uses_sealed_blind_reading_and_all_page_claims(self):
         prompt, images = prepare_review_materials(self.root, 'content-evidence')
         self.assertEqual(images, ['contact-1.jpg'])
@@ -47,6 +63,32 @@ class ReviewMaterialsTests(unittest.TestCase):
         self.assertIn('Open actual page/state images', prompt)
         _, images = prepare_review_materials(self.root, 'content-evidence', scoped=True)
         self.assertIn('reading-page-2.png', images)
+
+    def test_refinement_before_images_and_feedback_are_visual_only(self):
+        folder = self.root / 'refinement-comparison'; folder.mkdir()
+        body = b'PRIOR ACTUAL PREVIEW'; (folder / 'before.png').write_bytes(body)
+        entry = {'schema': 'native-edit-comparison/v1', 'kind': 'reviewed_refinement_baseline',
+                 'status': 'prepared', 'findings': [{'observation': 'PRIOR VISUAL GAP'}],
+                 'pages': [{'page': 2, 'before': {'path': 'refinement-comparison/before.png',
+                    'bytes': len(body), 'sha256': hashlib.sha256(body).hexdigest()}}]}
+        (folder / 'index.json').write_text(json.dumps(entry))
+        for role in ('content-first', 'content-evidence', 'visual'):
+            prompt, images = prepare_review_materials(self.root, role, include_role_documents=True)
+            if role == 'visual':
+                self.assertEqual(images[-1], 'refinement-comparison/before.png')
+                self.assertIn('PRIOR VISUAL GAP', prompt)
+                self.assertIn('REFINEMENT RECHECK', prompt)
+            else:
+                self.assertNotIn('refinement-comparison/before.png', images)
+                self.assertNotIn('PRIOR VISUAL GAP', prompt)
+        (folder / 'before.png').write_bytes(b'changed')
+        with self.assertRaisesRegex(ReviewSessionError, 'checksum changed'):
+            prepare_review_materials(self.root, 'visual')
+        entry['status'] = 'page_count_differs; correspondence_unverified'
+        (folder / 'index.json').write_text(json.dumps(entry))
+        prompt, images = prepare_review_materials(self.root, 'visual')
+        self.assertNotIn('refinement-comparison/before.png', images)
+        self.assertIn('No before images were attached from that comparison', prompt)
 
     def test_missing_coverage_changed_bytes_and_escape_are_rejected(self):
         self.index['reading_pages'].reverse()

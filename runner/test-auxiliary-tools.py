@@ -39,6 +39,72 @@ class Tests(unittest.TestCase):
         with patch.object(a,'AppServer',FakeServer):result=self.aux.handle({'tool':'pptx_generate_image','arguments':{'request':'Original concept'}})
         self.assertFalse(result['success']);self.assertTrue(FakeServer.instances[-1].kwargs['config']['features']['image_generation'])
         self.assertEqual(FakeServer.instances[-1].kwargs['config']['web_search'],'disabled')
+        self.assertEqual(len(self.aux.calls),1)
+        self.assertEqual(self.aux.calls[0]['turn_status'],'completed')
+
+    def test_interrupted_search_keeps_observed_usage_and_tools_without_claiming_evidence(self):
+        class Interrupted(FakeServer):
+            def wait_turn(server,*args,**kwargs):
+                server.kwargs['on_event']({'type':'item.completed','item':{'type':'web_search'}})
+                raise a.TransportError('private failure details')
+        with patch.object(a,'AppServer',Interrupted):
+            result=self.aux.handle({'tool':'pptx_search_sources','arguments':{'request':'Find an authentic site image'}})
+        self.assertFalse(result['success'])
+        self.assertNotIn('private failure details',result['contentItems'][0]['text'])
+        self.assertFalse((self.job/'retained-tool-evidence').exists())
+        self.assertEqual(len(self.aux.calls),1)
+        record=self.aux.calls[0]
+        self.assertEqual(record['tool_events'],{'web_search':1})
+        self.assertEqual(record['usage'],{'input_tokens':5})
+        self.assertEqual(record['turn_status'],'unconfirmed')
+        self.assertEqual(record['usage_receipt_scope'],'observed_so_far')
+        self.assertEqual(record['error_type'],'TransportError')
+
+    def test_material_cancellation_still_propagates_with_observed_call_record(self):
+        from material_prefetch import PrefetchCancelled
+        error=PrefetchCancelled('Cancelled by owner')
+        class Cancelled(FakeServer):
+            def wait_turn(server,*args,**kwargs):raise error
+        with patch.object(a,'AppServer',Cancelled):
+            with self.assertRaises(PrefetchCancelled) as caught:
+                self.aux.handle({'tool':'pptx_search_sources','arguments':{'request':'Scoped source lookup'}})
+        self.assertIs(caught.exception,error)
+        self.assertEqual(self.aux.calls[0]['error_type'],'PrefetchCancelled')
+
+    def test_timeout_returns_only_unverified_web_source_leads_and_no_acquired_file(self):
+        from durable import transport_module
+        class TimedOut(FakeServer):
+            def wait_turn(server,*args,**kwargs):
+                server.kwargs['on_event']({'type':'item.completed','item':{'type':'web_search','results':[
+                    {'url':'https://example.test/original-work','title':'Public source page'}]}})
+                raise transport_module.RPCTimeout('Synthetic observation deadline')
+        with patch.object(a,'AppServer',TimedOut):
+            response=self.aux.handle({'tool':'pptx_search_sources','arguments':{'request':'Find a useful actual source'}})
+        self.assertFalse(response['success'])
+        lead=json.loads(response['contentItems'][1]['text'])['partial_search_leads']
+        self.assertEqual(lead,self.aux.calls[0]['partial_search_leads'])
+        self.assertEqual(lead['items'],[{'url':'https://example.test/original-work','title':'Public source page'}])
+        self.assertTrue(all(i['type']=='inputText' for i in response['contentItems']))
+        self.assertFalse((self.job/'retained-tool-evidence').exists())
+        self.assertEqual(list((self.job/'assets').iterdir()),[])
+        with patch.object(a,'AppServer',side_effect=a.TransportError('New call failed before events')):
+            later=self.aux.handle({'tool':'pptx_search_sources','arguments':{'request':'A different request'}})
+        self.assertFalse(later['success']);self.assertEqual(len(later['contentItems']),1)
+
+    def test_source_breadcrumbs_are_bounded_tool_results_without_assistant_invention(self):
+        urls=[f'https://example.test/source-{n}' for n in range(9)]
+        sources=[{'url':u,'title':'t'*300} for u in urls]+[
+            {'url':urls[0],'title':'duplicate'}, {'url':'file:///private/data'},
+            {'url':'data:image/png;base64,not-a-lead'}, {'url':'https://name:password@example.test/work'},
+            {'url':'https://bad.test/line\nbreak'},None]
+        events=[{'type':'item.started','item':{'type':'web_search','results':[{'url':'https://not-completed.test/'}]}},
+                {'type':'item.completed','item':{'type':'agent_message','text':'https://invented.test/'}},
+                {'type':'item.completed','item':{'type':'web_search','results':sources}}]
+        leads=a.unfinished_search_leads(events)
+        self.assertEqual(len(leads['items']),6);self.assertTrue(leads['truncated'])
+        self.assertTrue({v['url'] for v in leads['items']}<=set(urls))
+        self.assertTrue(all(len(v['title'])<=160 for v in leads['items']))
+        self.assertIsNone(a.unfinished_search_leads(events[:2]))
     def test_transport_failure_is_an_explicit_tool_failure(self):
         with patch.object(a,'AppServer',side_effect=a.TransportError('private error contents')):result=self.aux.handle({'tool':'pptx_search_sources','arguments':{'request':'Evidence'}})
         self.assertFalse(result['success']);self.assertNotIn('private error',result['contentItems'][0]['text'])

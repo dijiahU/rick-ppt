@@ -51,7 +51,10 @@ state-check workflow. Static evidence is distinct from actual target-player play
 
 ## Inspect expression as well as fit
 
-Open the first actual render at normal reading scale, then uncertain details at full
+Render once the main composition, actual material and key wording can be judged,
+before spending on minor decoration. View that exact current-page preview through
+the image channel (see page-design.md); a render report or path alone is not a
+look at the picture. Open it at normal reading scale, then uncertain details at full
 size. Ask whether the intended focus leads, the relationship is visible, and every
 prominent image/quote/diagram contributes to the explanation. If the picture still
 requires reconstructing the mechanism from paragraphs, adjust the relevant objects
@@ -65,7 +68,33 @@ later pages. Cosmetic changes do not repair an invisible comparison. Update affe
 existing notes/decisions with the observed reason, without a new form or approval
 gate. Keep page order and the user's factual/template/edit scope.
 
-Correct consequential weaknesses while making the page, then continue in order.
+At that first inspectable render, ask what useful improvement would matter most,
+locate its actual region and decide local repair versus substantial recomposition.
+Do this while making the page, with the existing author/time budget, instead of
+deferring the main design development to final optional repair. Can
+the audience recognize the subject, inspect the useful detail and follow the
+intended relation? Correct arrows between generic blocks may leave recognition
+or craft unresolved. Within creative scope, address that deficit through actual
+material, subject treatment, scale or composition before peripheral polish. Text
+may itself be evidence, quotation or derivation. Compare concrete relationships
+and craft with an appropriate inspected work; factual authority alone does not
+establish that work's design quality. Keep this a design decision, not a form.
+
+For a consequential weakness, identify the actual region and choose a concrete
+correction; make the native edit, render that page again and view its new result.
+Compare the affected before/after region and preserve necessary surrounding
+content. The host page tool's optional compare_previous supplies the last delivered
+preview of the same page/workspace/thread as historical comparison; CLI-only
+harnesses can open the saved prior and current files. Read actual attached images
+directly rather than reopening identical files by default. Keep earlier renders;
+use an existing native snapshot before substantial
+recomposition and revert a regression when appropriate. A first result needs no
+forced edit when meaning, the intended visual task and audience-appropriate
+composition/craft are resolved at reading scale. Readability or a valid export
+alone does not establish that. Work within existing time/repair limits, keep the
+best verified result at the limit and state remaining design gaps honestly; no
+revision quota, taste score or new approval gate. Preserve faithful/scoped edits.
+
 At natural section boundaries compare saved previews for audience progression and
 visual continuity. Use existing images rather than repeatedly rendering the deck.
 Record consequential choices/changes compactly in existing notes, not another form,

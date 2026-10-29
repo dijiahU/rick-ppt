@@ -231,7 +231,8 @@ class AppServer:
                  on_public: Callable[[dict], None] | None = None, tick: Callable[[], None] | None = None,
                  secrets: tuple[str, ...] = (), request_timeout: float = 30, max_line: int = MAX_LINE,
                  provider_env: dict | None = None, on_tool_call: Callable[[dict], dict] | None = None,
-                 on_usage: Callable[[dict], None] | None = None):
+                 on_usage: Callable[[dict], None] | None = None,
+                 on_tool_result_sent: Callable[[dict, dict], None] | None = None):
         self.cwd = Path(cwd).resolve(strict=True)
         self.config = copy.deepcopy(config)
         self.env = child_environment(self.cwd, env)
@@ -245,6 +246,7 @@ class AppServer:
         self.command = command or command_for(self.config)
         self.on_event, self.on_public, self.tick = on_event, on_public, tick
         self.on_tool_call = on_tool_call
+        self.on_tool_result_sent = on_tool_result_sent
         self.on_usage = on_usage
         self.secrets, self.request_timeout, self.max_line = secrets, request_timeout, max_line
         self.process = None
@@ -419,6 +421,8 @@ class AppServer:
                 if not isinstance(result,dict) or type(result.get('success')) is not bool or not isinstance(result.get('contentItems'),list):
                     raise TransportError('Invalid host tool response')
                 self._write({"id":message['id'],"result":result})
+                if self.on_tool_result_sent:
+                    self.on_tool_result_sent(message.get('params') or {}, result)
                 self._public({'type':'host.tool.completed','tool':(message.get('params') or {}).get('tool'),'success':result['success']})
                 return
             result = {"success": False, "contentItems": [{"type": "inputText", "text": "This host tool is unavailable"}]}

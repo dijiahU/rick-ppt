@@ -152,6 +152,60 @@ class ReviewRecoveryTests(unittest.TestCase):
             self.assertIn('French (fr)',prompt)
             self.assertRegex(prompt,r'saved selection governs (?:the primary )?output language')
 
+    def test_original_comparison_is_bound_to_review_but_absent_from_blind_workspace(self):
+        folder=self.packet/'edit-comparison';folder.mkdir()
+        (folder/'index.json').write_text('{"schema":"native-edit-comparison/v1","status":"unavailable"}')
+        (folder/'before.png').write_bytes(b'ORIGINAL SOURCE PREVIEW')
+        self.review()
+        for name,root,prompt in self.calls:
+            if name.startswith('content-first'):
+                self.assertFalse((root/'edit-comparison').exists())
+            else:
+                self.assertEqual((root/'edit-comparison/before.png').read_bytes(),b'ORIGINAL SOURCE PREVIEW')
+
+    def test_refinement_evidence_is_bound_only_to_visual_context(self):
+        folder = self.packet/'refinement-comparison'; folder.mkdir()
+        (folder/'index.json').write_text('{"schema":"native-edit-comparison/v1","kind":"reviewed_refinement_baseline","status":"unavailable"}')
+        (folder/'before.png').write_bytes(b'PRIOR REVIEWED PREVIEW')
+        self.review()
+        for name, root, prompt in self.calls:
+            if name.startswith('visual'):
+                self.assertEqual((root/'refinement-comparison/before.png').read_bytes(), b'PRIOR REVIEWED PREVIEW')
+            else:
+                self.assertFalse((root/'refinement-comparison').exists())
+
+    def test_refinement_preview_is_forwarded_as_visual_phase_image_input(self):
+        from PIL import Image
+        folder = self.packet/'refinement-comparison'; folder.mkdir()
+        preview = folder/'before.png'; Image.new('RGB', (160, 90), 'green').save(preview)
+        body = preview.read_bytes()
+        before = {'path': 'refinement-comparison/before.png', 'bytes': len(body),
+                  'sha256': hashlib.sha256(body).hexdigest()}
+        (folder/'index.json').write_text(json.dumps({'schema': 'native-edit-comparison/v1',
+            'kind': 'reviewed_refinement_baseline', 'status': 'prepared',
+            'pages': [{'page': 2, 'before': before}], 'findings': []}))
+        pages = []
+        for n in (1, 2):
+            name = f'reading-page-{n}.png'; Image.new('RGB', (160, 90), 'blue').save(self.packet/name)
+            body = (self.packet/name).read_bytes()
+            pages.append({'page': n, 'path': name, 'bytes': len(body), 'sha256': hashlib.sha256(body).hexdigest()})
+        (self.packet/'review-index.json').write_text(json.dumps({'schema': 'native-review-index/v1',
+            'reading_pages': pages, 'state_contacts': [], 'page_contacts': [],
+            'slides': [{'page': n, 'text': 'Actual page'} for n in (1, 2)]}))
+        original = self.phase
+        def inspect(name, prompt, **kwargs):
+            images = kwargs.get('images', [])
+            if name.startswith('visual'):
+                self.assertIn(before['path'], images)
+                supplied = (kwargs['root']/before['path']).read_bytes()
+                self.assertEqual(hashlib.sha256(supplied).hexdigest(), before['sha256'])
+                self.assertTrue(supplied.startswith(b'\x89PNG\r\n\x1a\n'))
+            else:
+                self.assertNotIn(before['path'], images)
+            return original(name, prompt, **kwargs)
+        self.run.phase = inspect
+        self.review()
+
     def test_absolute_attachment_paths_are_local_to_evidence_and_visual_contexts(self):
         self.payload['attachments'][0]['path']=str(self.job/'references/source.txt')
         original=self.phase

@@ -39,7 +39,8 @@ def stage_role(name):
 def compact_resume(job, name, context=None):
     """Pointers to current evidence, not another copy of all phase instructions."""
     root = Path(job)
-    names = ['request.json', 'outline.json', 'source-notes.md', 'decision-plan.json',
+    names = ['request.json', 'outline.json', 'source-notes.md', 'decision-plan.json', 'planning-input.json',
+             'assets/web-index.json',
              'repair-target.json', 'tool-manifest.json', 'tool-quickstart.md']
     documents = []
     for name_ in names:
@@ -156,7 +157,8 @@ class OutputProgress:
                 if scanned > 20000: return None  # Cannot establish stagnation.
                 p = Path(base) / filename; rel = p.relative_to(self.root)
                 planning = self.role == 'research' and rel.as_posix() in (
-                    'outline.json', 'source-notes.md', 'decision-plan.json', 'assets/index.json')
+                    'outline.json', 'source-notes.md', 'decision-plan.json', 'planning-input.json',
+                    'assets/index.json', 'assets/web-index.json')
                 native = self.role == 'author' and (('ppt' in rel.parts and any(
                     x in rel.parts for x in ('slides', 'charts', 'media', 'embeddings')))
                     or 'native-pages' in rel.parts and p.suffix == '.json'
@@ -176,6 +178,23 @@ class OutputProgress:
                     else:
                         if st.st_size > 32 * 1024 * 1024: return None
                         body = read_scoped(self.root, rel, 32 * 1024 * 1024)
+                        if planning and rel.as_posix() == 'planning-input.json':
+                            # planning_commit's real draft is saved before the
+                            # three canonical outputs exist. Count substantive
+                            # content changes, never formatting or a placeholder.
+                            try:
+                                draft = json.loads(body)
+                                from outline import validate_outline
+                                if (not isinstance(draft, dict) or draft.get('version') != 1
+                                        or not isinstance(draft.get('decisions'), dict)
+                                        or not isinstance(draft.get('source_notes'), str)
+                                        or not draft['source_notes'].strip()):
+                                    continue
+                                validate_outline(draft.get('outline'))
+                                body = json.dumps(draft, sort_keys=True, ensure_ascii=False,
+                                                  separators=(',', ':')).encode()
+                            except (ValueError, TypeError):
+                                continue
                         total += len(body)
                         if total > 128 * 1024 * 1024: return None
                         digest = hashlib.sha256(body).hexdigest()

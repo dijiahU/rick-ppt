@@ -31,6 +31,54 @@ class ToolPreparationTests(unittest.TestCase):
     def read_manifest(self):
         return json.loads((self.root / 'tool-manifest.json').read_text())
 
+    def test_advertised_geometry_choices_execute_and_unsupported_choice_preserves_parts(self):
+        from lxml import etree
+        ws=helper._module('pptx_core.package').unpack(PLUGIN/'skills/pptx/assets/blank.pptx',self.root/'projects')
+        helper.prepare_tool_manifest(self.root,workspace=ws.root)
+        manifest=self.read_manifest();canvas=helper._module('native_canvas')
+        choices=manifest['native_canvas']['add_shape']['choices']['geometry']
+        self.assertEqual(choices,manifest['native_batch']['operation_choices']['shape']['geometry'])
+        for n,geometry in enumerate(choices):
+            canvas.add_shape(ws.root,1,[1+n*1.5,2,1,1],geometry=geometry,fill='DDEEFF',stroke='223344',line_width=1,name=geometry)
+        tree=etree.parse(str(ws.root/'ppt/slides/slide1.xml'))
+        self.assertEqual(tree.xpath('//*[local-name()="prstGeom"]/@prst'),choices)
+        before={p:p.read_bytes() for p in ws.root.rglob('*') if p.is_file()}
+        with self.assertRaisesRegex(ValueError,'Unsupported explicit geometry'):
+            canvas.add_shape(ws.root,1,[1,4,1,1],geometry='downArrow',fill='DDEEFF',stroke=None,line_width=1,name='unsupported')
+        self.assertEqual(before,{p:p.read_bytes() for p in ws.root.rglob('*') if p.is_file()})
+
+    def test_invalid_retained_plan_is_diagnosed_without_mutating_or_blocking_it(self):
+        outline={'slides':[{'id':'actual','title':'Actual page','summary':'Keep actual evidence'}]}
+        plan=helper._module('workflow_decisions').plan_template(outline)
+        (self.root/'outline.json').write_text(json.dumps(outline))
+        (self.root/'decision-plan.json').write_text(json.dumps(plan))
+        original=(self.root/'decision-plan.json').read_bytes()
+        helper.prepare_tool_manifest(self.root)
+        self.assertEqual(self.read_manifest()['plan_check']['status'],'needs_repair')
+        self.assertEqual((self.root/'decision-plan.json').read_bytes(),original)
+        self.assertIn('check_glyphs',self.read_manifest()['native_canvas'])
+
+    def test_reference_kind_error_is_reported_and_correct_existing_contract_is_accepted(self):
+        from PIL import Image
+        outline={'slides':[{'id':'actual','title':'Actual page','summary':'Keep actual evidence'}]}
+        plan={'version':4,'task':{'operation':'create','viewing':'dual_use','research':'supplied_only'},
+            'template_preservation':[],'design_direction':'Large editable mechanism with adjacent annotation.',
+            'pages':[{'id':'actual','behavior':'click_reveal','assets':[{'route':'source_grounded_native'}]}],
+            'references':[{'id':'r','kind':'design','title':'Actual work','creator':'Actual creator',
+                'source':'https://example.org/work','inspection':'local_image','evidence':'reference.png',
+                'observed':'Adjacent labels follow the mechanism.','borrowed':'Adjacent annotation.',
+                'applications':[{'pages':['actual'],'action':'Place the label by its actual path.'}]}]}
+        Image.new('RGB',(20,12),'green').save(self.root/'reference.png')
+        (self.root/'outline.json').write_text(json.dumps(outline))
+        (self.root/'decision-plan.json').write_text(json.dumps(plan))
+        helper.prepare_tool_manifest(self.root)
+        self.assertEqual(self.read_manifest()['plan_check']['status'],'needs_repair')
+        self.assertIn('kind',self.read_manifest()['plan_check']['detail'])
+        plan['references'][0]['kind']='design_work'
+        (self.root/'decision-plan.json').write_text(json.dumps(plan))
+        helper.prepare_tool_manifest(self.root)
+        self.assertEqual(self.read_manifest()['plan_check']['status'],'valid')
+
     def test_host_prepares_exact_interpreter_without_workspace_or_design(self):
         cfg = {'plugin': str(PLUGIN), 'python': sys.executable}
         result = prepare_tool_manifest(cfg, self.root)

@@ -121,6 +121,7 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
         except (json.JSONDecodeError, UnicodeError) as error:
             scaffold_error = type(error).__name__ + ': outline needs repair before scaffold generation'
     scaffold = None
+    plan_check = {'status': 'not_present'}
     if outline is not None:
         if not isinstance(outline, dict) or not isinstance(outline.get('slides'), list):
             scaffold_error = 'outline.json needs ordered slides before scaffold preparation'
@@ -130,6 +131,16 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
                 scaffold_error = 'Outline IDs must be present and unique'
             else:
                 scaffold = decisions.plan_template(outline)
+    if (root / 'decision-plan.json').exists() and scaffold is not None:
+        try:
+            plan = _read(root / 'decision-plan.json', root)
+            request = _read(root / 'request.json', root) if (root / 'request.json').exists() else {}
+            decisions.validate_plan(plan, outline, root=root,
+                                    mode=request.get('mode', plan.get('task', {}).get('operation', 'create')))
+            plan_check = {'status': 'valid', 'scope': 'Existing planning contract and local file checks; not design quality or visual inspection.'}
+        except (OSError, ValueError) as error:
+            plan_check = {'status': 'needs_repair', 'detail': str(error),
+                          'scope': 'Retain current files and repair the existing record; no new admission gate.'}
     attachments = []
     index = root / 'references/index.json'
     if index.exists():
@@ -185,15 +196,16 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
         'workspace_contract': {'pptx_cli': 'session_dir or parts_dir', 'native_builds': 'session_dir or parts_dir',
                                'native_canvas': 'parts_dir', 'design_references': 'parts_dir'},
         'commands': commands, 'pptx_cli': _cli_contract(),
+        'plan_check': plan_check,
         'native_authoring': {
             'python_module': 'native_canvas', 'module_directory': str(SCRIPTS),
             'guide': str(SCRIPTS.parent / 'references/native-canvas.md'),
             'workspace': 'parts_dir',
             'object_handles': 'Use returned workspace/slide/shape_id handles directly for connectors, groups and reveals.',
-            'implementation': 'Use installed operations for supported objects; direct OOXML remains available for unsupported native features. No fixed page layout.',
+            'implementation': 'Helper geometry choices describe this callable, not the full PowerPoint geometry range. Use supported operations where suitable; direct OOXML remains available for unsupported native features and deliberate richer geometry. No fixed page layout.',
             'verification': 'Font coverage, text fit and endpoint checks do not establish design quality or target-player playback.'},
         'native_canvas': {name: _parameters(getattr(canvas, name)) for name in
-                          ('text_measure', 'add_text', 'add_image', 'add_shape', 'add_connector', 'semantic_group', 'reveal', 'add_bar_chart')},
+                          ('check_glyphs', 'text_measure', 'add_text', 'add_image', 'add_shape', 'add_connector', 'semantic_group', 'reveal', 'add_bar_chart')},
         'decision_contract': {'version': catalog['version'], 'top_level_fields': ['version', 'task', 'template_preservation', 'pages', 'design_direction', 'references'],
                               'task_options': catalog['task'], 'page_options': catalog['page'],
                               'asset_options': catalog['asset'],
@@ -210,6 +222,7 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
         'command_outputs': {'decision_scaffold': 'Prints unselected JSON to stdout; does not create decision-plan.json. Save/fill it explicitly.'},
         'decision_scaffold': scaffold, 'scaffold_error': scaffold_error, 'attachments': attachments,
         'authority': 'Interface preparation only. The author selects content and visual expression; validators check delivery records, assets and behavior; reviews judge the actual result.'}
+    manifest['native_canvas']['add_shape']['choices'] = {'geometry': list(canvas.SHAPE_GEOMETRIES)}
     lines = ['# Task tool quickstart', '', 'Read SKILL.md and task requirements. This guide prepares interfaces, not content or design.',
              '', f'Use this interpreter for every script and inline patch: `{interpreter}`. Do not use bare python/python3.',
              f'Parts directory: `{parts_dir}`' if parts_dir else 'No native workspace selected yet. Choose the task-appropriate source, unpack it, then refresh with the returned workspace path.',
@@ -218,7 +231,8 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
     lines += [shlex.join(argv) for argv in commands.values()]
     lines += ['```', '', 'SELECTED_SOURCE / CHOSEN_VERSION and page 1 are replaceable examples, not template/style selections.',
               'The manifest contains exact CLI arguments, native_canvas Python signatures and current decision options.',
-              'add_text uses font_file,size,ink and x/y/width/max_height; box belongs to other helpers. Use returned object handles for links/groups/reveals.',
+              'add_text uses font_file,size,ink and x/y/width/max_height; box belongs to other helpers. max_height is a finite positive number in inches, never "auto". Use returned object handles for links/groups/reveals.',
+              'Before mutating a custom page, check the chosen text/font pair with check_glyphs or text_measure. A measured call: m=text_measure(copy,font_file,18,4,latin_font=latin_font); add_text(parts_dir,page,copy,font_file,18,ink,x=1,y=1,width=4,max_height=m["height"]+0.01,latin_font=latin_font). Symbols also need actual glyph coverage; native geometry can express an unsupported graphical symbol.',
               'Text checks actual glyph coverage and writes explicit noAutofit. Connector sites are geometry-specific: rect/roundRect/diamond right=3,left=1; ellipse right=6,left=2. Anchors must agree with transformed endpoints. Anchor to a verified child, not an unspecified group site.',
               'Native reveal writes one entrance row per object: clickEffect then synchronized withEffect rows. Do not put multiple shape targets inside one preset effect. The state parser rejects ambiguous legacy rows rather than inventing initial visibility.',
               'Export saves a hash-bound compatibility report in the session and state.last_compatibility. Fix affected connector/text findings within scope; inventory is not target-viewer certification and must not restyle unrelated source pages.',
@@ -264,6 +278,7 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
             'document_fields': ['version', 'batch_id', 'operations'], 'version': 1,
             'operation_fields': 'op,id,slide plus exact native_canvas helper parameters; reveal has no id',
             'operations': operations,
+            'operation_choices': {'shape': {'geometry': list(canvas.SHAPE_GEOMETRIES)}},
             'operation_parameters': {op: manifest['native_canvas'][name]['parameters'][2:]
                                      for op, name in operations.items()},
             'references': 'Earlier id string or existing positive integer object ID, same page only.',
@@ -291,10 +306,14 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
             'handoff_index': _module('page_design').handoff_index(root),
             'notes_marker': 'Optional pptx-handoff JSON fence in source-notes.md; page_id plus only useful fields.',
             'handoff_fields': ['question', 'evidence', 'materials', 'preserve', 'uncertainties', 'visual_opportunity'],
+            'visual_input': 'The CLI returns text/file checks only. Host tool pptx_page_design_context returns actual supported local images; after render N pass workspace as well as page_id to receive the current page preview first. Otherwise open the exact current preview/main material/applicable references through the existing image viewer. Stale/missing previews are not fresh visual input.',
             'use': 'Use supplied notes directly; retrieve this page when notes are large or material/expression is unclear. Record consequential changes only, not a per-page form or approval.',
             'authority': 'File checks and version-bound author observations, not source authenticity, aesthetic scores or independent review passes.'}
         lines += ['Page-specific evidence/material lookup and optional consequential design observations:',
                   shlex.join(commands['page_design_context']),
+                  'Render the current page once its main composition is inspectable, then view that exact result. After a meaningful edit render/view the changed page again; reuse saved unchanged pages.',
+                  'The CLI above returns preview paths/status, not image input. Use the image viewer, or host pptx_page_design_context(page_id=..., workspace=...) when exposed.',
+                  'With workspace, page context includes native.objects from the actual inspect command, bound to the page hash. The commands section alone is a callable interface, not an object index. Read attached images directly; reopen only for a needed detail or unavailable input. compare_previous=true on the host tool requests the last supplied preview for this page alongside its current render.',
                   'Use current supplied notes directly when sufficient. The page_design manifest links the optional source-notes format and record command.', '']
     lines += [f'- `{a["path"]}` ({a.get("name", "attachment")})' for a in attachments]
     manifest_path = _write(root, 'tool-manifest.json', json.dumps(manifest, ensure_ascii=False, indent=2))

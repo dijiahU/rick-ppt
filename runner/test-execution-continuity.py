@@ -61,6 +61,29 @@ class Files(unittest.TestCase):
         g.observe({**event,'type':'item.completed','item':{**event['item'],'exit_code':0}})
         self.assertEqual(g.action(),'nudge')
 
+    def test_saved_planning_commit_draft_is_progress_but_not_a_completed_handoff(self):
+        g=self.guard('research');self.assertEqual(self.actions(g),'nudge');g.applied('nudge')
+        draft={'version':1,'outline':{'title':'Shade','purpose':'Explain the mechanism',
+               'slides':[{'id':'first','title':'Shade','summary':'Keep the radiation and water conditions.'}]},
+               'decisions':{'version':4},'source_notes':'Verified evidence and unresolved conditions.'}
+        p=self.job/'planning-input.json';p.write_text(json.dumps(draft))
+        self.assertIsNone(self.actions(g,start=4));self.assertEqual(g.state['quiet_actions'],0)
+        self.assertFalse(g.outputs_present())
+        self.assertIn('planning-input.json',compact_resume(self.job,'research'))
+        p.write_text(json.dumps(draft,indent=4))
+        self.assertIsNone(self.actions(g,count=1,start=8));self.assertEqual(g.state['quiet_actions'],1)
+
+    def test_placeholders_and_status_chatter_do_not_replace_saved_research_progress(self):
+        g=self.guard('research')
+        (self.job/'planning-input.json').write_text('{"version":1,"outline":{},"decisions":{}}')
+        self.assertEqual(self.actions(g),'nudge');g.applied('nudge')
+        (self.job/'assets').mkdir()
+        p=self.job/'assets/web-index.json';p.write_text(json.dumps({'media':[{'file':'actual.png','sha256':'a'*64}]}))
+        self.assertIsNone(self.actions(g,start=4));self.assertEqual(g.state['quiet_actions'],0)
+        self.assertFalse(g.outputs_present())
+        (self.job/'progress.json').write_text('{"note":"Still working"}')
+        self.assertEqual(self.actions(g,start=8),'nudge')
+
     def test_duplicate_completed_events_count_once(self):
         g=self.guard()
         for _ in range(30):self.actions(g,count=1)
@@ -128,10 +151,11 @@ class Phase(unittest.TestCase):
         class Server:
             def __init__(self,**kw):
                 self.kw=kw;self.active_turns={};self.completed_turns={};self.threads=[];self.prompts=[]
-                self.steps=0;self.turns=0;self.steers=0;self.interrupts=0;observed.append(self)
+                self.steps=0;self.turns=0;self.steers=0;self.interrupts=0;self.tool_specs=[];observed.append(self)
             def __enter__(self):return self
             def __exit__(self,*args):pass
             def start_thread(self,**kwargs):
+                self.tool_specs.extend(kwargs.get('dynamic_tools',[]))
                 thread='new-'+str(len(self.threads));self.threads.append(thread)
                 return {'thread':{'id':thread}}
             def resume_thread(self,thread):
@@ -188,6 +212,15 @@ class Phase(unittest.TestCase):
         self.assertEqual((s.steers,s.interrupts,len(s.threads)),(1,1,2))
         self.assertIn('PRESERVED_REQUIREMENT',s.prompts[-1]);self.assertTrue((job/'outline.json').is_file())
         self.assertEqual(journal.state['phase']['thread_id'],s.threads[-1])
+
+    def test_page_image_context_is_registered_only_for_the_continuing_author(self):
+        for phase in ('author','research','visual-1'):
+            with self.subTest(phase=phase):
+                with patch.object(workflow,'continuity_enabled',return_value=False):
+                    server,_,error,_,_=self.run_phase(mode='complete',name=phase)
+                self.assertIsNone(error)
+                self.assertEqual(any(s['name']=='pptx_page_design_context' for s in server.tool_specs),phase=='author')
+                self.assertEqual(callable(server.kw.get('on_tool_result_sent')),phase=='author')
 
     def test_permanent_nonproduction_stops_after_one_reset(self):
         s,_,error,_,_=self.run_phase(mode='stalled')

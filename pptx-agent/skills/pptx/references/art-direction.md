@@ -31,6 +31,11 @@ what should dominate, how comparisons will work, and how the sequence changes pa
 Keep the resulting short, provisional visual agreement in the existing
 design_direction and source notes. It is a hypothesis to test with actual material
 and rendered pages, not an instruction to reproduce the same arrangement later.
+Describe the intended visible finish for this audience: what in subject treatment,
+spatial detail, typography or image/annotation relationships should distinguish
+the finished page from a quick explanatory sketch? Palette and font choices alone
+do not specify that ambition. Keep it content-led and provisional; a quiet,
+precise page may be the finished expression and added complexity is not a goal.
 Update it when a tested decision changes, not for every small move.
 Do not create another compulsory questionnaire, classification or approval stage.
 
@@ -97,10 +102,13 @@ identity. A recurring visual language does not require identical layouts.
 
 ## 3. Study references for the current problem
 
-For creative work, actively explore useful actual art/design/scientific examples
-within the task's source permissions and available tools. Combine subject and
-visual problem in the search: spatial hierarchy, annotated mechanism, figure
-comparison, editorial density, image/type integration or another concrete need.
+You own the design investigation left open by the factual handoff. For creative
+work, explore actual finished art/design/scientific examples when they can resolve
+the page's expressive gap, within source permissions and available tools. Combine
+the subject, visual problem and kind of finished work in the search: an illustrator's
+annotated mechanism, an editorial image/type composition, a scientific figure
+comparison or another concrete need. Topic-only searches can keep returning fact
+sheets when the missing help is scene construction or illustration craft.
 Photography, painting, film, editorial/identity design, architecture, illustration
 and scientific visual explanation are possible sources, not a required roster.
 
@@ -108,11 +116,24 @@ Open the actual work or representative frames. Notice where attention lands, wha
 creates scale, how empty and occupied areas relate, how images and type interact,
 and how a series stays coherent. A teaching passage can explain a principle;
 text describing a painting cannot establish that you inspected its composition.
+Assess factual usefulness and visual craft separately. An authoritative teaching
+figure can clarify a mechanism while offering little help with the needed scene,
+hierarchy, material differentiation or illustration craft. Study an actual work
+that addresses the current expressive gap; one work may serve both purposes.
+No second reference category, separate artist search or reference quota is required.
 
-Transfer a relationship into this content. For example, a photograph may isolate
-one subject through surrounding quiet space; a scientific explanation can similarly
-make one crucial mechanism dominant while keeping necessary context legible. The
-borrowed relationship must help this page rather than overwrite its evidence.
+Transfer a visible operation into this content. A photograph may isolate a subject
+through surrounding quiet space: adjust the current subject's relative scale and
+the nearby annotation density. A sectional illustration may use continuous contours,
+layered silhouettes and attached labels to make material and depth recognizable:
+construct those relationships with native paths/groups while preserving this
+subject's actual mechanism and limits. These are examples, not required treatments.
+“Water and plants coexist” identifies content; it leaves the intended shape,
+hierarchy or spatial treatment undecided. A completed built project pictured in a
+photo can help with scene/material while still leaving explanatory graphic craft
+open. Borrow only what the inspected work actually shows, then compare that
+relationship in the current render; do not overwrite evidence or add detail merely
+to resemble a reference.
 
 Record the exact work, creator, source, observation, borrowed principle and concrete
 page action once in the existing reference register. Reuse effective study across
@@ -168,6 +189,13 @@ text around the actual structure. Choose line breaks and measurements using the
 native tools. Refine small spacing, borders and local effects after the main
 relationship works. This keeps tool convenience from selecting the page's design.
 
+Before committing a composition around a selected image, receive its actual
+picture through the page-context image channel when exposed, or open it with the
+existing image viewer. Do the same for registered visual references applied to
+this page; reuse available files. A search summary, file path or ready state does
+not show you the crop, subject/background relationship or usable detail. Unavailable
+visuals stay unviewed; no new search quota or whole-deck material wait is implied.
+
 Effects are materials used by a concept: a shadow can separate layers, a local
 highlight can show active state, and a crop can create focus. Use treatments where
 they support the chosen subject and remain compatible. Surface novelty does not
@@ -188,11 +216,20 @@ and simulated states are not target-player playback.
 
 ## 6. Make the first render a design decision
 
-Open the actual page at normal reading scale and inspect uncertain details at full
-size. Compare the visible result with this page's job, not just its intended design.
+Design is developed through actual pages, not settled completely in the initial
+plan. Render when the main composition, real material and key wording can be
+judged; refine minor decoration after that expression works. Open the actual page
+at normal reading scale and inspect uncertain details at full size. Compare the
+visible result with this page's job, not just its intended design.
+Begin with the improvement question: what would most improve this actual page
+for its audience? Locate the affected region before deciding that the draft is
+finished. A correct export, clear labels or consistent palette do not answer it.
 Use whichever questions identify the actual issue:
 - Where does attention land first? Is that the useful object or a competing heading,
   decoration or qualifier? Adjust relative scale, placement or emphasis accordingly.
+- Has the page's visual task actually been completed? A schematic may explain a
+  route while leaving the real subject unrecognizable. A caption naming a case
+  does not by itself supply its visible identity or relevant detail.
 - Can the comparison/change/dependency be followed in the picture, or must the viewer
   read all paragraphs to reconstruct it? Recompose the specific relationship.
 - Do image/diagram labels refer to something the audience can actually inspect?
@@ -203,11 +240,26 @@ Use whichever questions identify the actual issue:
   before shrinking necessary content. Evidence pages may need real detail.
 - Are the factual qualifiers, source identity and complete final state still clear?
 
-These questions guide action, not a scored form. A render may already work; retain
-it when it does. Correct consequential visible weaknesses in the current page,
-then continue in order. Record only useful design decisions/changes in existing
-notes. Use saved section previews to inspect rhythm without repeatedly rendering
-all completed pages. Compare actual focus, reading task and density as well as style.
+These questions guide action, not a scored form. Choose the highest-value feasible
+correction to the observed region. Decide whether local fit repair is sufficient
+or the subject/composition needs rebuilding within the actual scope. Resolve a
+substantial design gap while this page is being authored; the final bounded
+optional repair is not a substitute for developing its main expression. Implement
+the useful change, render and view the result before continuing. Compare
+the affected before/after regions rather than assume that changed code improved
+the page. Keep the prior render and use an existing native snapshot before a
+substantial recomposition; a regression can justify reverting the attempt.
+
+A first render can stand when supported meaning, the intended visual task and
+audience-appropriate composition/craft are resolved within the creative scope.
+Technical validity and readable connections alone do not close a consequential
+gap in recognition, material, hierarchy or detail. Prioritize the main deficit
+before incidental polish, using the actual render and useful inspected references.
+Respect existing task/repair bounds; keep the best verified result at the limit
+and report unresolved design limits honestly. No forced edit, iteration quota,
+aesthetic score or style preference gate. Record consequential changes in existing notes. Use saved
+section previews to inspect rhythm without repeatedly rendering unchanged pages.
+Compare actual focus, reading task and density as well as style.
 
 ## 7. Preserve continuity through revisions and recovery
 

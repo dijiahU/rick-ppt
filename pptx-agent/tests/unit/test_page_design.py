@@ -61,6 +61,28 @@ def test_plain_notes_remain_valid_and_read_only_without_optional_records(task):
     assert all(path.read_bytes()==data for path,data in before.items())
 
 
+def test_native_object_index_reuses_actual_inspection_and_page_hash(task):
+    root, ws = task
+    from pptx_core.cli import inspect
+    value = design.context(root, 'mechanism', ws.root)
+    assert value['native']['objects'] == inspect(ws, 1)['shapes']
+    assert value['native']['objects'][0]['text'] == 'Original title 1'
+    assert value['native']['page_sha256'] == sha256(ws.root/value['native']['part'])
+
+
+def test_large_object_index_defers_without_losing_native_preview_context(task):
+    root, ws = task
+    from lxml import etree
+    part=ws.root/'ppt/slides/slide1.xml'
+    tree=etree.parse(str(part));tree.find('.//{http://schemas.openxmlformats.org/drawingml/2006/main}t').text='X'*150000
+    tree.write(str(part),encoding='UTF-8',xml_declaration=True)
+    value=design.context(root,'mechanism',ws.root)
+    assert value['native']['objects'] is None
+    assert value['native']['object_count'] > 0
+    assert value['native']['objects_status'].startswith('deferred')
+    assert value['native']['preview']['status']=='not_recorded'
+
+
 def test_page_handoff_preserves_qualifiers_and_checks_actual_material(task):
     root, ws=task
     image=root/'selected.png';Image.new('RGB',(42,24),'blue').save(image)
@@ -104,6 +126,56 @@ def test_private_handoff_does_not_enter_public_outline(task):
     public=module.validate_outline(json.loads((root/'outline.json').read_text()))
     assert 'PRIVATE-DESIGN-CONTEXT' not in json.dumps(public)
     assert 'selected.png' not in json.dumps(public)
+
+
+def test_only_explicit_current_page_reference_applications_are_projected(task):
+    root, ws = task
+    Image.new('RGB', (37, 19), 'gold').save(root/'reference.png')
+    common = {'kind':'design_work', 'creator':'Fixture designer', 'source':'https://example.test/work',
+              'inspection':'local_image', 'evidence':'reference.png',
+              'observed':'Unequal subject scale', 'borrowed':'Focus through scale'}
+    plan = {'version':4, 'pages':[], 'references':[
+        {**common, 'id':'shared', 'title':'Shared work', 'applications':[
+            {'pages':['mechanism', 'closing'], 'action':'Enlarge the actual relationship'}]},
+        {**common, 'id':'other', 'title':'Other work', 'applications':[
+            {'pages':['evidence'], 'action':'Other page only'}]},
+        {**common, 'id':'unapplied', 'title':'Not applied', 'applications':[]}]}
+    path = root/'decision-plan.json'; path.write_text(json.dumps(plan))
+    before = {p:p.read_bytes() for p in [path, root/'outline.json', root/'source-notes.md', ws.state_path]}
+    result = design.context(root, 'mechanism')
+    assert [r['id'] for r in result['references']] == ['shared']
+    ref = result['references'][0]
+    assert ref['observed'] == common['observed'] and ref['borrowed'] == common['borrowed']
+    assert ref['applications'] == [{'pages':['mechanism'], 'action':'Enlarge the actual relationship'}]
+    assert ref['file_check']['sha256'] == sha256(root/'reference.png')
+    assert ref['file_check']['pixels'] == [37,19]
+    assert design.context(root, 'closing')['references'][0]['file_check']['sha256'] == ref['file_check']['sha256']
+    assert all(p.read_bytes() == body for p, body in before.items())
+
+
+def test_missing_unavailable_and_hosted_references_are_not_promoted_to_viewed(task):
+    root,_ = task
+    records = []
+    for ident, inspection, evidence in [('missing', 'local_image', 'missing.png'),
+                                        ('unavailable', 'unavailable', None),
+                                        ('hosted', 'hosted_visual', 'Hosted tool observation, not a local image')]:
+        records.append({'id':ident, 'title':ident, 'inspection':inspection, 'evidence':evidence,
+                        'applications':[{'pages':['mechanism'], 'action':'Declared application'}]})
+    (root/'decision-plan.json').write_text(json.dumps({'references':records}))
+    result = design.context(root,'mechanism')['references']
+    assert [r['inspection'] for r in result] == ['local_image','unavailable','hosted_visual']
+    assert result[0]['file_check']['availability'] == 'missing'
+    assert all('sha256' not in r['file_check'] for r in result)
+    assert result[1]['evidence'] is None
+
+
+def test_no_reference_or_partial_plan_keeps_existing_context_available(task):
+    root,_ = task
+    assert design.context(root,'mechanism')['references'] == []
+    (root/'decision-plan.json').write_text('{"references":[')
+    result = design.context(root,'mechanism')
+    assert result['references'] == [] and result['diagnostics']
+    assert result['page']['summary'] == 'Supported mechanism, with limits.'
 
 
 def test_local_resources_cannot_escape_task_through_path_or_symlink(task,tmp_path_factory):

@@ -86,7 +86,7 @@ def prepared_phase_context(cfg, job, stage):
         if stage == 'research' else (
         'python', 'task_root', 'session_dir', 'parts_dir', 'workspace_status',
         'workspace_contract', 'commands', 'native_authoring', 'native_canvas',
-        'native_batch', 'native_pages', 'page_design', 'decision_contract', 'command_outputs'))
+        'native_batch', 'native_pages', 'page_design', 'decision_contract', 'command_outputs', 'plan_check'))
     add(skill, 'SKILL.md', kind='installed_instruction')
     if continuity:
         add(skill, 'references/execution-continuity.md', kind='installed_instruction')

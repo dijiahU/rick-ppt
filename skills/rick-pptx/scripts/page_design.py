@@ -21,11 +21,13 @@ if __package__:
     from .pptx_core.manifest import content_fingerprint, manifest
     from .pptx_core.package import select
     from .pptx_core.relationships import slide_parts
+    from .pptx_core.cli import inspect as inspect_page
 else:
     from pptx_core.common import PptxError, NS, now, parse, sha256
     from pptx_core.manifest import content_fingerprint, manifest
     from pptx_core.package import select
     from pptx_core.relationships import slide_parts
+    from pptx_core.cli import inspect as inspect_page
 
 MAX_NOTES = 2 * 1024 * 1024
 HANDOFF_FIELDS = ('question', 'evidence', 'materials', 'preserve', 'uncertainties', 'visual_opportunity')
@@ -129,6 +131,8 @@ def native_state(root, workspace, number):
         return {'availability': 'page_not_created', 'page': number}
     part = parts[number - 1]
     tree = parse(ws.root / part)
+    objects = inspect_page(ws, number)['shapes']
+    inline_objects = len(json.dumps(objects, ensure_ascii=False).encode()) <= 128 * 1024
     digest = content_fingerprint(manifest(ws.root))
     preview = (ws.state.get('page_previews') or {}).get(str(number))
     view = {'status': 'not_recorded'}
@@ -140,8 +144,14 @@ def native_state(root, workspace, number):
         view = {**preview, 'image': str(image),
                 'status': 'current' if intact and current else 'stale' if intact else 'missing_or_changed',
                 'freshness_scope': 'entire native package; another page/shared-resource change is conservatively stale'}
+        if intact and current:
+            view['file_check'] = resource(root, str(image))
     return {'availability': 'page_present', 'page': number, 'part': part,
+            'workspace': str(ws.root),
             'workspace_fingerprint': digest, 'page_sha256': sha256(ws.root / part),
+            'objects': objects if inline_objects else None,
+            'object_count': len(objects),
+            'objects_status': 'inlined_from_inspect' if inline_objects else 'deferred; use existing inspect command for this page',
             'native_groups': len(tree.findall('.//p:grpSp', NS)),
             'connectors': len(tree.findall('.//p:cxnSp', NS)), 'preview': view,
             'assessment': 'Structure and render freshness only; inspect the image to judge expression.'}
@@ -163,7 +173,7 @@ def context(task_root, page_id, workspace=None):
     handoff = {k: matching[0][k] for k in HANDOFF_FIELDS if k in matching[0]} if len(matching) == 1 else {}
     if len(matching) > 1:
         diagnostics.append({'detail': 'Ambiguous duplicate handoff for this page; retained notes must be reconciled.'})
-    resources = []
+    resources, references = [], []
     for key, field in [('evidence', 'source'), ('materials', 'file')]:
         for item in handoff.get(key, []) if isinstance(handoff.get(key, []), list) else []:
             if isinstance(item, dict):
@@ -177,11 +187,32 @@ def context(task_root, page_id, workspace=None):
                     for item in record.get('assets', []):
                         resources.append({'role': 'planned_asset', 'declared': item,
                                           'file_check': resource(root, item.get('file'))})
+            # Applications are the existing association register. Do not infer
+            # coverage from page titles, optional reference_ids or nearby text.
+            for entry in decisions.get('references', []):
+                applications = [app for app in entry.get('applications', [])
+                                if isinstance(app, dict) and isinstance(app.get('pages'), list)
+                                and page_id in app['pages']]
+                if not applications:
+                    continue
+                reference = {k: entry[k] for k in
+                             ('id', 'kind', 'title', 'creator', 'source', 'inspection',
+                              'evidence', 'observed', 'borrowed') if k in entry}
+                reference['applications'] = [{'pages': [page_id], 'action': app.get('action')}
+                                             for app in applications]
+                # Preserve the author's inspection claim, including unavailable.
+                # A hosted observation/URL is not a task-local visual attachment.
+                reference['file_check'] = (resource(root, entry.get('evidence'))
+                                           if entry.get('inspection') == 'local_image' else
+                                           {'availability': 'not_specified',
+                                            'inspected': 'not established by this tool'})
+                references.append(reference)
         except (ValueError, TypeError, AttributeError) as error:
             diagnostics.append({'detail': 'Retained decision record needs reconciliation: ' + str(error)})
     observations, observation_errors = blocks(notes, 'pptx-design-observation')
     result = {'page': {k: page[k] for k in ('id', 'title', 'summary', 'section') if k in page},
               'page_number': number, 'handoff': handoff, 'resources': resources,
+              'references': references,
               'source_notes': {'path': 'source-notes.md', 'sha256': hashlib.sha256(raw).hexdigest(),
                                'excerpt': notes if len(raw) <= 8192 else None, 'complete': len(raw) <= 8192},
               'observations': [row for row in observations if row['page_id'] == page_id][-4:],

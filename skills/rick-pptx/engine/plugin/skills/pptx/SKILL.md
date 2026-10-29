@@ -118,14 +118,26 @@ Static covers and single-message pages are allowed; an entirely static deck or
 cosmetic title entrance does not satisfy this requirement. Read
 [Animations](references/animations.md); preserve faithful-source/scoped-edit behavior.
 
-Render and inspect each page at full size and normal reading scale before proceeding.
-Check source meaning and technical fit, and whether the intended subject, mechanism
-or comparison actually leads the page. Refine concrete weaknesses while making it.
-At natural section boundaries compare saved previews for sequence coherence and
-rhythm. Existing render checks serve this purpose; no new approval stage is needed.
-Update provisional decisions when actual material or renders justify another approach.
-The page-design helper can bind consequential author observations to existing render
-bytes in those notes. It is optional, preserves history and grants no review pass.
+Develop each page through a build-render-view-revise loop. Render once its main
+composition, real material and key wording can be judged, before polishing minor
+decoration. View the exact preview through the image channel at normal reading
+scale and inspect uncertain detail at full size. Use the existing page-design host
+context with page_id and workspace after rendering when supported; otherwise open
+the returned image with the available viewer. Paths and render success are not viewing.
+Use the rendered page to choose the most useful feasible design improvement.
+Locate the affected region and decide local repair or substantial recomposition
+within scope; implement it while authoring, then render/view the result before
+proceeding. Final optional repair does not replace developing the page. Keep earlier
+renders and snapshot before substantial recomposition; revert a regression when
+appropriate. Within creative scope, retain a first result when supported meaning,
+the intended visual task and audience-appropriate composition/craft are resolved
+at reading scale. Validity/readability alone is insufficient. Address consequential
+visual gaps within existing time/repair bounds; keep the best verified version at
+the limit and report remaining design limits. No forced edit, revision quota or
+new approval stage. Preserve faithful/scoped work.
+At section boundaries compare saved unchanged previews for sequence coherence.
+The page-design helper can optionally bind consequential author observations to
+render bytes in existing notes; these records grant no independent review pass.
 
 Register each applied outside work once with its inspected evidence and page actions.
 Before final export, use design_references.py --workspace PARTS_DIR to generate

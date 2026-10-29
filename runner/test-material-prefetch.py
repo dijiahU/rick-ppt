@@ -515,6 +515,31 @@ class Tests(unittest.TestCase):
         self.assertEqual(result['result']['purpose'], purpose)
         self.assertEqual(result['calls'][0]['usage']['input_tokens'], 7)
 
+    def test_timed_out_actual_helper_exposes_unverified_leads_only_in_failed_request(self):
+        import auxiliary_tools
+        from durable import transport_module
+        class ShortServer:
+            def __init__(server,**kwargs):
+                server.event=kwargs['on_event'];server.usage={('thread','turn'):{'input_tokens':7}}
+            def __enter__(server):return server
+            def __exit__(server,*args):pass
+            def start_thread(server):return {'thread':{'id':'thread'}}
+            def start_turn(server,*args):return {'id':'turn'}
+            def wait_turn(server,*args,**kwargs):
+                server.event({'type':'item.completed','item':{'type':'web_search','results':[
+                    {'url':'https://example.org/source-lead','title':'Original source lead'}]}})
+                raise transport_module.RPCTimeout('Synthetic deadline')
+        broker=self.broker()
+        with patch.object(m,'AuxiliaryTools',auxiliary_tools.AuxiliaryTools),patch.object(auxiliary_tools,'AppServer',ShortServer):
+            ident=broker.submit(self.request())['id']
+            result=self.ready(broker,ident)
+        self.assertEqual(result['state'],'failed')
+        self.assertNotIn('result',result)
+        self.assertEqual(result['calls'][0]['turn_status'],'unconfirmed')
+        self.assertEqual(result['calls'][0]['partial_search_leads']['items'][0]['url'],'https://example.org/source-lead')
+        self.assertFalse((self.job/'material-prefetch'/(ident+'.result.json')).exists())
+        self.assertFalse(self.broker().images)
+
     def test_result_and_generated_file_tampering_never_returns_ready(self):
         broker = self.broker()
         ident = broker.submit(self.request('generate'))['id']

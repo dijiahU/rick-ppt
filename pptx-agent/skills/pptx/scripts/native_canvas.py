@@ -25,6 +25,7 @@ R='http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 C='http://schemas.openxmlformats.org/drawingml/2006/chart'
 PKG='http://schemas.openxmlformats.org/package/2006/relationships'
 CT='http://schemas.openxmlformats.org/package/2006/content-types'
+SHAPE_GEOMETRIES = ('rect', 'roundRect', 'ellipse', 'triangle', 'diamond')
 EMU=914400
 
 
@@ -81,7 +82,7 @@ def target(workspace,number,value):
 
 def add_shape(workspace,number,box,*,geometry,fill,stroke,line_width,name):
     # Every visual choice is explicit. A semantic object need not be a card.
-    if geometry not in ('rect','roundRect','ellipse','triangle','diamond'):raise ValueError('Unsupported explicit geometry')
+    if geometry not in SHAPE_GEOMETRIES:raise ValueError('Unsupported explicit geometry')
     if fill is not None:color(fill)
     if stroke is not None:color(stroke)
     if not math.isfinite(line_width) or line_width<=0:raise ValueError('Positive line width required')

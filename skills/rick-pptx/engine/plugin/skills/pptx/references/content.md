@@ -73,13 +73,44 @@ these are usable findings, not a private reasoning transcript or a second report
 Prefer primary evidence for facts and credible interpretation where appropriate.
 Search snippets, reading counts and completed downloads do not establish understanding.
 
+For new decks/substantive redesigns with creative latitude, use the existing
+investigation to discover relevant finished visual work alongside factual evidence.
+Combine the topic and intended visual problem with useful creator/work vocabulary:
+editorial or scientific illustration, exhibition graphics, landscape cutaways,
+information design or another appropriate field. These are search leads, not a
+source whitelist. An installation diagram may settle geometry while offering
+little help with subject construction, material distinction or image/type craft.
+Inspect the actual picture for the problem it can resolve: subject construction,
+spatial layering, focal scale, annotation or image/type relationships, for example.
+A photograph of a completed project can inform scene, material or crop; it does
+not by itself demonstrate a finished explanatory graphic. A technical figure can
+settle a mechanism without calibrating the desired illustration craft. Describe
+the useful visible operation, beyond listing the objects shown. A crop, technical
+fragment or rough study can inform a limited relationship without demonstrating
+the finished whole; keep that limit in existing observations. Inspiration need not become an embedded
+asset; keep acquisition/embedding permissions distinct from the borrowed principle.
+Use existing observed/borrowed/applications
+records and usable files, leaving final composition to the designer. No required
+artist, reference count, per-page search or extra approval stage; preserve actual
+source/template/edit limits and retain missing/unviewed states honestly.
+
 Build the ordered outline from that synthesis and the audience's starting knowledge.
 Choose what each page helps the audience understand and what they need to see;
 plan content and expression together without prewriting equally sized paragraphs.
 Hand over the supported conclusion/relationship, exact evidence locations, useful
 actual material with its intended role, necessary conditions and consequential
-unknowns where relevant. A provisional visual opportunity can help; final visible
-wording and composition remain the designer's decisions. For material-rich pages,
+unknowns where relevant. Use existing visual_opportunity/plain notes to say what
+the audience should recognize, compare or trace, leaving wording and composition
+to the designer. Distinguish actual user/source constraints from proposed visual
+treatments. Do not declare a simple representation sufficient or exclude a
+truthful alternative merely because the content can be summarized that way;
+the designer tests the expression against actual material and renders.
+Identify what actual material supports that visual task and which
+gap still matters. A missing photograph may leave recognition unresolved even when
+a factual path diagram is possible; do not silently declare the simpler substitute
+equivalent. Seek a useful permitted original/alternative or reconsider an unfixed
+case/expression before committing it. Preserve specified cases and factual scope;
+no per-page material requirement or new handoff form. For material-rich pages,
 [page evidence](page-design.md) offers optional indexed pointers inside these same
 notes. Plain notes and a supported summary remain sufficient for simple pages.
 If a text-only case is worth explaining, an original conceptual illustration,
@@ -89,7 +120,9 @@ prove a reported result. Follow research-and-assets.md for documentary constrain
 
 Stop initial research when essential explanations and useful selected material
 support a truthful, audience-relevant outline and further exploration adds little.
-Repetition within one narrow source family is not evidence that the subject is
+An unresolved consequential visual need remains part of the handoff even if the
+outline is factually supported; source-search completion is not usable-asset or
+design completion. Repetition within one narrow source family is not evidence that the subject is
 exhausted: change vocabulary, angle or source community when a valuable question
 or visual need remains unresolved. No requirement to search every channel or chase
 unrelated novelty. Keep nonessential later-page
