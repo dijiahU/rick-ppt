@@ -99,7 +99,15 @@ Choose what each page helps the audience understand and what they need to see;
 plan content and expression together without prewriting equally sized paragraphs.
 Hand over the supported conclusion/relationship, exact evidence locations, useful
 actual material with its intended role, necessary conditions and consequential
-unknowns where relevant. Use existing visual_opportunity/plain notes to say what
+unknowns where relevant. For a selected case or mechanism, retain a compact,
+attributed original fragment/detail that the audience could inspect: a rule,
+observed input/change, data segment, original phrase, useful figure region or
+concrete output. Put its exact source location and actual viewing/file status in
+these same notes; a summary can accompany it. Do not replace all useful specificity
+with component names or benefit claims. Preserve source values/conditions and
+mark proposed teaching illustrations separately; do not invent unavailable output
+screens, measurements or historical images. This is selective evidence preparation,
+not a requirement to collect a picture or quote for every page. Use existing visual_opportunity/plain notes to say what
 the audience should recognize, compare or trace, leaving wording and composition
 to the designer. Distinguish actual user/source constraints from proposed visual
 treatments. Do not declare a simple representation sufficient or exclude a

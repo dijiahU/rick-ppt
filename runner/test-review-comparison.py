@@ -103,7 +103,7 @@ class Tests(unittest.TestCase):
 
 class RefinementTests(unittest.TestCase):
     setUp = Tests.setUp
-    def baseline(self):
+    def baseline(self, completion=False):
         from design_feedback import save_baseline, POLICY
         temporary = tempfile.TemporaryDirectory(); self.addCleanup(temporary.cleanup)
         self.run.records = Path(temporary.name).resolve()
@@ -119,7 +119,33 @@ class RefinementTests(unittest.TestCase):
                 'severity': 'suggestion', 'pages': [2], 'observation': 'Main relationship is detached.',
                 'impact': 'Cross-reading is needed.', 'recommendation': 'Connect the subject and explanation.',
                 'route': 'retain_suggestion'}]}}
+        if completion:
+            from design_completion import CONTRACT
+            receipt['design_completion']=dict(CONTRACT)
+            receipt['visual']['design_assessment']={'readiness':'needs_revision','primary_findings':['V1']}
         return save_baseline(self.run, self.original, receipt, {'pages': images}, {})
+
+    def test_selection_compares_changed_pages_outside_original_feedback(self):
+        import io
+        self.baseline(completion=True)
+        deck=Presentation(io.BytesIO(self.original));deck.slides[0].shapes.title.text='Changed outside feedback'
+        body=io.BytesIO();deck.save(body)
+        prepare_refinement(self.run,body.getvalue(),self.packet)
+        data=json.loads((self.packet/'refinement-comparison/index.json').read_text())
+        self.assertEqual([p['page'] for p in data['pages']],[1,2])
+        self.assertEqual([p['native_dependencies_unchanged'] for p in data['pages']],[False,True])
+        self.assertEqual(self.calls,[])  # Reuses verified baseline PNGs, without rerendering originals.
+
+    def test_shared_dimension_changes_include_all_previous_pages(self):
+        import io
+        self.baseline(completion=True)
+        deck=Presentation(io.BytesIO(self.original));deck.slide_width+=100000
+        body=io.BytesIO();deck.save(body)
+        prepare_refinement(self.run,body.getvalue(),self.packet)
+        data=json.loads((self.packet/'refinement-comparison/index.json').read_text())
+        self.assertEqual([p['page'] for p in data['pages']],[1,2])
+        self.assertFalse(data['presentation_and_font_parts_unchanged'])
+        self.assertTrue(all(not p['native_dependencies_unchanged'] for p in data['pages']))
 
     def test_refinement_reuses_only_verified_target_previews_without_rendering(self):
         baseline = self.baseline()

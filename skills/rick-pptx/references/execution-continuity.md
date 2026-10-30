@@ -36,3 +36,10 @@ start one new context for the same role/model, using the current handoff. This i
 execution recovery, not a new author in parallel. It does not relax scope, facts,
 native editability, animation, source constraints or independent review. Missing
 mandatory material must be reported honestly, never fabricated to show progress.
+
+For a complete deck or a finished repair, use manifest save_candidate when available.
+It combines the existing native export/render, authored check and atomic delivery
+declaration. Keep a complete checkpoint after a main useful correction and refresh
+it after further completed changes. Retained working edits alone cannot cross the
+host's explicit-candidate boundary. Preserve older exports; no independent review
+or target-player certification is implied by saving.

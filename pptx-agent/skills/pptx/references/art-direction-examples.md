@@ -96,6 +96,17 @@ A shared path, baseline or object can carry the transition. There is no need to
 redraw every page as an identical container grid or to introduce a different visual
 metaphor for every topic. Other narratives may call for another sequence entirely.
 
+For example, a mechanism might separate detecting a discrepancy from correcting
+it. A following case that lists file names and a success score can hide that
+distinction. Select a source-supported discrepancy or rule application, expose its
+consequence, and retain the two operations' identity through labels, alignment or
+another useful relationship. Keep the case focused instead of copying the entire
+overview again. If the source supplies only a rule, show that exact evidence; use a
+clearly labeled teaching instance only where allowed, never a fabricated case result.
+Rendered check: can the audience point to the instance of each necessary operation
+and see the detail supporting the result? Source notes can document provenance,
+but should not be the only place this essential mapping exists.
+
 When studying a reference series, examine both what repeats and what changes.
 Borrow a useful continuity principle, test it on the current pages and retain its
 concrete application. A list of palette values or artist names does not supply

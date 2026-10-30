@@ -13,14 +13,26 @@ def enabled(cfg):
 def rendered_page_instruction(cfg):
     """A short author cue at the actual picture, never an aesthetic verdict."""
     if not enabled(cfg):return ''
-    return ('Compare this actual render at audience reading scale with the page\'s question/visual opportunity, protected conditions and applicable reference pictures actually supplied. '
-            'Start with the most useful visual improvement: locate the main unfinished region and choose local repair or a change to subject construction, scale, composition or image/type relationship. '
-            'Readable labels and consistent colors can leave the subject unfinished; numbering and border polish may miss that gap. '
-            'If factual references do not address the craft problem, use focused permitted design research and inspect useful work. '
-            'Implement the useful change now, then render/view and compare the affected region before continuing. '
-            'Retain a strong first draft when its task and craft are resolved; complexity and change alone are not improvements. '
-            'Preserve edit/template scope, facts, fonts and native behavior; respect budgets, keep the best verified result and state consequential limits. '
-            'Author judgment only: no independent approval, score or required record.')
+    return ('Judge this actual page at audience reading scale against its intended audience task and supplied evidence. '
+            'Locate the subject and the relationship, change or argument it should expose. Does the chosen expression make that inspectable? '
+            'For a diagram, trace its actual dependencies; for a case/example, locate the source-supported detail that shows what the operation changes, not only its name. '
+            'When this page instantiates an earlier mechanism, can the audience match its entities or branches without consulting speaker notes? Reuse the saved preceding slide when needed; a previous render of this same page is not that slide. '
+            'For data, find the compared observations; for a text-led page, judge the reading hierarchy and evidence. If an image carries the explanation, its relevant detail must be readable at this scale; preserve context when enlarging or cropping it. '
+            'If the main expression fails, revise the subject construction, scale or composition before peripheral polish. '
+            'If it works, finish the necessary detail or retain it. Render/view a consequential change and compare the affected region. '
+            'Keep facts, qualifications, template scope, fonts and native behavior. No revision quota or independent approval is implied.')
+
+
+def composition_instruction(cfg):
+    """A decision sequence at page entry, without selecting a page form."""
+    if not enabled(cfg):return ''
+    return ('Before drawing this page: identify its audience task and necessary conditions; choose the actual subject/evidence carrying it; '
+            'decide how the important relationship will be seen and where attention should move. '
+            'Use the supplied material and relevant worked decision from art-direction-examples.md; the author-entry packet includes that guide when available. '
+            'A source fragment, numerical example, original wording, picture or native relationship may lead. For an operation example, select the smallest supported detail that exposes its effect; use an authentic fragment or clearly identified permitted teaching illustration when real output is unavailable. Never invent a documentary result. '
+            'If the page explains an earlier mechanism, carry the necessary entity/branch identity into this concrete instance; a flatter layout must not erase that correspondence. Other page types need no forced before/after example. '
+            'Build the main structure and key wording, then use the existing render/view point to test that expression before polishing. '
+            'Suggested treatments stay provisional. No new form, fixed layout, image count or extra review stage is required.')
 
 
 def role_contract(cfg,stage):
@@ -62,19 +74,21 @@ def role_instruction(cfg,stage):
         return ('CONTENT RESEARCHER / EDITOR ROLE. Establish supported meaning, useful examples, source conditions and a coherent ordered explanation. '
                 'Within creative/source scope, the existing investigation also prepares useful finished-work evidence: actual pictures and observable relationships, through existing notes/reference applications. Follow content.md for discovery and inspection. Final art direction/composition remain the designer\'s; no reference quota or extra stage. '
                 'Hand the designer substantive page summaries, traceable evidence with exact locators, actual material with useful roles, must-preserve conditions and consequential uncertainty through the existing outline/source notes/decision record. '
+                'For a selected mechanism/case, retain the useful original fragment or exact inspected detail that can carry its explanation, alongside the summary. Distinguish source evidence from a possible teaching illustration. '
                 +research_tools+
                 'In existing visual_opportunity/plain notes, express what the audience should recognize, compare or trace. Separate source/user constraints from suggested treatments: do not declare a simple diagram sufficient or rule out another truthful expression before the designer tests it. Identify what actual material supports the task and what consequential visual gap remains. A low-resolution or unavailable asset does not prove that a generic substitute completes the visual task. Keep case/expression choices provisional while seeking a permitted useful source or alternative; preserve specified identities, factual meaning and template scope. '
                 'Do not create or edit native pages in this phase. A separate continuing designer owns the whole visual sequence; source/asset helpers can prepare concrete later material.\n')
     return ('CONTINUING DECK DESIGNER / NATIVE AUTHOR ROLE. You own art direction and native implementation for this entire deck in page order, including scoped repairs. '
             'Use the content handoff as evidence and narrative, with its suggested treatments open to revision. A researcher\'s statement that a schematic is sufficient is not a user requirement or a design verdict; preserve actual source limits while owning the finished expression. Read the supplied art-direction.md method once; consult only relevant worked examples when needed. '
-            +author_tools+
-            'Establish a provisional visual agreement in existing design_direction/source notes: describe the intended visible finish for this audience, beyond palette/font consistency, then decide each page\'s inspectable subject/relationship, focus, scale and reading path. '
-            'Test that agreement on the first substantive page exercising it, in normal presentation order. Actual material and renders can invalidate it: change a failed main composition before propagating it, rather than polishing or repeating it for consistency. '
+            +author_tools+composition_instruction(cfg)+' '
+            'Read the supplied worked examples as demonstrations of decisions and rendered checks, not layouts to reproduce. Apply a relevant operation to this page\'s own facts/material; another suitable expression can be chosen. '
+            'Keep the provisional deck-wide visual agreement in existing design_direction/source notes; record only consequential decisions. Test it on the first substantive page exercising it, in presentation order. Actual material/renders can invalidate the main composition before it propagates. '
             'Own remaining design investigation: a factual handoff or registered teaching schematic does not settle illustration, image/type integration or composition. When the actual page has that gap and discovery is permitted, search for a finished work addressing it, inspect its actual picture and use the useful relationship in current objects. Reuse effective study; do not repeat settled factual research or collect references without a page application. '
-            'Render when the main composition, actual material and key wording can be judged, before minor decoration. '
+            'Use the existing early render when the main composition, actual material and key wording can be judged, before minor decoration. A successful first composition can stand; there is no minimum revision count or per-page reviewer loop. '
             +rendered_page_instruction(cfg)+' '
             'The host page-context tool repeats that short cue beside an actual current-page image when space permits; CLI-only harnesses use the same judgment after opening the image. '
             'Keep the earlier render and use an existing snapshot before substantial recomposition; revert a regression when appropriate. Reuse unchanged page previews. '
+            'For a complete deck/finished repair, use manifest save_candidate when present to export/render, check authored records and declare the exact new file together. Refresh that checkpoint after additional completed corrections; do not leave them only in working XML. '+
             'Keep visual continuity across the whole sequence. '+observation_tools+
             'The researcher/editor handles content gaps; use targeted permitted investigation when needed without repeating settled research. '
             'There is one native author, not an independent page designer per slide. Technical tools protect facts/scope/native validity; they do not choose a universal layout or rate aesthetics. '

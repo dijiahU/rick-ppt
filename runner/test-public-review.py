@@ -43,6 +43,14 @@ class PublicReviewTests(unittest.TestCase):
      trace=self.trace()
      with self.assertRaises(KeyError if absent else TypeError):publish(trace,receipt,3)
      self.assertFalse(trace.flushed)
+ def test_design_status_is_visible_without_changing_public_schema(self):
+  from design_completion import CONTRACT
+  receipt=self.receipt();receipt.update(design_completion=dict(CONTRACT),output_language='zh-CN')
+  receipt['visual']['design_assessment']={'readiness':'needs_revision','primary_findings':['S1']}
+  value=envelope(receipt,'visual',receipt['visual'],3)
+  self.assertEqual(value['schema'],'rickppt-review/v1');self.assertFalse(value['truncated'])
+  self.assertTrue(value['report']['summary'].startswith('设计判断：仍需实质设计修改'))
+  self.assertEqual(envelope(receipt,'content-evidence',receipt['content'],3)['report']['summary'],'Clear')
  def test_local_paths_are_not_published(self):
   report=self.report();report['limitations']=['Inspect /Users/rick/private/report.json and /private/tmp/secret.txt']
   self.assertNotIn('/Users',json.dumps(envelope(self.receipt(),'visual',report,0)))

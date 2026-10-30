@@ -38,6 +38,7 @@ from material_prefetch import MaterialPrefetchBroker
 from execution_continuity import (OutputProgress, ProgressStalled, enabled as continuity_enabled,
                                   stage_role, compact_resume, fresh_prompt,
                                   same_phase_recovery, progress_note, inbox_clear,declared_output)
+from repair_inputs import StageDeadline, deadline_handoff, prepare as prepare_repair_inputs
 
 REPORT_SCHEMA={
  'type':'object','additionalProperties':False,
@@ -68,12 +69,14 @@ def read_json(root,name,limit=500000):
     return json.loads(read_scoped(root,Path(name),limit))
 
 
-def validate_report(value,pages,*,require_design=False):
-    if not isinstance(value,dict) or not set(REPORT_SCHEMA['required'])<=set(value) or set(value)-set(REPORT_SCHEMA['required'])-{'design_assessment'}:raise ValueError('Invalid reviewer report')
+def validate_report(value,pages,*,require_design=False,completion=False,comparison=None,presentation=False):
+    extras={'design_assessment'}|({'design_comparison'} if comparison is not None else set())|({'presentation_findings'} if presentation else set())
+    if not isinstance(value,dict) or not set(REPORT_SCHEMA['required'])<=set(value) or set(value)-set(REPORT_SCHEMA['required'])-extras:raise ValueError('Invalid reviewer report')
     if require_design and 'design_assessment' not in value:raise ValueError('Visual review must assess audience fit, actual sequence and reference transfer')
     if 'design_assessment' in value:
         assessment=value['design_assessment']
-        if not isinstance(assessment,dict) or set(assessment)!={'audience_fit','sequence','reference_transfer'} or any(not isinstance(s,str) or not 5<=len(s.strip())<=2400 for s in assessment.values()):raise ValueError('Invalid visual communication assessment')
+        fields={'audience_fit','sequence','reference_transfer'}
+        if not isinstance(assessment,dict) or set(assessment)!=fields|({'readiness','primary_findings'} if completion else set()) or any(not isinstance(assessment[k],str) or not 5<=len(assessment[k].strip())<=2400 for k in fields):raise ValueError('Invalid visual communication assessment')
     if not isinstance(value['summary'],str) or not isinstance(value['limitations'],list) or any(not isinstance(v,str) for v in value['limitations']):raise ValueError('Invalid review summary')
     if value['pages_reviewed']!=list(range(1,pages+1)):raise ValueError('Reviewer did not cover all pages')
     if not isinstance(value['findings'],list):raise ValueError('Invalid findings')
@@ -87,6 +90,12 @@ def validate_report(value,pages,*,require_design=False):
         if any(not isinstance(f[k],str) or not f[k].strip() for k in ('observation','impact','recommendation')):raise ValueError('Empty review evidence')
         if 'route' in f and f['route'] not in ('content_revision','native_repair','retain_suggestion'):raise ValueError('Invalid finding route')
         if f.get('route')=='retain_suggestion' and f['severity']=='required':raise ValueError('A retained suggestion cannot be a required repair')
+    if completion:
+        from design_completion import validate
+        validate(value,comparison)
+    if presentation:
+        from design_completion import validate_presentation
+        validate_presentation(value)
     return value
 
 
@@ -158,7 +167,7 @@ class Execution:
             lease_check=lease.check,input_revision=lambda:self.journal.state['input_revision'] if self.journal else 0,
             deadline=self.deadline)
 
-    def phase(self,name,prompt,*,root=None,content=False,schema=None,thread=None,public=True,timeout=1200,review_attempt=None,chat_ids=(),images=()):
+    def phase(self,name,prompt,*,root=None,content=False,schema=None,thread=None,public=True,timeout=1200,review_attempt=None,chat_ids=(),images=(),timeout_handoff=None):
         """One isolated app-server phase with continuous host brokers and steering."""
         root=Path(root or self.job);phase_id=uuid.uuid4().hex
         output='phase-'+phase_id+'.json'
@@ -206,7 +215,7 @@ class Execution:
         if public:self.reporter.offset=0
         broker=self.interactive_brokers.setdefault(str(root),InteractiveHostBroker(self.cfg,root,trajectory=self.trajectory))
         started=time.monotonic();server=None;active_thread=None;primary_turn=None;events=[];api_calls=[]
-        progress_resetting=False;progress_deferred=False;retired_threads=set();host_handoff=None
+        progress_resetting=False;progress_deferred=False;retired_threads=set();host_handoff=None;stopping_for_handoff=False
         client_message_id=str(uuid.uuid4())
         if review_attempt:review_attempt.started(phase_id,path,client_message_id)
         def event(value):
@@ -221,7 +230,9 @@ class Execution:
             if (public or chat_ids) and self.conversation:self.conversation.assistant(value,scope=name+'-'+phase_id)
         def tick():
             now=time.monotonic()
-            if now>self.deadline or now-started>timeout:raise TimeoutError('Presentation stage exceeded its time budget: '+name)
+            if now>self.deadline:raise TimeoutError('Presentation execution time limit reached')
+            if not stopping_for_handoff and now-started>timeout:
+                raise StageDeadline('Presentation stage exceeded its time budget: '+name)
             self.lease.check()
             self.bridge.render_requests(root,trajectory=self.trajectory,tick=self.lease.check)
             broker.poll();importer.poll(activity);self.trace.poll(trace_stream)
@@ -285,7 +296,25 @@ class Execution:
                 if public and self.journal:self.journal.bind_session(active_thread,primary_turn)
                 if review_attempt:review_attempt.bind(active_thread,primary_turn)
                 while True:
-                    server.pump(.2)
+                    try:
+                        server.pump(.2)
+                    except StageDeadline:
+                        if not (timeout_handoff and guarded and name.startswith('repair-') and not schema):raise
+                        stopping_for_handoff=True
+                        try:
+                            def check_current(revision):
+                                self.review_tick()
+                                if self.journal.state['input_revision']!=revision or not inbox_clear(self.journal):
+                                    raise RevisionPending('Input changed at repair candidate handoff')
+                            host_handoff=deadline_handoff(server,active_thread,primary_turn,root,timeout_handoff,
+                                check_current=check_current,timeout=max(0,min(15,self.deadline-time.monotonic())),
+                                recoveries=list(self.journal.state.get('recoveries',{}).values()))
+                            if not host_handoff:raise
+                            self.journal.checkpoint(root,reason='repair_deadline_candidate')
+                            self.trace.emit('note','Declared repair candidate handed to normal verification',detail=host_handoff)
+                            record(self.trajectory,'emit','host.author_handoff',host_handoff)
+                            break
+                        finally:stopping_for_handoff=False
                     completed=server.completed_turns.get((active_thread,primary_turn))
                     if completed and completed.get('status')!='completed':
                         label=self.cfg.get('_harness_transport','Codex')
@@ -694,10 +723,21 @@ class Execution:
         if not set(images)<=set(files):raise ReviewSessionError('Initial reviewer image is outside the frozen role inputs')
         if prepared:prompt+='\n'+prepared
         inputs=selected_files(root,files,source_identity=sessions.source_identity)
-        ledger=sessions.role(role,prompt,inputs)
         catalog=Path(self.cfg['plugin'])/'skills/pptx/assets/workflow-choices.json'
         require_design=role=='visual' and catalog.is_file() and json.loads(catalog.read_text())['version']>=3
-        checker=lambda value:validate_report(value,count,require_design=require_design)
+        from design_completion import enabled as completion_enabled,comparison_input,schema as completion_schema,presentation_schema,presentation_enabled
+        completion=require_design and not scoped and completion_enabled(self.cfg)
+        presentation=role=='content-evidence' and not scoped and presentation_enabled(self.cfg)
+        comparison=comparison_input(root,images,sessions.identity['artifact']['sha256']) if completion else None
+        if completion:
+            # This policy is part of the sealed prompt identity, including cache reuse.
+            prompt+='\nTrusted design completion policy:\n'+read_scoped(Path(self.cfg['plugin'])/'skills/pptx','references/design-completion.md',30000).decode()
+            if comparison is not None:prompt+='\nHost-bound comparison input: '+json.dumps(comparison)
+        if presentation:
+            guide=read_scoped(Path(self.cfg['plugin'])/'skills/pptx','references/design-completion.md',30000).decode()
+            prompt+='\nTrusted presentation policy (apply the final content-report section; do not add a visual design assessment):\n'+guide
+        ledger=sessions.role(role,prompt,inputs)
+        checker=lambda value:validate_report(value,count,require_design=require_design,completion=completion,comparison=comparison,presentation=presentation)
         cached=ledger.cached(checker)
         if cached:
             report,state=cached
@@ -712,6 +752,8 @@ class Execution:
         attempt=ledger.begin(root)
         try:
             schema=VISUAL_REPORT_SCHEMA if require_design else REPORT_SCHEMA
+            if completion:schema=completion_schema(schema,comparison)
+            if presentation:schema=presentation_schema(schema)
             format_prompt=prompt;format_thread=None
             for formatting in range(2 if self.cfg.get('_model_profile') else 1):
                 try:
@@ -908,12 +950,19 @@ class Execution:
             reports={'content':content_job(self),'visual':visual_job(self)}
         inventory=json.loads((packet/'inventory.json').read_text())
         motion=any(s.get('timing_targets') or any(any(k in r.get('type','').lower() for k in ('audio','video','media')) for r in s.get('media',[])) for s in inventory.get('slides',[]))
+        from design_completion import enabled as completion_enabled,CONTRACT,PRESENTATION,readiness,presentation_enabled
+        completion=not scoped and completion_enabled(self.cfg)
         for kind,report in reports.items():
-            self.reporter.review_state(kind,'changes_requested' if any(f['severity']=='required' for f in report['findings']) else 'unverified' if kind=='visual' and motion else 'passed')
+            design_state=readiness(report) if kind=='visual' and completion else None
+            if completion and kind=='content' and report.get('presentation_findings'):design_state='needs_revision'
+            self.reporter.review_state(kind,'changes_requested' if any(f['severity']=='required' for f in report['findings']) or design_state=='needs_revision' else 'unverified' if kind=='visual' and (motion or design_state=='uncertain') else 'passed')
         self.reporter.flush(force=True)
         receipt={'artifact_sha256':digest,'round':round_number,'input_revision':original_identity['input_revision'],
                  'plugin_version':original_identity['plugin_version'],'review_mode':'source-fidelity' if scoped else 'substantive',
                  'parallel':self.cfg.get('parallel_reviews',False),'content_first_view':blind_holder['report'],**reports}
+        if completion:
+            receipt.update(design_completion=dict(CONTRACT),output_language=resolved.get('language'))
+            if presentation_enabled(self.cfg):receipt['content_presentation']=dict(PRESENTATION)
         from design_feedback import mark_response
         mark_response(self.cfg,receipt,scoped=scoped)
         record(self.trajectory,'emit','review.result',receipt)
@@ -979,7 +1028,9 @@ def _repair_candidate(run,base,author,findings,number,*,content_required=True,re
     if combined_content:
         author+=' This revision includes source/content corrections. In this same context, first inspect retained corrections and actual relevant sources/findings, resolve remaining facts/explanation/examples and update source-notes.md, outline.json and corresponding decision-plan fields; publish the updated outline. Reuse completed verified content work. Then apply those resolved corrections to the frozen candidate. Preserve content-before-native order without a separate planning handoff or repeat reading. Do not invent evidence or skip actual source work.'
     from design_feedback import optional_response
-    optional=optional_response(read_json(run.job,findings.name))
+    review=read_json(run.job,findings.name)
+    optional=optional_response(review)
+    direct,images=prepare_repair_inputs(run,review)
     direction=(' This is the single bounded designer response to optional visual feedback. There are no required defects. '
                'Assess the directions against the actual page and neighboring sequence. Prioritize feasible gaps with the largest audience benefit in subject recognition, explanation, composition or substantive craft; do not exhaust this bounded pass on easy peripheral polish while a consequential visual task is addressable. '
                'When a useful correction needs missing material, check the existing permitted acquisition/alternative route within the remaining budget before treating present absence as impossibility. Honor no-search/source/template limits and asset permissions; never fake documentary evidence. Apply useful scoped improvements or retain a suggestion with a concrete material/scope/time reason. '
@@ -987,7 +1038,16 @@ def _repair_candidate(run,base,author,findings,number,*,content_required=True,re
                'If no presentation bytes change, keep the existing delivery.json artifact; if changed, export a fresh file and update delivery.json without overwriting prior exports.') if optional else (
                ' This is a revision. Fix required findings and assess useful suggestions. Record specific changes/retained suggestions in review.md. '
                'Export to a fresh filename and update delivery.json; do not overwrite a previous export.')
-    run.phase(repair_name,author+f' Read {findings.name}.'+direction+context,thread=thread,timeout=360 if optional else 2700 if combined_content else 1800)
+    from design_completion import CONTRACT
+    if optional and review.get('design_completion')==CONTRACT:
+        direction=(' This is the single bounded response to an explicit presentation/design gap from the independent reviews. Technical checks passed; a visual ready judgment does not dismiss a source-checked content presentation priority. '
+            'Prioritize the host repair input and the nominated presentation_findings/primary_findings, their page/region, audience impact and main action. Use the attached actual page and relevant native objects; preserve facts, source/template scope, native editability and click groups. '
+            'Complete the main visible improvement and export a complete candidate early, before peripheral polish. Use existing permitted material routes if needed. '
+            'Record concrete changes or a scope/material/time limitation in review.md. A no-op or a statement of intent does not resolve a design gap. '
+            'If bytes change, export a fresh file and update delivery.json; otherwise preserve the existing artifact. Do not rebuild the entire deck or overwrite previous exports.')
+    handoff={'timeout_handoff':{'sha256':review['artifact_sha256'],'input_revision':review['input_revision']}} if optional else {}
+    run.phase(repair_name,author+f' Read {findings.name}.'+direction+context+direct,thread=thread,
+              timeout=360 if optional else 2700 if combined_content else 1800,**({'images':images} if images else {}),**handoff)
     authored=run.delivery();source=Path(authored['path'])
     relative=source.relative_to(run.job).as_posix() if source.is_absolute() else source.as_posix()
     run.complete_phase(repair_name,['delivery.json',relative,findings.name]+(['decision-plan.json'] if (run.job/'decision-plan.json').is_file() else [])+(['outline.json','source-notes.md'] if combined_content else []),'review')
@@ -1239,8 +1299,16 @@ def _run_workflow(run,bridge,cfg,task,job,payload,lease,reporter):
             artifact,frozen,rendered,receipt=_rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline)
             break
         required=[f for k in ('content','visual') for f in receipt[k]['findings'] if f['severity']=='required']
-        # A polish attempt is a transaction over an accepted result. A defect
-        # introduced by that attempt cannot create a new required-repair chain.
+        if baseline is not None:
+            from design_completion import selection
+            choice=selection(baseline['receipt'],receipt)
+            if choice is not None:
+                write_json(run.records/(task['id']+'-design-selection-'+uuid.uuid4().hex+'.json'),choice)
+                record(getattr(run,'trajectory',None),'emit','design.version_selection',choice)
+                if choice['selected']=='baseline':
+                    artifact,frozen,rendered,receipt=_rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline)
+                    break
+        # An optional response cannot create a new required-repair chain.
         if baseline is not None and required:
             artifact,frozen,rendered,receipt=_rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline)
             break
@@ -1281,6 +1349,11 @@ def _run_workflow(run,bridge,cfg,task,job,payload,lease,reporter):
     review_folder.mkdir(mode=0o700)
     lines=['# Independent audience review','',f"Artifact SHA-256: {receipt['artifact_sha256']}",'',
            'Required findings were resolved before delivery. Suggestions are optional and are retained below; they are not claimed as applied.','']
+    from design_completion import notice as completion_notice
+    notice=completion_notice(receipt)
+    if notice:
+        lines.extend([notice,''])
+        reporter.event('working',notice,category='note')
     for kind in ('content','visual'):
         report=receipt[kind];lines.extend(['## '+kind.title(),'',report['summary'],''])
         for finding in report['findings']:

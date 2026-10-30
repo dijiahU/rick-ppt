@@ -46,7 +46,10 @@ class RoleTests(unittest.TestCase):
   self.assertEqual(author['handoff']['inputs']['source-notes.md']['sha256'],hashlib.sha256((self.job/'source-notes.md').read_bytes()).hexdigest())
   self.assertTrue(any(Path(d['path']).name=='art-direction.md' for d in author['documents']))
   for text in [json.dumps(research),json.dumps(author)]:
-   for absent in ['SYNTHETIC-HOST-SECRET','SYNTHETIC-PROVIDER-SECRET','OPTIONAL EXAMPLE BODY']:self.assertNotIn(absent,text)
+   for absent in ['SYNTHETIC-HOST-SECRET','SYNTHETIC-PROVIDER-SECRET']:self.assertNotIn(absent,text)
+  self.assertNotIn('OPTIONAL EXAMPLE BODY',json.dumps(research))
+  self.assertIn('OPTIONAL EXAMPLE BODY',json.dumps(author))
+  self.assertNotIn('OPTIONAL EXAMPLE BODY',json.dumps(self.packet('repair')))
  def test_partial_and_oversized_evidence_stays_available_without_invented_summaries(self):
   original=b'{"version":4,"pages":[';(self.job/'decision-plan.json').write_bytes(original)
   value=self.packet('repair');self.assertEqual(value['handoff']['inputs']['decision-plan.json']['state'],'partial')

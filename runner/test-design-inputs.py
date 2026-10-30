@@ -68,6 +68,18 @@ class Tests(unittest.TestCase):
             server.start_thread(dynamic_tools=self.inputs.specs())
             return server.request('test/approval',{'method':'item/tool/call','params':params})
 
+    def test_composition_method_crosses_actual_tool_wire_without_creating_a_page(self):
+        before={p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()}
+        with patch('design_inputs.record') as capture:
+            result=self.wire(self.params())
+        ctx=json.loads(result['contentItems'][0]['text'])
+        self.assertEqual(ctx['author_design_prompt_stage'],'composition')
+        self.assertEqual(result['contentItems'][-1],{'type':'inputText','text':ctx['author_design_prompt']})
+        self.assertTrue(any(x['type']=='inputImage' for x in result['contentItems']))
+        sent=next(c.args[3] for c in capture.call_args_list if c.args[2]=='design.author_cue_sent')
+        self.assertEqual(sent['sha256'],hashlib.sha256(result['contentItems'][-1]['text'].encode()).hexdigest())
+        self.assertEqual(before,{p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()})
+
     def test_page_preview_crosses_wire_before_and_after_native_edit_with_real_version_receipts(self):
         ws=self.native(); first=self.rendered(ws,'white')
         params={**self.params(),'arguments':{'page_id':'first','workspace':str(ws.root)}}
@@ -248,7 +260,7 @@ class Tests(unittest.TestCase):
             ctx=json.loads(result['contentItems'][0]['text']); row=ctx['visual_inputs'][0]
             self.assertTrue(result['success']);self.assertEqual(row['role'],'page_preview')
             self.assertEqual(row['state'],'not_attached');self.assertEqual(row['reason'],reason)
-            self.assertNotIn('author_design_prompt',ctx)
+            self.assertEqual(ctx['author_design_prompt_stage'],'composition')
             self.assertNotIn('design.page_preview_sent',[call.args[2] for call in capture.call_args_list])
         check('not_recorded')
         self.rendered(ws)
@@ -293,8 +305,8 @@ class Tests(unittest.TestCase):
         context = json.loads(result['contentItems'][0]['text'])
         self.assertEqual(context['page']['id'],'first')
         self.assertEqual(context['page']['summary'],'Keep the actual evidence and qualification.')
-        self.assertNotIn('author_design_prompt',context)
-        self.assertEqual(len(result['contentItems']),3)
+        self.assertEqual(context['author_design_prompt_stage'],'composition')
+        self.assertEqual(sum(x['type']=='inputImage' for x in result['contentItems']),2)
         for row in context['visual_inputs']:
             block = result['contentItems'][row['content_index']]
             self.assertEqual(block['type'],'inputImage')
@@ -317,11 +329,11 @@ class Tests(unittest.TestCase):
         (self.job/'source-notes.md').write_text('```pptx-handoff\n'+json.dumps({
             'page_id':'first','evidence':[{'source':'https://example.test/image.png','claim':'Text only'}]})+'\n```\n')
         result=self.inputs.handle(self.params())
-        self.assertTrue(result['success']); self.assertEqual(len(result['contentItems']),1)
-        self.assertNotIn('author_design_prompt',json.loads(result['contentItems'][0]['text']))
+        self.assertTrue(result['success']); self.assertFalse(any(x['type']=='inputImage' for x in result['contentItems']))
+        self.assertEqual(json.loads(result['contentItems'][0]['text'])['author_design_prompt_stage'],'composition')
         with patch('design_inputs.record') as record:
             self.inputs.sent(self.params(),result)
-        record.assert_not_called()
+        self.assertEqual([c.args[2] for c in record.call_args_list],['design.author_cue_sent'])
 
     def test_failed_transport_write_does_not_emit_a_delivery_receipt(self):
         with patch('design_inputs.record') as record:
@@ -345,7 +357,7 @@ class Tests(unittest.TestCase):
         self.plan['references'][0].update(inspection='unavailable',evidence=None)
         self.save(); before={p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()}
         result=self.inputs.handle(self.params()); context=json.loads(result['contentItems'][0]['text'])
-        self.assertTrue(result['success']); self.assertEqual(len(result['contentItems']),1)
+        self.assertTrue(result['success']); self.assertFalse(any(x['type']=='inputImage' for x in result['contentItems']))
         self.assertEqual(context['references'][0]['inspection'],'unavailable')
         self.assertEqual([r['file'] for r in context['visual_inputs']],['missing.png','animation.gif'])
         self.assertTrue(all(r['state']=='not_attached' for r in context['visual_inputs']))
@@ -355,7 +367,7 @@ class Tests(unittest.TestCase):
         (self.job/'source-notes.md').write_text('```pptx-handoff\n'+json.dumps({
             'page_id':'first','materials':[{'file':'main.png','role':'Main subject'}]})+'\n```\n')
         result=self.inputs.handle(self.params()); context=json.loads(result['contentItems'][0]['text'])
-        self.assertEqual(len(result['contentItems']),3)
+        self.assertEqual(sum(x['type']=='inputImage' for x in result['contentItems']),2)
         self.assertEqual(context['visual_inputs'][0]['content_index'],context['visual_inputs'][1]['content_index'])
         later=self.inputs.handle(self.params('later')); context=json.loads(later['contentItems'][0]['text'])
         self.assertEqual(context['references'],[])
@@ -368,21 +380,21 @@ class Tests(unittest.TestCase):
             self.inputs.sent(self.params(),first)
         later=self.inputs.handle({**self.params('later'),'callId':'call-2'})
         context=json.loads(later['contentItems'][0]['text'])
-        self.assertEqual(len(later['contentItems']),2)  # Later material only; reference already sent.
+        self.assertEqual(sum(x['type']=='inputImage' for x in later['contentItems']),1)  # Later material only; reference already sent.
         self.assertEqual(context['references'][0]['applications'][0]['pages'],['later'])
         self.assertEqual(context['visual_inputs'][-1]['state'],'previously_supplied')
         self.assertEqual(context['visual_inputs'][-1]['prior_call_id'],'call-1')
         fresh=self.inputs.handle({**self.params('later'),'threadId':'new-thread'})
-        self.assertEqual(len(fresh['contentItems']),3)
+        self.assertEqual(sum(x['type']=='inputImage' for x in fresh['contentItems']),2)
         repeat=self.inputs.handle({**self.params(),'arguments':{'page_id':'first','repeat_images':True}})
-        self.assertEqual(len(repeat['contentItems']),3)
+        self.assertEqual(sum(x['type']=='inputImage' for x in repeat['contentItems']),2)
 
     def test_escape_changed_file_and_message_limit_do_not_claim_delivery(self):
         (self.root/'private.png').write_bytes((self.job/'main.png').read_bytes())
         (self.job/'link.png').symlink_to(self.root/'private.png')
         self.plan['pages'][0]['assets']=[{'status':'ready','file':'link.png'}]; self.plan['references']=[]; self.save()
         result=self.inputs.handle(self.params())
-        self.assertEqual(len(result['contentItems']),1)
+        self.assertFalse(any(x['type']=='inputImage' for x in result['contentItems']))
         self.plan['pages'][0]['assets']=[{'status':'ready','file':'main.png'}]; self.save()
         context=self.inputs.context('first')
         Image.new('RGB',(43,29),'red').save(self.job/'main.png')

@@ -97,8 +97,7 @@ The continuing designer reads [Art direction](references/art-direction.md) once
 at design entry and uses [Sequential craft](references/content-led-composition.md)
 while authoring. The guide gives concrete ways to develop focus, scale, spatial
 relationships, typography, imagery and rhythm without a fixed page taxonomy.
-[Worked design decisions](references/art-direction-examples.md) are available when
-a relevant example helps; they are not a required structure for every page.
+[Worked design decisions](references/art-direction-examples.md) demonstrate decisions and rendered checks. The host supplies this short guide at first author entry when available; otherwise read a relevant example. Apply the operation to current evidence, keeping composition open.
 
 Establish one short, provisional deck-wide visual agreement in the existing
 design_direction and source notes, then resolve the current page's composition
@@ -155,10 +154,15 @@ The page-design helper can optionally bind consequential author observations to
 render bytes in existing notes; these records grant no independent review pass.
 
 Register each applied outside work once with its inspected evidence and page actions.
-Before final export, use design_references.py --workspace PARTS_DIR to generate
-page reference associations/slide notes; preserve existing notes. Run
-workflow_decisions.py --stage authored --artifact YOUR_EXPORT on the exact candidate.
-This checks coverage, assets, notes and native behavior, not aesthetic quality.
+Before saving a complete candidate, use design_references.py --workspace PARTS_DIR
+to write page reference associations/slide notes; preserve existing notes.
+Use `scripts/candidate_save.py --task-root TASK_DIR --workspace PARTS_DIR --output exports/CHOSEN_VERSION.pptx`
+to export/render, run the existing authored check and atomically update delivery.json.
+Save meaningful finished repairs before further optional polish, refreshing after
+additional completed corrections. The check covers assets, notes and native behavior,
+not aesthetic quality. The original export route remains available: run
+workflow_decisions.py --stage authored --artifact YOUR_EXPORT on its exact candidate
+and declare it explicitly. Independent review follows either route.
 
 ## Review, revise and deliver
 
@@ -172,11 +176,17 @@ Report technical delivery validity and design readiness distinctly. A readable,
 accurate deck may still need concrete design refinements. Required findings concern
 explicit requirements, substantive errors/omissions, comprehension/readability or
 broken native features; discretionary artistic alternatives remain suggestions.
-Use existing bounded repair routes, not taste-score loops. In the hosted continuing-
-designer workflow, useful first-review visual suggestions can return once to the
-designer without becoming mandatory defects. A deliberate no-op reuses reviewed
-bytes; changed bytes are reviewed normally. Keep the exact reviewed baseline if
-optional refinement cannot complete, preserve attempted work and report it honestly. Record findings/resolutions
+Authors and visual reviewers use the same [Design completion](references/design-completion.md)
+standard. At first design entry and existing render points, judge the actual
+subject, visible relationships and craft against this task's use, not the presence
+of information alone. The host consumes ready / needs_revision / uncertain
+separately from technical validity. Substantive primary findings can return once
+to the continuing author within the existing bound; minor preferences alone do
+not trigger a pass. Compare actual before/after pages: keep a valid candidate
+only when supported as better without material regression; otherwise retain the
+reviewed baseline. Preserve incomplete/uncertain design status at the budget
+boundary; no repeated taste-score loop or unsupported readiness claim.
+Historical receipts and scoped fidelity edits retain their prior policy. Record findings/resolutions
 in review.md with reviewer and frozen artifact hash/version. Static timing/state
 inspection is not target-player playback; say exactly what was verified.
 

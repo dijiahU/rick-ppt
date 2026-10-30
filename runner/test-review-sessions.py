@@ -119,6 +119,81 @@ class ReviewRecoveryTests(unittest.TestCase):
         self.review(self.execution())
         self.assertEqual(len(self.calls),3)
 
+    def test_completion_policy_and_comparison_use_actual_first_turn_images_and_sealed_identity(self):
+        from PIL import Image
+        from design_completion import CONTRACT, PRESENTATION, PRESENTATION_MARKER
+        catalog=self.plugin/'skills/pptx/assets/workflow-choices.json';catalog.parent.mkdir();catalog.write_text('{"version":4}')
+        guide=self.plugin/'skills/pptx/references/design-completion.md';guide.write_text('SHARED COMPLETION POLICY FIXTURE\n'+PRESENTATION_MARKER)
+        images=[]
+        for number in (1,2):
+            name=f'reading-page-{number}.png';Image.new('RGB',(900,506),'blue').save(self.packet/name)
+            body=(self.packet/name).read_bytes()
+            images.append({'path':name,'page':number,'sha256':hashlib.sha256(body).hexdigest(),'bytes':len(body)})
+        (self.packet/'review-index.json').write_text(json.dumps({'schema':'native-review-index/v1','reading_pages':images,
+            'state_contacts':[],'page_contacts':[],'slides':[{'page':n,'text':'Actual canvas'} for n in (1,2)]}))
+        folder=self.packet/'refinement-comparison';folder.mkdir()
+        before='refinement-comparison/before-page-2.png';Image.new('RGB',(900,506),'gold').save(self.packet/before)
+        body=(self.packet/before).read_bytes();digest=hashlib.sha256(self.artifact).hexdigest()
+        (folder/'index.json').write_text(json.dumps({'schema':'native-edit-comparison/v1','kind':'reviewed_refinement_baseline',
+            'status':'prepared','source_sha256':'a'*64,'candidate_sha256':digest,'findings':[{'id':'V1'}],
+            'pages':[{'page':2,'before':{'path':before,'sha256':hashlib.sha256(body).hexdigest(),'bytes':len(body)}}]}))
+        original=self.phase
+        def phase(name,prompt,**kwargs):
+            report,thread=original(name,prompt,**kwargs)
+            if name.startswith('visual'):
+                self.assertIn(guide.read_text(),prompt)
+                self.assertIn('"visual_input_complete": true',prompt)
+                self.assertEqual(kwargs['images'],['reading-page-1.png','reading-page-2.png',before])
+                for path in kwargs['images']:
+                    actual=(kwargs['root']/path).read_bytes()
+                    self.assertEqual(actual,(self.packet/path).read_bytes())
+                    self.assertTrue(actual.startswith(b'\x89PNG\r\n\x1a\n'))
+                self.assertEqual(kwargs['schema']['properties']['design_comparison']['properties']['candidate_sha256']['enum'],[digest])
+                report['design_assessment']={'audience_fit':'Main relationship is now visible.','sequence':'Both pages serve the stated sequence.',
+                    'reference_transfer':'No external artwork is applied.','readiness':'ready','primary_findings':[]}
+                report['design_comparison']={'baseline_sha256':'a'*64,'candidate_sha256':digest,'verdict':'better',
+                    'reason':'The subject and explanation now align.','regression_findings':[],
+                    'resolutions':[{'id':'V1','status':'resolved','evidence':'Corresponding regions are visibly linked.'}]}
+            else:
+                if name.startswith('content-evidence'):
+                    self.assertIn(guide.read_text(),prompt)
+                    self.assertIn('presentation_findings',kwargs['schema']['required'])
+                    report['presentation_findings']=[]
+                else:
+                    self.assertNotIn('SHARED COMPLETION POLICY FIXTURE',prompt)
+                    self.assertNotIn('presentation_findings',kwargs['schema']['properties'])
+                self.assertNotIn(before,kwargs.get('images',[]))
+                self.assertNotIn('design_assessment',kwargs['schema']['properties'])
+            return report,thread
+        self.run.phase=phase
+        result=self.review();self.assertEqual(result['design_completion'],CONTRACT)
+        self.assertEqual(result['content_presentation'],PRESENTATION)
+        recovered=self.execution();recovered.phase=phase
+        self.review(recovered);self.assertEqual(len(self.calls),3)
+        guide.write_text('CHANGED SHARED COMPLETION POLICY FIXTURE\n'+PRESENTATION_MARKER)
+        newer=self.execution();newer.phase=phase
+        self.review(newer)
+        self.assertEqual(len(self.calls),5)  # Both final policies changed; blind report remains reusable.
+
+    def test_new_policy_does_not_turn_scoped_fidelity_edit_into_redesign(self):
+        catalog=self.plugin/'skills/pptx/assets/workflow-choices.json';catalog.parent.mkdir();catalog.write_text('{"version":4}')
+        (self.plugin/'skills/pptx/references/design-completion.md').write_text('NEW COMPLETION POLICY')
+        self.payload.update(mode='edit',brief='Enlarge the font only; preserve the source diagram.')
+        original=self.phase
+        def phase(name,prompt,**kwargs):
+            value,thread=original(name,prompt,**kwargs)
+            self.assertNotIn('NEW COMPLETION POLICY',prompt)
+            if name.startswith('visual'):
+                value['design_assessment']={'audience_fit':'Requested source style is preserved.',
+                    'sequence':'The source order is preserved.', 'reference_transfer':'No additional design source was applied.'}
+                self.assertNotIn('readiness',kwargs['schema']['properties']['design_assessment']['properties'])
+            return value,thread
+        self.run.phase=phase
+        receipt=self.review()
+        self.assertEqual(receipt['review_mode'],'source-fidelity')
+        self.assertNotIn('design_completion',receipt)
+        self.assertNotIn('designer_response',receipt)
+
     def test_v3_visual_review_requires_actual_design_assessment(self):
         catalog=self.plugin/'skills/pptx/assets/workflow-choices.json';catalog.parent.mkdir();catalog.write_text('{"version":3}')
         with self.assertRaisesRegex(ValueError,'audience fit'):self.review()

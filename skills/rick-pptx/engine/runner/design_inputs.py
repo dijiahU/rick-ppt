@@ -160,12 +160,18 @@ class PageDesignInputs:
         if any(item['role'] == 'page_preview' and item['state'] == 'attached' for item in checks):
             from design_roles import rendered_page_instruction
             cue = rendered_page_instruction(self.cfg)
-            if cue:
-                context['author_design_prompt'] = cue
-                # Pixels take precedence. The existing entry guide remains the
-                # fallback when a near-limit image frame leaves no cue space.
-                if len(json.dumps(self.reply(True, context, images)).encode()) > MAX_RESPONSE:
-                    context.pop('author_design_prompt')
+            cue_stage = 'rendered_expression'
+        else:
+            from design_roles import composition_instruction
+            cue = composition_instruction(self.cfg)
+            cue_stage = 'composition'
+        if cue:
+            context['author_design_prompt'] = cue
+            context['author_design_prompt_stage'] = cue_stage
+            # Keep exact picture bytes first when close to the transport limit.
+            if len(json.dumps(self.reply(True, context, images)).encode()) > MAX_RESPONSE:
+                context.pop('author_design_prompt')
+                context.pop('author_design_prompt_stage')
         return self.reply(True, context, images)
 
     @staticmethod
@@ -183,6 +189,14 @@ class PageDesignInputs:
         if params.get('tool') != TOOL or not response.get('success'):
             return
         context = json.loads(response['contentItems'][0]['text'])
+        cue = context.get('author_design_prompt')
+        if cue and any(item.get('type') == 'inputText' and item.get('text') == cue
+                       for item in response['contentItems'][1:]):
+            record(self.trajectory, 'emit', 'design.author_cue_sent', {
+                'page_id': context['page']['id'], 'stage': context.get('author_design_prompt_stage'),
+                'thread_id': params.get('threadId'), 'call_id': params.get('callId'),
+                'sha256': hashlib.sha256(cue.encode()).hexdigest(), 'channel': 'tool-result inputText',
+                'meaning': 'Method supplied, not a completed design decision or quality judgment.'})
         attached = [v for v in context['visual_inputs'] if v['state'] == 'attached']
         if not attached:
             return

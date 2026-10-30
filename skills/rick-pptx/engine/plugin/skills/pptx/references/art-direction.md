@@ -31,11 +31,13 @@ what should dominate, how comparisons will work, and how the sequence changes pa
 Keep the resulting short, provisional visual agreement in the existing
 design_direction and source notes. It is a hypothesis to test with actual material
 and rendered pages, not an instruction to reproduce the same arrangement later.
-Describe the intended visible finish for this audience: what in subject treatment,
-spatial detail, typography or image/annotation relationships should distinguish
-the finished page from a quick explanatory sketch? Palette and font choices alone
-do not specify that ambition. Keep it content-led and provisional; a quiet,
-precise page may be the finished expression and added complexity is not a goal.
+Describe the intended finished result: what should this audience recognize or
+understand, and how will the subject, type or image/annotation relationship carry
+it? Resolve the main expression in the first authored candidate rather than
+leaving design to downstream review. Complete text and matching palette/fonts
+alone do not establish that result. Keep it content-led and provisional; a quiet,
+precise page may already be finished. No minimum revision count, fixed planning
+duration, per-page approval or added complexity is a goal.
 Update it when a tested decision changes, not for every small move.
 Do not create another compulsory questionnaire, classification or approval stage.
 

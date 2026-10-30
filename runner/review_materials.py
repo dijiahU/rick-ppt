@@ -141,7 +141,7 @@ def prepare_review_materials(root, role, *, scoped=False, include_role_documents
     )
     if role == 'visual' and refinement_path.is_file() and refinement.get('status') == 'prepared':
         instruction += (
-            'REFINEMENT RECHECK: refinement-comparison/index.json contains the prior visual observations '
+            'REFINEMENT RECHECK: refinement-comparison/index.json contains the prior presentation/design observations '
             'and its real before images attached after candidate/source evidence. Judge the current canvas first, '
             'then compare affected regions. In existing assessment/findings state whether the important old gap '
             'is resolved, partly resolved, remains or regressed, with observable evidence. A changed file, extra '
@@ -150,6 +150,8 @@ def prepare_review_materials(root, role, *, scoped=False, include_role_documents
             'readability and native pacing. A prior accepted baseline is not an ideal or proof of finished design. '
             'Keep required/suggestion boundaries and the existing bounded response policy; no new score/pass. '
         )
+        if any(f.get('source_review')=='content' for f in refinement.get('findings',[])):
+            instruction+=' Source-qualified content/visual IDs identify separate original findings; use those exact IDs in resolutions. Check visible presentation changes, not a new scientific judgment. The independent content pass separately rechecks source meaning. '
     elif role == 'visual' and refinement_path.is_file():
         instruction += (
             'REFINEMENT COMPARISON UNAVAILABLE: read refinement-comparison/index.json for the limitation. '

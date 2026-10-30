@@ -1,106 +1,103 @@
 # Sequential design and native craft
 
-The continuing designer owns the whole deck's visual direction and native pages.
-Read [Art direction](art-direction.md) once for the design method. Use [worked design decisions](art-direction-examples.md)
-when a relevant worked transformation would help; do not load all examples at every
-page. This guide connects that method to actual sequential authoring.
+One continuing designer owns the deck and its scoped repairs, in presentation
+order. Read [Art direction](art-direction.md) once. The existing
+[worked decisions](art-direction-examples.md) demonstrate useful operations and
+rendered checks; they are not layouts, a reference quota or task answers. The
+host supplies that short guide at first author entry when available. CLI-only
+harnesses can read a relevant example directly.
 
-## Content handoff and a visual agreement
+## Establish the deck's visual agreement
 
-Read the audience brief, ordered outline, actual template, source notes and real
-capabilities. Treat research summaries as supported content, not fixed paragraphs
-to distribute across a layout. Inspect original evidence when an example or figure
-needs it. A permitted focused investigation can resolve a consequential gap;
-restarting all topic research is unnecessary.
+Read the brief, ordered outline, actual template and source material. Keep actual
+source/user constraints separate from suggested treatments. In existing
+design_direction/source notes, establish a short provisional agreement: the
+subject's visual character, typography/color roles, relationship/annotation grammar
+and how the sequence serves the audience. A blank branded body does not prescribe
+its composition. Scope, meaning, editability, fonts and native behavior remain
+protected; density, scale, asymmetry, layering and image/type treatment remain open.
+Test the agreement on the first substantive page exercising it, in normal order.
+An attractive title does not validate the body. Update a failed premise before
+propagating it; retain effective pages and semantic encoding.
 
-Establish one short, provisional deck-wide visual agreement in the existing
-design_direction and source notes: protected elements, typographic/color roles,
-diagram/image relationships and intended rhythm. Distinguish protected requirements
-from revisable visual hypotheses. Preserve tested valid choices during recovery;
-planning validation alone is not evidence of good design.
-Use the supplied evidence directly. [Page evidence and observations](page-design.md)
-can retrieve current-page material/uncertainty when notes are large or unclear;
-file availability is distinct from source authenticity and actual inspection.
-Comparable material benefits from consistent encoding; other content can change
-scale, density, emphasis and reading path. No mandatory composition categories,
-artist roster, per-page image requirement or layout rotation.
+## Resolve the current page before detailing it
 
-## Make the current page
+Use this decision order within ordinary authoring, not as five model stages or a
+mandatory written form. Keep only consequential decisions in existing notes.
 
-Resolve the page's actual audience question and the useful subject, relationship,
-example or evidence answering it. Determine the main focus, relative scale and
-reading path before building small objects. When the choice is difficult, compare
-plausible spatial ideas briefly, then implement the suitable one.
+1. **Audience task.** Determine what this audience needs to understand, compare,
+   judge, notice or experience here, with the necessary conditions. Keep the page
+   connected to the preceding explanation; a topic heading alone is insufficient.
+2. **Concrete subject and evidence.** Select what will carry that task: an actual
+   work/image, source passage, data, code/rule fragment, state change or native
+   relationship. Inspect the relevant original detail. Use the research summary
+   as supported narrative, not finished paragraphs to distribute among containers.
+   Retain facts, units, source identity and essential qualifications. Distinguish
+   an explanatory illustration from a real case output; preserve documentary limits.
+   For a case explaining an operation, choose the useful source detail that exposes
+   its effect: an input and changed state, an exact rule acting on an example, or
+   an inspectable output fragment. A component name or benefit statement may orient
+   the audience but does not by itself demonstrate the operation. Use only supported
+   evidence or a clearly identified illustration permitted by the task; no invented
+   real screenshot/result and no compulsory example on unrelated pages.
+3. **Expression and composition.** Decide how the important relationship becomes
+   inspectable and how attention moves through the page. Choose focal scale,
+   supporting hierarchy, space and image/type relations in the deck's visual world.
+   When uncertain, briefly contrast plausible expressions, then develop one.
+   A relevant worked decision or inspected finished work can resolve a specific
+   problem. Layout names and palette values alone do not make that decision.
+   When moving from mechanism to case, keep the necessary entities, branches or
+   comparison conditions recognizable. Read the saved preceding slide if needed;
+   do not flatten away the relationship merely to make a cleaner list. For a source
+   image carrying the explanation, choose the relevant detail and scale it to be
+   inspected, keeping enough labels/context to preserve meaning. An optional overview
+   may stay small when the essential explanation is independently visible.
+4. **Main construction and rendered test.** Build the subject, relationships and
+   key wording with actual material before minor decoration. Plan entry context,
+   semantic click groups, persistent orientation and the complete final state
+   together. Related labels/connectors enter together; groups need no visible card.
+   Render when this expression can be judged and receive the actual preview through
+   the image channel. A path/render report is not a look at the page.
+5. **Finish and retain.** If the main expression works, refine necessary detail:
+   spacing, alignment, annotations, compatible text/connectors and semantic reveals.
+   A strong simple page can stand. Keep a complete candidate checkpoint after a
+   meaningful finished correction, before expanding optional polish.
 
-Compose visible wording, native relationships and actual assets together. A worked
-case should make its consequential input/change/output inspectable where supported.
-An overview may appropriately summarize a process. Exact wording and quantitative
-evidence can themselves lead the page. Choose imagery when it helps this content,
-and preserve the documentary/illustrative boundary and actual source permissions.
+The order guides decisions, not page appearance. Comparable data may share a
+quiet table/plot; original words may lead a text page; a mechanism can show changing
+states. No image, layout diversity, artist, complexity or revision quota applies.
 
-Use installed native helpers for measured text, chosen geometry, crops/layers,
-charts, semantic groups and connector endpoints. They provide object capabilities,
-not a universal page arrangement. Build major structure first and refine supporting
-detail against actual measurements. Keep facts, formulas, units and necessary
-conditions rather than silently shrinking or deleting them to fit.
+## Judge the expression in the existing render loop
 
-For native reveals, plan entry context, meaningful semantic groups, persistent
-orientation and a complete final view. Related labels/connectors enter together;
-a semantic group needs no visible enclosing card. Reuse the existing timing and
-state-check workflow. Static evidence is distinct from actual target-player playback.
+Use the page's actual audience task and relevant supplied references at reading
+scale. For a diagram, trace the dependencies; for evidence, locate the observations
+supporting the claim; for a text-led page, judge its reading hierarchy and meaning.
+Can the viewer inspect the useful subject/detail and follow the intended relation?
+If the chosen main expression fails, change subject construction, scale or
+composition before polishing its borders. Do not preserve a weak arrangement just
+because it already matches earlier colors. Missing/unsuitable material can justify
+focused permitted acquisition or a different provisional expression. Never invent
+source facts/screens or replace mandatory supplied material silently.
 
-## Inspect expression as well as fit
+For a consequential change, keep the previous render and take an existing native
+snapshot. Edit, render/view again and compare the affected region. The page context's
+compare_previous can supply historical pixels; otherwise open the exact saved
+images. Read delivered images directly; reopen only for missing input or detail.
+Do not make decorative changes to prove effort. Use existing author/time bounds;
+author judgment is not independent approval or a design score.
+At natural section boundaries compare existing previews for progression, identity
+and rhythm; no need to rerender unchanged pages or maintain a per-page checklist.
 
-Render once the main composition, actual material and key wording can be judged,
-before spending on minor decoration. View that exact current-page preview through
-the image channel (see page-design.md); a render report or path alone is not a
-look at the picture. Open it at normal reading scale, then uncertain details at full
-size. Ask whether the intended focus leads, the relationship is visible, and every
-prominent image/quote/diagram contributes to the explanation. If the picture still
-requires reconstructing the mechanism from paragraphs, adjust the relevant objects
-or duplicated wording. A quiet page can be finished design; more effects, arrows
-or oversized titles are not automatic improvements.
+## Save a complete candidate
 
-Use the first substantive page exercising the proposed visual language to test it;
-a title-page render alone cannot validate the body design. If the main relationship
-fails, reconsider composition or the direction itself before propagating it to
-later pages. Cosmetic changes do not repair an invisible comparison. Update affected
-existing notes/decisions with the observed reason, without a new form or approval
-gate. Keep page order and the user's factual/template/edit scope.
-
-At that first inspectable render, ask what useful improvement would matter most,
-locate its actual region and decide local repair versus substantial recomposition.
-Do this while making the page, with the existing author/time budget, instead of
-deferring the main design development to final optional repair. Can
-the audience recognize the subject, inspect the useful detail and follow the
-intended relation? Correct arrows between generic blocks may leave recognition
-or craft unresolved. Within creative scope, address that deficit through actual
-material, subject treatment, scale or composition before peripheral polish. Text
-may itself be evidence, quotation or derivation. Compare concrete relationships
-and craft with an appropriate inspected work; factual authority alone does not
-establish that work's design quality. Keep this a design decision, not a form.
-
-For a consequential weakness, identify the actual region and choose a concrete
-correction; make the native edit, render that page again and view its new result.
-Compare the affected before/after region and preserve necessary surrounding
-content. The host page tool's optional compare_previous supplies the last delivered
-preview of the same page/workspace/thread as historical comparison; CLI-only
-harnesses can open the saved prior and current files. Read actual attached images
-directly rather than reopening identical files by default. Keep earlier renders;
-use an existing native snapshot before substantial
-recomposition and revert a regression when appropriate. A first result needs no
-forced edit when meaning, the intended visual task and audience-appropriate
-composition/craft are resolved at reading scale. Readability or a valid export
-alone does not establish that. Work within existing time/repair limits, keep the
-best verified result at the limit and state remaining design gaps honestly; no
-revision quota, taste score or new approval gate. Preserve faithful/scoped edits.
-
-At natural section boundaries compare saved previews for audience progression and
-visual continuity. Use existing images rather than repeatedly rendering the deck.
-Record consequential choices/changes compactly in existing notes, not another form,
-score or approval step. Incorporate independent review directions through scoped
-repairs in the same continuing designer context and preserve reviewed originals.
-When useful, the page-design helper binds a consequential observation to actual
-native inputs and an existing render, including retained/reverted attempts. These
-remain author assessments. Do not create records for every page or rerender older
-pages just to make a record current; existing independent review judges the result.
+Use the installed native helpers or direct OOXML for exact chosen objects and
+unsupported native detail; no page layout is selected by a helper. Measure genuine
+fonts and preserve original parts/IDs/relationships during scoped edits.
+When the deck is complete, scripts/candidate_save.py (or manifest save_candidate)
+combines existing export with real native rendering, the existing authored decision
+check when records exist, and atomic delivery.json declaration. Use a fresh name.
+Save the main finished repair before extra polish, and refresh after further
+completed corrections. A failed save leaves the prior declaration intact; retained
+working edits are not automatically a deliverable. Independent content/visual
+reviews and exact frozen-artifact delivery remain required. Static rendering and
+native timing checks do not certify target-player playback.

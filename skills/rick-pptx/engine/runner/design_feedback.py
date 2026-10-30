@@ -19,6 +19,12 @@ POLICY={'version':1,'max_passes':1}
 
 
 def mark_response(cfg,receipt,*,scoped):
+    from design_completion import CONTRACT,response_needed
+    if receipt.get('design_completion')==CONTRACT:
+        if (enabled(cfg) and not scoped and receipt.get('round')==1
+                and response_needed(receipt)):
+            receipt['designer_response']=dict(POLICY)
+        return receipt
     if (enabled(cfg) and not scoped and receipt.get('round')==1 and
             any(f.get('severity')=='suggestion' for f in receipt['visual']['findings'])):
         receipt['designer_response']=dict(POLICY)
@@ -27,10 +33,20 @@ def mark_response(cfg,receipt,*,scoped):
 
 def host_authorized_response(receipt):
     marker=receipt.get('designer_response')
-    return (isinstance(marker,dict) and marker==POLICY and type(marker.get('version')) is int and
+    from design_completion import CONTRACT,readiness,response_needed,response_findings
+    if not (isinstance(marker,dict) and marker==POLICY and type(marker.get('version')) is int and
             receipt.get('round')==1 and receipt.get('review_mode')=='substantive' and
-            type(receipt.get('input_revision')) is int and isinstance(receipt.get('plugin_version'),str) and
-            any(f.get('severity')=='suggestion' for f in receipt.get('visual',{}).get('findings',[])))
+            type(receipt.get('input_revision')) is int and isinstance(receipt.get('plugin_version'),str)):
+        return False
+    try:
+        if receipt.get('design_completion')==CONTRACT:
+            if not response_needed(receipt):return False
+            if readiness(receipt.get('visual',{}))=='needs_revision':
+                ids=receipt['visual']['design_assessment'].get('primary_findings')
+                if not ids or not set(ids)<={f['id'] for f in receipt['visual']['findings']}:return False
+        return any(f.get('severity')=='suggestion' for f in response_findings(receipt))
+    except (KeyError,TypeError,ValueError):
+        return False
 
 
 def optional_response(receipt):

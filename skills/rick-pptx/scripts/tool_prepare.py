@@ -183,6 +183,10 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
     if batch_script.is_file():
         commands['native_page_batch'] = [interpreter, str(batch_script), '--task-root', str(root),
                                          '--workspace', parts_arg, '--input', 'CHOSEN_PAGE_BATCH.json']
+    candidate_script = SCRIPTS / 'candidate_save.py'
+    if candidate_script.is_file():
+        commands['save_candidate'] = [interpreter, str(candidate_script), '--task-root', str(root),
+                                      '--workspace', parts_arg, '--output', 'exports/CHOSEN_VERSION.pptx']
     if parts_dir:
         commands['refresh'] += ['--workspace', parts_dir]
     progress = root / 'public-progress.py'
@@ -255,6 +259,13 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
             'validation': 'Checks current outline and planning decisions before transactional commit; does not select branches or certify facts/design.'}
         lines += ['For planning, write one complete planning-input.json and call planning_commit once with the host mode and resolved total.',
                   'It validates and commits outline/decision-plan/source-notes together. No separate scaffold generation or duplicate CLI planning check is needed.', '']
+    if candidate_script.is_file():
+        manifest['candidate_save'] = {'command': commands['save_candidate'],
+            'operation': 'Native export with real render, existing authored check when records exist, then atomic delivery.json update.',
+            'scope': 'Complete candidate only. No independent review or aesthetic/playback verdict. Failure leaves the prior declaration unchanged; older exports remain immutable.'}
+        lines += ['After a meaningful completed repair, use save_candidate with the authoritative workspace and a fresh output name.',
+                  'It exports/renders, checks existing authored records, then updates delivery.json in one operation. Complete the declared deck before using it; a partial page edit alone is not a candidate.',
+                  'Save the main useful correction before starting optional polish; refresh this complete checkpoint after additional completed corrections. Independent review still follows.', '']
     if pages_script.is_file():
         manifest['native_pages'] = {
             'guide': str(SCRIPTS.parent / 'references/native-pages.md'),

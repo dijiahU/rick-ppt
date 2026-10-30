@@ -60,6 +60,42 @@ class Tests(unittest.TestCase):
         self.assertIn('NEW RESOLVED EVIDENCE',text)
         self.assertNotIn('RETAINED AUTHOR EVIDENCE',text)
 
+    def test_author_and_repair_receive_actual_completion_standard_not_just_its_path(self):
+        (self.skill/'references').mkdir()
+        guide=self.skill/'references/design-completion.md';guide.write_text('Shared actual subject/craft completion criteria.')
+        for stage in ('author','repair'):
+            docs=self.documents(prepared_phase_context(self.cfg,self.job,stage))
+            supplied=next(d for d in docs if d['path']==str(guide))
+            self.assertEqual(supplied['content'],guide.read_text())
+            self.assertEqual(supplied['sha256'],hashlib.sha256(guide.read_bytes()).hexdigest())
+        self.assertFalse(any(d['path']==str(guide) for d in self.documents(prepared_phase_context(self.cfg,self.job,'research'))))
+
+    def test_existing_worked_decisions_are_actual_author_entry_content_once(self):
+        (self.skill/'references').mkdir()
+        guide=self.skill/'references/art-direction-examples.md'
+        guide.write_text('# Example\nAn input and a visual operation with a rendered check.\n')
+        before=guide.read_bytes()
+        docs=self.documents(prepared_phase_context(self.cfg,self.job,'author'))
+        supplied=next(d for d in docs if d['path']==str(guide))
+        self.assertEqual(supplied['content'].encode(),before)
+        self.assertEqual(supplied['sha256'],hashlib.sha256(before).hexdigest())
+        for stage in ('research','repair'):
+            self.assertFalse(any(d['path']==str(guide) for d in self.documents(prepared_phase_context(self.cfg,self.job,stage))))
+        self.assertEqual(guide.read_bytes(),before)
+
+    def test_enabled_role_entry_executes_for_research_author_and_repair(self):
+        from design_roles import role_instruction
+        (self.skill/'references').mkdir()
+        (self.skill/'references/art-direction.md').write_text('Current installed art-direction method')
+        for stage in ('research','author','repair'):
+            # Exercise the same prompt assembly used by the full runner. Merely
+            # importing/compiling this module does not execute concatenations.
+            instruction=role_instruction(self.cfg,stage)
+            prepared=prepared_phase_context(self.cfg,self.job,stage)
+            prompt=instruction+prepared
+            self.assertIsInstance(prompt,str)
+            self.assertGreater(len(prompt.encode()),len(prepared.encode()))
+
     def test_continuity_keeps_callable_native_interfaces_for_author_and_repair(self):
         (self.skill/'references').mkdir()
         (self.skill/'references/execution-continuity.md').write_text('CONTINUITY')

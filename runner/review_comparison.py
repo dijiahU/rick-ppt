@@ -18,6 +18,15 @@ def write_json(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n')
 
 
+def globals_identity(data):
+    # Page fingerprints omit dimensions and embedded fonts. Conservatively
+    # compare all pages when these shared presentation parts change.
+    from office_policy import archive
+    with archive(data) as z:
+        return {name: hashlib.sha256(z.read(name)).hexdigest() for name in z.namelist()
+                if name == 'ppt/presentation.xml' or name.lower().endswith(('.fntdata', '.odttf', '.ttf', '.otf'))}
+
+
 def prepare_refinement(run, artifact, packet):
     """Reuse a verified optional-response baseline in the existing visual pass.
 
@@ -25,6 +34,7 @@ def prepare_refinement(run, artifact, packet):
     new rendering/model call, automatic quality verdict or extra repair is added.
     """
     from design_feedback import load_baseline
+    from design_completion import response_findings
     from design_roles import enabled
     if not enabled(run.cfg) or getattr(run, 'records', None) is None:
         return
@@ -41,16 +51,23 @@ def prepare_refinement(run, artifact, packet):
     index = {'schema': 'native-edit-comparison/v1', 'status': 'prepared',
              'kind': 'reviewed_refinement_baseline', 'candidate_sha256': digest,
              'source_sha256': baseline['receipt']['artifact_sha256'], 'pages': [],
-             'findings': baseline['receipt']['visual']['findings'],
+             'findings': response_findings(baseline['receipt']),
              'meaning': 'Prior reviewed bytes and actual previews, not an ideal or proof of design quality. Reassess the old observations against current visual evidence.'}
     original = baseline['artifact_bytes']
     count = len(native_pages(artifact))
     if count != len(native_pages(original)) or count != len(baseline['pages']):
         index['status'] = 'page_count_differs; correspondence_unverified'
     else:
-        # Include only pages targeted by the prior visual feedback. An unchanged
-        # target is still useful evidence that its old issue may remain.
+        # Old receipts retain their comparison policy. New selection must also
+        # inspect edits outside the original feedback; unchanged targets show
+        # whether the old issue remains. No new rendering is needed.
         targets = {page for finding in index['findings'] for page in finding['pages']}
+        from design_completion import CONTRACT
+        globals_unchanged = globals_identity(original) == globals_identity(artifact)
+        if baseline['receipt'].get('design_completion') == CONTRACT:
+            targets.update(page for page in range(1, count + 1)
+                           if not globals_unchanged or fingerprint(original, page) != fingerprint(artifact, page))
+            index['presentation_and_font_parts_unchanged'] = globals_unchanged
         home = Path(baseline['home'])
         for page in sorted(targets):
             if type(page) is not int or not 1 <= page <= count:
@@ -66,7 +83,7 @@ def prepare_refinement(run, artifact, packet):
             prepared = read_scoped(packet, name, 30 * 1024 * 1024)
             before, after = fingerprint(original, page), fingerprint(artifact, page)
             index['pages'].append({'page': page, 'source_fingerprint': before,
-                'candidate_fingerprint': after, 'native_dependencies_unchanged': before == after,
+                'candidate_fingerprint': after, 'native_dependencies_unchanged': before == after and globals_unchanged,
                 'before': {'path': name, 'sha256': hashlib.sha256(prepared).hexdigest(),
                     'bytes': len(prepared), 'representation': '900px reading preview of prior reviewed candidate; not playback'}})
     write_json(folder / 'index.json', index)
@@ -102,13 +119,6 @@ def prepare(run, artifact, packet, payload):
     try:
         from canvas_snapshot import native_pages
         from user_pages import fingerprint
-        from office_policy import archive
-        def globals_identity(data):
-            # Page fingerprints do not include presentation dimensions or its
-            # embedded font payloads. Treat such changes conservatively.
-            with archive(data) as z:
-                return {name: hashlib.sha256(z.read(name)).hexdigest() for name in z.namelist()
-                        if name == 'ppt/presentation.xml' or name.lower().endswith(('.fntdata', '.odttf', '.ttf', '.otf'))}
         globals_unchanged = globals_identity(original) == globals_identity(artifact)
         index['presentation_and_font_parts_unchanged'] = globals_unchanged
         count = len(native_pages(artifact))

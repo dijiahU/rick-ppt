@@ -86,7 +86,7 @@ def prepared_phase_context(cfg, job, stage):
         if stage == 'research' else (
         'python', 'task_root', 'session_dir', 'parts_dir', 'workspace_status',
         'workspace_contract', 'commands', 'native_authoring', 'native_canvas',
-        'native_batch', 'native_pages', 'page_design', 'decision_contract', 'command_outputs', 'plan_check'))
+        'native_batch', 'native_pages', 'page_design', 'candidate_save', 'decision_contract', 'command_outputs', 'plan_check'))
     add(skill, 'SKILL.md', kind='installed_instruction')
     if continuity:
         add(skill, 'references/execution-continuity.md', kind='installed_instruction')
@@ -96,6 +96,12 @@ def prepared_phase_context(cfg, job, stage):
     if stage != 'research':
         add(skill, 'references/art-direction.md', kind='installed_instruction')
         add(skill, 'references/content-led-composition.md', kind='installed_instruction')
+        add(skill, 'references/design-completion.md', kind='installed_instruction')
+    if stage == 'author':
+        # This existing short method guide was previously only a link. Supply
+        # its actual decisions once at designer entry, not on every page/repair.
+        # These are worked operations, not a task-answer library or a layout map.
+        add(skill, 'references/art-direction-examples.md', kind='installed_instruction')
     add(skill, 'assets/workflow-choices.json', kind='installed_contract')
     # These are host-owned instructions, not copies the task author can rewrite.
     host = Path(__file__).resolve().parent
