@@ -193,6 +193,31 @@ class ToolPreparationTests(unittest.TestCase):
         self.assertFalse((self.root/'outline.json').exists())
         self.assertFalse((self.root/'decision-plan.json').exists())
 
+    def test_prepared_optional_defaults_execute_through_advertised_command(self):
+        workspace=helper._module('pptx_core.package').unpack(
+            PLUGIN/'skills/pptx/assets/blank.pptx',self.root/'projects')
+        helper.prepare_tool_manifest(self.root,workspace=workspace.root)
+        manifest=self.read_manifest()
+        self.assertEqual(manifest['native_batch']['optional_document_fields'],['defaults', 'source_frame'])
+        self.assertEqual(manifest['native_batch']['operations']['path'], 'add_path')
+        self.assertTrue(Path(manifest['image_recreation']['guide']).is_file())
+        self.assertTrue(Path(manifest['image_recreation']['inspect'][1]).is_file())
+        defaults={'fill':'DDEEFF','stroke':None,'line_width':1}
+        self.assertEqual(set(defaults),set(manifest['native_batch']['defaults']['shape']))
+        doc={'version':1,'batch_id':'compact','defaults':{'shape':defaults},'operations':[
+            {'op':'shape','id':'first','slide':1,'box':[1,1,2,1],'geometry':'rect','name':'First'},
+            {'op':'shape','id':'second','slide':1,'box':[4,1,2,1],'geometry':'ellipse','name':'Second','fill':'223344'}]}
+        source=self.root/'compact.json'
+        source.write_text(json.dumps(doc))
+        command=list(manifest['commands']['native_page_batch']);command[-1]=str(source)
+        result=json.loads(subprocess.run(command,cwd=self.root,check=True,capture_output=True,text=True).stdout)
+        self.assertEqual(result['status'],'applied')
+        from lxml import etree
+        tree=etree.parse(str(workspace.root/'ppt/slides/slide1.xml'))
+        ns={'p':'http://schemas.openxmlformats.org/presentationml/2006/main',
+            'a':'http://schemas.openxmlformats.org/drawingml/2006/main'}
+        self.assertEqual(tree.xpath('//p:sp/p:spPr/a:solidFill/a:srgbClr/@val',namespaces=ns),['DDEEFF','223344'])
+
     def test_generated_examples_follow_actual_cli_parser(self):
         helper.prepare_tool_manifest(self.root)
         value = self.read_manifest()

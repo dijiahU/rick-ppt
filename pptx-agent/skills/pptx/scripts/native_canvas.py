@@ -26,6 +26,14 @@ C='http://schemas.openxmlformats.org/drawingml/2006/chart'
 PKG='http://schemas.openxmlformats.org/package/2006/relationships'
 CT='http://schemas.openxmlformats.org/package/2006/content-types'
 SHAPE_GEOMETRIES = ('rect', 'roundRect', 'ellipse', 'triangle', 'diamond')
+# Shared batch-interface metadata; these are allowed fields, not chosen values.
+BATCH_STYLE_FIELDS = {
+    'text': {'font_file', 'index', 'latin_font', 'latin_index', 'size', 'ink', 'padding'},
+    'shape': {'fill', 'stroke', 'line_width'},
+    'connector': {'ink', 'line_width'},
+    'path': {'fill', 'stroke', 'line_width', 'dash'},
+    'bars': {'font_family', 'east_asian_font_family', 'font_size'},
+}
 EMU=914400
 
 
@@ -92,6 +100,63 @@ def add_shape(workspace,number,box,*,geometry,fill,stroke,line_width,name):
     pr=node(sp,P,'spPr');transform(pr,box);node(node(pr,A,'prstGeom',prst=geometry),A,'avLst')
     solid(pr,fill) if fill is not None else node(pr,A,'noFill')
     ln=node(pr,A,'ln',w=round(line_width*12700));solid(ln,stroke) if stroke is not None else node(ln,A,'noFill')
+    write(path,tree);return handle(workspace,number,ident)
+
+def add_path(workspace,number,box,commands,*,path_size,fill,stroke,line_width,name,
+             dash='solid',start_arrow='none',end_arrow='none'):
+    """Native editable freeform in explicit local coordinates, not an image trace.
+
+    M/L/Q/C/Z mean move, line, quadratic/cubic Bezier and close. Open arrows are
+    fixed paths; use add_connector for actual node endpoint binding.
+    """
+    def numbers(values,count):
+        if (not isinstance(values,(list,tuple)) or len(values)!=count or
+                any(type(v) not in (int,float) or not math.isfinite(v) or abs(v)>1_000_000 for v in values)):
+            raise ValueError('Path coordinates must be bounded finite numbers')
+    numbers(path_size,2)
+    if min(path_size)<.001:raise ValueError('Local path_size must be at least .001 per axis')
+    numbers(box,4)
+    if min(box[2:])<=0:raise ValueError('Positive native path box required')
+    if not isinstance(name,str) or not name.strip():raise ValueError('Name the native path')
+    if fill is not None:color(fill)
+    if stroke is not None:color(stroke)
+    if type(line_width) not in (int,float) or not math.isfinite(line_width) or line_width<=0:
+        raise ValueError('Positive path line_width required')
+    if dash not in ('solid','dash','dot','dashDot','lgDash','lgDashDot'):
+        raise ValueError('Unsupported explicit path dash')
+    if start_arrow not in ('none','triangle','stealth','diamond','oval','arrow') or end_arrow not in ('none','triangle','stealth','diamond','oval','arrow'):
+        raise ValueError('Unsupported explicit path arrow')
+    if stroke is None and (start_arrow!='none' or end_arrow!='none'):
+        raise ValueError('Arrows require a visible path stroke')
+    if not isinstance(commands,list) or not 2<=len(commands)<=4096:
+        raise ValueError('Supply 2–4096 explicit path commands')
+    arity={'M':2,'L':2,'Q':4,'C':6,'Z':0};active=False;segments=0
+    for command in commands:
+        if not isinstance(command,list) or not command or not isinstance(command[0],str) or command[0] not in arity:
+            raise ValueError('Use path commands M/L/Q/C/Z')
+        kind=command[0];numbers(command[1:],arity[kind])
+        if kind=='M':active=True
+        elif not active:raise ValueError('Each subpath starts with M')
+        else:
+            if kind!='Z':segments+=1
+            if kind=='Z':active=False
+    if not segments:raise ValueError('A path needs a line, curve or closed contour')
+    _,path,tree,shapes=page(workspace,number);ident=next_id(tree)
+    sp=node(shapes,P,'sp');nv=node(sp,P,'nvSpPr');node(nv,P,'cNvPr',id=ident,name=name);node(nv,P,'cNvSpPr');node(nv,P,'nvPr')
+    pr=node(sp,P,'spPr');transform(pr,box);geom=node(pr,A,'custGeom')
+    for tag in ('avLst','gdLst','ahLst','cxnLst'):node(geom,A,tag)
+    node(geom,A,'rect',l='0',t='0',r='r',b='b')
+    local=node(node(geom,A,'pathLst'),A,'path',w=round(path_size[0]*1000),h=round(path_size[1]*1000),
+               fill='none' if fill is None else 'norm',stroke='0' if stroke is None else '1')
+    tags={'M':'moveTo','L':'lnTo','Q':'quadBezTo','C':'cubicBezTo','Z':'close'}
+    for command in commands:
+        segment=node(local,A,tags[command[0]])
+        for n in range(1,len(command),2):node(segment,A,'pt',x=round(command[n]*1000),y=round(command[n+1]*1000))
+    solid(pr,fill) if fill is not None else node(pr,A,'noFill')
+    ln=node(pr,A,'ln',w=round(line_width*12700),cap='rnd')
+    solid(ln,stroke) if stroke is not None else node(ln,A,'noFill')
+    node(ln,A,'prstDash',val='sysDot' if dash=='dot' else dash);node(ln,A,'round')
+    node(ln,A,'headEnd',type=start_arrow);node(ln,A,'tailEnd',type=end_arrow)
     write(path,tree);return handle(workspace,number,ident)
 
 def add_connector(workspace,number,start,end,*,points,start_site,end_site,ink,line_width,arrow,name):

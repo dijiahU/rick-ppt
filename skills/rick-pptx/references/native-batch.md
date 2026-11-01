@@ -23,10 +23,35 @@ Object-producing operations also need a unique `id` in this batch. Coordinates,
 sizes, colors, names, fonts and image routes are the author's explicit choices.
 Parameter names are the exact current `native_canvas` Python API:
 
+Optional `defaults` reuses **your own** style choices within this batch. Per-object
+values override defaults, including explicit `null`; no defaults persist into
+another batch. For example, after selecting an actual permitted font:
+
+```json
+{
+  "version": 1,
+  "batch_id": "page-1-v1",
+  "defaults": {"text": {"font_file": "fonts/chosen.ttf", "size": 24, "ink": "243746"}},
+  "operations": [
+    {"op": "text", "id": "heading", "slide": 1, "text": "Actual heading", "size": 36, "x": 1, "y": 0.5, "width": 8, "max_height": 0.8},
+    {"op": "text", "id": "detail", "slide": 1, "text": "Actual supporting detail", "x": 1, "y": 2, "width": 6, "max_height": 1}
+  ]
+}
+```
+
+Reusable fields: `text` → font_file,index,latin_font,latin_index,size,ink,padding;
+`shape` → fill,stroke,line_width; `path` → fill,stroke,line_width,dash; `connector` → ink,line_width;
+`bars` → font_family,east_asian_font_family,font_size. Other fields remain explicit
+per object, including coordinates, text height, geometry, content, files, identity
+and animation targets. Expansion precedes the same scope/font/height checks and
+native calls; it does not choose a palette, layout, font or fit policy. Old inputs
+without defaults work unchanged. Inspect the rendered result as before.
+
 | op | Existing helper | Required parameters after op/id/slide |
 |---|---|---|
 | text | add_text | text,font_file,size,ink,x,y,width,max_height |
 | shape | add_shape | box,geometry,fill,stroke,line_width,name |
+| path | add_path | box,commands,path_size,fill,stroke,line_width,name |
 | image | add_image | source,box,fit,layer |
 | connector | add_connector | start,end,points,start_site,end_site,ink,line_width,arrow,name |
 | group | semantic_group | members,name |
@@ -61,6 +86,29 @@ permitted task fonts into that directory; arbitrary private paths are not accept
 Choose actual mixed-script faces and weights; bars keep the existing explicit
 font-family/font-size contract, with an optional explicit East Asian family.
 Asset acquisition and inspection remain required.
+
+For faithful image recreation, optional `source_frame` is
+`{"image":"reference.png","box":[0,0,13.333,10.752]}`: an actual task-local
+image and destination x/y/width/height **in slide inches**. All operation boxes,
+text x/y/width/numeric max_height, explicit text padding and connector points then
+use **EXIF-oriented source pixels**. The image fits uniformly and is centered;
+it is not stretched or embedded. Font sizes and line widths remain **points**;
+path commands/path_size retain their own local units. Omitted text padding keeps
+the helper's .04-inch default. Without source_frame, existing inch inputs are
+unchanged. Receipts bind source SHA, dimensions and transform, not visual viewing.
+For exact full-frame recreation use the source aspect ratio or an explicit
+template content box; do not distort the source to fill an unrelated slide ratio.
+
+`path` creates an editable native freeform, using explicit M/L/Q/C/Z commands
+(move/line/quadratic/cubic/close) in local `path_size:[width,height]` coordinates.
+Example: `"commands":[["M",0,50],["C",30,0,70,100,100,50]]`,
+`"path_size":[100,100]`. It supports optional `dash`, `start_arrow`, `end_arrow`;
+dash choices are solid/dash/dot/dashDot/lgDash/lgDashDot (`dot` writes native
+sysDot). See the API signature for defaults. Each subpath starts with M; fill/stroke may
+be null. Curves, trapezoids and repeated strokes need no handwritten XML. These
+are fixed freeforms, not attached connectors: use `connector` for node-bound
+edges, and existing semantic groups/reveal handles for meaningful assemblies.
+See [image recreation](image-recreation.md) for scoped crops and comparisons.
 
 All operations run on a complete temporary parts copy, including relationships,
 timing, notes, fonts and existing resources. An operation failure discards that

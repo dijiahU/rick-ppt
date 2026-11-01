@@ -125,6 +125,8 @@ choose their results. Work with actual assets, not assumed future files.
 Use [native canvas](references/native-canvas.md) for
 font measurements, shapes, image crops/layers and editable charts. Helpers implement
 chosen objects, not a universal page layout. Technical references are linked below.
+For supplied-image recreation, use [image recreation](references/image-recreation.md)
+for source-pixel coordinates, editable paths and hash-bound local comparisons.
 
 New presentations require meaningful native click reveals. Plan entry context,
 semantic click groups, persistent orientation and a complete readable final view.
@@ -156,6 +158,10 @@ render bytes in existing notes; these records grant no independent review pass.
 Register each applied outside work once with its inspected evidence and page actions.
 Before saving a complete candidate, use design_references.py --workspace PARTS_DIR
 to write page reference associations/slide notes; preserve existing notes.
+Speaker notes add useful presenter cues, explanation or citations; a full prose
+transcript is needed only when the task calls for one. Preserve requested detail
+and original notes. Reuse the reference writer for registered work attribution
+instead of manually copying the register into another notes file.
 Use `scripts/candidate_save.py --task-root TASK_DIR --workspace PARTS_DIR --output exports/CHOSEN_VERSION.pptx`
 to export/render, run the existing authored check and atomically update delivery.json.
 Save meaningful finished repairs before further optional polish, refreshing after

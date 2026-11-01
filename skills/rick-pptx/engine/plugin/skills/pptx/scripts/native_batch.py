@@ -16,15 +16,20 @@ import re
 import shutil
 import sys
 import tempfile
+from PIL import Image, ImageOps
 
 import native_canvas as canvas
 from native_structure import shape
 from pptx_core.package import select
 
 OPERATIONS = {'text': canvas.add_text, 'shape': canvas.add_shape,
+              'path': canvas.add_path,
               'image': canvas.add_image, 'connector': canvas.add_connector,
               'group': canvas.semantic_group, 'reveal': canvas.reveal,
               'bars': canvas.add_bar_chart}
+# Author-selected style only. Geometry, content, identity, asset routes and
+# animation targets stay explicit on each operation; no implicit page template.
+STYLE_FIELDS = canvas.BATCH_STYLE_FIELDS
 SYSTEM_FONTS = (Path('/System/Library/Fonts'), Path('/Library/Fonts'),
                 Path('/usr/share/fonts'), Path('/usr/local/share/fonts'))
 
@@ -107,9 +112,62 @@ def _targets(operation):
     return []
 
 
+def _source_frame(root, document):
+    """One explicit, uniformly scaled source-pixel frame; no layout inference."""
+    if 'source_frame' not in document:
+        return None
+    frame = document['source_frame']
+    if not isinstance(frame, dict) or set(frame) != {'image', 'box'}:
+        raise ValueError('source_frame requires image and destination box in slide inches')
+    box = frame['box']
+    if (not isinstance(box, list) or len(box) != 4 or
+            any(type(v) not in (int, float) or not math.isfinite(v) for v in box) or min(box[2:]) <= 0):
+        raise ValueError('Invalid source_frame destination box')
+    path = _scoped(root, frame['image'])
+    digest = _hash_file(path)
+    if path.stat().st_size > 32 * 1024 * 1024:
+        raise ValueError('Source image exceeds 32MB')
+    with Image.open(path) as source:
+        if source.format not in ('PNG', 'JPEG', 'WEBP') or getattr(source, 'n_frames', 1) != 1 or source.width * source.height > 24_000_000:
+            raise ValueError('Use a single PNG/JPEG/WebP source image within 24 million pixels')
+        size = ImageOps.exif_transpose(source).size
+    if _hash_file(path) != digest:
+        raise ValueError('Source image changed during coordinate preparation')
+    scale = min(box[2] / size[0], box[3] / size[1])
+    mapped = [box[0] + (box[2] - size[0] * scale) / 2,
+              box[1] + (box[3] - size[1] * scale) / 2, size[0] * scale, size[1] * scale]
+    return {'image': str(path), 'sha256': digest, 'oriented_pixels': list(size),
+            'destination_box_inches': box, 'mapped_box_inches': mapped,
+            'inches_per_pixel': scale, 'fit': 'uniform_contain', 'inspection_claimed': False}
+
+
+def _pixel_geometry(operation, frame):
+    if frame is None:
+        return operation
+    scale = frame['inches_per_pixel']; left, top = frame['mapped_box_inches'][:2]
+    def value(number):
+        if type(number) not in (int, float) or not math.isfinite(number):
+            raise ValueError('Source-pixel geometry must use finite numbers')
+        return number * scale
+    op = operation['op']
+    if op == 'text':
+        operation['x'] = left + value(operation['x']); operation['y'] = top + value(operation['y'])
+        operation['width'] = value(operation['width'])
+        if operation['max_height'] != 'auto': operation['max_height'] = value(operation['max_height'])
+        if 'padding' in operation: operation['padding'] = value(operation['padding'])
+    elif op in ('shape', 'path', 'image', 'bars'):
+        x, y, w, h = operation['box']
+        operation['box'] = [left + value(x), top + value(y), value(w), value(h)]
+    elif op == 'connector':
+        x1, y1, x2, y2 = operation['points']
+        operation['points'] = [left + value(x1), top + value(y1), left + value(x2), top + value(y2)]
+    return operation
+
+
 def _prepare(root, parts, document):
-    if not isinstance(document, dict) or set(document) != {'version', 'batch_id', 'operations'}:
-        raise BatchError([{'message': 'Use exactly version, batch_id and operations', 'code': 'schema'}])
+    required = {'version', 'batch_id', 'operations'}
+    if not isinstance(document, dict) or not required <= set(document) or set(document) - required - {'defaults', 'source_frame'}:
+        raise BatchError([{'message': 'Use version, batch_id, operations and optional defaults/source_frame', 'code': 'schema'}])
     if type(document['version']) is not int or document['version'] != 1:
         raise BatchError([{'message': 'Unsupported batch version', 'code': 'schema'}])
     batch_id = document['batch_id']
@@ -118,7 +176,17 @@ def _prepare(root, parts, document):
     operations = document['operations']
     if not isinstance(operations, list) or not operations or len(operations) > 500:
         raise BatchError([{'message': 'Use 1–500 operations for one page', 'code': 'schema'}])
+    defaults = document.get('defaults', {})
+    if not isinstance(defaults, dict):
+        raise BatchError([{'message': 'defaults must map operation types to style parameters', 'code': 'schema'}])
+    for op, style in defaults.items():
+        if op not in STYLE_FIELDS or not isinstance(style, dict) or set(style) - STYLE_FIELDS[op]:
+            raise BatchError([{'message': 'Unsupported defaults for ' + str(op) + '; only documented style fields are reusable',
+                               'code': 'schema'}])
     errors, prepared, names, dependencies, measurements = [], [], {}, {}, []
+    frame = _source_frame(root, document)
+    if frame is not None:
+        dependencies[frame['image']] = frame['sha256']
     pages = set()
     for index, raw in enumerate(operations):
         operation = copy.deepcopy(raw) if isinstance(raw, dict) else {}
@@ -126,6 +194,10 @@ def _prepare(root, parts, document):
             op = operation.get('op')
             if op not in OPERATIONS:
                 raise ValueError('Unknown operation; use ' + ', '.join(OPERATIONS))
+            # Per-object values (including explicit null) override defaults.
+            # The expanded call uses the same validation, scopes and native API.
+            operation = {**copy.deepcopy(defaults.get(op, {})), **operation}
+            operation = _pixel_geometry(operation, frame)
             slide = operation.get('slide')
             if type(slide) is not int or slide <= 0:
                 raise ValueError('slide must be a positive page number')
@@ -193,7 +265,7 @@ def _prepare(root, parts, document):
         errors.append({'code': 'multiple_pages', 'message': 'Each batch must author exactly one page; submit pages sequentially'})
     if errors:
         raise BatchError(errors)
-    return prepared, measurements, dependencies
+    return prepared, measurements, dependencies, frame
 
 
 def _execute(parts, prepared):
@@ -242,7 +314,7 @@ def run_batch(workspace, task_root, document, *, check_only=False):
         raise ValueError('Unsafe workspace lock')
     with ws.lock():
         before = _parts_hash(ws.root)
-        prepared, measurements, dependencies = _prepare(root, ws.root, document)
+        prepared, measurements, dependencies, frame = _prepare(root, ws.root, document)
         payload_sha = hashlib.sha256(json.dumps(document, sort_keys=True, ensure_ascii=False,
                                                 allow_nan=False, separators=(',', ':')).encode()).hexdigest()
         receipts = ws.home / 'native-batches'
@@ -272,6 +344,7 @@ def run_batch(workspace, task_root, document, *, check_only=False):
                        'status': 'checked' if check_only else 'applied', 'slide': prepared[0][1],
                        'input_sha256': payload_sha, 'before_sha256': before, 'after_sha256': after,
                        'dependencies': dependencies, 'handles': handles, 'results': results,
+                       **({'source_frame': frame} if frame is not None else {}),
                        'text_measurements': measurements, 'render_required': True, 'playback_verified': False}
             if check_only:
                 return receipt

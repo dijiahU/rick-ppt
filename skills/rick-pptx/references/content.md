@@ -121,6 +121,14 @@ case/expression before committing it. Preserve specified cases and factual scope
 no per-page material requirement or new handoff form. For material-rich pages,
 [page evidence](page-design.md) offers optional indexed pointers inside these same
 notes. Plain notes and a supported summary remain sufficient for simple pages.
+Write each detailed evidence passage once in these notes with an exact source
+locator; other page handoffs can point to it instead of repeating the passage.
+Keep the public outline's summaries substantive and references' observed/borrowed/
+applications in the existing decision register. Do not duplicate that register or
+expand every optional handoff field into another narrative. Preserve unique facts,
+qualifications, useful examples and build semantics. When notes already exist,
+planning_commit accepts source_notes_file so the final submission need not rewrite
+them into JSON. This changes recording overhead, not the breadth of discovery.
 If a text-only case is worth explaining, an original conceptual illustration,
 labeled illustrative sequence or native editable example can make it visible.
 It must preserve the supported mechanism and not masquerade as the real output or

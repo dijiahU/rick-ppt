@@ -372,6 +372,7 @@ def codex_smoke(cfg):
 def run_job(cfg,task):
     if not isinstance(task.get('id'),str) or str(uuid.UUID(task['id']))!=task['id']:raise RuntimeError('Invalid job ID')
     with LeaseKeeper(lambda:request(cfg,f'/api/worker/{task["id"]}?action=heartbeat',lease=task['lease']),
+                     interrupt=cfg.get('_power_interrupt'),
                      log=lambda message:print('Job',task['id'],message,flush=True)) as lease:
         return _run_job(cfg,task,lease)
 
@@ -616,6 +617,9 @@ def main():
         local=dict(cfg);local.pop('_model_profile',None)
         return codex_smoke(local)
     if args.render_smoke:return render_smoke(cfg)
+    from power_policy import enabled as ac_only, may_start, watch as watch_power
+    if not may_start():
+        print('AC-only worker is off: external power is not confirmed.',flush=True);return
     worker_lock=(ROOT/'worker.lock').open('a+')
     from production_bridge import write_runtime_receipt
     write_runtime_receipt(ROOT,cfg,'waiting' if args.wait_for_worker else 'starting')
@@ -624,11 +628,18 @@ def main():
     except BlockingIOError:raise SystemExit('Another queue worker is already running')
     worker_lock.seek(0);worker_lock.truncate();worker_lock.write(str(os.getpid()));worker_lock.flush()
     stopping=threading.Event()
+    power_interrupt=threading.Event()
+    cfg['_power_interrupt']=power_interrupt
     def drain(signum,frame):
         stopping.set()
         print('Stop requested; finish all active tasks before exiting.',flush=True)
     signal.signal(signal.SIGTERM,drain)
     signal.signal(signal.SIGINT,drain)
+    def power_stop(signum,frame):
+        power_interrupt.set();stopping.set()
+        print('AC power unavailable; checkpoint active work and stop queue execution.',flush=True)
+    signal.signal(signal.SIGUSR1,power_stop)
+    power_watch=watch_power(stopping,power_interrupt) if ac_only() else None
     self_test(cfg)
     from renderer_health import RendererReadiness,start_heartbeat
     render_health=RendererReadiness(on_state=lambda ready,reason:write_runtime_receipt(ROOT,cfg,'ready' if ready else 'waiting_for_renderer'))
@@ -646,5 +657,6 @@ def main():
         stopping.set()
         if worker_heartbeat:worker_heartbeat.join(timeout=30)
         if native_editor:native_editor.join(timeout=240)
+        if power_watch:power_watch.join(timeout=4)
 
 if __name__=='__main__':main()

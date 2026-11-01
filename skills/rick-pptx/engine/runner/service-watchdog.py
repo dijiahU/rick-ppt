@@ -4,6 +4,8 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parent
 WORKER=ROOT if (ROOT/'production_bridge.py').is_file() else ROOT.parent/'.work/interactive-runtime-20260920/repo/runner'
+sys.path.insert(0,str(WORKER))
+from power_policy import enabled as ac_only,power_source
 STATE=ROOT/'service-watchdog.local.json'
 LOGIN=Path.home()/'Library/LaunchAgents/chat.rickppt.worker.plist'
 
@@ -37,12 +39,33 @@ def check(previous=None,now=None):
         attempts[name]=now;command(args,timeout)
     power=command(['/usr/bin/pmset','-g'])
     disabled=bool(power and re.search(r'SleepDisabled\s+1',power.stdout))
-    if not disabled:
-        enabled=command(['/usr/bin/sudo','-n','/usr/bin/pmset','-a','disablesleep','1'])
-        disabled=bool(enabled and enabled.returncode==0)
+    source=power_source() if ac_only() else 'unrestricted'
+    allowed=source in ('ac','unrestricted')
+    status.update(power_source=source,ac_power_only=ac_only(),services_allowed=allowed)
+    if disabled!=allowed:
+        changed=command(['/usr/bin/sudo','-n','/usr/bin/pmset','-a','disablesleep','1' if allowed else '0'])
+        if changed and changed.returncode==0:disabled=allowed
     status['sleep_protected']=disabled
     amp=command(['/usr/bin/pgrep','-x','Amphetamine'])
     status['amphetamine_running']=bool(amp and amp.returncode==0)
+    if not allowed:
+        # Only this verified queue process and the configured wake app are stopped.
+        # Leave unrelated Docker containers, browsers and network tools untouched.
+        if status['amphetamine_running']:
+            for pid in amp.stdout.split():
+                if pid.isdigit():command(['/bin/kill','-TERM',pid])
+        try:pid=(WORKER/'worker.lock').read_text().strip()
+        except OSError:pid=''
+        process=command(['/bin/ps','-p',pid,'-o','command=']) if pid.isdigit() else None
+        running=bool(process and process.returncode==0 and str(WORKER/'runner.py') in process.stdout)
+        status['worker_running']=running
+        if running:
+            try:receipt=json.loads((WORKER/('runtime-'+pid+'.local.json')).read_text())
+            except (OSError,ValueError):receipt={}
+            native=receipt.get('pid')==int(pid) and receipt.get('power_interrupt_supported') is True
+            launch('power-stop-'+pid,['/bin/kill','-USR1' if native else '-TERM',pid],30)
+            status['worker_stop_mode']='checkpoint' if native else 'drain_legacy'
+        return {'checked_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'status':status,'last_launch':attempts}
     if not status['amphetamine_running']:launch('amphetamine',['/usr/bin/open','-g','-a','/Applications/Amphetamine.app'])
     status['local_proxy_ready']=local_proxy_ready()
     if not status['local_proxy_ready']:

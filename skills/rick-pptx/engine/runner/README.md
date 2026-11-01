@@ -84,6 +84,16 @@ from the host-verified frozen PPTX, preserving its native parts and retained
 partial repairs instead of regenerating an older draft. Historical runtimes keep
 their compatible packet and validated-delivery paths.
 
+Planning submissions may reference an existing task-local UTF-8 source-notes file
+instead of regenerating it inside JSON; the same validation/transaction preserves
+its exact bytes. Native page batches may reuse explicitly chosen style fields in
+optional per-operation-type defaults, with per-object overrides and unchanged
+font, scope, height, geometry and animation checks. Prepared tool manifests expose
+both forms. Research guidance keeps detailed evidence/reference records in their
+existing locations; speaker notes need not become an unsolicited full transcript.
+These reduce authoring overhead without changing models, rendering or reviews.
+End-to-end speed and design effects still require a new generation comparison.
+
 New default-provider tasks use `gpt-6.1-sol` with `high` reasoning. Both values are
 pinned in each task's private model receipt and reused on recovery. Existing
 model-only receipts retain their model and implicit effort. Explicit external
@@ -99,6 +109,19 @@ Keep the Mac awake. Rick’s Mac has a user LaunchAgent for login startup and pe
 Image checks recheck the equivalent `docker.io/library/pptx-lab-renderer:1` local reference after a short-name failure; Docker Desktop has returned a false missing-image response while the image was listed and runnable. Both probes are bounded and never pull an image. The login service watchdog uses the same fallback.
 
 `service-watchdog.py` is the source of the Mac login-session service keeper. Run it with the configured Python interpreter from a user LaunchAgent at a 15-second interval. It checks the existing Amphetamine/Power Protect sleep setting, local proxy transport, Docker, renderer, worker process and website connectivity; it can request app/worker startup with throttling. It does not install Power Protect, add sudo permissions, change proxy configuration, resume failed jobs or run models. Keep actual LaunchAgent plists and proxy settings private. The production host may keep a launcher copy outside this checkout; the source supports either that layout or a checkout's `runner/` directory.
+
+Set `PPTX_WORKER_AC_ONLY=1` in **both** private LaunchAgents to run the queue and
+sleep protection only on external power. The launcher refuses battery/unknown
+power; the worker checks supply every five seconds and interrupts at existing
+lease checkpoints, preserving work through the normal recoverable failure path.
+An interrupted task still needs Resume; reconnecting never resumes user-paused
+or failed jobs automatically. The 15-second watchdog releases `disablesleep`,
+closes Amphetamine and stops the verified worker on battery; reconnecting starts
+them again. Existing noninteractive permission for both `pmset -a disablesleep`
+values is required. It leaves unrelated Docker/proxy applications open. Runtime
+reload uses normal drain semantics; old workers without the power handler drain
+instead of receiving an unsupported signal. No physical lid/battery test is
+implied by the synthetic power-policy tests.
 
 An independent thread posts `/api/worker?action=heartbeat` every 20 seconds, including while rendering dependencies block queue admission or all execution slots are occupied. This authenticated endpoint updates only worker presence/capabilities; it never claims or expires jobs or charges quota. A dependency-blocked worker advertises no ready execution backends. Default/no-action requests retain the existing claim contract. Deploy the heartbeat endpoint before starting this runner revision; older servers ignored the action parameter. Runtime reloads still drain active jobs before handoff.
 

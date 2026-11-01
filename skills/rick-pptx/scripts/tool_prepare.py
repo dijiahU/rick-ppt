@@ -209,7 +209,7 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
             'implementation': 'Helper geometry choices describe this callable, not the full PowerPoint geometry range. Use supported operations where suitable; direct OOXML remains available for unsupported native features and deliberate richer geometry. No fixed page layout.',
             'verification': 'Font coverage, text fit and endpoint checks do not establish design quality or target-player playback.'},
         'native_canvas': {name: _parameters(getattr(canvas, name)) for name in
-                          ('check_glyphs', 'text_measure', 'add_text', 'add_image', 'add_shape', 'add_connector', 'semantic_group', 'reveal', 'add_bar_chart')},
+                          ('check_glyphs', 'text_measure', 'add_text', 'add_image', 'add_shape', 'add_path', 'add_connector', 'semantic_group', 'reveal', 'add_bar_chart')},
         'decision_contract': {'version': catalog['version'], 'top_level_fields': ['version', 'task', 'template_preservation', 'pages', 'design_direction', 'references'],
                               'task_options': catalog['task'], 'page_options': catalog['page'],
                               'asset_options': catalog['asset'],
@@ -251,13 +251,15 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
             'command': commands['planning_commit'],
             'document': {'version': 1, 'outline': 'Complete current outline object',
                          'decisions': 'Complete current v4 delivery record; open design direction and explicit protected template elements',
-                         'source_notes': 'Original nonempty Markdown evidence and page/build plan'},
+                         'source_notes': 'Original nonempty Markdown evidence and page/build plan; alternatively replace this key with source_notes_file'},
+            'source_notes_file': 'Alternative to source_notes: existing task-local UTF-8 Markdown path, e.g. source-notes.md. Reads exact bytes; never include both keys.',
             'options': {'mode': 'Add --mode create or edit exactly as selected by the host.',
                         'expected_pages': 'Add --expected-pages with the resolved task total when fixed.',
                         'allow_legacy': 'Only for explicitly historically admitted contracts.'},
             'outputs': ['outline.json', 'decision-plan.json', 'source-notes.md'],
             'validation': 'Checks current outline and planning decisions before transactional commit; does not select branches or certify facts/design.'}
         lines += ['For planning, write one complete planning-input.json and call planning_commit once with the host mode and resolved total.',
+                  'If source-notes.md already contains the research, use source_notes_file="source-notes.md" instead of regenerating/escaping its text into the bundle.',
                   'It validates and commits outline/decision-plan/source-notes together. No separate scaffold generation or duplicate CLI planning check is needed.', '']
     if candidate_script.is_file():
         manifest['candidate_save'] = {'command': commands['save_candidate'],
@@ -281,12 +283,17 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
         # Derive the JSON call contract from the same functions used by the
         # batch implementation. Do not make the model translate Python-only
         # workspace arguments or rediscover optional/required parameter names.
-        operations = {'text': 'add_text', 'shape': 'add_shape', 'image': 'add_image',
+        operations = {'text': 'add_text', 'shape': 'add_shape', 'path': 'add_path', 'image': 'add_image',
                       'connector': 'add_connector', 'group': 'semantic_group',
                       'reveal': 'reveal', 'bars': 'add_bar_chart'}
         manifest['native_batch'] = {
             'guide': str(SCRIPTS.parent / 'references/native-batch.md'),
             'document_fields': ['version', 'batch_id', 'operations'], 'version': 1,
+            'optional_document_fields': ['defaults', 'source_frame'],
+            'source_frame': {'fields': ['image', 'box'], 'box': 'Destination x,y,w,h in slide inches.',
+                             'coordinates': 'With source_frame, operation geometry uses oriented source pixels; font sizes and line widths remain points. Uniform contain, no distortion.',
+                             'identity': 'Source bytes/dimensions/transform recorded, not embedded or claimed viewed.'},
+            'defaults': {op: sorted(fields) for op, fields in canvas.BATCH_STYLE_FIELDS.items()},
             'operation_fields': 'op,id,slide plus exact native_canvas helper parameters; reveal has no id',
             'operations': operations,
             'operation_choices': {'shape': {'geometry': list(canvas.SHAPE_GEOMETRIES)}},
@@ -298,9 +305,21 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
             'scope': 'One existing page per batch; content, coordinates, actual assets/style and page order are author choices.'}
         lines += ['For multi-object pages, call native_page_batch with one chosen-page JSON instead of writing a temporary Python page-operation framework.',
                   'Read the native_batch guide shown in the manifest once for its compact input contract. Native_canvas signatures provide exact operation fields.',
+                  'Optional defaults reuse your chosen style by operation type (e.g. text font_file/size/ink); individual values override them. Keep geometry, content, IDs and animation targets explicit.',
                   'Names resolve group/connector/reveal targets. All explicit text-height errors return together; failures leave parts unchanged.',
                   'Use max_height="auto" only when you deliberately want measured height; numeric bounds remain strict. Check composition and overlaps in the actual render.',
                   'The batch does not create pages, choose a style or replace sequential publication/self-check/independent review.', '']
+    recreation = SCRIPTS / 'recreation_tools.py'
+    if recreation.is_file():
+        manifest['image_recreation'] = {
+            'guide': str(SCRIPTS.parent / 'references/image-recreation.md'),
+            'inspect': [interpreter, str(recreation), 'inspect', '--task-root', str(root),
+                        '--source', 'SOURCE_IMAGE', '--regions', 'REGIONS_JSON', '--out', 'FRESH_OUTPUT_DIR'],
+            'compare': [interpreter, str(recreation), 'compare', '--task-root', str(root),
+                        '--source', 'SOURCE_IMAGE', '--render', 'ACTUAL_RENDER',
+                        '--regions', 'INSPECT_RECEIPT_JSON', '--out', 'FRESH_OUTPUT_DIR'],
+            'scope': 'Task-local images; explicit source-pixel regions; hashes and dimensions in receipt. Open output images; no inspection or quality claim.'}
+        lines += ['For faithful image recreation, read image_recreation.guide: source-pixel native batches, editable paths, batch crops and same-scale comparisons reuse existing authoring/review.', '']
     page_design = SCRIPTS / 'page_design.py'
     if page_design.is_file():
         commands['page_design_context'] = [interpreter, str(page_design), 'context', '--task-root', str(root),

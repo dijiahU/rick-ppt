@@ -73,6 +73,9 @@ def write_runtime_receipt(root,cfg,status):
                                       and (Path(root)/'execution_continuity.py').is_file())
     body['design_author_role']='one-continuing-deck-designer' if (plugin/'skills/pptx/references/art-direction.md').is_file() else 'legacy-author'
     body['usage_ledger_available']=(Path(root)/'usage_ledger.py').is_file()
+    # The watchdog only sends SIGUSR1 to a worker that advertised this handler.
+    body['power_interrupt_supported']=status in ('ready','waiting_for_renderer')
+    body['ac_power_only']=os.environ.get('PPTX_WORKER_AC_ONLY')=='1'
     body['usage_recording']='private-provider-receipts'
     body['automatic_charging']=False
     body['customer_api_accounts_available']=(Path(root)/'customer_models.py').is_file()

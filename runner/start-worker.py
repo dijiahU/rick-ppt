@@ -23,6 +23,9 @@ def verified_process(pid):
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--reload',action='store_true');args=parser.parse_args()
+    from power_policy import may_start
+    if not may_start():
+        print('AC-only worker is off: external power is not confirmed.');return
     env=launch_environment(WORKER,ROOT/'settings.local.json')
     python=launch_interpreter(WORKER)
     with (WORKER/'launch.lock').open('a+') as guard:

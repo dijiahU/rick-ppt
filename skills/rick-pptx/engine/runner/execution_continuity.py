@@ -166,7 +166,10 @@ class OutputProgress:
                 if not (planning or native) or p.is_symlink(): continue
                 try:
                     st = p.stat(); sig = (st.st_size, st.st_mtime_ns)
-                    if self.cache.get(str(rel), (None,))[0] == sig:
+                    # A planning bundle can reference notes whose bytes change
+                    # without changing the bundle itself. Resolve that bounded
+                    # dependency before deciding whether saved work advanced.
+                    if self.cache.get(str(rel), (None,))[0] == sig and not (planning and rel.as_posix() == 'planning-input.json'):
                         digest = self.cache[str(rel)][1]
                     elif p.suffix == '.pptx':
                         with zipfile.ZipFile(io.BytesIO(read_scoped(self.root, rel, 64 * 1024 * 1024))) as z:
@@ -186,14 +189,19 @@ class OutputProgress:
                                 draft = json.loads(body)
                                 from outline import validate_outline
                                 if (not isinstance(draft, dict) or draft.get('version') != 1
-                                        or not isinstance(draft.get('decisions'), dict)
-                                        or not isinstance(draft.get('source_notes'), str)
-                                        or not draft['source_notes'].strip()):
+                                        or not isinstance(draft.get('decisions'), dict)):
+                                    continue
+                                if 'source_notes_file' in draft:
+                                    if 'source_notes' in draft or not isinstance(draft['source_notes_file'], str):
+                                        continue
+                                    draft['source_notes'] = read_scoped(self.root, draft.pop('source_notes_file'),
+                                                                      2 * 1024 * 1024).decode('utf-8')
+                                if not isinstance(draft.get('source_notes'), str) or not draft['source_notes'].strip():
                                     continue
                                 validate_outline(draft.get('outline'))
                                 body = json.dumps(draft, sort_keys=True, ensure_ascii=False,
                                                   separators=(',', ':')).encode()
-                            except (ValueError, TypeError):
+                            except (OSError, ValueError, TypeError):
                                 continue
                         total += len(body)
                         if total > 128 * 1024 * 1024: return None

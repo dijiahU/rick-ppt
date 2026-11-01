@@ -73,6 +73,34 @@ class Files(unittest.TestCase):
         p.write_text(json.dumps(draft,indent=4))
         self.assertIsNone(self.actions(g,count=1,start=8));self.assertEqual(g.state['quiet_actions'],1)
 
+    def test_planning_notes_reference_tracks_actual_evidence_changes_without_bundle_rewrite(self):
+        g=self.guard('research');self.assertEqual(self.actions(g),'nudge');g.applied('nudge')
+        notes=self.job/'research/evidence.md';notes.parent.mkdir();notes.write_text('Initial evidence with conditions.')
+        draft={'version':1,'outline':{'title':'Shade','purpose':'Explain the mechanism',
+               'slides':[{'id':'first','title':'Shade','summary':'Keep radiation and water conditions.'}]},
+               'decisions':{'version':4},'source_notes_file':'research/evidence.md'}
+        source=self.job/'planning-input.json';source.write_text(json.dumps(draft))
+        before=source.read_bytes()
+        self.assertIsNone(self.actions(g,start=4));self.assertEqual(g.state['quiet_actions'],0)
+        self.assertIsNone(self.actions(g,count=1,start=8));self.assertEqual(g.state['quiet_actions'],1)
+        notes.write_text('Verified evidence plus the newly located source condition.')
+        self.assertIsNone(self.actions(g,count=1,start=9));self.assertEqual(g.state['quiet_actions'],0)
+        self.assertEqual(source.read_bytes(),before)
+        self.assertFalse(g.outputs_present())
+
+    def test_missing_or_external_notes_reference_is_not_saved_planning_progress(self):
+        for index,path in enumerate(['missing.md','../private.md']):
+            with self.subTest(path=path):
+                records=self.records/str(index);records.mkdir()
+                g=OutputProgress(self.job,records,'task','research',0,window=4)
+                draft={'version':1,'outline':{'title':'Shade','purpose':'Explain',
+                       'slides':[{'id':'first','title':'Shade','summary':'Meaningful summary.'}]},
+                       'decisions':{'version':4},'source_notes_file':path}
+                (self.job/'planning-input.json').write_text(json.dumps(draft))
+                self.assertIsNone(g.action())
+                self.assertEqual(self.actions(g),'nudge')
+                self.assertFalse(g.outputs_present())
+
     def test_placeholders_and_status_chatter_do_not_replace_saved_research_progress(self):
         g=self.guard('research')
         (self.job/'planning-input.json').write_text('{"version":1,"outline":{},"decisions":{}}')

@@ -19,6 +19,9 @@ class HeartbeatLost(RuntimeError):
 class TaskPaused(RuntimeError):
     """Owner stopped this attempt; preserve it without reporting a failure."""
 
+class PowerInterrupted(RuntimeError):
+    """Host left AC power; use normal checkpoint/recoverable failure handling."""
+
 def request(cfg,path,body=b'{}',lease=None,raw=False):
     action=parse_qs(urlsplit(path).query).get('action',['claim'])[0]
     headers={'Authorization':'Bearer '+cfg['token'],'Content-Type':'application/json'}
@@ -66,11 +69,12 @@ def request(cfg,path,body=b'{}',lease=None,raw=False):
             time.sleep((1,3)[attempt])
 
 class LeaseKeeper:
-    def __init__(self,send,*,interval=20,retry_interval=5,max_silence=150,clock=time.monotonic,log=print):
+    def __init__(self,send,*,interval=20,retry_interval=5,max_silence=150,clock=time.monotonic,log=print,interrupt=None):
         self.send,self.interval,self.retry_interval,self.max_silence=send,interval,retry_interval,max_silence
         self.clock,self.log=clock,log
         self.last_success=clock();self.error=None;self.fatal=None
         self.finished=threading.Event();self.thread=None
+        self.interrupt=interrupt
 
     def pulse(self):
         try:
@@ -98,6 +102,8 @@ class LeaseKeeper:
 
     def check(self):
         if self.fatal:raise self.fatal
+        if self.interrupt is not None and self.interrupt.is_set():
+            raise PowerInterrupted('External power disconnected; resume saved work after reconnecting power.')
         if self.clock()-self.last_success>=self.max_silence:
             raise HeartbeatLost(f'No successful heartbeat for {self.max_silence} seconds; last error: {self.error}')
 

@@ -24,6 +24,22 @@ elements, behavior, assets and actual reference applications. Composition/style 
 open author choices, not mandatory design categories. `outline.slides` is the
 ordered page array; `pages` is not an outline alias.
 
+If research notes already exist, replace `source_notes` with
+`"source_notes_file": "source-notes.md"` (or another existing task-local Markdown
+file). Supply exactly one of these keys. The tool snapshots the UTF-8 file for
+the submission, preserves its exact bytes including line endings, and returns
+its path/hash in `source_notes_input`. It checks that the source has not changed
+before committing. Missing, oversized, empty, non-UTF-8, external or symlink files
+are rejected without replacing outputs. This avoids retyping accumulated research
+inside JSON; it does not summarize or discard evidence. The original inline form
+remains supported.
+
+Keep reader-facing page summaries in the outline, evidence/details and native
+build plans in source notes, and reference applications in the decision register.
+Use exact source/page/section pointers where the same detail is needed elsewhere;
+do not copy whole sections into all three files. Preserve substantive summaries,
+source qualifiers and useful examples; no text-length or research quota is imposed.
+
 Run the prepared interpreter invocation once:
 
 ```text

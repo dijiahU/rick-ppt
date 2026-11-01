@@ -159,12 +159,24 @@ def commit_bundle(task_root, input_file, *, mode='create', expected_pages=None, 
         raise ValueError('--input must be a separate planning bundle, not an output file')
     raw = _read(source, MAX_INPUT_BYTES)
     bundle = json.loads(raw, object_pairs_hook=_pairs, parse_constant=_constant, parse_float=_float)
-    if not isinstance(bundle, dict) or set(bundle) != {'version', 'outline', 'decisions', 'source_notes'} or type(bundle['version']) is not int or bundle['version'] != 1:
-        raise ValueError('Planning bundle requires version=1, outline, decisions, source_notes; no other top-level fields')
+    required = {'version', 'outline', 'decisions'}
+    if (not isinstance(bundle, dict) or set(bundle) not in
+            (required | {'source_notes'}, required | {'source_notes_file'})
+            or type(bundle['version']) is not int or bundle['version'] != 1):
+        raise ValueError('Planning bundle requires version=1, outline, decisions and exactly one of source_notes or source_notes_file; no other top-level fields')
     if mode not in ('create', 'edit'):
         raise ValueError('Planning mode must be create or edit')
     outline = validate_outline(bundle['outline'], expected_pages)
-    notes = bundle['source_notes']
+    notes_path = None
+    if 'source_notes_file' in bundle:
+        value = bundle['source_notes_file']
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError('source_notes_file must name an existing task-local Markdown file')
+        notes_path = _path(root, value)
+        notes_bytes = _read(notes_path, MAX_NOTES_BYTES)
+        notes = notes_bytes.decode('utf-8')
+    else:
+        notes = bundle['source_notes']
     if not isinstance(notes, str) or not notes.strip():
         raise ValueError('source_notes must contain the original nonempty Markdown text')
     output_bytes = {
@@ -178,6 +190,10 @@ def commit_bundle(task_root, input_file, *, mode='create', expected_pages=None, 
     result = validate_plan(bundle['decisions'], outline, stage='planning', root=root, mode=mode,
                            allow_legacy=allow_legacy,
                            require_click_reveal=False if allow_legacy else None)
+    def check_notes_source():
+        if notes_path is not None and _read(_path(root, notes_path), MAX_NOTES_BYTES) != notes_bytes:
+            raise ValueError('source_notes_file changed during planning commit')
+    check_notes_source()
     # Capture existing bytes before mutation. Replacements retain original permissions.
     before = {}
     for name in OUTPUTS:
@@ -197,6 +213,7 @@ def commit_bundle(task_root, input_file, *, mode='create', expected_pages=None, 
             _write(staging / ('new-' + str(index)), output_bytes[name], original[1] if original else 0o600)
             if original is not None:
                 _write(staging / ('old-' + str(index)), *original)
+        check_notes_source()
         for index, name in enumerate(OUTPUTS):
             target = _path(root, name)
             # Refuse changes by another writer after the validation snapshot.
@@ -225,7 +242,11 @@ def commit_bundle(task_root, input_file, *, mode='create', expected_pages=None, 
         raise
     else:
         shutil.rmtree(staging)
-    return {'ok': True, **result, 'files': [
+    return {'ok': True, **result,
+        **({'source_notes_input': {'path': str(notes_path.relative_to(root)),
+                                  'sha256': hashlib.sha256(notes_bytes).hexdigest(),
+                                  'bytes': len(notes_bytes)}} if notes_path is not None else {}),
+        'files': [
         {'path': name, 'sha256': hashlib.sha256(output_bytes[name]).hexdigest(),
          'bytes': len(output_bytes[name]), 'replaced': before[name] is not None}
         for name in OUTPUTS], 'input_unchanged': True}

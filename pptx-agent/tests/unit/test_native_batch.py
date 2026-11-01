@@ -1,10 +1,13 @@
 import copy
+import io
 import json
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 from unittest import mock
+import uuid
+import zipfile
 
 import pytest
 from PIL import Image
@@ -36,6 +39,89 @@ def parts(ws):
 
 def document(*operations, batch_id='test'):
     return {'version': 1, 'batch_id': batch_id, 'operations': list(operations)}
+
+
+def freeform(**options):
+    return {'op': 'path', 'id': 'curve', 'slide': 1, 'box': [1, 1, 4, 2],
+            'path_size': [100, 100], 'commands': [['M', 0, 50], ['C', 20, 0, 80, 100, 100, 50]],
+            'fill': None, 'stroke': '557799', 'line_width': 2, 'name': 'Feedback loop', **options}
+
+
+def test_pixel_frame_writes_actual_geometry_preserving_native_groups_timing_and_point_sizes(fixture):
+    root, ws = fixture
+    doc = document(shape('node', box=[0, 0, 48, 32]),
+                   freeform(box=[0, 0, 48, 32], end_arrow='triangle', dash='dash'),
+                   {'op': 'group', 'id': 'module', 'slide': 1, 'members': ['node', 'curve'], 'name': 'Module'},
+                   {'op': 'reveal', 'slide': 1, 'steps': [['module']]})
+    doc['source_frame'] = {'image': 'asset.png', 'box': [1, 1, 6, 6]}
+    receipt = batch.run_batch(ws.root, root, doc)
+    ns = {'p': batch.canvas.P, 'a': batch.canvas.A}
+    tree = batch.canvas.page(ws.root, 1)[2]
+    curve = tree.find('.//p:cNvPr[@name="Feedback loop"]', ns).getparent().getparent()
+    xf = curve.find('p:spPr/a:xfrm', ns)
+    assert {k: int(v) for k, v in xf.find('a:off', ns).attrib.items()} == {'x': 914400, 'y': 1828800}
+    assert {k: int(v) for k, v in xf.find('a:ext', ns).attrib.items()} == {'cx': 5486400, 'cy': 3657600}
+    assert curve.find('p:spPr/a:ln', ns).get('w') == '25400'  # points, not source pixels
+    assert curve.find('.//a:cubicBezTo/a:pt', ns).attrib == {'x': '20000', 'y': '0'}
+    assert curve.find('.//a:tailEnd', ns).get('type') == 'triangle'
+    assert curve.find('.//a:prstDash', ns).get('val') == 'dash'
+    assert tree.find('.//p:spTgt', ns).get('spid') == str(receipt['handles']['module']['shape_id'])
+    assert not tree.findall('.//p:pic', ns)  # coordinate source is not embedded
+    assert receipt['source_frame']['mapped_box_inches'] == [1, 2, 6, 4]
+    assert not receipt['source_frame']['inspection_claimed']
+    assert str(root / 'asset.png') in receipt['dependencies']
+
+
+def test_pixel_frame_keeps_font_points_and_measures_pixel_padding(fixture):
+    root, ws = fixture
+    doc = document(text(text='Native', x=0, y=0, width=48, max_height=32, size=20, padding=1))
+    doc['source_frame'] = {'image': 'asset.png', 'box': [0, 0, 6, 4]}
+    receipt = batch.run_batch(ws.root, root, doc)
+    value = receipt['text_measurements'][0]
+    assert value['size'] == 20 and value['width'] == 6 and value['padding'] == .125
+    assert value['requested_height'] == 4
+    assert {n.get('sz') for n in batch.canvas.page(ws.root, 1)[2].iter('{'+batch.canvas.A+'}rPr')} == {'2000'}
+
+
+def test_source_frame_bytes_bind_idempotent_receipt(fixture):
+    root, ws = fixture
+    doc = document(shape())
+    doc['source_frame'] = {'image': 'asset.png', 'box': [0, 0, 6, 4]}
+    batch.run_batch(ws.root, root, doc)
+    old = parts(ws)
+    Image.new('RGB', (48, 32), 'red').save(root / 'asset.png')
+    with pytest.raises(ValueError, match='different input or assets'):
+        batch.run_batch(ws.root, root, doc)
+    assert old == parts(ws)
+
+
+@pytest.mark.parametrize('options', [
+    {'commands': [['L', 0, 0], ['L', 5, 5]]},
+    {'commands': [['M', 0, 0], ['Z']]},
+    {'commands': [['M', 0, 0], ['Q', 2, 3]]},
+    {'commands': [['M', 0, 0], ['L', float('inf'), 5]]},
+    {'path_size': [.0001, 100]}, {'dash': 'zigzag'}, {'stroke': None, 'end_arrow': 'triangle'},
+])
+def test_invalid_freeform_rolls_back_whole_batch(fixture, options):
+    root, ws = fixture
+    old = parts(ws)
+    with pytest.raises((ValueError, batch.BatchError)):
+        batch.run_batch(ws.root, root, document(shape(), freeform(**options)))
+    assert old == parts(ws)
+
+
+def test_freeform_polygon_quadratic_and_multiple_subpaths_stay_native(fixture):
+    root, ws = fixture
+    doc = document(freeform(fill='AABBCC', dash='dot', commands=[['M', 20, 0], ['L', 80, 0],
+                    ['L', 100, 100], ['L', 0, 100], ['Z'], ['M', 0, 50], ['Q', 50, 0, 100, 50]]))
+    batch.run_batch(ws.root, root, doc)
+    ns = {'a': batch.canvas.A, 'p': batch.canvas.P}
+    tree = batch.canvas.page(ws.root, 1)[2]
+    path = tree.find('.//a:custGeom/a:pathLst/a:path', ns)
+    assert path.get('fill') == 'norm'
+    assert tree.find('.//a:prstDash', ns).get('val') == 'sysDot'
+    assert [node.tag.split('}')[1] for node in path] == ['moveTo', 'lnTo', 'lnTo', 'lnTo', 'close', 'moveTo', 'quadBezTo']
+    assert not tree.findall('.//p:pic', ns)
 
 
 def text(ident='title', **options):
@@ -307,3 +393,92 @@ def test_string_false_does_not_accidentally_authorize_replacing_existing_timing(
         batch.run_batch(ws.root, root, document({'op': 'reveal', 'slide': 1,
                         'steps': [[result['handles']['a']['shape_id']]], 'replace': 'false'}, batch_id='replace'))
     assert parts(ws) == before
+
+
+def test_compact_defaults_produce_identical_native_parts_and_preserve_input(fixture):
+    root, expanded_ws = fixture
+    compact_ws = unpack(root / 'source.pptx', root / 'comparison')
+    expanded = full_document()
+    compact = copy.deepcopy(expanded)
+    compact['defaults'] = {
+        'text': {key: expanded['operations'][0][key] for key in ('font_file', 'size', 'ink')},
+        'shape': {'fill': 'AABBCC', 'stroke': '112233', 'line_width': 1},
+        'connector': {'ink': '445566', 'line_width': 1.5},
+        'bars': {'font_family': 'Arial', 'font_size': 18},
+    }
+    for op in compact['operations']:
+        for key, value in compact['defaults'].get(op['op'], {}).items():
+            if op.get(key) == value:
+                del op[key]
+    # Explicit null stroke overrides the reusable color. All coordinates,
+    # groups, connector endpoints, editable chart data and reveal targets stay.
+    original = copy.deepcopy(compact)
+    # Control only generated media/relationship identities. XLSX container
+    # timestamps may differ; its actual embedded members must still match.
+    def run(ws, doc):
+        with mock.patch.object(batch.canvas.uuid, 'uuid4', side_effect=[uuid.UUID(int=n) for n in range(1, 200)]):
+            return batch.run_batch(ws.root, root, doc)
+    expected = run(expanded_ws, expanded)
+    actual = run(compact_ws, compact)
+    def content(ws):
+        result = parts(ws)
+        for name, data in result.items():
+            if name.endswith('.xlsx'):
+                with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                    result[name] = {key: archive.read(key) for key in archive.namelist()}
+        return result
+    assert content(compact_ws) == content(expanded_ws)
+    assert actual['text_measurements'] == expected['text_measurements']
+    assert compact == original
+    assert batch.run_batch(compact_ws.root, root, compact)['status'] == 'already_applied'
+    changed = copy.deepcopy(compact)
+    changed['defaults']['text']['ink'] = '667788'
+    with pytest.raises(ValueError, match='different input'):
+        batch.run_batch(compact_ws.root, root, changed)
+
+
+@pytest.mark.parametrize('defaults', [
+    None, [], {'text': []}, {'text': {'x': 1}}, {'text': {'max_height': 'auto'}},
+    {'text': {'text': 'implicit copy'}}, {'shape': {'geometry': 'rect'}},
+    {'image': {'source': 'asset.png'}}, {'reveal': {'replace': True}},
+])
+def test_defaults_cannot_hide_content_geometry_assets_or_timing(fixture, defaults):
+    root, ws = fixture
+    before = parts(ws)
+    doc = document(shape())
+    doc['defaults'] = defaults
+    with pytest.raises(batch.BatchError):
+        batch.run_batch(ws.root, root, doc)
+    assert parts(ws) == before
+
+
+def test_inherited_font_scope_and_text_height_are_still_checked(fixture, tmp_path_factory):
+    root, ws = fixture
+    private = tmp_path_factory.mktemp('private-default-font') / 'font.ttf'
+    shutil.copyfile(FONT, private)
+    operation = text(max_height=.01)
+    del operation['font_file']
+    doc = document(operation)
+    doc['defaults'] = {'text': {'font_file': str(private)}}
+    before = parts(ws)
+    with pytest.raises(batch.BatchError, match='Fonts must be'):
+        batch.run_batch(ws.root, root, doc)
+    doc['defaults']['text']['font_file'] = str(FONT)
+    with pytest.raises(batch.BatchError, match='Text exceeds'):
+        batch.run_batch(ws.root, root, doc)
+    assert parts(ws) == before
+
+
+def test_default_font_dependency_changes_invalidate_success_receipt(fixture):
+    root, ws = fixture
+    (root / 'fonts').mkdir()
+    font = root / 'fonts/selected.ttf'
+    shutil.copyfile(FONT, font)
+    operation = text()
+    del operation['font_file']
+    doc = document(operation)
+    doc['defaults'] = {'text': {'font_file': 'fonts/selected.ttf'}}
+    batch.run_batch(ws.root, root, doc)
+    font.write_bytes(font.read_bytes() + b'\0')
+    with pytest.raises(ValueError, match='different input or assets'):
+        batch.run_batch(ws.root, root, doc)

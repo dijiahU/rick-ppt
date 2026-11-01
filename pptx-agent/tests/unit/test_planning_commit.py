@@ -52,6 +52,79 @@ def test_valid_create_preserves_all_authored_content_and_input(tmp_path):
     assert not list(tmp_path.glob('.planning-commit-*'))
 
 
+@pytest.mark.parametrize('filename', ['source-notes.md', 'research/evidence.md'])
+def test_existing_notes_reference_preserves_exact_bytes_and_records_source(tmp_path, filename):
+    doc = bundle()
+    notes = doc.pop('source_notes').replace('\n', '\r\n').encode('utf-8')
+    file = tmp_path / filename
+    file.parent.mkdir(exist_ok=True)
+    file.write_bytes(notes)
+    doc['source_notes_file'] = filename
+    source = write(tmp_path, doc)
+    original = source.read_bytes()
+    result = tool.commit_bundle(tmp_path, source, expected_pages=2)
+    assert (tmp_path / 'source-notes.md').read_bytes() == notes
+    assert file.read_bytes() == notes and source.read_bytes() == original
+    assert result['source_notes_input'] == {
+        'path': filename, 'sha256': tool.hashlib.sha256(notes).hexdigest(), 'bytes': len(notes)}
+    assert json.loads((tmp_path / 'outline.json').read_bytes()) == doc['outline']
+    assert json.loads((tmp_path / 'decision-plan.json').read_bytes()) == doc['decisions']
+
+
+@pytest.mark.parametrize('value', ['', 12, '../outside.md', 'missing.md'])
+def test_invalid_notes_reference_preserves_existing_outputs(tmp_path, value):
+    old = originals(tmp_path)
+    doc = bundle()
+    del doc['source_notes']
+    doc['source_notes_file'] = value
+    with pytest.raises((ValueError, OSError)):
+        tool.commit_bundle(tmp_path, write(tmp_path, doc))
+    assert {name: (tmp_path / name).read_bytes() for name in old} == old
+
+
+@pytest.mark.parametrize('data', [b'', b' \r\n', b'\xff'])
+def test_empty_or_non_utf8_notes_file_never_replaces_outputs(tmp_path, data):
+    old = originals(tmp_path)
+    (tmp_path / 'evidence.md').write_bytes(data)
+    doc = bundle()
+    del doc['source_notes']
+    doc['source_notes_file'] = 'evidence.md'
+    with pytest.raises(ValueError):
+        tool.commit_bundle(tmp_path, write(tmp_path, doc))
+    assert {name: (tmp_path / name).read_bytes() for name in old} == old
+
+
+def test_notes_source_symlink_and_ambiguous_two_inputs_are_rejected(tmp_path):
+    old = originals(tmp_path)
+    (tmp_path / 'link.md').symlink_to(tmp_path / 'source-notes.md')
+    doc = bundle()
+    doc['source_notes_file'] = 'link.md'
+    with pytest.raises(ValueError, match='exactly one'):
+        tool.commit_bundle(tmp_path, write(tmp_path, doc))
+    del doc['source_notes']
+    with pytest.raises(ValueError, match='symlinks'):
+        tool.commit_bundle(tmp_path, write(tmp_path, doc))
+    assert {name: (tmp_path / name).read_bytes() for name in old} == old
+
+
+def test_changed_notes_file_during_validation_is_not_overwritten(tmp_path):
+    old = originals(tmp_path)
+    doc = bundle()
+    del doc['source_notes']
+    doc['source_notes_file'] = 'source-notes.md'
+    validate = tool.validate_plan
+    def concurrent_change(*args, **kwargs):
+        result = validate(*args, **kwargs)
+        (tmp_path / 'source-notes.md').write_bytes(b'Concurrent new evidence')
+        return result
+    with mock.patch.object(tool, 'validate_plan', side_effect=concurrent_change):
+        with pytest.raises(ValueError, match='changed during planning commit'):
+            tool.commit_bundle(tmp_path, write(tmp_path, doc))
+    assert (tmp_path / 'source-notes.md').read_bytes() == b'Concurrent new evidence'
+    for name in ('outline.json', 'decision-plan.json'):
+        assert (tmp_path / name).read_bytes() == old[name]
+
+
 def test_template_scoped_edit_keeps_static_repeated_expression_and_permissions(tmp_path):
     doc = bundle('edit')
     doc['decisions']['template_preservation']=['Preserve supplied template background, logo and font requirements.']
