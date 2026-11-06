@@ -6,6 +6,59 @@ pitch or a bounded performance review into a full biography.
 
 ## Investigate questions before arranging pages
 
+<!-- research-breadth/v1 -->
+
+For open topic research/new design, do a broad first pass before choosing the
+outline. Investigate factual evidence, real uses/outputs and on-slide assets, and
+finished visual work; finding official documentation does not finish discovery.
+Use useful Chinese and English queries, not just translated copies of a generic
+topic. Batch independent hosted searches, then deepen promising different leads.
+Keep the search breadth across visual treatments as well as websites. Include
+finished examples for the intended use/audience alongside cross-medium inspiration;
+do not append "editorial illustration" or another style term to every design query
+before choosing a direction. For example, a professional adoption briefing can
+learn from report spreads, product documentation and workplace imagery as well as
+illustration. These are leads, not a whitelist; useful unexpected sources remain open.
+
+For independent research questions, use the exposed `pptx_search_sources` batch
+form `requests: ["...", "..."]` when available (up to three). Give each helper a
+concrete evidence need rather than the entire presentation assignment. Facts and
+mechanisms, real cases/material, and finished visual works are useful examples,
+not compulsory roles. Helpers may investigate relevant public sites across
+platforms; compare supported findings, original URLs and remaining gaps before
+settling the outline. The browser allowlist does not limit ordinary public-web
+discovery. Follow-up questions may depend on earlier evidence and remain sequential.
+
+When capabilities.json exposes authorized browser sites, actually try each listed
+channel with a task-specific query before narrowing: Pinterest for finished visual
+work, X for public examples/processes, and Xiaohongshu for relevant Chinese examples
+are possible entry questions, not exclusive roles or a source whitelist. Use the
+exposed pptx_browser_sources with site explicitly set. When its schema advertises
+requests, submit independent queries in one batch (up to three, each with its
+own site/query/purpose); the host isolates sessions and tabs. When Google is
+advertised, prefer its explicit search route for general discovery, including
+different questions on Google concurrently. Do not use the browser's default
+address-bar/Bing search. The hosted public search channel does not expose engine
+selection; label it accurately rather than claiming it used Google. Platform-native
+queries and permitted original-source reading complement discovery.
+Legacy single-site calls remain available for dependent follow-up research.
+The host's list is the
+boundary; this instruction grants no browser/account/domain access. If that tool
+is absent, use permitted public search and the current harness's real channels.
+Keep offline/supplied-only requests and faithful/local edits within scope.
+
+Keep each actual channel/query and useful/empty/blocked/unavailable outcome briefly
+in the existing source notes. Batch independent web queries too. Let the host own
+browser concurrency and cleanup rather than competing for a shared tab. Do not retry access denial,
+login/captcha barriers or a confirmed shared-browser outage. A timeout or network
+error on one site does not establish that another authorized site is unavailable;
+follow the tool's site/browser failure scope and continue independent channels.
+Such outcomes are limitations, not
+successful inspection and not a reason to block the whole presentation. Compare
+findings before selecting; no source from every channel, page-by-page search,
+repeated exhaustive sweep or extra review gate is required. Follow original
+sources for factual verification and inspect actual pixels for visual choices.
+
 For topic_research, begin with provisional audience questions and broad discovery.
 Look beyond the first definition or official overview for relevant uses, artifacts,
 experiences, debates, visual material and connections to other fields. Follow a
@@ -64,6 +117,75 @@ confirmation. Parallel helpers can investigate independent questions; the main
 author compares evidence and owns the synthesis and page sequence.
 
 ## Synthesize, then plan the explanation
+
+<!-- design-task/v1 -->
+
+After research, turn the user's brief into a compact, actionable design assignment
+in the existing source notes. Keep the original request intact. Separate explicit
+requirements, supported facts and proposed design choices; proposals are revisable,
+not extra user constraints. Explain what this audience should understand, recognize
+or decide, and why the proposed viewing experience serves that outcome. A short
+request needs professional interpretation, not invented facts or a longer sales pitch.
+
+For each consequential page task, reuse the `pptx-handoff` fields in page-design.md:
+`question` states the audience's task; `evidence` / `materials` identify real support
+and file/viewing status; `preserve` keeps actual conditions; `uncertainties` names
+missing support. In `visual_opportunity`, connect a plausible expression to an
+observable completion condition: what must be visible for this page to do its job?
+For example, if a decision depends on fitting a device into a small space, a weight
+and dimensions list may not establish the footprint; a labeled concept view or a
+dimensioned native view could. This is a task-dependent choice, not a rule that all
+product pages need a rendering. A definition or exact quotation may need only a
+short hierarchy task. Do not turn every field into a paragraph or add a new form.
+
+For an audience unfamiliar with the subject, identify what they would otherwise
+have to imagine from the prose: an object, operation, state change, spatial relation
+or comparison. Prepare a usable on-slide picture or the evidence needed to draw
+that explanation, in the same materials/visual_opportunity fields.
+For new decks, prepare pictorial expression for the main content that benefits
+from being seen, across the ordered pages/sections rather than just one token
+picture. Decide the visible subject first, then choose authentic imagery, exposed
+generation, native illustration or a hybrid. Do not settle every page as prose
+and add an image at the end. Native explanatory drawings qualify;
+identify their actual evidence and intended role in the existing handoff. Follow
+art-direction.md's visual-presence requirement and its faithful/scoped exceptions.
+A useful image
+does not have to be indispensable to earn space. Search for explanatory figures,
+actual outputs and inspectable examples as well as style inspiration. If the
+original cannot be used, keep its explanatory job open for a permitted alternative,
+native schematic or labeled original illustration. Data charts remain useful for
+quantitative evidence but do not satisfy the pictorial requirement. "No required photo" and
+"text is available" do not resolve that job. Keep the benefit, action or mechanism
+requested by the user central; qualifications accompany it without turning every
+page into a repeated caution unless that is the actual brief.
+
+Use the existing deck-wide design_direction for a provisional visual direction
+and its audience rationale. Carry explicit requested and rejected treatments from
+the brief/style and current revisions into the existing preserve/handoff notes,
+with their scope intact. Do not summarize them away as "professional" or "no default
+style"; they constrain the designer's choice. Do not invent a restriction where
+the user supplied none. Separate the visible task from the proposed treatment:
+"show which fields are checked" does not prescribe a magnifying-glass cartoon.
+Connect imagery, color and shape/texture to the requested experience, not just the
+subject; distinguish explicit tone/brand requirements from provisional inference.
+An unspecified style does not make the stated use irrelevant. Ease of understanding
+and a playful appearance are different choices. Subject
+labels alone do not select a palette or style.
+Include actual finished-deck/template references when useful to choosing the shared
+background and foreground relationship. Search those alongside usable subject
+imagery, not in place of it. Hand off inspected examples and transferable decisions;
+include the concrete visible treatment that makes an example useful for this task,
+not only "hierarchy" or "grouping". Select by the unresolved visual work: a respected
+studio's small icon overview is not automatically a useful model for a strong
+subject image or image/type composition. A reference's actual color, background or
+image treatment is available to the designer when it fits; do not add an inferred
+ban on those features merely to avoid a preset style. Leave final selection,
+adaptation and page exceptions to the continuing designer. Do not turn the short
+brief into a fixed aesthetic recipe or add a reference quota.
+Do not prescribe coordinates, image counts or identical page treatments. State
+what remains to be resolved with actual material; do not certify a rough substitute
+as finished. The continuing author may improve the proposed expression, and review
+must judge the resulting audience experience rather than compliance with the plan.
 
 In the same source notes, connect the important findings to evidence and their
 consequences for this presentation: what was found, how/why it works where known,

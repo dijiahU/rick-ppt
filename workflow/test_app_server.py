@@ -120,6 +120,21 @@ class AppServerTests(unittest.TestCase):
         self.assertNotIn("never-public", json.dumps(self.public))
         self.assertGreater(self.ticks, 0)
 
+    def test_auxiliary_mcp_opt_in_requires_both_host_argument_and_config(self):
+        self.config['mcp_servers.fake.enabled'] = True
+        s = self.start(enabled_mcp_servers=('fake',))
+        self.assertTrue(s.start_thread()['config']['mcp_servers.fake.enabled'])
+        self.assertNotIn('never-public', json.dumps(self.public))
+
+    def test_config_alone_does_not_enable_inherited_mcp(self):
+        self.config['mcp_servers.fake.enabled'] = True
+        self.assertFalse(self.start().start_thread()['config']['mcp_servers.fake.enabled'])
+
+    def test_auxiliary_mcp_opt_in_rejects_implicit_or_malformed_servers(self):
+        for names in (('fake',), ('bad.name',), ('../private',), ('',), 'fake'):
+            with self.assertRaises(ValueError):
+                AppServer(cwd=self.job, config=self.config, enabled_mcp_servers=names)
+
     def test_dynamic_tools_are_explicit_and_host_callback_returns_real_content(self):
         calls=[]
         def callback(params):

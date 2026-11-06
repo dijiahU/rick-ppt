@@ -64,6 +64,21 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(FakeHarness.created[0].kw['model'],'same-model');self.assertEqual(FakeHarness.created[0].kw['profile'],'sdk')
         self.assertEqual(self.usage[0]['usage']['input_tokens'],100)
         self.assertNotIn('SYNTHETIC-SECRET',json.dumps(self.events+self.public))
+
+    def test_material_search_delivers_shared_source_guidance_in_dsh_session(self):
+        import assets,auxiliary_tools,material_prefetch,portable_auxiliary
+        runtime=SimpleNamespace(workflow=SimpleNamespace(AssetImporter=assets.AssetImporter))
+        with patch.object(auxiliary_tools,'AuxiliaryTools',auxiliary_tools.AuxiliaryTools), \
+                patch.object(material_prefetch,'AuxiliaryTools',material_prefetch.AuxiliaryTools), \
+                patch.object(material_prefetch,'AssetImporter',material_prefetch.AssetImporter):
+            portable_auxiliary.install(runtime)
+            helper=auxiliary_tools.AuxiliaryTools({},self.job)
+            result=helper.handle({'tool':'pptx_search_sources','arguments':{'request':'Public Pinterest work/source lookup'}})
+        self.assertTrue(result['success'])
+        session=list(FakeHarness.saved.values())[-1]
+        self.assertIn(auxiliary_tools.visual_source_instruction(),session.blocks[0]['text'])
+        self.assertEqual(json.loads(result['contentItems'][0]['text'])['files'],[])
+        self.assertTrue(all(item['type']=='inputText' for item in result['contentItems']))
     def test_schema_and_local_image_are_sent_without_global_context(self):
         s=self.server();thread=s.start_thread()['thread']['id']
         (self.job/'tiny.png').write_bytes(b'image fixture')

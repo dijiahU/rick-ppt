@@ -147,7 +147,7 @@ class ToolPreparationTests(unittest.TestCase):
         workspace=helper._module('pptx_core.package').unpack(
             PLUGIN/'skills/pptx/assets/blank.pptx',self.root/'projects')
         helper.prepare_tool_manifest(self.root,workspace=workspace.root)
-        manifest=self.read_manifest()
+        manifest=helper._module('tool_groups').select_group(self.read_manifest(),'compose',SCRIPT.parent)
         operations=[]
         for ident,box in [('left',[1,2,2,1]),('right',[4,2,2,1])]:
             operations.append({'op':'shape','id':ident,'slide':1,'box':box,
@@ -226,6 +226,55 @@ class ToolPreparationTests(unittest.TestCase):
             args = parser.parse_args(value['commands'][name][2:])
             self.assertIsNotNone(args.command)
         self.assertEqual(value['pptx_cli']['commands']['list']['arguments'][0]['choices'], ['slides', 'media', 'charts', 'masters'])
+
+    def test_group_index_is_small_and_has_no_full_native_signatures(self):
+        helper.prepare_tool_manifest(self.root)
+        value=self.read_manifest();index=value['discovery']
+        self.assertEqual(index['schema'],'native-tool-groups/v1')
+        self.assertIn('recreate',[g['id'] for g in index['groups']])
+        self.assertNotIn('operation_parameters',json.dumps(index))
+        self.assertNotIn('signature',json.dumps(index))
+        self.assertLess(len(json.dumps(index)),len(json.dumps(value['native_canvas'])))
+        quick=(self.root/'tool-quickstart.md').read_text()
+        self.assertIn('--group GROUP_ID',quick)
+        self.assertNotIn('add_text uses font_file',quick)
+
+    def test_group_lookup_returns_exact_selected_interfaces_without_writes(self):
+        helper.prepare_tool_manifest(self.root)
+        before={p.relative_to(self.root).as_posix():p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
+        base=[sys.executable,str(SCRIPT),'--task-root',str(self.root)]
+        index=json.loads(subprocess.run(base+['--list-groups'],check=True,capture_output=True,text=True).stdout)
+        outputs={g['id']:json.loads(subprocess.run(base+['--group',g['id']],check=True,capture_output=True,text=True).stdout)
+                 for g in index['groups']}
+        full=self.read_manifest()
+        self.assertEqual(outputs['recreate']['image_recreation'],full['image_recreation'])
+        self.assertEqual(outputs['compose']['native_batch']['operation_parameters'],full['native_batch']['operation_parameters'])
+        self.assertEqual(outputs['images']['native_canvas'],{'add_image':full['native_canvas']['add_image']})
+        self.assertNotIn('native_batch',outputs['images'])
+        self.assertNotIn('image_recreation',outputs['plan'])
+        self.assertEqual(outputs['animate']['native_canvas']['reveal'],full['native_canvas']['reveal'])
+        self.assertEqual(before,{p.relative_to(self.root).as_posix():p.read_bytes() for p in self.root.rglob('*') if p.is_file()})
+
+    def test_lookup_cannot_silently_refresh_or_accept_a_foreign_task_manifest(self):
+        helper.prepare_tool_manifest(self.root)
+        base=[sys.executable,str(SCRIPT),'--task-root',str(self.root),'--group','images']
+        before=(self.root/'tool-manifest.json').read_bytes()
+        r=subprocess.run(base+['--workspace','imaginary'],capture_output=True,text=True)
+        self.assertNotEqual(r.returncode,0)
+        self.assertEqual(before,(self.root/'tool-manifest.json').read_bytes())
+        value=json.loads(before);value['task_root']='/some/other/task'
+        (self.root/'tool-manifest.json').write_text(json.dumps(value))
+        self.assertNotEqual(subprocess.run(base,capture_output=True,text=True).returncode,0)
+
+    def test_group_refresh_preserves_actual_workspace_and_native_bytes(self):
+        ws=helper._module('pptx_core.package').unpack(PLUGIN/'skills/pptx/assets/blank.pptx',self.root/'projects')
+        helper.prepare_tool_manifest(self.root,workspace=ws.root)
+        value=self.read_manifest()
+        selected=helper._module('tool_groups').select_group(value,'recreate',SCRIPT.parent)
+        self.assertEqual(selected['parts_dir'],str(ws.root))
+        self.assertEqual(selected['commands']['native_page_batch'],value['commands']['native_page_batch'])
+        self.assertIn(str(ws.root),selected['commands']['native_page_batch'])
+        self.assertEqual(selected['native_batch']['source_frame'],value['native_batch']['source_frame'])
 
     def test_selected_session_and_parts_paths_are_equal_and_do_not_change_parts(self):
         source = self.root / 'source.pptx'

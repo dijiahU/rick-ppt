@@ -11,6 +11,7 @@ from pathlib import Path
 import re
 import uuid
 import zipfile
+from lxml.etree import XMLSyntaxError
 
 from progress import read_scoped
 
@@ -106,6 +107,20 @@ def declared_output(root,recoveries=()):
     try:
         value=json.loads(read_scoped(root,'delivery.json',10000))
         if not isinstance(value,dict):return None
+        # A milestone export is useful progress, never permission to stop writing.
+        # Legacy complete declarations (including candidate_save) omit status.
+        if value.get('status') not in (None,'complete','completed'):return None
+        from outline import MAX_OUTLINE_BYTES,MAX_SLIDES,validate_outline
+        try:request=json.loads(read_scoped(root,'request.json',1024*1024))
+        except FileNotFoundError:request={}
+        if not isinstance(request,dict):return None
+        expected=request.get('pages')
+        if expected is not None and (type(expected) is not int or not 0<=expected<=MAX_SLIDES):return None
+        try:outline=json.loads(read_scoped(root,'outline.json',MAX_OUTLINE_BYTES))
+        except FileNotFoundError:outline=None
+        if outline is not None:
+            expected=len(validate_outline(outline,expected)['slides'])
+        if not expected:return None
         from recovery_workspace import resolve_delivery
         value=resolve_delivery(value,root,recoveries)
         path=value.get('path')
@@ -113,10 +128,12 @@ def declared_output(root,recoveries=()):
         body=read_scoped(Path(root).resolve(strict=True),Path(path),30*1024*1024)
         from office_policy import validate_delivery
         validate_delivery(body,single_file=True)
-        with zipfile.ZipFile(io.BytesIO(body)) as archive:
-            if 'ppt/presentation.xml' not in archive.namelist() or '[Content_Types].xml' not in archive.namelist():return None
+        from draft_progress import validate_native
+        count=validate_native(body)
+        if count!=expected:return None
+        if 'pages' in value and (type(value['pages']) is not int or value['pages']!=count):return None
         return {'path':path,'sha256':hashlib.sha256(body).hexdigest()}
-    except (OSError,ValueError,zipfile.BadZipFile):return None
+    except (OSError,ValueError,KeyError,XMLSyntaxError,zipfile.BadZipFile):return None
 
 
 class OutputProgress:

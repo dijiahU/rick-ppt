@@ -154,6 +154,24 @@ class ReviewMaterialsTests(unittest.TestCase):
         self.assertIn('read this exact file before judging its contents', prompt)
         self.assertNotIn('NONTRUNCATED', prompt)
 
+    def test_expanded_task_enters_visual_input_before_page_text_and_not_content(self):
+        task={'purpose':'Choose between actual supported options',
+              'pages':[{'page_id':'first','handoff':{'question':'DERIVED VISIBLE TASK',
+                  'visual_opportunity':'Proposed expression, not an added user constraint'}}]}
+        (self.root/'design-task.json').write_text(json.dumps(task))
+        (self.root/'request.json').write_text(json.dumps({'brief':'ORIGINAL SHORT REQUEST'}))
+        before=(self.root/'request.json').read_bytes()
+        for role in ('content-first','content-evidence','visual'):
+            prompt,images=prepare_review_materials(self.root,role,include_role_documents=True)
+            if role=='visual':
+                self.assertIn('DERIVED VISIBLE TASK',prompt)
+                self.assertLess(prompt.index('ORIGINAL SHORT REQUEST'),prompt.index('DERIVED VISIBLE TASK'))
+                self.assertLess(prompt.index('DERIVED VISIBLE TASK'),prompt.index('Actual page text and native facts'))
+                self.assertEqual(images,['reading-page-1.png','reading-page-2.png','native-state-contact-1.jpg'])
+            else:self.assertNotIn('DERIVED VISIBLE TASK',prompt)
+            self.assertNotIn('PRIVATE AUTHOR REASONING',prompt)
+        self.assertEqual((self.root/'request.json').read_bytes(),before)
+
     def test_malformed_supplement_falls_back_to_original_without_inventing_content(self):
         (self.root / 'first-view.json').write_text('{unfinished')
         prompt, _ = prepare_review_materials(self.root, 'content-evidence',include_role_documents=True)
@@ -178,6 +196,27 @@ class ReviewMaterialsTests(unittest.TestCase):
     def test_unknown_prepared_role_fails_closed(self):
         with self.assertRaisesRegex(ReviewSessionError, 'Unknown prepared reviewer role'):
             prepare_review_materials(self.root, 'author')
+
+    def test_explicit_style_is_exact_visible_review_evidence_but_not_blind_input(self):
+        from language import presentation_request
+        style = '不要用低饱和度有色纯色作为整套主背景；保留附件中指定的标志。'
+        request = presentation_request({'title':'办公分享','brief':'制作五页实用分享。',
+            'pages':5,'style':style,'mode':'create','language':'zh-CN'})
+        path = self.root/'request.json'
+        path.write_text(json.dumps(request,ensure_ascii=False))
+        before = path.read_bytes()
+        for role in ('content-first','content-evidence','visual'):
+            prompt,images = prepare_review_materials(self.root,role,include_role_documents=True)
+            if role=='content-first':
+                self.assertNotIn(style,prompt)
+            else:
+                documents,_ = json.JSONDecoder().raw_decode(prompt[prompt.index('[{"path"'):])
+                supplied = next(d for d in documents if d['path']=='request.json')
+                self.assertEqual(supplied['content'],request)
+                self.assertEqual(supplied['sha256'],hashlib.sha256(before).hexdigest())
+                self.assertEqual(supplied['content']['style'],style)
+            self.assertNotIn('PRIVATE AUTHOR REASONING',prompt)
+        self.assertEqual(path.read_bytes(),before)
 
 
 if __name__ == '__main__':

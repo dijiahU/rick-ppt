@@ -29,6 +29,9 @@ dependencies. This skill does not provide model keys or website queues. The full
 workflow creates reviewer contexts through its selected harness; search and
 generation use actual configured host services. Never package credentials.
 Save request.json with mode (create/edit) and agreed language.
+Use the task's tool-quickstart.md or manifest discovery index to open only needed
+scenario groups with tool_prepare.py --group GROUP_ID; keep full tool details out
+of the initial context. See [Tool discovery](references/tool-preparation.md).
 
 ## Delivery boundaries
 
@@ -42,6 +45,11 @@ reported results, interpretation and illustrative examples. Real interfaces,
 historical/documentary subjects and case evidence require authentic sources.
 [Research and assets](references/research-and-assets.md) covers acquisition and evidence.
 
+New decks must include useful pictures, concrete native illustrations/schematics,
+or permitted sourced/generated imagery. Statistical charts/tables and trees of
+text labels do not satisfy this pictorial requirement. See [Art direction](references/art-direction.md#4-turn-content-into-a-visible-relationship)
+for what qualifies; preserve faithful/scoped work and explicit text-only requests.
+
 Default new English/Latin to Times New Roman and Chinese to SimSun (宋体), using
 genuine font metrics and explicit runs/themes. This includes text recreated from an
 image without a specified source typeface; a rounded or handwritten appearance is
@@ -54,13 +62,15 @@ text/connectors. Mac/static previews do not certify Windows WPS playback.
 
 ## Roles and continuity
 
-The content researcher/editor owns evidence, examples, audience questions and the
-ordered explanation. One continuing designer/native author owns art direction,
-all native pages and scoped repairs. When separate contexts are available, hand
-over the current outline, source notes, actual references/material and protected
-scope; keep raw research/tool conversation out of the designer's input. A single
-local assistant can perform these roles in order without pretending to have
-independent collaborators. Preserve one canonical native workspace and page order.
+One continuing author can own research, examples, narrative, design and native
+implementation in the same conversation; research and authoring remain ordered
+checkpoints. Follow the host's pinned context mode. New local Codex tasks retain
+that conversation; independent content and visual reviews use separate contexts.
+Batch independent search queries and overlap permitted downloads without splitting
+the author’s judgment. Use model-backed helpers only when the host advertises them.
+Legacy/API/DSH split routes retain the actual outline, source notes, inspected
+material and protected scope as their handoff. Preserve one canonical native
+workspace and page order; do not invent an independent collaborator.
 
 ## Research and plan
 
@@ -72,6 +82,10 @@ template does not by itself prohibit relevant visual research. Honor actual
 supplied-only/offline limits and small editing scopes.
 
 Write source-notes.md for evidence, qualifications and useful reference observations.
+After research, expand the short request into actionable page tasks using the
+existing handoffs: audience outcome, useful actual material and a visible completion
+condition. Separate user requirements and facts from revisable design proposals;
+follow content.md / page-design.md. Do not freeze a weak proposal or invent a style.
 Write outline.json with title, purpose and ordered slides (stable id, title,
 substantive summary). Plan the explanation and a provisional visual direction;
 leave concrete composition and visible wording to the continuing designer.
@@ -116,6 +130,9 @@ Inspect the actual work and transfer useful visual relationships into current pa
 A template protects its required elements; it does not supply every body-page design.
 Use the reference procedure in Research and assets; no artist list, reference quota
 or separate inspiration stage. Record only actually inspected/applied work.
+For relevant poster, editorial, identity or image/type references, consider
+[Pinterest](references/pinterest.md) alongside original portfolios. Use the
+current host's search/browser and image channels; links alone are not inspection.
 
 Start from the supplied template/source when required, otherwise assets/blank.pptx.
 Use one continuing designer/native author and make pages in presentation order. Helpers may prepare
@@ -185,7 +202,10 @@ broken native features; discretionary artistic alternatives remain suggestions.
 Authors and visual reviewers use the same [Design completion](references/design-completion.md)
 standard. At first design entry and existing render points, judge the actual
 subject, visible relationships and craft against this task's use, not the presence
-of information alone. The host consumes ready / needs_revision / uncertain
+of information alone. 清楚只是最低要求：信息完整、文字可读、没有排版错误，不能代替画面设计完成；严肃可以克制，但不能只是把内容摆齐。
+The independent visual_craft dimension rates composition, visual expression, typography
+and sequence with page/region evidence; a substantive low rating enters the existing
+bounded response. The host consumes ready / needs_revision / uncertain
 separately from technical validity. Substantive primary findings can return once
 to the continuing author within the existing bound; minor preferences alone do
 not trigger a pass. Compare actual before/after pages: keep a valid candidate

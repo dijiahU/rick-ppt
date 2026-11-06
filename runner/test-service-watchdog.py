@@ -5,6 +5,33 @@ from types import SimpleNamespace
 from unittest.mock import patch
 spec=importlib.util.spec_from_file_location('watch',Path(__file__).with_name('service-watchdog.py'));watch=importlib.util.module_from_spec(spec);spec.loader.exec_module(watch)
 class WatchTests(unittest.TestCase):
+ def test_manual_wake_is_bounded_and_bound_to_live_command(self):
+  import json
+  with tempfile.TemporaryDirectory() as t,patch.object(watch,'ROOT',Path(t)):
+   p=Path(t)/'manual-wake.local.json';lease={'scope':'manual-test-wake','created_at':900,'expires_at':1100,'owners':[{'pid':321,'command':'python /case/supervise.py'}]}
+   p.write_text(json.dumps(lease))
+   with patch.object(watch,'command',return_value=SimpleNamespace(returncode=0,stdout='python /case/supervise.py\n')):
+    self.assertTrue(watch.manual_wake_active(1000))
+    self.assertFalse(watch.manual_wake_active(1100))
+    lease['expires_at']=9000;p.write_text(json.dumps(lease));self.assertFalse(watch.manual_wake_active(1000))
+   lease['expires_at']=1100;p.write_text(json.dumps(lease))
+   with patch.object(watch,'command',return_value=SimpleNamespace(returncode=0,stdout='python /unrelated.py')):self.assertFalse(watch.manual_wake_active(1000))
+   with patch.object(watch,'command',return_value=SimpleNamespace(returncode=1,stdout='')):self.assertFalse(watch.manual_wake_active(1000))
+   p.write_text('{invalid');self.assertFalse(watch.manual_wake_active(1000))
+ def test_manual_wake_does_not_enable_queue_services_on_battery(self):
+  with tempfile.TemporaryDirectory() as t,patch.object(watch,'WORKER',Path(t)),patch.object(watch,'command',side_effect=self.fixture()),patch.object(watch,'ac_only',return_value=True),patch.object(watch,'power_source',return_value='battery'),patch.object(watch,'manual_wake_active',return_value=True):
+   report=watch.check(now=1000)
+  self.assertTrue(report['status']['sleep_protected']);self.assertTrue(report['status']['manual_test_wake']);self.assertFalse(report['status']['services_allowed'])
+  self.assertFalse(any(a[0] in ('/usr/bin/open','/usr/local/bin/docker','/usr/bin/curl') for a in self.calls))
+  self.assertFalse(any(str(watch.ROOT/'start-worker.py') in a for a in self.calls))
+ def test_finished_manual_wake_releases_sleep_on_battery(self):
+  calls=[]
+  def run(args,timeout=6):
+   calls.append(args);return SimpleNamespace(returncode=0 if args[0] in ('/usr/bin/pmset','/usr/bin/sudo') else 1,stdout='SleepDisabled 1')
+  with tempfile.TemporaryDirectory() as t,patch.object(watch,'WORKER',Path(t)),patch.object(watch,'command',side_effect=run),patch.object(watch,'ac_only',return_value=True),patch.object(watch,'power_source',return_value='battery'),patch.object(watch,'manual_wake_active',return_value=False):
+   report=watch.check(now=1000)
+  self.assertFalse(report['status']['sleep_protected']);self.assertFalse(report['status']['services_allowed'])
+  self.assertIn(['/usr/bin/sudo','-n','/usr/bin/pmset','-a','disablesleep','0'],calls)
  def test_battery_releases_sleep_and_stops_only_verified_worker_without_startup(self):
   import json,os
   calls=[]

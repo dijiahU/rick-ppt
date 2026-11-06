@@ -11,6 +11,7 @@ from pptx_core.package import select,pack
 from pptx_core.relationships import slide_parts, relationships
 from pptx_core.renderer import render_package
 from native_structure import identity, bounds
+from inspect_formulas import inspect_slide
 
 
 def collect_interactive(ws, destination):
@@ -84,6 +85,7 @@ def collect(workspace, render, destination):
         rels=relationships(root,part)
         record={'page':number,'part':part,'text':'\n'.join(x.text or '' for x in tree.iter() if local(x)=='t'),
                 'shapes':shapes,'timing_targets':targets,'effect_nodes':clicks,
+                'formula_inventory':inspect_slide(tree),
                 'media':[r for r in rels if any(k in r.get('type','').lower() for k in ('image','audio','video','media'))],
                 'playback_verified':False}
         record['editability']={'groups':sum(s['kind']=='grpSp' for s in shapes),

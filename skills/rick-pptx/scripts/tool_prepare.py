@@ -10,7 +10,6 @@ import inspect
 import json
 import os
 from pathlib import Path
-import shlex
 import sys
 import types
 import uuid
@@ -227,24 +226,6 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
         'decision_scaffold': scaffold, 'scaffold_error': scaffold_error, 'attachments': attachments,
         'authority': 'Interface preparation only. The author selects content and visual expression; validators check delivery records, assets and behavior; reviews judge the actual result.'}
     manifest['native_canvas']['add_shape']['choices'] = {'geometry': list(canvas.SHAPE_GEOMETRIES)}
-    lines = ['# Task tool quickstart', '', 'Read SKILL.md and task requirements. This guide prepares interfaces, not content or design.',
-             '', f'Use this interpreter for every script and inline patch: `{interpreter}`. Do not use bare python/python3.',
-             f'Parts directory: `{parts_dir}`' if parts_dir else 'No native workspace selected yet. Choose the task-appropriate source, unpack it, then refresh with the returned workspace path.',
-             'pptx/native_builds accept session or parts directories; native_canvas/design_references need the parts directory.',
-             'Put pptx --workspace before its subcommand. Use list slides, inspect N, render N; unpack uses --base, not --output.', '', '```sh']
-    lines += [shlex.join(argv) for argv in commands.values()]
-    lines += ['```', '', 'SELECTED_SOURCE / CHOSEN_VERSION and page 1 are replaceable examples, not template/style selections.',
-              'The manifest contains exact CLI arguments, native_canvas Python signatures and current decision options.',
-              'add_text uses font_file,size,ink and x/y/width/max_height; box belongs to other helpers. max_height is a finite positive number in inches, never "auto". Use returned object handles for links/groups/reveals.',
-              'Before mutating a custom page, check the chosen text/font pair with check_glyphs or text_measure. A measured call: m=text_measure(copy,font_file,18,4,latin_font=latin_font); add_text(parts_dir,page,copy,font_file,18,ink,x=1,y=1,width=4,max_height=m["height"]+0.01,latin_font=latin_font). Symbols also need actual glyph coverage; native geometry can express an unsupported graphical symbol.',
-              'Text checks actual glyph coverage and writes explicit noAutofit. Connector sites are geometry-specific: rect/roundRect/diamond right=3,left=1; ellipse right=6,left=2. Anchors must agree with transformed endpoints. Anchor to a verified child, not an unspecified group site.',
-              'Native reveal writes one entrance row per object: clickEffect then synchronized withEffect rows. Do not put multiple shape targets inside one preset effect. The state parser rejects ambiguous legacy rows rather than inventing initial visibility.',
-              'Export saves a hash-bound compatibility report in the session and state.last_compatibility. Fix affected connector/text findings within scope; inventory is not target-viewer certification and must not restyle unrelated source pages.',
-              'Before edits take a snapshot. A failed multi-object script can leave earlier changes saved: inspect or restore before retry; never append hardcoded IDs.',
-              'Write outline.slides, not outline.pages. Generate the unselected scaffold only after outline IDs/order exist. Do not infer aesthetics from choice counts.',
-              'workflow_decisions.py --template prints JSON to stdout only. It never creates decision-plan.json; save/fill it explicitly or use manifest.decision_scaffold after refreshing.',
-              'reference.source is the exact HTTPS URL or actual attachment path below; provenance labels go in title/observed. Ready file assets need file/kind/status/origin; native/no-asset records only route.',
-              'Record the required delivery decisions; choose visual expression freely within user scope. Preserve source invariants, meaningful native reveals, sequential authoring, actual rendering and independent reviews.', '']
     if planning_script.is_file():
         manifest['planning_commit'] = {
             'guide': str(SCRIPTS.parent / 'references/planning-commit.md'),
@@ -258,16 +239,10 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
                         'allow_legacy': 'Only for explicitly historically admitted contracts.'},
             'outputs': ['outline.json', 'decision-plan.json', 'source-notes.md'],
             'validation': 'Checks current outline and planning decisions before transactional commit; does not select branches or certify facts/design.'}
-        lines += ['For planning, write one complete planning-input.json and call planning_commit once with the host mode and resolved total.',
-                  'If source-notes.md already contains the research, use source_notes_file="source-notes.md" instead of regenerating/escaping its text into the bundle.',
-                  'It validates and commits outline/decision-plan/source-notes together. No separate scaffold generation or duplicate CLI planning check is needed.', '']
     if candidate_script.is_file():
         manifest['candidate_save'] = {'command': commands['save_candidate'],
             'operation': 'Native export with real render, existing authored check when records exist, then atomic delivery.json update.',
             'scope': 'Complete candidate only. No independent review or aesthetic/playback verdict. Failure leaves the prior declaration unchanged; older exports remain immutable.'}
-        lines += ['After a meaningful completed repair, use save_candidate with the authoritative workspace and a fresh output name.',
-                  'It exports/renders, checks existing authored records, then updates delivery.json in one operation. Complete the declared deck before using it; a partial page edit alone is not a candidate.',
-                  'Save the main useful correction before starting optional polish; refresh this complete checkpoint after additional completed corrections. Independent review still follows.', '']
     if pages_script.is_file():
         manifest['native_pages'] = {
             'guide': str(SCRIPTS.parent / 'references/native-pages.md'),
@@ -276,9 +251,6 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
             'selection': 'Explicit --source-slide N or --layout EXISTING_LAYOUT_PART; no style/layout selection by the tool.',
             'retry': 'Same persistent --key and request reuse the same page even after it has been edited.',
             'scope': 'Reuse existing pages or append only the next page with the existing layout/master/theme chain. Not a clone of source objects, notes or animation.'}
-        lines += ['To append the next blank page, use ensure_next_page with an explicit layout source and a stable key.',
-                  'It safely reuses that page on retry. Do not handwrite repeated slideN/rId/sldId appends or replay a whole-deck generator.',
-                  'This preserves the selected layout/master/theme, not source-page objects, notes, media, animation or background. Faithful edits keep their existing pages.', '']
     if batch_script.is_file():
         # Derive the JSON call contract from the same functions used by the
         # batch implementation. Do not make the model translate Python-only
@@ -303,12 +275,6 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
             'text_height': 'Numeric max_height is strict; explicit auto measures without shrinking.',
             'transaction': 'Checks every text first, stages all objects, commits on success, rolls back on failure; exact successful retries do not append.',
             'scope': 'One existing page per batch; content, coordinates, actual assets/style and page order are author choices.'}
-        lines += ['For multi-object pages, call native_page_batch with one chosen-page JSON instead of writing a temporary Python page-operation framework.',
-                  'Read the native_batch guide shown in the manifest once for its compact input contract. Native_canvas signatures provide exact operation fields.',
-                  'Optional defaults reuse your chosen style by operation type (e.g. text font_file/size/ink); individual values override them. Keep geometry, content, IDs and animation targets explicit.',
-                  'Names resolve group/connector/reveal targets. All explicit text-height errors return together; failures leave parts unchanged.',
-                  'Use max_height="auto" only when you deliberately want measured height; numeric bounds remain strict. Check composition and overlaps in the actual render.',
-                  'The batch does not create pages, choose a style or replace sequential publication/self-check/independent review.', '']
     recreation = SCRIPTS / 'recreation_tools.py'
     if recreation.is_file():
         manifest['image_recreation'] = {
@@ -319,7 +285,6 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
                         '--source', 'SOURCE_IMAGE', '--render', 'ACTUAL_RENDER',
                         '--regions', 'INSPECT_RECEIPT_JSON', '--out', 'FRESH_OUTPUT_DIR'],
             'scope': 'Task-local images; explicit source-pixel regions; hashes and dimensions in receipt. Open output images; no inspection or quality claim.'}
-        lines += ['For faithful image recreation, read image_recreation.guide: source-pixel native batches, editable paths, batch crops and same-scale comparisons reuse existing authoring/review.', '']
     page_design = SCRIPTS / 'page_design.py'
     if page_design.is_file():
         commands['page_design_context'] = [interpreter, str(page_design), 'context', '--task-root', str(root),
@@ -339,15 +304,12 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
             'visual_input': 'The CLI returns text/file checks only. Host tool pptx_page_design_context returns actual supported local images; after render N pass workspace as well as page_id to receive the current page preview first. Otherwise open the exact current preview/main material/applicable references through the existing image viewer. Stale/missing previews are not fresh visual input.',
             'use': 'Use supplied notes directly; retrieve this page when notes are large or material/expression is unclear. Record consequential changes only, not a per-page form or approval.',
             'authority': 'File checks and version-bound author observations, not source authenticity, aesthetic scores or independent review passes.'}
-        lines += ['Page-specific evidence/material lookup and optional consequential design observations:',
-                  shlex.join(commands['page_design_context']),
-                  'Render the current page once its main composition is inspectable, then view that exact result. After a meaningful edit render/view the changed page again; reuse saved unchanged pages.',
-                  'The CLI above returns preview paths/status, not image input. Use the image viewer, or host pptx_page_design_context(page_id=..., workspace=...) when exposed.',
-                  'With workspace, page context includes native.objects from the actual inspect command, bound to the page hash. The commands section alone is a callable interface, not an object index. Read attached images directly; reopen only for a needed detail or unavailable input. compare_previous=true on the host tool requests the last supplied preview for this page alongside its current render.',
-                  'Use current supplied notes directly when sufficient. The page_design manifest links the optional source-notes format and record command.', '']
-    lines += [f'- `{a["path"]}` ({a.get("name", "attachment")})' for a in attachments]
+    groups = _module('tool_groups')
+    manifest['discovery'] = groups.catalog(manifest, SCRIPTS/'tool_prepare.py')
+    manifest['entry_commands'] = {name: commands[name] for name in
+                                  ('refresh', 'unpack_selected_source', 'render_page', 'save_candidate') if name in commands}
     manifest_path = _write(root, 'tool-manifest.json', json.dumps(manifest, ensure_ascii=False, indent=2))
-    guide_path = _write(root, 'tool-quickstart.md', '\n'.join(lines) + '\n')
+    guide_path = _write(root, 'tool-quickstart.md', groups.quickstart(manifest))
     return {'manifest': manifest_path, 'quickstart': guide_path, 'python': interpreter,
             'session_dir': session_dir, 'parts_dir': parts_dir}
 
@@ -357,7 +319,21 @@ def main():
     parser.add_argument('--task-root', default='.')
     parser.add_argument('--python', help='Exact host interpreter invocation; defaults to sys.executable')
     parser.add_argument('--workspace', help='Existing task-local session or parts directory; never automatically unpack')
+    lookup = parser.add_mutually_exclusive_group()
+    lookup.add_argument('--group', choices=list(_module('tool_groups').GROUPS), help='Read only the selected group; no preparation or native mutation')
+    lookup.add_argument('--list-groups', action='store_true', help='Read the folder index without full tool signatures')
     args = parser.parse_args()
+    if args.group or args.list_groups:
+        if args.workspace or args.python:
+            parser.error('Group lookup is read-only; refresh with --workspace/--python separately.')
+        root = Path(args.task_root).resolve(strict=True)
+        manifest = _read(root/'tool-manifest.json', root)
+        if manifest.get('task_root') != str(root):
+            raise ValueError('Tool manifest belongs to another task; prepare this task first')
+        groups = _module('tool_groups')
+        value = groups.select_group(manifest, args.group, SCRIPTS) if args.group else groups.catalog(manifest, SCRIPTS/'tool_prepare.py')
+        print(json.dumps(value, ensure_ascii=False))
+        return
     print(json.dumps(prepare_tool_manifest(args.task_root, python=args.python, workspace=args.workspace), ensure_ascii=False))
 
 

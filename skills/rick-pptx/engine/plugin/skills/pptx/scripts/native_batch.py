@@ -213,6 +213,15 @@ def _prepare(root, parts, document):
             inspect.signature(OPERATIONS[op]).bind(str(parts), slide, **params)
             if op == 'reveal' and 'replace' in params and type(params['replace']) is not bool:
                 raise ValueError('reveal.replace must be an explicit JSON boolean; existing timing is preserved unless true is authorized')
+            if op == 'connector':
+                points = params['points']
+                if (not isinstance(points, (list, tuple)) or len(points) != 4
+                        or any(type(v) not in (int, float) or not math.isfinite(v) for v in points)):
+                    raise ValueError('connector.points must be flat [x1, y1, x2, y2] with four finite numbers; use path for a fixed multi-bend route')
+            if op == 'group':
+                members = params['members']
+                if isinstance(members, list) and (len(members) < 2 or any(v in members[:i] for i, v in enumerate(members))):
+                    raise ValueError('group.members needs at least two distinct handles; target a single object directly in reveal.steps')
             if op in ('shape', 'connector') and (type(params['line_width']) not in (int, float)
                                                   or not math.isfinite(params['line_width']) or params['line_width'] <= 0):
                 raise ValueError('Positive line_width required even with stroke=null; explicitly choose a positive value such as 1')

@@ -5,6 +5,8 @@ import tempfile
 import unittest
 import uuid
 import zipfile
+from copy import deepcopy
+from lxml import etree
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -19,6 +21,37 @@ from resilience import TaskPaused
 
 REPO = Path(__file__).resolve().parents[1]
 PYTHON = '/Users/rick/Desktop/ppt/pptx-agent/.venv/bin/python'
+BLANK = REPO/'pptx-agent/skills/pptx/assets/blank.pptx'
+
+
+def native_deck(path, pages=1):
+    """Real native package, retaining the shipped blank's master/layout links."""
+    with zipfile.ZipFile(BLANK) as source:
+        parts={name:source.read(name) for name in source.namelist()}
+    presentation=etree.fromstring(parts['ppt/presentation.xml'])
+    slides=presentation.find('{http://schemas.openxmlformats.org/presentationml/2006/main}sldIdLst')
+    first=deepcopy(slides[0]);rid='{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id'
+    rels=etree.fromstring(parts['ppt/_rels/presentation.xml.rels'])
+    relation=next(node for node in rels if node.get('Id')==first.get(rid))
+    types=etree.fromstring(parts['[Content_Types].xml'])
+    content_type=next(node for node in types if node.get('PartName')=='/ppt/slides/slide1.xml')
+    for index in range(2,pages+1):
+        identifier='continuitySlide'+str(index)
+        slide=deepcopy(first);slide.set('id',str(255+index));slide.set(rid,identifier);slides.append(slide)
+        rel=deepcopy(relation);rel.set('Id',identifier);rel.set('Target',f'slides/slide{index}.xml');rels.append(rel)
+        kind=deepcopy(content_type);kind.set('PartName',f'/ppt/slides/slide{index}.xml');types.append(kind)
+        parts[f'ppt/slides/slide{index}.xml']=parts['ppt/slides/slide1.xml']
+        parts[f'ppt/slides/_rels/slide{index}.xml.rels']=parts['ppt/slides/_rels/slide1.xml.rels']
+    for name,tree in [('ppt/presentation.xml',presentation),('ppt/_rels/presentation.xml.rels',rels),('[Content_Types].xml',types)]:
+        parts[name]=etree.tostring(tree)
+    with zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED) as output:
+        for name,body in parts.items():output.writestr(name,body)
+    return path
+
+
+def write_outline(root,pages):
+    (root/'outline.json').write_text(json.dumps({'title':'Synthetic native deck','purpose':'Verify complete handoff',
+        'slides':[{'id':f'page-{n}','title':f'Page {n}','summary':'Synthetic content.'} for n in range(1,pages+1)]}))
 
 
 class Files(unittest.TestCase):
@@ -145,19 +178,66 @@ class Files(unittest.TestCase):
 
     def test_declared_handoff_uses_only_trusted_recovery_alias_and_restored_bytes(self):
         old=self.root/'old';old.mkdir();(old/'candidate.pptx').write_bytes(b'never read this historical file')
-        current=self.job/'candidate.pptx'
-        with zipfile.ZipFile(current,'w') as z:
-            z.writestr('[Content_Types].xml','<Types/>');z.writestr('ppt/presentation.xml','<presentation/>')
+        current=native_deck(self.job/'candidate.pptx');write_outline(self.job,1)
         (self.job/'delivery.json').write_text(json.dumps({'path':str(old/'candidate.pptx')}))
         self.assertIsNone(declared_output(self.job))
         found=declared_output(self.job,[{'previous_workspace':str(old),'workspace':str(self.job)}])
         self.assertEqual(found['sha256'],hashlib.sha256(current.read_bytes()).hexdigest())
         self.assertEqual((old/'candidate.pptx').read_bytes(),b'never read this historical file')
 
+    def test_partial_milestone_cannot_end_author_even_when_actual_count_is_complete(self):
+        native_deck(self.job/'candidate.pptx',5);write_outline(self.job,5)
+        (self.job/'delivery.json').write_text(json.dumps({'path':'candidate.pptx','status':'partial_milestone','pages':5}))
+        self.assertIsNone(declared_output(self.job))
+
+    def test_short_export_is_not_complete_and_newer_full_export_is_not_selected(self):
+        native_deck(self.job/'candidate.pptx',5);native_deck(self.job/'newer.pptx',15)
+        write_outline(self.job,15)
+        (self.job/'request.json').write_text('{"pages":15}')
+        for metadata in ({},{'status':'complete','pages':15}):
+            with self.subTest(metadata=metadata):
+                (self.job/'delivery.json').write_text(json.dumps({'path':'candidate.pptx',**metadata}))
+                self.assertIsNone(declared_output(self.job))
+
+    def test_legacy_complete_candidate_and_request_only_count_remain_supported(self):
+        path=native_deck(self.job/'candidate.pptx',2)
+        (self.job/'request.json').write_text('{"pages":2}')
+        (self.job/'delivery.json').write_text('{"path":"candidate.pptx"}')
+        expected={'path':str(path.resolve()),'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
+        self.assertEqual(declared_output(self.job),expected)
+        write_outline(self.job,2)
+        self.assertEqual(declared_output(self.job),expected)
+        (self.job/'request.json').write_text('{"mode":"edit","pages":0}')
+        self.assertEqual(declared_output(self.job),expected)
+
+    def test_missing_scope_conflicting_outline_and_false_page_metadata_defer_handoff(self):
+        native_deck(self.job/'candidate.pptx')
+        (self.job/'delivery.json').write_text('{"path":"candidate.pptx"}')
+        self.assertIsNone(declared_output(self.job))
+        write_outline(self.job,1)
+        (self.job/'request.json').write_text('{"pages":2}')
+        self.assertIsNone(declared_output(self.job))
+        (self.job/'request.json').unlink()
+        (self.job/'delivery.json').write_text('{"path":"candidate.pptx","pages":2}')
+        self.assertIsNone(declared_output(self.job))
+
+    def test_partial_or_truncated_restored_candidate_cannot_bypass_checks(self):
+        old=self.root/'old';old.mkdir();current=native_deck(self.job/'candidate.pptx')
+        write_outline(self.job,1)
+        aliases=[{'previous_workspace':str(old),'workspace':str(self.job)}]
+        declaration={'path':str(old/'candidate.pptx'),'status':'partial_milestone'}
+        (self.job/'delivery.json').write_text(json.dumps(declaration))
+        self.assertIsNone(declared_output(self.job,aliases))
+        declaration.pop('status');(self.job/'delivery.json').write_text(json.dumps(declaration))
+        with zipfile.ZipFile(current,'w') as archive:
+            archive.writestr('[Content_Types].xml','<Types/>')
+            archive.writestr('ppt/presentation.xml','<presentation/>')
+        self.assertIsNone(declared_output(self.job,aliases))
+
 
 class Phase(unittest.TestCase):
     def run_phase(self, mode='rebuild', resume=False, missing_thread=False, name='research', pause=False,
-                  revision_at_reset=False, bad_receipt=False, reject_steer=False,allow_handoff=False):
+                  revision_at_reset=False, bad_receipt=False, reject_steer=False,allow_handoff=False,browser=False):
         temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup)
         root=Path(temp.name);job=root/'job';job.mkdir()
         for name_ in ('media-requests','font-requests','render-requests','tmp'):(job/name_).mkdir()
@@ -165,6 +245,7 @@ class Phase(unittest.TestCase):
         cfg={'token':'fake-token','plugin':str(REPO/'pptx-agent'),'python':PYTHON,
              'progress_action_window':4}
         if allow_handoff:cfg['_allow_declared_author_handoff']=True
+        if browser:cfg['browser_research']={'enabled':True,'browser':'edge','site':'https://www.xiaohongshu.com'}
         bridge=SimpleNamespace(ROOT=root,environment=lambda root:{},request=lambda *a,**k:{'ok':True},render_requests=Mock())
         reporter=Reporter(cfg,task,job,bridge.request,explicit_previews=True)
         journal=Journal(root/'state',task['id'],plugin_version='test');self.addCleanup(journal.close)
@@ -205,11 +286,7 @@ class Phase(unittest.TestCase):
                 self.kw['tick']();self.steps+=1
                 if self.steps>50:raise AssertionError('Fake model exceeded bounded execution')
                 if mode=='handoff' and self.steps==1:
-                    artifact=job/'declared.pptx'
-                    with zipfile.ZipFile(artifact,'w') as z:
-                        z.writestr('[Content_Types].xml','<Types/>')
-                        z.writestr('ppt/presentation.xml','<presentation/>')
-                        z.writestr('ppt/slides/slide1.xml','<slide/>')
+                    artifact=native_deck(job/'declared.pptx');write_outline(job,1)
                     (job/'delivery.json').write_text(json.dumps({'path':str(artifact)}))
                 thread,turn=next(iter(self.active_turns.items()))
                 if mode=='missing' and self.turns==1:
@@ -253,6 +330,14 @@ class Phase(unittest.TestCase):
     def test_permanent_nonproduction_stops_after_one_reset(self):
         s,_,error,_,_=self.run_phase(mode='stalled')
         self.assertIsInstance(error,ProgressStalled);self.assertEqual(len(s.threads),2)
+
+    def test_browser_research_is_opt_in_and_not_a_reviewer_capability(self):
+        for phase in ('author','research','visual-1'):
+            with self.subTest(phase=phase),patch.object(workflow,'continuity_enabled',return_value=False):
+                server,_,error,_,_=self.run_phase(mode='complete',name=phase,browser=True)
+            self.assertIsNone(error)
+            self.assertEqual(any(s['name']=='pptx_browser_sources' for s in server.tool_specs),phase in ('author','research'))
+            self.assertFalse(server.kw['config']['features']['browser_use'])
 
     def test_completed_valid_handoff_does_not_get_extra_turn(self):
         s,_,error,_,_=self.run_phase(mode='complete')

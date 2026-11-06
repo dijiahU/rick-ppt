@@ -13,6 +13,20 @@ def command(args,timeout=6):
     try:return subprocess.run(args,capture_output=True,text=True,timeout=timeout)
     except (OSError,subprocess.TimeoutExpired):return None
 
+def manual_wake_active(now):
+    """Host-issued, short-lived wake lease; never authorizes queue services."""
+    try:
+        lease=json.loads((ROOT/'manual-wake.local.json').read_text())
+        start,end=lease['created_at'],lease['expires_at']
+        if lease.get('scope')!='manual-test-wake' or not start<=now<end or end-start>7200:return False
+        for owner in lease['owners']:
+            pid,expected=owner['pid'],owner['command']
+            if type(pid) is not int or pid<=0 or not isinstance(expected,str) or not expected:continue
+            actual=command(['/bin/ps','-p',str(pid),'-o','command='])
+            if actual and actual.returncode==0 and actual.stdout.strip()==expected:return True
+    except (OSError,ValueError,KeyError,TypeError):pass
+    return False
+
 def local_proxy_ready():
     # Reuse the existing private login transport; do not alter network settings.
     try:env=plistlib.loads(LOGIN.read_bytes()).get('EnvironmentVariables',{})
@@ -41,10 +55,12 @@ def check(previous=None,now=None):
     disabled=bool(power and re.search(r'SleepDisabled\s+1',power.stdout))
     source=power_source() if ac_only() else 'unrestricted'
     allowed=source in ('ac','unrestricted')
-    status.update(power_source=source,ac_power_only=ac_only(),services_allowed=allowed)
-    if disabled!=allowed:
-        changed=command(['/usr/bin/sudo','-n','/usr/bin/pmset','-a','disablesleep','1' if allowed else '0'])
-        if changed and changed.returncode==0:disabled=allowed
+    manual=manual_wake_active(now)
+    keep_awake=allowed or manual
+    status.update(power_source=source,ac_power_only=ac_only(),services_allowed=allowed,manual_test_wake=manual)
+    if disabled!=keep_awake:
+        changed=command(['/usr/bin/sudo','-n','/usr/bin/pmset','-a','disablesleep','1' if keep_awake else '0'])
+        if changed and changed.returncode==0:disabled=keep_awake
     status['sleep_protected']=disabled
     amp=command(['/usr/bin/pgrep','-x','Amphetamine'])
     status['amphetamine_running']=bool(amp and amp.returncode==0)

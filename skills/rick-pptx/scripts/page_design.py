@@ -15,6 +15,7 @@ import tempfile
 from urllib.parse import urlsplit
 
 if __package__:
+    from .inspect_formulas import inspect_slide
     # tool_prepare imports under a version-specific package so an older host's
     # already-loaded pptx_core cannot replace this release's dependencies.
     from .pptx_core.common import PptxError, NS, now, parse, sha256
@@ -23,6 +24,7 @@ if __package__:
     from .pptx_core.relationships import slide_parts
     from .pptx_core.cli import inspect as inspect_page
 else:
+    from inspect_formulas import inspect_slide
     from pptx_core.common import PptxError, NS, now, parse, sha256
     from pptx_core.manifest import content_fingerprint, manifest
     from pptx_core.package import select
@@ -151,10 +153,44 @@ def native_state(root, workspace, number):
             'workspace_fingerprint': digest, 'page_sha256': sha256(ws.root / part),
             'objects': objects if inline_objects else None,
             'object_count': len(objects),
+            'formula_inventory': inspect_slide(tree),
             'objects_status': 'inlined_from_inspect' if inline_objects else 'deferred; use existing inspect command for this page',
             'native_groups': len(tree.findall('.//p:grpSp', NS)),
             'connectors': len(tree.findall('.//p:cxnSp', NS)), 'preview': view,
             'assessment': 'Structure and render freshness only; inspect the image to judge expression.'}
+
+
+def brief(task_root):
+    """Project existing page tasks, excluding author observations and verdicts.
+
+    This is read-only evidence transport, not a new planning schema or gate.
+    Plain notes remain usable by the author; absent structured tasks stay absent.
+    """
+    root = Path(task_root).resolve(strict=True)
+    outline_raw = read(root, 'outline.json')
+    outline = json.loads(outline_raw)
+    pages = outline.get('slides', [])
+    if not isinstance(pages, list) or any(not isinstance(p, dict) or not isinstance(p.get('id'), str) for p in pages):
+        raise ValueError('Read the current ordered outline.slides')
+    if len({p['id'] for p in pages}) != len(pages):
+        raise ValueError('Page tasks require unique current page IDs')
+    raw, notes = notes_data(root)
+    handoffs, diagnostics = blocks(notes, 'pptx-handoff')
+    result = []
+    for number, page in enumerate(pages, 1):
+        matching = [h for h in handoffs if h['page_id'] == page['id']]
+        task = {k: matching[0][k] for k in HANDOFF_FIELDS if k in matching[0]} if len(matching) == 1 else {}
+        if len(matching) > 1:
+            diagnostics.append({'page_id': page['id'], 'detail': 'Ambiguous task; no handoff selected.'})
+        result.append({'page': number, 'page_id': page['id'], 'title': page.get('title'),
+                       'handoff': task, 'status': 'recorded' if task else 'not_recorded'})
+    return {'purpose': outline.get('purpose'), 'pages': result, 'diagnostics': diagnostics,
+            'sources': {'outline.json': hashlib.sha256(outline_raw).hexdigest(),
+                        'source-notes.md': hashlib.sha256(raw).hexdigest()},
+            'authority': 'Derived research/design proposals, not additional user requirements or a quality verdict. '
+                         'Check against the original request and evidence; revise a weak proposal. '
+                         'File pointers are not inspected images. Missing tasks remain unrecorded; '
+                         'do not infer a complete design brief from an outline summary.'}
 
 
 def context(task_root, page_id, workspace=None):
@@ -279,14 +315,15 @@ def record(task_root, page_id, workspace, input_file):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
-    for command in ('index', 'context', 'record'):
+    for command in ('index', 'brief', 'context', 'record'):
         p = sub.add_parser(command); p.add_argument('--task-root', required=True)
-        if command != 'index':
+        if command in ('context', 'record'):
             p.add_argument('--page-id', required=True); p.add_argument('--workspace', required=command == 'record')
         if command == 'record': p.add_argument('--input', required=True)
     args = parser.parse_args()
     try:
         if args.command == 'index': result = handoff_index(args.task_root)
+        elif args.command == 'brief': result = brief(args.task_root)
         elif args.command == 'context': result = context(args.task_root, args.page_id, args.workspace)
         else: result = record(args.task_root, args.page_id, args.workspace, args.input)
         print(json.dumps(result, ensure_ascii=False))

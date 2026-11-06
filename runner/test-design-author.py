@@ -19,6 +19,46 @@ from repair_recovery import _findings_valid
 
 ROOT=Path(__file__).resolve().parents[1]
 
+class ExpandedTaskTests(unittest.TestCase):
+ def test_actual_cli_projection_reaches_author_and_frozen_visual_packet(self):
+  from design_roles import design_task
+  from decision_routing import write_design_packet
+  with tempfile.TemporaryDirectory() as directory:
+   job=Path(directory);packet=job/'packet';packet.mkdir()
+   request={'title':'Store decision','brief':'Five pages for tomorrow\'s owner meeting.','mode':'create','pages':1}
+   (job/'request.json').write_text(json.dumps(request))
+   (job/'outline.json').write_text(json.dumps({'purpose':'Decide next action','slides':[{'id':'decision','title':'A choice','summary':'Narrative background'}]}))
+   task={'page_id':'decision','question':'Which action should be taken?',
+         'visual_opportunity':'Compare the supplied outcomes on a shared basis; finish when the relevant difference is visible.',
+         'preserve':['Keep the source uncertainty'],'materials':[],'readiness':'AUTHOR SELF PASS'}
+   (job/'source-notes.md').write_text('AUTHOR FREEFORM RATIONALE\n```pptx-handoff\n'+json.dumps(task)+'\n```\n')
+   cfg={'plugin':str(ROOT/'pptx-agent'),'python':sys.executable}
+   before=(job/'request.json').read_bytes()
+   projected=design_task(cfg,job)
+   self.assertEqual(projected['pages'][0]['handoff']['question'],task['question'])
+   self.assertNotIn('AUTHOR',json.dumps(projected))
+   text=prepared_phase_context(cfg,job,'author');value=json.loads(text[text.index('{"stage"'):])
+   self.assertEqual(value['design_task'],projected)
+   self.assertIn('Narrative background',text)  # Existing source fields were not discarded.
+   with patch('decision_routing.choice_policy',return_value=None):
+    write_design_packet(cfg,job,packet,b'FROZEN TRANSPORT FIXTURE; NOT A NATIVE VALIDITY TEST')
+   frozen=json.loads((packet/'design-task.json').read_text())
+   self.assertEqual(frozen.pop('artifact_sha256'),hashlib.sha256(b'FROZEN TRANSPORT FIXTURE; NOT A NATIVE VALIDITY TEST').hexdigest())
+   self.assertEqual(frozen,projected)
+   self.assertEqual((job/'request.json').read_bytes(),before)
+
+ def test_legacy_and_partial_planning_keep_existing_recovery(self):
+  from design_roles import design_task
+  with tempfile.TemporaryDirectory() as directory:
+   job=Path(directory);skill=job/'plugin/skills/pptx';(skill/'references').mkdir(parents=True)
+   (skill/'references/content.md').write_text('Historical planning guide')
+   self.assertIsNone(design_task({'plugin':str(job/'plugin'),'python':sys.executable},job))
+   (job/'outline.json').write_text('{"slides":[')
+   (job/'source-notes.md').write_text('Retain unfinished planning and native work')
+   result=design_task({'plugin':str(ROOT/'pptx-agent'),'python':sys.executable},job)
+   self.assertEqual(result['status'],'unavailable')
+   self.assertEqual((job/'outline.json').read_text(),'{"slides":[')
+
 class RoleTests(unittest.TestCase):
  def setUp(self):
   t=tempfile.TemporaryDirectory();self.addCleanup(t.cleanup);self.root=Path(t.name)
@@ -75,6 +115,87 @@ class RoleTests(unittest.TestCase):
   (self.skill/'scripts/page_design.py').write_text('# actual installed capability')
   for stage in ['research','author','repair']:
    self.assertIn('page_design',role_instruction(self.cfg,stage))
+
+ def test_research_breadth_uses_only_current_authorized_sites_without_secrets(self):
+  from browser_sources import capability,SITE,PINTEREST,X
+  (self.skill/'references/content.md').write_text('<!-- research-breadth/v1 -->')
+  cfg={**self.cfg,'browser_research':{'enabled':True,'browser':'edge','sites':[SITE,PINTEREST,X]}}
+  prompt=role_instruction(cfg,'research')
+  for site in capability(cfg)['sites']:self.assertIn(site,prompt)
+  self.assertIn('EACH currently advertised site',prompt)
+  self.assertIn('offline/supplied-only',prompt)
+  self.assertNotIn('SYNTHETIC-HOST-SECRET',prompt)
+  self.assertNotIn('SYNTHETIC-PROVIDER-SECRET',prompt)
+  before=(self.job/'source-notes.md').read_bytes()
+  role_instruction(cfg,'author');role_instruction(cfg,'repair')
+  self.assertNotIn('EACH currently advertised site',role_instruction(cfg,'author'))
+  self.assertEqual((self.job/'source-notes.md').read_bytes(),before)
+
+ def test_google_preference_requires_an_advertised_google_route(self):
+  from design_roles import research_breadth_instruction
+  from browser_sources import GOOGLE,SITE
+  (self.skill/'references/content.md').write_text('<!-- research-breadth/v1 -->')
+  cfg={**self.cfg,'browser_research':{'enabled':True,'browser':'edge','sites':[GOOGLE,SITE]}}
+  text=research_breadth_instruction(cfg)
+  self.assertIn('Prefer explicit Google search',text)
+  self.assertIn('up to three independent queries',text)
+  self.assertIn('not a fixed platform roster',text)
+  self.assertIn('label hosted-search results as Google',text)
+  self.assertNotIn('Prefer explicit Google search',research_breadth_instruction(self.cfg))
+
+ def test_shared_surface_decision_reaches_existing_roles_without_a_palette_or_new_form(self):
+  from design_roles import style_context_instruction,rendered_page_instruction
+  guide=self.skill/'references/art-direction.md'
+  guide.write_text('<!-- style-context/v1 -->')
+  self.assertNotIn('Before page 1',style_context_instruction(self.cfg,'author'))
+  guide.write_text('<!-- style-context/v1 -->\n<!-- deck-surface/v1 -->')
+  before={p.relative_to(self.job).as_posix():p.read_bytes() for p in self.job.rglob('*') if p.is_file()}
+  self.assertIn('finished presentations/templates',role_instruction(self.cfg,'research'))
+  self.assertIn('Before page 1',role_instruction(self.cfg,'author'))
+  self.assertIn('existing design_direction',role_instruction(self.cfg,'author'))
+  self.assertIn('actual foreground',rendered_page_instruction(self.cfg))
+  for stage in ('research','author','render'):
+   cue=style_context_instruction(self.cfg,stage)
+   for preset in ('white paper','ink-blue','warm accent','navy palette','pastel-filled panels'):
+    self.assertNotIn(preset,cue)
+  self.assertEqual(before,{p.relative_to(self.job).as_posix():p.read_bytes() for p in self.job.rglob('*') if p.is_file()})
+
+ def test_breadth_never_promises_operator_channels_to_dsh_customer_or_disabled_host(self):
+  from design_roles import research_breadth_instruction
+  from browser_sources import SITE,PINTEREST,X
+  (self.skill/'references/content.md').write_text('<!-- research-breadth/v1 -->')
+  enabled={**self.cfg,'browser_research':{'enabled':True,'browser':'edge','sites':[SITE,PINTEREST,X]}}
+  for cfg in (self.cfg,{**enabled,'_harness_transport':'dsh-sdk'},
+              {**enabled,'_customer_funded':True},{**enabled,'browser_research':{'enabled':False}}):
+   text=research_breadth_instruction(cfg)
+   self.assertIn('No operator browser is advertised',text)
+   for site in (SITE,PINTEREST,X):self.assertNotIn(site,text)
+
+ def test_historical_pinned_research_keeps_its_original_discovery_policy(self):
+  from design_roles import research_breadth_instruction
+  (self.skill/'references/content.md').write_text('Historical discovery guidance')
+  self.assertEqual(research_breadth_instruction(self.cfg),'')
+
+ def test_style_context_reaches_existing_entry_points_without_rewriting_user_tone(self):
+  from design_roles import style_context_instruction,rendered_page_instruction
+  guide=self.skill/'references/art-direction.md'
+  for stage in ('research','author','render'):
+   self.assertEqual(style_context_instruction(self.cfg,stage),'')
+  guide.write_text('<!-- style-context/v1 -->\nCurrent use-context guidance')
+  for brief in ('Formal company review; preserve the supplied red brand identity.',
+                'Playful company launch; preserve the supplied illustrated identity.'):
+   with self.subTest(brief=brief):
+    request={'mode':'create','title':'Company event','pages':2,'language':'en','brief':brief}
+    (self.job/'request.json').write_text(json.dumps(request))
+    before={p:p.read_bytes() for p in self.job.iterdir() if p.is_file()}
+    for stage in ('research','author','repair'):
+     packet=self.packet(stage)
+     task=next(d for d in packet['documents'] if Path(d['path']).name=='request.json')
+     self.assertEqual(json.loads(task['content']),request)
+     cue=style_context_instruction(self.cfg,'research' if stage=='research' else 'author')
+     self.assertTrue(cue);self.assertIn(cue,role_instruction(self.cfg,stage))
+    self.assertIn(style_context_instruction(self.cfg,'render'),rendered_page_instruction(self.cfg))
+    self.assertEqual(before,{p:p.read_bytes() for p in self.job.iterdir() if p.is_file()})
 
 
 def report():return {'summary':'Actual audience review','pages_reviewed':[1,2],'limitations':['Playback not tested'],'findings':[]}

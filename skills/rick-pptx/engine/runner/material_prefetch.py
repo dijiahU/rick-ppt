@@ -148,6 +148,8 @@ class MaterialToolFailure(ValueError):
 class MaterialPrefetchBroker:
     def __init__(self, cfg, job, *, images=None, reporter=None, trajectory=None,
                  lease_check=None, input_revision=None, deadline=None):
+        from author_context import enabled as continuous_author
+        self.model_helpers_disabled = continuous_author(cfg)
         self.job = Path(job).absolute()
         # Opening before resolving refuses a symlinked task root.
         fd = os.open(self.job, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
@@ -243,6 +245,8 @@ class MaterialPrefetchBroker:
         return {'files': file_basis(self.job, payload), 'input_revision': self._revision()}
 
     def _allowed(self, payload, basis):
+        if self.model_helpers_disabled:
+            raise ValueError('Continuous author: model-backed material preparation is disabled')
         data = basis['files']
         task = data['decision_task'] or {}
         caps = data['capabilities']
@@ -345,6 +349,8 @@ class MaterialPrefetchBroker:
 
     def submit(self, payload, *, identifier=None):
         self._owner()
+        if self.model_helpers_disabled:
+            raise ValueError('Continuous author: use native search/image tools directly; model-backed prefetch is disabled')
         if self.closed:
             raise ValueError('Material preparation is closed')
         if self.lease_check:

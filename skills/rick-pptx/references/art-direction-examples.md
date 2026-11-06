@@ -4,29 +4,73 @@ Read a relevant example when turning content into a visual expression is difficu
 The examples explain operations and their limits. They do not prescribe chapter
 structures, artist choices, layouts or a picture count for unrelated tasks.
 
-## Scientific mechanism: parallel exploration versus sequential refinement
+## The same material, different requested experiences
 
-Audience question: what changes when the budget increases width rather than depth?
-Available facts might describe several candidates sharing an evidence pool versus
-one result/history passed into a later refinement. Use the paper's actual mechanism,
-conditions and notation; this example supplies no benchmark claim or invented score.
+Suppose a brief asks people to inspect how a water-treatment system works and
+question its measured performance. A restrained frame can give space to the
+section, attached operating conditions and comparable results. Making the plant's
+capacity a giant headline may distract from the mechanism; reduce that emphasis
+while retaining the quantity and unit. A simpler-looking row of component names
+would lose the explanation, so keep the essential paths and boundaries precise.
 
-An initial page might place both descriptions inside identical chains of boxes.
-The text can be correct while the visual fails to expose the difference.
-A possible design makes shared evidence visible, with parallel branches arriving
-at several candidates. The refinement view instead follows one persistent object
-through successive states, showing what information carries forward. Match the
-encoding of genuinely shared elements. Keep conditions and selector rules near the
-part they qualify rather than hiding them in a generic footer.
+Another brief about the same system asks visitors to grasp its visible transformation
+from a distance before a live explanation. An inspected before/after image or bold
+cross-section can now lead, with details introduced as the explanation develops.
+Neither decision follows automatically from the subject being scientific, public
+or commercial. Use the actual requested experience, evidence and viewing conditions.
 
-Another valid design could show aligned state snapshots. Choose based on which
-mechanism and speaking sequence need to be inspected. The key is the visible
-difference, not a mandatory fork diagram. In a live explanation, retain orientation
-and reveal the contrasting relationships in semantic groups.
+Rendered check: does the strongest visual treatment serve that task? If the image,
+heading, numbers and conclusion all compete, quiet the supporting elements. If the
+frame is calm but the mechanism remains abstract, develop the explanation itself.
+Do not impose small type, empty space, muted color or spectacle as universal quality
+signals. An applicable user reference guides relationships, not a fixed page template.
 
-Rendered check: can the viewer trace independent alternatives versus accumulated
-state without reading the entire paragraph? Are any new arrows asserting a relation
-that the paper does not support? Do all necessary labels remain visible at reading size?
+## A shared background, changing subjects
+
+A reference deck may make different pages belong together through one background
+relationship and a recurring treatment of type and imagery. Inspect a substantive
+page as well as its cover: does the identity survive real content, and what changes
+when a photograph, dense comparison or concluding statement leads? Identify the
+concrete treatment responsible: a photograph's occupied area, the shape of its
+crop, a dark/light boundary or the placement and density of type, for example.
+The actual palette or background treatment may be useful too when it fits this
+brief. Adapt those selected decisions to the current subject; merely placing three
+text boxes in a shared frame does not reproduce an image-led reference's effect.
+No particular palette or arrangement becomes a default for unrelated tasks.
+
+Rendered check: put the current real subject into the chosen treatment. If the
+background competes, flattens the focal structure or pushes useful material into
+small boxes, adjust that relationship. Retain the needed imagery, scale and click
+groups. If an alternate page treatment works better for a particular subject, retain
+shared cues that make the sequence coherent; do not force every page into one frame.
+
+## Scientific mechanism: a check before a measurement
+
+Suppose the source describes a sample checked against calibration data before it
+is measured or returned for preparation. The audience needs to see what is checked,
+what informs that decision and what happens next. This hypothetical example supplies
+no experimental result; use the actual paper's actors, order and conditions.
+
+An initial composition might put “sample”, “calibration”, “check” and “measurement”
+in equally prominent boxes, then join their nearest edges. Correct labels and
+endpoints do not distinguish the sample's journey from evidence used by the check.
+
+One possible construction follows the sample through check to outcome, with the
+calibration evidence attached to the decision it informs. Plan the path, branch
+space and nodes together before coordinates. Put each condition at its branch,
+and keep outcome labels on deliberate baselines. A very short process may need
+only two aligned states with an annotation; a spatial apparatus may instead need
+a native cutaway. Choose the expression that exposes the actual mechanism.
+
+Rendered check: follow the sample without reading the explanatory paragraph.
+Can you distinguish its movement from the supporting evidence? Do lines have room,
+does each label belong unmistakably to an object or branch, and is the focal step
+given enough scale? A correct but arbitrary fan of lines can need recomposition;
+changing arrow color alone does not settle that problem. Ordinary process branches
+should use deliberate horizontal/vertical routes with clear weight, rather than
+thin diagonal fans. Preserve oblique paths when they encode actual spatial/directional
+meaning or the task requires faithful source geometry.
+Reveal the relevant objects, labels and connections together without losing context.
 
 ## Research evidence: a full table with a clear argument
 

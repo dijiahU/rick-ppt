@@ -60,6 +60,49 @@ class Tests(unittest.TestCase):
         self.assertIn('NEW RESOLVED EVIDENCE',text)
         self.assertNotIn('RETAINED AUTHOR EVIDENCE',text)
 
+    def test_submitted_style_reaches_research_author_and_repair_without_plan_override(self):
+        from language import presentation_request
+        style = '不要用低饱和度有色纯色作为整套主背景；保留附件中指定的标志。'
+        task = {'title':'办公分享','brief':'制作五页实用分享。','pages':5,
+                'style':style,'mode':'create','language':'zh-CN'}
+        request = presentation_request(task)
+        path = self.job/'request.json'
+        path.write_text(json.dumps(request,ensure_ascii=False))
+        (self.job/'decision-plan.json').write_text(json.dumps({'design_direction':'作者建议使用米灰大底'}))
+        before = path.read_bytes()
+        for stage in ('research','author','repair'):
+            documents = self.documents(prepared_phase_context(self.cfg,self.job,stage))
+            supplied = next(d for d in documents if d['path']==str(path))
+            self.assertEqual(json.loads(supplied['content']),request)
+            self.assertEqual(supplied['sha256'],hashlib.sha256(before).hexdigest())
+            self.assertEqual(json.loads(supplied['content'])['style'],style)
+        self.assertEqual(path.read_bytes(),before)
+        self.assertEqual(task['style'],style)
+
+    def test_grouped_discovery_replaces_eager_parameters_and_unneeded_tool_guides(self):
+        (self.skill/'references').mkdir()
+        (self.skill/'references/tool-preparation.md').write_text('<!-- tool-groups/v1 -->\nOpen needed folders only.')
+        for name in ('native-batch.md','native-canvas.md','native-pages.md','animations.md','planning-commit.md'):
+            (self.skill/'references'/name).write_text('DEFERRED DETAIL '+name)
+        index={'schema':'native-tool-groups/v1','groups':[{'id':'recreate','title':'Image recreation'}],
+               'open_command':['exact-python','tool_prepare.py','--group','GROUP_ID']}
+        (self.job/'tool-manifest.json').write_text(json.dumps({'python':'EXACT_PYTHON',
+            'parts_dir':'EXACT_WORKSPACE','entry_commands':{'render_page':['render']},'discovery':index,
+            'native_canvas':{'add_text':'NOT YET NEEDED'},'native_batch':{'parameters':'EXPANDED PARAMETER BULK'}}))
+        (self.job/'tool-quickstart.md').write_text('DUPLICATE DISCOVERY')
+        before={p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()}
+        for stage in ('research','author','repair'):
+            text=prepared_phase_context(self.cfg,self.job,stage)
+            self.assertIn('Image recreation',text)
+            self.assertIn('EXACT_WORKSPACE',text)
+            self.assertNotIn('NOT YET NEEDED',text)
+            self.assertNotIn('EXPANDED PARAMETER BULK',text)
+            self.assertNotIn('DEFERRED DETAIL',text)
+            self.assertNotIn('DUPLICATE DISCOVERY',text)
+        self.assertEqual(before,{p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()})
+        (self.skill/'references/tool-preparation.md').write_text('Historical tool preparation')
+        self.assertIn('NOT YET NEEDED',prepared_phase_context(self.cfg,self.job,'author'))
+
     def test_author_and_repair_receive_actual_completion_standard_not_just_its_path(self):
         (self.skill/'references').mkdir()
         guide=self.skill/'references/design-completion.md';guide.write_text('Shared actual subject/craft completion criteria.')
@@ -82,6 +125,21 @@ class Tests(unittest.TestCase):
         for stage in ('research','repair'):
             self.assertFalse(any(d['path']==str(guide) for d in self.documents(prepared_phase_context(self.cfg,self.job,stage))))
         self.assertEqual(guide.read_bytes(),before)
+
+    def test_visual_discovery_guide_comes_from_pinned_plugin_at_entry(self):
+        (self.skill/'references').mkdir()
+        guide=self.skill/'references/pinterest.md'
+        guide.write_text('Pinned optional visual-discovery instructions; no network operation.')
+        before={p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()}
+        for stage in ('research','author'):
+            docs=self.documents(prepared_phase_context(self.cfg,self.job,stage))
+            supplied=next(d for d in docs if d['path']==str(guide))
+            self.assertEqual(supplied['content'],guide.read_text())
+            self.assertEqual(supplied['sha256'],hashlib.sha256(guide.read_bytes()).hexdigest())
+        self.assertFalse(any(d['path']==str(guide) for d in self.documents(prepared_phase_context(self.cfg,self.job,'repair'))))
+        self.assertEqual(before,{p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()})
+        guide.unlink()  # Old pinned runtimes remain usable, without invented guidance.
+        self.assertFalse(any(d['path']==str(guide) for d in self.documents(prepared_phase_context(self.cfg,self.job,'author'))))
 
     def test_enabled_role_entry_executes_for_research_author_and_repair(self):
         from design_roles import role_instruction

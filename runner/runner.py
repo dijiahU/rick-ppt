@@ -26,7 +26,10 @@ from font_broker import FontBroker
 
 ROOT=Path(__file__).resolve().parent
 
-def prefetch_capability():
+def prefetch_capability(cfg=None):
+    from author_context import enabled
+    if enabled(cfg or {}):
+        return {'mode':'disabled','reason':'Continuous author uses native search/image tools directly; independent queries may be batched and known URLs downloaded asynchronously.'}
     return {'mode':'bounded-asynchronous-materials','guide':'PREFETCH.md','helper':'prefetch-proxy.py',
         'index':'material-prefetch/index.json','max_concurrent':2,'page_authoring':'single-main-author-in-order',
         'use':'Submit concrete later-page source searches or selected illustration generation, then continue the current page. Batch status/get return immediately. Inspect and choose ready results before use; assistants never edit the deck. Known media URLs use web-media-proxy.py --submit-only. Respect selected source/asset routes; reuse valid saved results and do not automatically retry failed/interrupted work.'}
@@ -60,6 +63,7 @@ def settings():
         ('blank','PPTX_RUNNER_BLANK'),
         ('state_directory','PPTX_RUNNER_STATE_DIRECTORY'),
         ('model_profile','PPTX_RUNNER_MODEL_PROFILE'),
+        ('author_context_mode','PPTX_AUTHOR_CONTEXT_MODE'),
         ('usage_pricing_file','PPTX_USAGE_PRICING_FILE'),
     ):
         if os.environ.get(environment_key):data[key]=os.environ[environment_key]
@@ -124,7 +128,7 @@ def prepare(cfg):
         'web_search':{'mode':'live','optional':True,'use':'Hosted search for current evidence, relevant assets or design knowledge when the task needs them. Choose material and expression by content, purpose and audience; no preferred medium or acquisition sequence. Shell networking remains disabled.'},
         'image_generation':{'mode':'built-in','optional':True,'guide':'imagegen-skill.md','use':'Use exposed built-in generation when an original raster illustration serves the task. It need not wait for unsuccessful image searching. Inspect/embed the scoped result and distinguish illustration from documentary evidence; never fabricate real app screenshots or case evidence. No API fallback.'},
         'web_asset_import':{'mode':'public-https-broker','guide':'WEB-MEDIA.md','use':'Run task-local web-media-proxy.py with a direct public media URL and --purpose. Images, animated GIF, common video and audio are supported through isolated validation/conversion. Inspect assets/web-index.json and embed the actual local media, not just a search result or poster. Shell networking remains disabled.'},
-        'material_prefetch':prefetch_capability(),
+        'material_prefetch':prefetch_capability(cfg),
         'animation_playback':{'mode':'not-verified-by-static-render','use':'Native editable-object timing and GIF/video/audio embedding are available. No PowerPoint/WPS slide-show player is exposed in this task. Follow ANIMATION.md: inspect all native click groups while authoring and reuse host batch state previews in existing visual review. No routine UI playback, player installation, repeated UI workarounds or extra review stage. Static simulations do not verify playback. Report unavailable/unsupported playback separately without removing native builds or claiming playback was tested.'},
         'interactive_content':{'mode':'disabled-single-file-pptx','guide':'INTERACTIVE.md','runtime':str(Path(cfg['plugin'])/'runtime'),
            'use':'Deliver one PPTX only. Use native editable shapes, native click/trigger timing, internal slide links and embedded media. Content add-ins, web scenes, executable code, external website interactions and portable runtime bundles are disabled.'},
@@ -148,6 +152,12 @@ def prepare(cfg):
                 'use':'Use the exposed retained search tool for topic evidence, actual design references and relevant image-source pages. Inspect returned sources/material; respect supplied-only/offline constraints.'}
             capabilities['image_generation']={**capabilities['image_generation'],'mode':'retained-built-in-tool','tool':'pptx_generate_image',
                 'use':'Use the exposed retained image tool for original raster illustration or scoped PNG edits; inspect/embed returned task-local files. Concepts are not documentary evidence.'}
+        (job/'capabilities.json').write_text(json.dumps(capabilities,indent=2))
+    from browser_sources import capability as browser_capability
+    browser=browser_capability(cfg)
+    if browser:
+        capabilities=json.loads((job/'capabilities.json').read_text())
+        capabilities['browser_research']=browser
         (job/'capabilities.json').write_text(json.dumps(capabilities,indent=2))
     catalog=Path(cfg['plugin'])/'skills/pptx/assets/workflow-choices.json'
     if catalog.is_file():
@@ -398,6 +408,8 @@ def _run_job(cfg,task,lease):
     if selected is None:cfg.pop('_model_profile',None)
     else:cfg['_model_profile']=selected
     bind_task(state_root,task['id'],selected,existing,execution_backend=task.get('execution_backend'))
+    from author_context import pin_mode
+    cfg['_author_context_mode']=pin_mode(cfg,state_root,task['id'],existing)
     if not cfg.get('_model_profile'):
         cfg['_task_default_model']=task_default_model(state_root,task['id'],existing,cfg.get('default_model',DEFAULT_TASK_MODEL),cfg.get('default_reasoning_effort',DEFAULT_TASK_REASONING_EFFORT))
         cfg['_task_default_reasoning_effort']=task_default_reasoning_effort(state_root,task['id'])
@@ -443,7 +455,10 @@ def refresh_support(cfg,job):
     if fonts.exists():(backup/'fonts.conf').write_bytes(read_scoped(job,'fonts.conf',100000))
     prepare_fonts(job,cfg)
     capabilities=json.loads(read_scoped(job,'capabilities.json',2*1024*1024))
-    capabilities['material_prefetch']=prefetch_capability()
+    capabilities['material_prefetch']=prefetch_capability(cfg)
+    from browser_sources import capability as browser_capability
+    capabilities.pop('browser_research',None)
+    if browser_capability(cfg):capabilities['browser_research']=browser_capability(cfg)
     (job/'capabilities.json').write_text(json.dumps(capabilities,ensure_ascii=False,indent=2))
 
 

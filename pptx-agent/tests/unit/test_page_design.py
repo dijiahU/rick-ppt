@@ -61,6 +61,44 @@ def test_plain_notes_remain_valid_and_read_only_without_optional_records(task):
     assert all(path.read_bytes()==data for path,data in before.items())
 
 
+def test_brief_projects_only_current_tasks_without_promoting_author_verdicts(task):
+    root, _ = task
+    handoff = {'page_id': 'mechanism', 'question': 'Which value reaches the output?',
+               'evidence': [{'source': 'references/data.txt', 'claim': 'Measured input; retain units.'}],
+               'materials': [{'file': 'assets/not-yet-present.png', 'role': 'Unviewed candidate'}],
+               'preserve': ['Measured units'], 'uncertainties': ['Image not obtained'],
+               'visual_opportunity': 'Trace the actual input to output; finish when the mapping is visible.',
+               'readiness': 'PRIVATE AUTHOR PASS', 'design_direction': 'PRIVATE STYLE VERDICT'}
+    orphan = {**handoff, 'page_id': 'removed-page', 'question': 'STALE TASK'}
+    notes = ('PRIVATE FREEFORM RATIONALE\n```pptx-handoff\n' + json.dumps(handoff)
+             + '\n```\n```pptx-handoff\n' + json.dumps(orphan)
+             + '\n```\n```pptx-design-observation\n'
+             + json.dumps({'page_id': 'mechanism', 'observation': 'PRIVATE SELF APPROVAL'}) + '\n```\n')
+    (root/'source-notes.md').write_text(notes)
+    before = {p: p.read_bytes() for p in (root/'outline.json', root/'source-notes.md')}
+    value = design.brief(root)
+    assert [p['page_id'] for p in value['pages']] == ['mechanism', 'evidence', 'closing']
+    assert value['pages'][0]['handoff'] == {k: handoff[k] for k in design.HANDOFF_FIELDS}
+    assert value['pages'][1]['status'] == 'not_recorded'
+    assert value['pages'][1]['handoff'] == {}
+    for marker in ('PRIVATE', 'STALE TASK', 'Supported mechanism, with limits.'):
+        assert marker not in json.dumps(value)
+    assert value['sources']['source-notes.md'] == sha256(root/'source-notes.md')
+    assert before == {p: p.read_bytes() for p in before}
+    assert not (root/'assets/not-yet-present.png').exists()
+
+
+def test_brief_plain_or_ambiguous_notes_do_not_invent_completed_tasks(task):
+    root, _ = task
+    assert all(p['status'] == 'not_recorded' for p in design.brief(root)['pages'])
+    block = '```pptx-handoff\n' + json.dumps({'page_id': 'mechanism', 'question': 'Ambiguous'}) + '\n```\n'
+    (root/'source-notes.md').write_text(block + block + '```pptx-handoff\n{bad json}\n```\n')
+    value = design.brief(root)
+    assert value['pages'][0]['handoff'] == {}
+    assert value['pages'][0]['status'] == 'not_recorded'
+    assert len(value['diagnostics']) == 2
+
+
 def test_native_object_index_reuses_actual_inspection_and_page_hash(task):
     root, ws = task
     from pptx_core.cli import inspect

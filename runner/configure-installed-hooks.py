@@ -23,7 +23,10 @@ import tomllib
 TIMEOUT = 20
 MAX_OUTPUT = 65536
 HOOKS = {"PreToolUse": "pre_tool.py", "PostToolUse": "post_tool.py", "Stop": "stop.py"}
-DEPENDENCIES = {"lxml", "pillow", "jsonschema", "aiohttp", "playwright"}
+DEPENDENCIES = {"lxml", "pillow", "jsonschema", "aiohttp", "playwright", "fonttools"}
+# Older retained plugins predate font inspection. Check it whenever declared,
+# without rejecting those otherwise compatible historical installations.
+LATER_DEPENDENCIES = {"fonttools"}
 
 # -I excludes caller PYTHONPATH/user site packages. Importing pyexpat explicitly
 # catches broken base-Python dylibs that an executable/version check misses.
@@ -58,6 +61,18 @@ def pillow():
 def jsonschema():
     from jsonschema import Draft202012Validator
     Draft202012Validator({'type': 'integer'}).validate(1)
+def fonttools():
+    from fontTools.ttLib import TTFont, newTable
+    font = TTFont()
+    font.setGlyphOrder(['.notdef'])
+    table = newTable('maxp')
+    table.tableVersion, table.numGlyphs = 0x00005000, 1
+    font['maxp'] = table
+    data = io.BytesIO()
+    font.save(data)
+    data.seek(0)
+    with TTFont(data) as restored:
+        assert restored['maxp'].numGlyphs == 1
 def aiohttp():
     from aiohttp import web
     assert web.Response(text='probe').status == 200
@@ -119,7 +134,9 @@ def _run(argv: list[str], *, cwd: Path, env: dict[str, str], payload: str | None
 def _requirements(plugin: Path) -> list[dict]:
     project = tomllib.loads((plugin / "pyproject.toml").read_text())["project"]
     native=(plugin/"skills/pptx/assets/single-file-policy.json").is_file()
-    expected=DEPENDENCIES-{"aiohttp","playwright"} if native else DEPENDENCIES
+    expected=DEPENDENCIES-LATER_DEPENDENCIES
+    if native:
+        expected -= {"aiohttp", "playwright"}
     declared = project["dependencies"] + project.get("optional-dependencies", {}).get("interactive", [])
     result = []
     for requirement in declared:
@@ -131,7 +148,7 @@ def _requirements(plugin: Path) -> list[dict]:
             raise PreflightError(f"No import smoke for new runtime dependency {name}; update this preflight")
         bounds = re.findall(r"(>=|<=|==|>|<)(\d+(?:\.\d+)*)", match[2])
         result.append({"name": name, "requirement": requirement, "bounds": bounds})
-    if {item["name"] for item in result} != expected:
+    if {item["name"] for item in result} - LATER_DEPENDENCIES != expected:
         raise PreflightError("Plugin dependencies do not match its declared native/interactive delivery profile")
     return result
 

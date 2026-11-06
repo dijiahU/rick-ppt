@@ -24,11 +24,35 @@ Current production policy delivers one standalone native PPTX. Author pages in
 order, seek relevant design knowledge/material when the task benefits, and run
 independent content/visual reviews in parallel on the same frozen candidate.
 The visual review checks style against content, purpose, audience and viewing mode.
-One main author owns all native edits and design continuity. Concrete later-page
+New local Codex tasks pin `author_context_mode=continuous`: the same conversation
+owns research, visual inspection, design, native authoring and repairs. Independent
+content/visual reviews stay separate. Independent native search queries can be
+batched and known-URL downloads remain asynchronous; one author does not require
+serial I/O. Model-backed search/browser/prefetch helpers are disabled in this mode,
+including the operator Edge helper. Native hosted search, viewing and generation
+remain available without broadening browser or filesystem permissions.
+
+Private settings may set `author_context_mode=split` for new admissions. The mode
+is recorded in host-private `author-context.json`; old tasks without that receipt
+retain split behavior on recovery. API/DSH retain their current split/retained-tool
+route; explicit continuous selection there fails instead of dropping capabilities.
+An unavailable archived thread or the existing stalled-progress recovery may
+rebuild context from verified files; the trajectory records this break explicitly.
+No promise of lossless context or permanent thread availability is implied.
+
+On the split route, one main author owns native edits and design continuity. Concrete later-page
 search/reference/illustration work can run asynchronously through
 [material preparation](PREFETCH.md); known URLs download with `--submit-only`.
 Ready material still needs the author's inspection and selection. Helpers do not
 author parts, and the separate parallel-authoring prototype is not enabled.
+An operator may enable [browser source research](BROWSER.md) for a locally
+authorized Edge session. Research/author phases then expose a bounded source
+tool; normal authors/reviewers retain their isolated browser/MCP configuration.
+The initial adapter supports Xiaohongshu public design examples, returning
+source links and actual screenshots through the existing image-input channel.
+It is optional, serializes the shared browser, stops on authorization failures,
+and is unavailable to customer-funded or DSH tasks. No private account activity,
+cookie export, automatic bookmarking or mandatory per-page search is added.
 Expression is chosen from the actual content, evidence, audience, purpose, viewing
 mode and supplied constraints. New presentations require meaningful native click
 reveals; multi-step explanation uses an entry/click/final-view plan. Static covers

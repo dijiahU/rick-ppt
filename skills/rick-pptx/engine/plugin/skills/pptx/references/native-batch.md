@@ -70,6 +70,11 @@ Existing object IDs may be positive integers; they must actually identify object
 on this page. Handles cannot refer to another page or a later operation. Group
 members must satisfy existing native adjacency/parent rules. Animate a group or
 its children, not both. The helper preserves IDs and connector/group/reveal targets.
+Use at least two distinct members for `group`; a single object already has a handle
+and can be targeted directly by `reveal`. Connector `points` is a flat four-number
+list `[x1, y1, x2, y2]`, not `[[x1, y1], [x2, y2]]` or a multi-bend route. Use the
+existing editable `path` operation for an explicitly chosen fixed route; it is
+not attached to nodes and does not move with them.
 
 For text, numeric `max_height` is a strict limit. The preflight reports **all**
 text failures with object id, actual `needs_height`, available height, line count

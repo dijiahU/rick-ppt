@@ -19,7 +19,7 @@ outline ID. All other fields are optional; include only useful information.
   "materials": [{"file": "assets/attention-reference.png", "role": "Actual inspected detail useful for this explanation"}],
   "preserve": ["Distinguish illustrative weights from reported measurements"],
   "uncertainties": ["Exact example values still need to be checked"],
-  "visual_opportunity": "The alignment and aggregation relationship could be made inspectable"
+  "visual_opportunity": "Let the audience trace one position's weights to the source values and their combined result. A labeled worked example is one possible treatment; it is finished when those correspondences are visible without reconstructing them from separate paragraphs. Keep the composition open."
 }
 ```
 
@@ -28,6 +28,26 @@ Use actual task paths/locators. A simple quotation or summary may need no block.
 Faithful recreation identifies source labels, regions, relationships and uncertainty;
 it does not authorize adding a new narrative or decorative artwork. Scoped edits
 retain the original meaning, objects and protected user changes.
+
+For new work, use this existing handoff to expand a short brief after research:
+give the author a visible task and a task-specific completion condition, not just
+the information to put on screen. Keep facts and explicit constraints distinct
+from proposed treatments. The host's read-only `brief` projection supplies these
+page tasks at author entry and in the visual review packet. It contains the current
+outline's purpose and only matching handoff fields, never observation/verdict blocks
+or the full source notes. Missing/ambiguous handoffs remain unrecorded; plain notes
+and older tasks still work. It is not an additional admission requirement.
+
+```sh
+HOST_PYTHON SKILL_ROOT/scripts/page_design.py brief --task-root TASK
+```
+
+In a CLI-only harness, use that compact output or read the current task notes before
+authoring. Give an independent visual reviewer the original brief and this proposed
+task projection alongside the frozen artifact; keep it out of blind content review.
+The original request and evidence outrank the proposal. Finishing the proposal is
+not proof that the result serves the user. This command neither fetches nor views
+images; existing image delivery/viewing requirements still apply.
 
 The researcher supplies facts, useful examples, actual material, qualifiers and
 gaps. Leave final wording, composition and scale to the continuing designer.

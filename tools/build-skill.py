@@ -18,10 +18,10 @@ OVERLAY_FILES = ('SKILL.md', 'agents/openai.yaml', 'references/environment.md',
                  'scripts/portable_transport.py','scripts/portable_workflow.py','scripts/portable_auxiliary.py','references/full-workflow.md')
 SCRIPTS = ('pptx.py', 'candidate_save.py', 'native_canvas.py', 'native_builds.py', 'native_timing.py', 'native_structure.py', 'compatibility.py',
            'workflow_decisions.py', 'design_references.py', 'review_packet.py', 'review_index.py', 'inspect_formulas.py', 'font_assets.py',
-           'native_batch.py','native_pages.py','planning_commit.py','tool_prepare.py','page_design.py','recreation_tools.py')
+           'native_batch.py','native_pages.py','planning_commit.py','tool_prepare.py','tool_groups.py','page_design.py','recreation_tools.py')
 CORE = ('__init__.py', 'common.py', 'cli.py', 'package.py', 'renderer.py',
         'manifest.py', 'validator.py', 'relationships.py', 'snapshots.py', 'diff.py')
-REFERENCES = ('content.md', 'content-review.md', 'visual-review.md', 'research-and-assets.md',
+REFERENCES = ('content.md', 'content-review.md', 'visual-review.md', 'research-and-assets.md', 'pinterest.md',
               'workflow-branches.md', 'content-led-composition.md', 'art-direction.md', 'art-direction-examples.md', 'design-completion.md', 'execution-continuity.md', 'native-canvas.md',
               'animations.md', 'ooxml-overview.md', 'slides-and-shapes.md', 'text.md',
               'images.md', 'charts.md', 'groups.md', 'masters-and-layouts.md',

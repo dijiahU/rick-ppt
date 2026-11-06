@@ -195,6 +195,39 @@ def test_all_text_height_errors_are_reported_before_any_mutation(fixture):
     assert not (ws.home / 'native-batches').exists()
 
 
+@pytest.mark.parametrize('points', [[[3, 2.5], [4, 2.5]], [3, 2.5, 4],
+                                   [3, 2.5, 4, float('inf')], [True, 2.5, 4, 2.5]])
+def test_bad_connector_points_give_actionable_preflight_without_execution(fixture, points):
+    root, ws = fixture
+    before, state = parts(ws), ws.state_path.read_bytes()
+    edge = {'op': 'connector', 'id': 'edge', 'slide': 1, 'start': 'a', 'end': 'b',
+            'points': points, 'start_site': 6, 'end_site': 2, 'ink': '112233',
+            'line_width': 1, 'arrow': 'triangle', 'name': 'Connection'}
+    with mock.patch.object(batch, '_execute') as execute:
+        with pytest.raises(batch.BatchError) as failure:
+            batch.run_batch(ws.root, root, document(shape(), shape('b', box=[4, 2, 2, 1]), edge))
+        execute.assert_not_called()
+    error = failure.value.errors[0]
+    assert error['id'] == 'edge' and 'flat [x1, y1, x2, y2]' in error['message']
+    assert parts(ws) == before and ws.state_path.read_bytes() == state
+    assert not (ws.home / 'native-batches').exists()
+
+
+@pytest.mark.parametrize('members', [[], ['a'], ['a', 'a']])
+def test_degenerate_group_explains_direct_reveal_without_execution(fixture, members):
+    root, ws = fixture
+    before, state = parts(ws), ws.state_path.read_bytes()
+    group = {'op': 'group', 'id': 'unit', 'slide': 1, 'members': members, 'name': 'Unit'}
+    with mock.patch.object(batch, '_execute') as execute:
+        with pytest.raises(batch.BatchError) as failure:
+            batch.run_batch(ws.root, root, document(shape(), group))
+        execute.assert_not_called()
+    error = failure.value.errors[0]
+    assert error['id'] == 'unit' and 'directly in reveal.steps' in error['message']
+    assert parts(ws) == before and ws.state_path.read_bytes() == state
+    assert not (ws.home / 'native-batches').exists()
+
+
 def test_auto_height_is_explicit_actual_font_measurement_without_shrinking(fixture):
     root, ws = fixture
     operation = text(text='中文宽度\n第二行', size=24)

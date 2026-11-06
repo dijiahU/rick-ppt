@@ -80,6 +80,62 @@ class Tests(unittest.TestCase):
         self.assertEqual(sent['sha256'],hashlib.sha256(result['contentItems'][-1]['text'].encode()).hexdigest())
         self.assertEqual(before,{p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()})
 
+    def test_actual_formula_objects_reach_author_wire_and_frozen_review_input(self):
+        from lxml import etree
+        from pptx_core.common import NS
+        from review_packet import collect
+        from review_materials import prepare_review_materials
+        ws=self.native();part=ws.root/'ppt/slides/slide1.xml'
+        tree=etree.parse(str(part))
+        shape=etree.fromstring(f'''<p:sp xmlns:p="{NS['p']}" xmlns:a="{NS['a']}">
+          <p:nvSpPr><p:cNvPr id="2" name="Routing equation"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>
+          <p:spPr><a:xfrm><a:off x="914400" y="914400"/><a:ext cx="5486400" cy="914400"/></a:xfrm>
+          <a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>
+          <p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>p_R = q_E^2</a:t></a:r></a:p></p:txBody></p:sp>''')
+        tree.find('.//p:spTree',NS).append(shape);tree.write(str(part),encoding='UTF-8',xml_declaration=True)
+        rendered=self.rendered(ws)
+        before={p:p.read_bytes() for p in ws.root.rglob('*') if p.is_file()}
+        params={**self.params(),'arguments':{'page_id':'first','workspace':str(ws.root)}}
+        result=self.wire(params)
+        ctx=json.loads(result['contentItems'][0]['text'])
+        facts=ctx['native']['formula_inventory']
+        self.assertEqual(facts['warnings'][0]['object_id'],'2')
+        self.assertEqual(facts['warnings'][0]['object_name'],'Routing equation')
+        guide=(ROOT/'pptx-agent/skills/pptx/references/technical/formula-fidelity.md').read_text()
+        self.assertIn(guide,result['contentItems'][-1]['text'])
+        raw=base64.b64decode(result['contentItems'][1]['imageUrl'].split(',',1)[1])
+        self.assertEqual(raw,Path(rendered['pages'][0]).read_bytes())
+        packet=self.job/'review'
+        with patch('review_packet.state_previews',return_value={'frames':[]}):
+            inventory=collect(ws.root,rendered,packet)
+        self.assertEqual(inventory['slides'][0]['formula_inventory'],facts)
+        for role in ('visual','content-first'):
+            prompt,images=prepare_review_materials(packet,role)
+            self.assertIn('possible-plain-math-script',prompt)
+            self.assertIn('Routing equation',prompt)
+            self.assertIn('Literal code may intentionally use underscores',prompt)
+            self.assertIn('reading-page-1.png',images)
+            self.assertNotIn('Actual source notes',prompt)
+        self.assertEqual(before,{p:p.read_bytes() for p in ws.root.rglob('*') if p.is_file()})
+
+    def test_formula_guide_stays_conditional_and_missing_guide_preserves_images(self):
+        result=self.wire(self.params())
+        self.assertNotIn('# Formula fidelity',result['contentItems'][-1]['text'])
+        context=self.inputs.context('first')
+        context['native']={'formula_inventory':{'warnings':[{'kind':'possible-plain-math-script'}]}}
+        with patch.object(self.inputs,'context',return_value=context):
+            # A historical plugin lacking the optional guide must still deliver
+            # actual material bytes. Read failures never authorize other paths.
+            real_read=__import__('design_inputs').read_scoped
+            def missing(root,path,limit):
+                if str(path).endswith('formula-fidelity.md'):raise FileNotFoundError(path)
+                return real_read(root,path,limit)
+            with patch('design_inputs.read_scoped',side_effect=missing):
+                result=self.inputs.handle({**self.params(),'arguments':{'page_id':'first','repeat_images':True}})
+        self.assertTrue(result['success'])
+        self.assertTrue(any(x['type']=='inputImage' for x in result['contentItems']))
+        self.assertNotIn('# Formula fidelity',result['contentItems'][-1]['text'])
+
     def test_page_preview_crosses_wire_before_and_after_native_edit_with_real_version_receipts(self):
         ws=self.native(); first=self.rendered(ws,'white')
         params={**self.params(),'arguments':{'page_id':'first','workspace':str(ws.root)}}

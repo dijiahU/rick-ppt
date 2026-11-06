@@ -232,9 +232,18 @@ class AppServer:
                  secrets: tuple[str, ...] = (), request_timeout: float = 30, max_line: int = MAX_LINE,
                  provider_env: dict | None = None, on_tool_call: Callable[[dict], dict] | None = None,
                  on_usage: Callable[[dict], None] | None = None,
-                 on_tool_result_sent: Callable[[dict, dict], None] | None = None):
+                 on_tool_result_sent: Callable[[dict, dict], None] | None = None,
+                 enabled_mcp_servers: tuple[str, ...] = ()):
         self.cwd = Path(cwd).resolve(strict=True)
         self.config = copy.deepcopy(config)
+        # Host-only opt-in for a dedicated auxiliary process. Ordinary author
+        # and reviewer processes continue to disable every inherited server.
+        if (not isinstance(enabled_mcp_servers, tuple)
+                or any(not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", name)
+                       or self.config.get("mcp_servers." + name + ".enabled") is not True
+                       for name in enabled_mcp_servers)):
+            raise ValueError("MCP opt-in requires explicit host configuration")
+        self.enabled_mcp_servers = frozenset(enabled_mcp_servers)
         self.env = child_environment(self.cwd, env)
         if provider_env:
             if set(provider_env) != {'PPTX_MODEL_API_KEY'} or not isinstance(provider_env['PPTX_MODEL_API_KEY'],str):
@@ -292,7 +301,7 @@ class AppServer:
             for name in (effective.get("config", {}).get("mcp_servers") or {}):
                 if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
                     raise TransportError("Cannot safely disable an unsupported effective MCP server name")
-                self.config["mcp_servers." + name + ".enabled"] = False
+                self.config["mcp_servers." + name + ".enabled"] = name in self.enabled_mcp_servers
             return self
         except BaseException:
             self.close()

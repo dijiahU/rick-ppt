@@ -52,7 +52,8 @@ class InstalledHookTests(unittest.TestCase):
         self.assertEqual(process.returncode, 1)
         self.assertEqual(report["environmentState"], "missing")
         self.assertEqual(report["stage"], "environment")
-        self.assertEqual(len(report["runtime"]["checks"]), 4)
+        self.assertEqual({item['name'] for item in report['runtime']['checks']},
+                         {'stdlib XML / pyexpat', 'lxml', 'pillow', 'jsonschema', 'fonttools'})
         self.assertTrue(all(item["ok"] for item in report["runtime"]["checks"]))
         self.assertFalse(os.path.lexists(self.plugin / ".venv"))
         self.assertEqual(before, self.own_files())
@@ -119,7 +120,7 @@ class InstalledHookTests(unittest.TestCase):
         self.assertEqual(process.returncode, 1)
         self.assertEqual(report["stage"], "dependencies")
         failed = {item["name"] for item in report["runtime"]["checks"] if not item["ok"]}
-        self.assertEqual(failed, {"lxml","pillow","jsonschema"})
+        self.assertEqual(failed, {"lxml","pillow","jsonschema","fonttools"})
         self.assertIn("lxml", report["error"])
         self.assertFalse(os.path.lexists(self.plugin / ".venv"))
 
@@ -168,6 +169,14 @@ class InstalledHookTests(unittest.TestCase):
         self.assertEqual(process.returncode, 1)
         self.assertIn("new runtime dependency new-package", report["error"])
         self.assertFalse(os.path.lexists(self.plugin / ".venv"))
+
+    def test_historical_plugin_without_fonttools_remains_supported(self):
+        path = self.plugin / 'pyproject.toml'
+        path.write_text(path.read_text().replace(', "fonttools>=4.61,<5"', ''))
+        process, report = self.cli()
+        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertTrue(all(item['ok'] for item in report['hooks']))
+        self.assertNotIn('fonttools', report['runtime']['distributions'])
 
     def test_failure_runs_all_hook_entries_and_preserves_new_link_and_sources(self):
         entry = self.plugin / "hooks/pre_tool.py"

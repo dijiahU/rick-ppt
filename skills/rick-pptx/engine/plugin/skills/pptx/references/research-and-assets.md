@@ -48,12 +48,24 @@ workflow-branches.md. Tools derive page associations and slide notes. A referenc
 record does not prove good design; the adaptation must be useful on the actual page.
 Inspiration study and acquiring rights/bytes for embedding are separate activities.
 
+[Pinterest and authorized channel discovery](pinterest.md) helps find actual
+visual works, original sources and inspected pictures for the author. Follow
+content.md's broad first pass across the currently exposed channels before
+narrowing; select references by their actual value rather than requiring one
+from every site. Official evidence and public creator/user examples serve different
+questions; explore both within scope, verifying factual claims at original sources.
+
 ## Choose material for the explanation
 
 Photographs, authentic interfaces, native diagrams, charts, designed text and original
 illustrations can combine. Make useful subjects, outputs and changes visible;
 choose imagery when it improves this content rather than to fill space. Exact
 wording or analytical relationships may appropriately lead a page without a picture.
+Evaluate that improvement for the audience, not only whether prose could state the
+same facts. A visual can be useful without being mandatory. Keep style inspiration
+distinct from material for the audience to inspect: borrowing a palette does not
+fulfil an unresolved need to show an object, process or change. Reuse an appropriate
+permitted source on the slide, or acquire/construct an alternative that does that job.
 
 Historical/documentary people, events and archival objects require authentic
 material. Real app screens and case evidence cannot be fabricated. When optional
@@ -61,6 +73,8 @@ real imagery is unavailable, sourced text or an editable analytical diagram is v
 An explicitly required missing source remains a limitation. A text-only account may
 support a labeled conceptual illustration/native example of its supported process,
 without claiming it is an observed output or independently reproduced success.
+An original teaching schematic of a document, object or workflow is allowed when
+identified as illustrative; it need not pretend to reproduce a branded interface.
 Generation is available for suitable original concepts/scenes/proposed effects,
 including as a first choice, with an illustrative label; failed search alone does
 not determine that choice. Inspect the result and keep essential analysis editable.
@@ -96,6 +110,14 @@ use accessible author teaching or excerpts when full access is unavailable.
 | Painting, illustration and art composition | Museum collections and artist archives, such as [MoMA](https://www.moma.org/collection/) and [Matisse's The Red Studio](https://www.moma.org/collection/works/78389?package_id=PS&page=1&sov_referrer=package) | Inspect the actual work and curatorial context for color area, figure/ground, visual tension, scale, space or mark-making. Other relevant styles and eras are welcome; interpret what transfers to this presentation rather than imitate a painting literally. |
 
 ## Choose assets for their explanatory job
+
+Keep useful original visuals available to composition through existing page material
+pointers and source notes, with provenance, inspected detail and actual reuse limits.
+The researcher can recommend display, a readable crop with native annotation or
+reconstruction, but must not discard all originals as reference-only because PPTX
+is editable. The author chooses at the point of use. Preserve explicit all-native
+requirements and permission limits; an unsuitable image does not disqualify unrelated
+images. An inspiration-only work need not appear in the final deck.
 
 ### Prepare ahead without splitting authorship
 

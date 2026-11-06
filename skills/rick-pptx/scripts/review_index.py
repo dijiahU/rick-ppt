@@ -122,6 +122,7 @@ def write_review_index(inventory, render, destination, reveal_steps):
         if static.get('error'):
             reveal['state_render_error'] = static['error']
         slides.append({'page': number, 'part': page['part'], 'text': page['text'],
+                       **({'formula_inventory':page['formula_inventory']} if 'formula_inventory' in page else {}),
                        'object_counts': dict(Counter(shape['kind'] for shape in shapes)),
                        'explicit_font_points': sorted({size for shape in shapes for size in shape['explicit_font_points']}),
                        'native_reveal': reveal})

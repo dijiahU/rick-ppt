@@ -166,6 +166,17 @@ class PageDesignInputs:
             cue = composition_instruction(self.cfg)
             cue_stage = 'composition'
         if cue:
+            # Supply the existing implementation guidance at the actual affected
+            # page, not just another file pointer. Clues are not automatic defects.
+            if context.get('native', {}).get('formula_inventory', {}).get('warnings'):
+                plugin = Path(self.cfg['plugin']).resolve()
+                guide = plugin / 'skills/pptx/references/technical/formula-fidelity.md'
+                try:
+                    body = read_scoped(plugin, guide, 16384).decode('utf-8')
+                except (OSError, ValueError, UnicodeError):
+                    pass  # Older/pinned plugins keep their existing guidance.
+                else:
+                    cue += '\nExisting formula guidance for the reported encoding clues (verify against source and actual pixels; literal code is allowed):\n' + body
             context['author_design_prompt'] = cue
             context['author_design_prompt_stage'] = cue_stage
             # Keep exact picture bytes first when close to the transport limit.

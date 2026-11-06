@@ -90,6 +90,9 @@ class UpdatePluginTests(unittest.TestCase):
         shutil.copyfile(PLUGIN / "pyproject.toml", self.source / "pyproject.toml")
         shutil.copytree(PLUGIN / "hooks", self.source / "hooks", ignore=shutil.ignore_patterns("__pycache__"))
         shutil.copytree(PLUGIN / "skills/pptx/scripts", self.source / "skills/pptx/scripts", ignore=shutil.ignore_patterns("__pycache__"))
+        policy = Path('skills/pptx/assets/single-file-policy.json')
+        (self.source / policy).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(PLUGIN / policy, self.source / policy)
         for name in ("runtime/dist/preview.html", "runtime/dist/content.html", "runtime/manifests/manifest.addin.xml"):
             path = self.source / name
             path.parent.mkdir(parents=True, exist_ok=True)

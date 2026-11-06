@@ -47,6 +47,15 @@ class ProductionBridge(unittest.TestCase):
         (self.worker/'settings.local.json').write_text(json.dumps(self.cfg))
         self.assertEqual(bridge.launch_interpreter(self.worker),str(python))
 
+    def test_context_rollback_setting_propagates_without_stale_override(self):
+        self.cfg['author_context_mode']='split'
+        (self.worker/'settings.local.json').write_text(json.dumps(self.cfg))
+        env=bridge.launch_environment(self.worker,self.credentials,{'PPTX_AUTHOR_CONTEXT_MODE':'continuous'})
+        self.assertEqual(env['PPTX_AUTHOR_CONTEXT_MODE'],'split')
+        self.cfg.pop('author_context_mode')
+        (self.worker/'settings.local.json').write_text(json.dumps(self.cfg))
+        self.assertNotIn('PPTX_AUTHOR_CONTEXT_MODE',bridge.launch_environment(self.worker,self.credentials,env))
+
     def test_canonical_api_profile_path_propagates_without_credentials(self):
         profile=self.root/'provider.local.json';profile.write_text('{"api_key":"private-provider-key"}')
         self.cfg['model_profile']=str(profile);(self.worker/'settings.local.json').write_text(json.dumps(self.cfg))
@@ -60,6 +69,8 @@ class ProductionBridge(unittest.TestCase):
         cfg={**self.cfg,'_model_profile':{'model':'claude-opus-5-5','base_url':'https://example.test/v1','api_key':'private-provider-key','wire_api':'chat_completions'}}
         receipt=bridge.write_runtime_receipt(self.worker,cfg,'ready');proof=json.loads(receipt.read_text())
         self.assertEqual(proof['model_backend']['model'],'claude-opus-5-5')
+        self.assertEqual(proof['author_context_by_backend'],{'codex':'continuous','api':'split'})
+        self.assertEqual(proof['new_task_author_context'],'split')
         self.assertNotIn('private-provider-key',receipt.read_text());self.assertNotIn('api_key',proof['model_backend'])
 
     def test_incomplete_branch_runtime_cannot_launch(self):
@@ -84,6 +95,20 @@ class ProductionBridge(unittest.TestCase):
         self.assertTrue(proof['workflow_choices']);self.assertEqual(proof['default_model'],'gpt-6.1-sol')
         self.assertEqual(proof['default_reasoning_effort'],'high');self.assertNotIn('token',proof)
         self.assertEqual(receipt.stat().st_mode&0o777,0o600)
+        self.assertEqual(proof['new_task_author_context'],'continuous')
+        self.assertIsNone(proof['browser_research'])
+        self.assertFalse(proof['material_prefetch_available'])
+
+    def test_browser_receipt_exposes_only_the_enabled_scoped_capability(self):
+        cfg={**self.cfg,'author_context_mode':'split','browser_research':{'enabled':True,'browser':'edge',
+             'site':'https://www.xiaohongshu.com','private_setting':'never-publish'}}
+        receipt=bridge.write_runtime_receipt(self.worker,cfg,'ready')
+        proof=json.loads(receipt.read_text())
+        self.assertEqual(proof['browser_research']['tool'],'pptx_browser_sources')
+        self.assertNotIn('never-publish',receipt.read_text())
+        cfg['_customer_funded']=True
+        proof=json.loads(bridge.write_runtime_receipt(self.worker,cfg,'ready').read_text())
+        self.assertIsNone(proof['browser_research'])
 
     def launcher(self):
         spec=importlib.util.spec_from_file_location('start_worker_test',Path(__file__).with_name('start-worker.py'))

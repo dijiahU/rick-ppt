@@ -7,7 +7,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-from design_completion import CONTRACT, PRESENTATION, PRESENTATION_MARKER, schema, selection, notice, presentation_schema, presentation_enabled, response_findings
+from design_completion import CONTRACT, PRESENTATION, PRESENTATION_MARKER, CRAFT, CRAFT_MARKER, CRAFT_DIMENSIONS, craft_enabled, schema, selection, notice, presentation_schema, presentation_enabled, response_findings
 from design_feedback import mark_response, optional_response
 from workflow import validate_report, VISUAL_REPORT_SCHEMA, REPORT_SCHEMA
 
@@ -162,6 +162,90 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(selection(self.base,self.next)['selected'],'candidate')
 
 
+def craft_report(value, score=7):
+    value['visual_craft'] = dict(CRAFT)
+    if score is not None and score < 8:value['visual']['findings'][0]['route']='native_repair'
+    value['visual']['design_assessment']['visual_craft'] = {
+        key: {'score': score if key == 'composition' else 8, 'pages': [1, 2],
+              'evidence': 'The central example is small amid unstructured space on pages 1–2.' if key == 'composition'
+                          else 'Deliberate type hierarchy and field correspondence carry the quiet document-led subject.',
+              'finding_ids': ['F1'] if key == 'composition' and score is not None and score < 8 else []}
+        for key in CRAFT_DIMENSIONS}
+    return value
+
+
+class CraftTests(unittest.TestCase):
+    def check(self, value):
+        return validate_report(value['visual'], 2, require_design=True, completion=True, craft=True)
+
+    def test_new_contract_is_opt_in_and_keeps_historical_reports(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)/'skills/pptx';(root/'references').mkdir(parents=True);(root/'assets').mkdir()
+            (root/'assets/workflow-choices.json').write_text('{"version":4}')
+            guide=root/'references/design-completion.md';guide.write_text('Historical policy')
+            self.assertFalse(craft_enabled({'plugin':directory}))
+            guide.write_text(CRAFT_MARKER);self.assertTrue(craft_enabled({'plugin':directory}))
+        self.assertNotIn('visual_craft',schema(VISUAL_REPORT_SCHEMA)['properties']['design_assessment']['properties'])
+        self.assertIn('visual_craft',schema(VISUAL_REPORT_SCHEMA,craft=True)['properties']['design_assessment']['required'])
+        validate_report(current()['visual'],2,require_design=True,completion=True)
+
+    def test_clear_but_unfinished_cannot_be_ready_or_hidden_by_other_high_scores(self):
+        value=craft_report(current(state='ready'))
+        for key in CRAFT_DIMENSIONS[1:]:value['visual']['design_assessment']['visual_craft'][key]['score']=10
+        with self.assertRaisesRegex(ValueError,'needs_revision'):self.check(value)
+        value['visual']['design_assessment'].update(readiness='needs_revision',primary_findings=['F1'])
+        self.check(value)
+
+    def test_low_score_requires_real_located_action_not_a_cosmetic_retained_suggestion(self):
+        for mutation in ('missing','invented','different_page','retain'):
+            value=craft_report(current());row=value['visual']['design_assessment']['visual_craft']['composition']
+            if mutation=='missing':row['finding_ids']=[]
+            if mutation=='invented':row['finding_ids']=['imagined']
+            if mutation=='different_page':
+                row['pages']=[2];value['visual']['findings'][0]['pages']=[1]
+            if mutation=='retain':value['visual']['findings'][0]['route']='retain_suggestion'
+            with self.subTest(mutation=mutation),self.assertRaises(ValueError):self.check(value)
+        for field in ('observation','impact','recommendation'):
+            value=craft_report(current());value['visual']['findings'][0][field]=' '
+            with self.subTest(missing=field),self.assertRaisesRegex(ValueError,'Empty review evidence'):self.check(value)
+        value=craft_report(current());value['visual']['design_assessment']['visual_craft']['composition']['evidence']=' '
+        with self.assertRaisesRegex(ValueError,'page/region evidence'):self.check(value)
+
+    def test_quiet_finished_work_can_pass_without_images_or_new_findings(self):
+        value=craft_report(current(state='ready'),8);value['visual']['findings']=[]
+        self.check(value)
+        value['output_language']='zh-CN'
+        self.assertIn('构图焦点 8',notice(value))
+        self.assertIn('模型评分',notice(value))
+
+    def test_supported_tone_gap_uses_existing_bounded_repair_without_factual_error(self):
+        value=craft_report(current(),8)
+        finding=value['visual']['findings'][0]
+        finding.update(observation='Page 1 uses a toy-like prop scene for the explicitly sober briefing.',
+                       impact='The main treatment conflicts with the requested presentation tone; the example is correct.',
+                       recommendation='Rework the prop treatment and color distribution; keep the worked example, focal scale and click groups.',
+                       route='native_repair')
+        value['visual']['design_assessment']['visual_craft']['visual_expression'].update(
+            score=7,evidence=finding['observation'],finding_ids=['F1'])
+        self.check(value)
+        with patch('design_feedback.enabled',return_value=True):mark_response({},value,scoped=False)
+        self.assertTrue(optional_response(value))
+        self.assertEqual(value['designer_response']['max_passes'],1)
+        self.assertEqual(response_findings(value)[0]['recommendation'],finding['recommendation'])
+        self.assertFalse(any(f['severity']=='required' for kind in ('content','visual') for f in value[kind]['findings']))
+        value['visual']['design_assessment'].update(readiness='ready',primary_findings=[])
+        with self.assertRaises(ValueError):self.check(value)
+
+    def test_unavailable_or_invalid_score_cannot_be_promoted(self):
+        value=craft_report(current(state='ready'),None)
+        with self.assertRaisesRegex(ValueError,'Uncertain'):self.check(value)
+        value['visual']['design_assessment']['readiness']='uncertain';self.check(value)
+        for score in (True,0,11,'8',7.5):
+            value['visual']['design_assessment']['visual_craft']['composition']['score']=score
+            with self.subTest(score=score),self.assertRaises(ValueError):self.check(value)
+
+
 class WorkflowTests(unittest.TestCase):
     setUp = fixture.FeedbackTests.setUp
     execute = fixture.FeedbackTests.execute
@@ -196,6 +280,20 @@ class WorkflowTests(unittest.TestCase):
         decision = json.loads(next(self.records.glob('*-design-selection-*')).read_text())
         self.assertEqual(decision['selected'], 'candidate')
         self.assertEqual(decision['candidate_sha256'], hashlib.sha256(result['artifact']).hexdigest())
+
+    def test_low_picture_craft_uses_existing_single_response_and_real_version_selection(self):
+        baseline=craft_report(current((self.job/'original.pptx').read_bytes()))
+        def review(body,rendered,packet,payload,number):
+            value=craft_report(current(body,number,'ready' if number>1 else 'needs_revision'),8 if number>1 else 7)
+            validate_report(value['visual'],2,require_design=True,completion=True,craft=True)
+            if number>1:compared(baseline,value,resolution='resolved')
+            return mark_response(self.cfg,value,scoped=False)
+        self.run.review.side_effect=review;self.action='change'
+        result,receipt=self.execute()
+        self.assertEqual([n for n,_ in self.calls],['repair-1'])
+        self.assertEqual(self.run.review.call_count,2)
+        self.assertEqual(result['artifact'],(self.job/'changed.pptx').read_bytes())
+        self.assertIn('composition 8',notice(receipt))
 
     def test_visually_worse_repair_delivers_exact_baseline_not_latest_export(self):
         self.configure('worse'); self.action = 'change'

@@ -94,6 +94,21 @@ historical mismatch is diagnosed, never silently repaired at export. Read the
 hash-bound compatibility report recorded in session state after export; see
 [Windows WPS compatibility](windows-wps.md).
 
+Choose node positions and connection space together. For a straight node-bound
+edge, use `add_connector` with a flat `[x1, y1, x2, y2]` points list. For an explicit
+fixed bend, use an editable `add_path` with M/L commands and an end arrow; it will
+not follow a moved node. Do not assume endpoint validation checks visual routing.
+For ordinary flow/branch diagrams, prefer horizontal/vertical connections with
+consistent visible weight; around 2–2.5 pt is a starting point at standard 16:9 size,
+not an automatic rewrite of source geometry. Avoid thin diagonal fans between
+misaligned boxes. Oblique geometry remains available for real spatial/directional
+meaning or faithful recreation. For an anchored elbow, direct OOXML can preserve
+the connector's IDs/sites and use native bentConnector geometry; render and verify
+both endpoints and the complete route, especially under group transforms.
+For aligned key/value rows, measure separate text objects and give corresponding
+rows the same baseline, or use native table cells. Spaces in one proportional-font
+paragraph do not define columns. Render the result at reading scale.
+
 ```python
 # Import native_canvas from the exposed plugin scripts directory.
 label = canvas.add_text(workspace, 1, actual_text, selected_font_file, chosen_size,

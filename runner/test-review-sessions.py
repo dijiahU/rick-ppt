@@ -96,6 +96,7 @@ class ReviewRecoveryTests(unittest.TestCase):
         return (run or self.run).review(self.artifact,{'pages':self.pages},self.packet,self.payload,1)
 
     def test_design_reference_evidence_does_not_taint_blind_content_pass(self):
+        (self.packet/'design-task.json').write_text('{"pages":[{"page_id":"p1","handoff":{"question":"PROPOSED PAGE TASK"}}]}')
         (self.packet/'design-references.json').write_text('{"available":true,"author_application":"Do not use this as a verdict"}')
         (self.packet/'design-reference-images').mkdir();(self.packet/'design-reference-images/R1.png').write_bytes(b'ACTUAL REFERENCE IMAGE')
         (self.packet/'audience-notes.json').write_text('{"pages":[{"text":"Design source and actual speaker notes"}]}')
@@ -105,6 +106,8 @@ class ReviewRecoveryTests(unittest.TestCase):
         self.assertFalse((first/'design-references.json').exists());self.assertFalse((first/'audience-notes.json').exists())
         self.assertFalse((evidence/'design-references.json').exists());self.assertTrue((evidence/'audience-notes.json').is_file())
         self.assertTrue((visual/'design-reference-images/R1.png').is_file());self.assertTrue((visual/'design-references.json').is_file())
+        self.assertFalse((first/'design-task.json').exists());self.assertFalse((evidence/'design-task.json').exists())
+        self.assertTrue((visual/'design-task.json').is_file())
         evidence_prompt=next(prompt for name,_,prompt in self.calls if name.startswith('content-evidence'))
         self.assertIn('read the actual exported notes',evidence_prompt)
 
@@ -121,9 +124,9 @@ class ReviewRecoveryTests(unittest.TestCase):
 
     def test_completion_policy_and_comparison_use_actual_first_turn_images_and_sealed_identity(self):
         from PIL import Image
-        from design_completion import CONTRACT, PRESENTATION, PRESENTATION_MARKER
+        from design_completion import CONTRACT, PRESENTATION, PRESENTATION_MARKER, CRAFT, CRAFT_MARKER, CRAFT_DIMENSIONS, VISUAL_COVERAGE_MARKER, VISUAL_COVERAGE
         catalog=self.plugin/'skills/pptx/assets/workflow-choices.json';catalog.parent.mkdir();catalog.write_text('{"version":4}')
-        guide=self.plugin/'skills/pptx/references/design-completion.md';guide.write_text('SHARED COMPLETION POLICY FIXTURE\n'+PRESENTATION_MARKER)
+        guide=self.plugin/'skills/pptx/references/design-completion.md';guide.write_text('SHARED COMPLETION POLICY FIXTURE\n'+PRESENTATION_MARKER+'\n'+CRAFT_MARKER+'\n<!-- strict-craft-review/v1 -->\n'+VISUAL_COVERAGE_MARKER)
         images=[]
         for number in (1,2):
             name=f'reading-page-{number}.png';Image.new('RGB',(900,506),'blue').save(self.packet/name)
@@ -142,6 +145,8 @@ class ReviewRecoveryTests(unittest.TestCase):
             report,thread=original(name,prompt,**kwargs)
             if name.startswith('visual'):
                 self.assertIn(guide.read_text(),prompt)
+                self.assertEqual(prompt.startswith('You are a strict PowerPoint production acceptance reviewer.'),
+                                 '<!-- strict-craft-review/v1 -->' in guide.read_text())
                 self.assertIn('"visual_input_complete": true',prompt)
                 self.assertEqual(kwargs['images'],['reading-page-1.png','reading-page-2.png',before])
                 for path in kwargs['images']:
@@ -151,10 +156,22 @@ class ReviewRecoveryTests(unittest.TestCase):
                 self.assertEqual(kwargs['schema']['properties']['design_comparison']['properties']['candidate_sha256']['enum'],[digest])
                 report['design_assessment']={'audience_fit':'Main relationship is now visible.','sequence':'Both pages serve the stated sequence.',
                     'reference_transfer':'No external artwork is applied.','readiness':'ready','primary_findings':[]}
+                self.assertIn('visual_craft',kwargs['schema']['properties']['design_assessment']['required'])
+                report['design_assessment']['visual_craft']={key:{'score':8,'pages':[1,2],
+                    'evidence':'Deliberate scale and type hierarchy organize the quiet visual subject.', 'finding_ids':[]} for key in CRAFT_DIMENSIONS}
+                if VISUAL_COVERAGE_MARKER in guide.read_text():
+                    self.assertIn('visual_coverage',kwargs['schema']['properties']['design_assessment']['required'])
+                    self.assertIn('Frozen slide picture-object counts',prompt)
+                    report['design_assessment']['image_requirement_exemption']=None
+                    report['design_assessment']['visual_coverage']=[
+                        {'page':p,'kind':'native_schematic','subject':'Actual object and changing state',
+                         'status':'sufficient','evidence':'The concrete operation is shown by native objects.',
+                         'finding_ids':[]} for p in (1,2)]
                 report['design_comparison']={'baseline_sha256':'a'*64,'candidate_sha256':digest,'verdict':'better',
                     'reason':'The subject and explanation now align.','regression_findings':[],
                     'resolutions':[{'id':'V1','status':'resolved','evidence':'Corresponding regions are visibly linked.'}]}
             else:
+                self.assertFalse(prompt.startswith('You are a strict PowerPoint production acceptance reviewer.'))
                 if name.startswith('content-evidence'):
                     self.assertIn(guide.read_text(),prompt)
                     self.assertIn('presentation_findings',kwargs['schema']['required'])
@@ -168,25 +185,29 @@ class ReviewRecoveryTests(unittest.TestCase):
         self.run.phase=phase
         result=self.review();self.assertEqual(result['design_completion'],CONTRACT)
         self.assertEqual(result['content_presentation'],PRESENTATION)
+        self.assertEqual(result['visual_craft'],CRAFT)
+        self.assertEqual(result['visual_coverage'],VISUAL_COVERAGE)
         recovered=self.execution();recovered.phase=phase
         self.review(recovered);self.assertEqual(len(self.calls),3)
-        guide.write_text('CHANGED SHARED COMPLETION POLICY FIXTURE\n'+PRESENTATION_MARKER)
+        guide.write_text('CHANGED SHARED COMPLETION POLICY FIXTURE\n'+PRESENTATION_MARKER+'\n'+CRAFT_MARKER)
         newer=self.execution();newer.phase=phase
         self.review(newer)
         self.assertEqual(len(self.calls),5)  # Both final policies changed; blind report remains reusable.
 
     def test_new_policy_does_not_turn_scoped_fidelity_edit_into_redesign(self):
         catalog=self.plugin/'skills/pptx/assets/workflow-choices.json';catalog.parent.mkdir();catalog.write_text('{"version":4}')
-        (self.plugin/'skills/pptx/references/design-completion.md').write_text('NEW COMPLETION POLICY')
+        (self.plugin/'skills/pptx/references/design-completion.md').write_text('NEW COMPLETION POLICY\n<!-- visual-craft/v2 -->\n<!-- strict-craft-review/v1 -->')
         self.payload.update(mode='edit',brief='Enlarge the font only; preserve the source diagram.')
         original=self.phase
         def phase(name,prompt,**kwargs):
             value,thread=original(name,prompt,**kwargs)
             self.assertNotIn('NEW COMPLETION POLICY',prompt)
+            self.assertFalse(prompt.startswith('You are a strict PowerPoint production acceptance reviewer.'))
             if name.startswith('visual'):
                 value['design_assessment']={'audience_fit':'Requested source style is preserved.',
                     'sequence':'The source order is preserved.', 'reference_transfer':'No additional design source was applied.'}
                 self.assertNotIn('readiness',kwargs['schema']['properties']['design_assessment']['properties'])
+                self.assertNotIn('visual_craft',kwargs['schema']['properties']['design_assessment']['properties'])
             return value,thread
         self.run.phase=phase
         receipt=self.review()

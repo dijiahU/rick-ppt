@@ -1,8 +1,31 @@
 # Current tool preparation
 
+<!-- tool-groups/v1 -->
+
+Start with the scenario folders, not a dump of every callable. The prepared
+manifest's `discovery.groups` lists short names/use cases and `open_command` opens
+one group. Replace GROUP_ID with plan, recreate, compose, images, edit, animate,
+fonts or verify. A task may use several folders; this does not classify it into a
+new workflow branch or remove any native capability.
+
+For image recreation, open `recreate`: source inspection/crops/comparisons and
+source-pixel native operations are together. For original design, open `images`
+to choose an actual source/generated subject and `compose` when native drawing or
+hybrid construction is useful. `edit` preserves supplied objects; `animate` and
+`verify` expose their exact operations only when needed. Group output links the
+relevant guides and adjacent folders. Reuse details already opened.
+
+`tool_prepare.py --task-root TASK --list-groups` lists the folders;
+`tool_prepare.py --task-root TASK --group recreate` reads one. Both lookups are
+read-only: they do not unpack, draw, generate images, acquire permissions or call a
+provider. They return exact prepared interfaces. Refresh after workspace changes;
+unsupported/absent capabilities stay absent. Complete `tool-manifest.json` remains
+available for advanced needs and older callers.
+
 The host can prepare `tool-quickstart.md` and `tool-manifest.json` in the task root.
-Read the quickstart for exact executable commands, then only the needed manifest
-sections. These describe the installed tools; they do not choose content, design,
+Read the quickstart for the folder index and workspace bootstrap commands, then
+open the relevant group for exact operations and linked guides. These describe
+the installed tools; they do not choose content, design,
 references, branch values or a page template, and do not replace SKILL requirements.
 When the host includes complete current documents in a phase's initial prompt,
 use that reading directly. Read only deferred/changed files and needed detail;

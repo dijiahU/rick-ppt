@@ -30,6 +30,8 @@ def install(runtime):
                              'Do not substitute a Python/SVG drawing or copy a reference as newly generated. '
                              'If no image-generation provider is configured, explicitly report unavailable. '
                              'Input references: '+json.dumps([str(root/'assets'/name) for name,_ in files])+'. ')
+                if tool=='pptx_search_sources':
+                    prompt+=auxiliary_tools.visual_source_instruction()
                 prompt+='Request:\n'+request
                 events=[]
                 def event(value):

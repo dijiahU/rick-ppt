@@ -34,14 +34,22 @@ mandatory written form. Keep only consequential decisions in existing notes.
    as supported narrative, not finished paragraphs to distribute among containers.
    Retain facts, units, source identity and essential qualifications. Distinguish
    an explanatory illustration from a real case output; preserve documentary limits.
+   For useful source visuals, choose original display, a detail crop with editable
+   annotation, or reconstruction at this point. Compare what the audience must see
+   with what the user must edit. Editable slides do not require all source images
+   to become shapes; explicit all-native/fidelity requirements still take precedence.
    For a case explaining an operation, choose the useful source detail that exposes
    its effect: an input and changed state, an exact rule acting on an example, or
    an inspectable output fragment. A component name or benefit statement may orient
    the audience but does not by itself demonstrate the operation. Use only supported
    evidence or a clearly identified illustration permitted by the task; no invented
    real screenshot/result and no compulsory example on unrelated pages.
-3. **Expression and composition.** Decide how the important relationship becomes
-   inspectable and how attention moves through the page. Choose focal scale,
+3. **Expression and composition.** Before assigning coordinates, distinguish the
+   relationship to explain from its inventory of components. In a process, locate
+   the acted-on object, operation and consequence; distinguish supporting context
+   from the execution path. In a comparison, establish what is shared and what
+   differs. Attach numbers, conditions and annotations to the part they qualify.
+   Decide how attention follows that relationship. Choose focal scale,
    supporting hierarchy, space and image/type relations in the deck's visual world.
    When uncertain, briefly contrast plausible expressions, then develop one.
    A relevant worked decision or inspected finished work can resolve a specific
@@ -60,6 +68,18 @@ mandatory written form. Keep only consequential decisions in existing notes.
    the image channel. A path/render report is not a look at the page.
 5. **Finish and retain.** If the main expression works, refine necessary detail:
    spacing, alignment, annotations, compatible text/connectors and semantic reveals.
+   Complete the subject's typography too: meaningful emphasis, intentional line
+   breaks, mathematical indices/fractions and decisive code/data fields. Preserve
+   literal source code. Use technical/formula-fidelity.md for notation; available
+   formula_inventory entries are encoding clues, not an aesthetic or math verdict.
+   Plan nodes and connection space together. Check label ownership, consistent
+   baselines for comparable rows, branch spacing and line/text separation in the
+   render. For ordinary process/branch arrows, prefer horizontal/vertical runs and
+   consistent visible weight (roughly 2–2.5 pt at a standard 16:9 slide size; judge
+   the actual render). Do not connect misaligned boxes with thin diagonal fans.
+   Preserve necessary spatial/directional geometry and faithful-source constraints.
+   Endpoint correctness does not establish good routing. Use measured
+   text objects or native cells for columns, not repeated spaces in a paragraph.
    A strong simple page can stand. Keep a complete candidate checkpoint after a
    meaningful finished correction, before expanding optional polish.
 
@@ -73,6 +93,9 @@ Use the page's actual audience task and relevant supplied references at reading
 scale. For a diagram, trace the dependencies; for evidence, locate the observations
 supporting the claim; for a text-led page, judge its reading hierarchy and meaning.
 Can the viewer inspect the useful subject/detail and follow the intended relation?
+Compare the title's promise with the body: can you point to where that explanation
+actually happens? Then judge its visual construction separately from logical
+correctness; a traceable graph can still have awkward routes and weak hierarchy.
 If the chosen main expression fails, change subject construction, scale or
 composition before polishing its borders. Do not preserve a weak arrangement just
 because it already matches earlier colors. Missing/unsuitable material can justify

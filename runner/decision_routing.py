@@ -72,6 +72,13 @@ def click_reveal_required(cfg,*,mode='create',require_variation=None):
 
 
 def write_design_packet(cfg,job,packet,artifact):
+    from design_roles import design_task
+    task=design_task(cfg,job)
+    if task is not None:
+        # Part of the frozen packet identity, available only to visual review.
+        # Deliberately exclude the full notes, observations and author verdict.
+        task['artifact_sha256']=hashlib.sha256(artifact).hexdigest()
+        (Path(packet)/'design-task.json').write_text(json.dumps(task,ensure_ascii=False,indent=2))
     policy=choice_policy(cfg)
     if policy is None or not hasattr(policy,'design_report'):return
     notes={'pages':[{'number':i+1,'text':entry['notes']} for i,entry in enumerate(policy._page_evidence(artifact))]}

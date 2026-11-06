@@ -29,6 +29,8 @@ def launch_environment(worker,credentials,environ=None):
     env.pop('PPTX_RUNNER_MODEL_PROFILE',None)
     if cfg.get('model_profile'):
         env['PPTX_RUNNER_MODEL_PROFILE']=str(Path(cfg['model_profile']).resolve())
+    env.pop('PPTX_AUTHOR_CONTEXT_MODE',None)
+    if 'author_context_mode' in cfg:env['PPTX_AUTHOR_CONTEXT_MODE']=cfg['author_context_mode']
     return env
 
 
@@ -59,6 +61,14 @@ def write_runtime_receipt(root,cfg,status):
           'default_reasoning_effort':cfg.get('default_reasoning_effort',DEFAULT_TASK_REASONING_EFFORT)}
     body['model_backend']=public_identity(cfg.get('_model_profile'))
     body['execution_backends']=available_backends(cfg)
+    from author_context import new_task_mode
+    body['new_task_author_context']=new_task_mode(cfg)
+    # A worker may offer both backends; task admission clears the API profile
+    # when local Codex is selected. Report that route separately, too.
+    local_cfg=dict(cfg);local_cfg.pop('_model_profile',None)
+    body['author_context_by_backend']={'codex':new_task_mode(local_cfg)}
+    if 'api' in body['execution_backends']:
+        body['author_context_by_backend']['api']=new_task_mode(cfg)
     catalog=plugin/'skills/pptx/assets/workflow-choices.json'
     body['decision_contract_version']=json.loads(catalog.read_text()).get('version') if catalog.is_file() else None
     body['new_deck_click_reveal_required']=bool(catalog.is_file() and json.loads(catalog.read_text()).get('requirements',{}).get('new_deck_click_reveal'))
@@ -80,7 +90,9 @@ def write_runtime_receipt(root,cfg,status):
     body['automatic_charging']=False
     body['customer_api_accounts_available']=(Path(root)/'customer_models.py').is_file()
     body['funding_contract_version']=1 if body['customer_api_accounts_available'] else None
-    body['material_prefetch_available']=all((Path(root)/name).is_file() for name in ('material_prefetch.py','prefetch-proxy.py','PREFETCH.md'))
+    body['material_prefetch_available']=body['new_task_author_context']=='split' and all((Path(root)/name).is_file() for name in ('material_prefetch.py','prefetch-proxy.py','PREFETCH.md'))
+    from browser_sources import capability as browser_capability
+    body['browser_research']=browser_capability({**cfg,'_author_context_mode':body['new_task_author_context']})
     target=Path(root)/('runtime-'+str(os.getpid())+'.local.json')
     pending=target.with_suffix('.pending')
     with os.fdopen(os.open(pending,os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600),'w') as stream:
