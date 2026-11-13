@@ -12,6 +12,10 @@
 
 插件源码位于 **[pptx-agent/](pptx-agent/)**，完整说明见 **[插件 README](pptx-agent/README.md)**，主流程见 **[SKILL.md](pptx-agent/skills/pptx/SKILL.md)**。
 
+## 成品示例
+
+[查看并下载 13 份 PPTX 成品](examples/README.md)：游戏宣发、技术演示、历史课件、原创海报及论文图复刻。
+
 ## 独立 Skill
 
 已打包为 **[rick-pptx](skills/rick-pptx/SKILL.md)**，完整文件位于 `skills/rick-pptx/`，可直接下载 **[安装包](releases/rick-pptx.zip)**。解压后将 `rick-pptx` 文件夹放入支持 SKILL.md 的宿主技能目录；在 Codex 中可用 `$rick-pptx` 调用。
@@ -35,7 +39,7 @@ python3.11 -m venv .venv
 
 ## 仓库范围
 
-`pptx-agent/` 包含插件、测试和必要资源；`workflow/` 包含持久日志与 Codex app-server 传输；`runner/` 包含隔离的制作执行端；`website/` 是已上线网站的源码快照。历史交互运行时和相关文档保留供旧版本分析，当前单文件工作流不启用它们。用户任务、账号凭证、运行日志和本地配置不上传。
+`pptx-agent/` 包含插件、测试和必要资源；`workflow/` 包含持久日志与 Codex app-server 传输；`runner/` 包含隔离的制作执行端；`website/` 是已上线网站的源码快照。历史交互运行时和相关文档保留供旧版本分析，当前单文件工作流不启用它们。除经授权公开的成品示例外，用户任务、账号凭证、运行日志和本地配置不上传。
 
 网站支持制作中的聊天、修改意见、附件预览、暂停与恢复、版本下载、已完成页面的直接编辑，以及内容和视觉审核结果。首页提供带水波切换的交互案例和醒目的左右切换箭头。普通聊天保留已经完成的审核，实际修改使旧审核失效；恢复验证检查点，上传超时核对准确文件哈希和修订号，已审核成品可只重传。运行说明见 [runner/README.md](runner/README.md)。历史逐项进度见 [执行清单](docs/interactive-runtime-plan.md)。
 

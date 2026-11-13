@@ -1,7 +1,7 @@
 # Fixed-source CNN numerical review
 
 The independently reviewed Python source is retained in
-[`examples/cnn-reference/tiny_cnn.py`](../../examples/cnn-reference/tiny_cnn.py),
+[`examples/cnn-reference/tiny_cnn.py`](https://github.com/dijiahU/rick-ppt/blob/78cffda1b4a56a5e3d6ca75a0f650cb3ffb5fdfe/examples/cnn-reference/tiny_cnn.py),
 with SHA-256
 `128425bc16b0b624e472c1ac7e6e933efa238d4b039c20a0630d3fc23f0ac8b6`.
 No mathematical defect was found in this fixed source. This conclusion covers
@@ -33,7 +33,7 @@ The default run uses seed 7, 30 epochs, learning rate 0.15, 16 training images a
 8 held-out images. Initial training CE is 0.6899881579037386. Final training CE is
 0.01698117456324391 with 16/16 correct. Held-out CE is 0.5584269862772627 with 6/8
 correct. The first convolution weight changes from −0.07046689406673506 to
-−0.4201043460487845. The [compact metrics fixture](../../examples/cnn-reference/expected-metrics.json)
+−0.4201043460487845. The [compact metrics fixture](https://github.com/dijiahU/rick-ppt/blob/78cffda1b4a56a5e3d6ca75a0f650cb3ffb5fdfe/examples/cnn-reference/expected-metrics.json)
 retains the real loss checkpoints, including increases at epochs 1 and 5. Teaching
 text must not describe this curve as monotonic or imply perfect generalization.
 These are small synthetic results, not benchmark performance.
@@ -42,10 +42,10 @@ The original host run additionally used the runner's actual `pptx_job` OS
 permission profile and an explicit environment allowlist without external
 credentials. Read and write canaries outside the audit workspace and an external
 network canary were denied. These are separate host-isolation observations. The
-portable [audit script](../../examples/cnn-reference/audit.py) contains no host
+portable [audit script](https://github.com/dijiahU/rick-ppt/blob/78cffda1b4a56a5e3d6ca75a0f650cb3ffb5fdfe/examples/cnn-reference/audit.py) contains no host
 canaries, private paths or log transcripts, does not contact a service, and makes
 no sandbox claim. It recomputes the numerical evidence using Python 3.11+ from any
-working directory; [run instructions](../../examples/cnn-reference/README.md)
+working directory; [run instructions](https://github.com/dijiahU/rick-ppt/blob/78cffda1b4a56a5e3d6ca75a0f650cb3ffb5fdfe/examples/cnn-reference/README.md)
 describe its optional full JSON report.
 
 The published script was checked once from an unrelated temporary working

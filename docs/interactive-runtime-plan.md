@@ -222,9 +222,9 @@ Primary sources:
   Distinguish versions precisely; demonstrate editable code and intuitive animation
   through the shared DSL/runtime/ML adapter. Test, independently review, export and
   verify the second bundle. Do not build a separate YOLO runtime. Preparation:
-  the [pinned independent numerical reference](../examples/yolo-reference/README.md)
+  the [pinned independent numerical reference](https://github.com/dijiahU/rick-ppt/blob/78cffda1b4a56a5e3d6ca75a0f650cb3ffb5fdfe/examples/yolo-reference/README.md)
   passes 75 checks, including IoU/NMS/DFL, CIoU and toy-logit optimization. A
-  [separate real-model probe](../examples/yolo-reference/real-model.md) passes
+  [separate real-model probe](https://github.com/dijiahU/rick-ppt/blob/78cffda1b4a56a5e3d6ca75a0f650cb3ffb5fdfe/examples/yolo-reference/real-model.md) passes
   11 browser and nine import checks with genuine pretrained YOLOv8n weights.
   Neither probe accepts a finished teaching deck.
   The [v003 admission preparation](cases/yolo-preparation.md) adds lessons from

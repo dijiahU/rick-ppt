@@ -55,7 +55,7 @@ change quota settings or create another duplicate task.
 
 The worker has prepared a complete 20-slide outline, with one learner experiment
 and a readable native fallback planned per page. Its fixed Python reference is
-now retained as a [reproducible example](../../examples/cnn-reference/README.md).
+now retained as a [reproducible example](https://github.com/dijiahU/rick-ppt/blob/78cffda1b4a56a5e3d6ca75a0f650cb3ffb5fdfe/examples/cnn-reference/README.md).
 The [independent numerical review](cnn-numerical-review.md) verifies all 50
 parameters, 344 finite differences and an independently implemented 480-update
 training run. It reproduces 16/16 training predictions and 6/8 held-out predictions;

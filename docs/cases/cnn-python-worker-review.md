@@ -1,6 +1,6 @@
 # Fixed-source CNN Python worker compatibility
 
-The [audited CNN source](../../examples/cnn-reference/tiny_cnn.py) executed in the
+The [audited CNN source](https://github.com/dijiahU/rick-ppt/blob/78cffda1b4a56a5e3d6ca75a0f650cb3ffb5fdfe/examples/cnn-reference/tiny_cnn.py) executed in the
 release's actual local Pyodide worker under production CSP: **22 of 22 checks
 passed**. Default training and learning rate zero each ran exactly once. This
 verifies fixed-source worker compatibility; actual Monaco typing, final scenes,
@@ -12,7 +12,7 @@ not mocked. No dependencies were installed or runtime limits changed. The source
 SHA-256 is `128425bc16b0b624e472c1ac7e6e933efa238d4b039c20a0630d3fc23f0ac8b6`;
 the runtime fingerprint is
 `fd43ec226d321db43f884afa598bc9f1ae2d2f34e20cafbf24fbc1d00a7c79de`.
-The [measured fixture](../../examples/cnn-reference/browser-observed.json)
+The [measured fixture](https://github.com/dijiahU/rick-ppt/blob/78cffda1b4a56a5e3d6ca75a0f650cb3ffb5fdfe/examples/cnn-reference/browser-observed.json)
 records source, wrapper, runtime and returned-result hashes plus actual values.
 
 Both wrappers preserve every source byte, set `__name__` to bypass the CLI-only

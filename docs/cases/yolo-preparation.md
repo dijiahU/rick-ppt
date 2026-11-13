@@ -40,20 +40,20 @@ Private proof `yolo-v003-migration-proof-01` retains the original failure, actua
 schema fingerprints and 14 executions. A conditional no-op is not creation:
 deployment must be followed by an exact task/owner/brief/status readback.
 
-The separate [numerical reference](../../examples/yolo-reference/README.md)
+The separate [numerical reference](https://github.com/dijiahU/rick-ppt/blob/78cffda1b4a56a5e3d6ca75a0f650cb3ffb5fdfe/examples/yolo-reference/README.md)
 passes 75 checks. Neither preparation result certifies a finished presentation,
 a real pretrained detector or PowerPoint execution.
 
 ## Separate real-model feasibility result
 
-The [pinned model compatibility probe](../../examples/yolo-reference/real-model.md)
+The [pinned model compatibility probe](https://github.com/dijiahU/rick-ppt/blob/78cffda1b4a56a5e3d6ca75a0f650cb3ffb5fdfe/examples/yolo-reference/real-model.md)
 completed on 2026-09-20: official YOLOv8n release weights were exported with the
 verified Ultralytics v8.2.0 commit, executed with CPU ONNX Runtime, and run through
 the existing production `ModelRunner` using its actual browser button and WASM
 provider. **11/11 browser checks and 9/9 formal scene/asset import checks passed**;
 both browser screenshots were reviewed. Precise source, original weight, exported
 ONNX, input/output and evidence hashes are in the
-[non-executable evidence manifest](../../examples/yolo-reference/real-model-observed.json).
+[non-executable evidence manifest](https://github.com/dijiahU/rick-ppt/blob/78cffda1b4a56a5e3d6ca75a0f650cb3ffb5fdfe/examples/yolo-reference/real-model-observed.json).
 The weight checkpoint internally records `8.0.0.dev0`; the v8.2.0 release and
 exporter pin must not be presented as its training version.
 
