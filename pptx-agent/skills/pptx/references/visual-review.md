@@ -1,5 +1,14 @@
 # Visual review and practical reference
 
+Explicit project requirement for new free design/substantive redesign: 禁止浅暖白、
+奶油白、象牙白、浅米白作为整页或主导背景（被否决实例 `#F5F3ED`，含近似色）。
+Inspect the actual visible surface, including full-page shapes, not just p:bg.
+An applicable violation is a required finding, not a taste suggestion; name the
+affected pages/region and request a coherent background/foreground correction
+without prescribing a replacement palette. Do not recolor incidental image regions
+or expressly protected templates/faithful sources; newer explicit user instructions
+take precedence.
+
 For faithful image recreation and scoped edits, prioritize source fidelity and the
 authorized change. Compare directly with the original when supplied. Inherited
 source ambiguities, experimental gaps and unrelated scientific/style improvements
@@ -82,6 +91,27 @@ Then check fine typography, alignment and technical validity. No mandatory findi
 count: retain a genuinely finished simple page, but do not replace a subject-level
 problem with an easier footnote/spacing suggestion.
 
+### Diagnose the gap; leave composition to the author
+
+Apply the shared aesthetic judgment in design-completion.md. In the existing
+observation / impact / recommendation fields, identify the actual page/region,
+visible gap, consequence for the audience or visual experience, and what should
+become observable after revision. Name the useful subject or relationship and
+protected facts, assets, scope or native behavior. If it helps, offer a feasible
+expression direction as an option. Do not require your own layout, coordinates,
+palette or decorative treatment when another solution can satisfy that outcome.
+Direct corrections remain appropriate for an actual collision, wrong endpoint,
+missing label or explicit requirement violation. Distinguish these from design choices.
+
+For example: "The proposed accessory is described but its location and relation
+to sensing/control cannot be seen. Make those relationships inspectable while
+retaining the unvalidated-concept label; a schematic is one possible route."
+This is more useful than "add design" and still leaves the composition open.
+Likewise, "match each evaluation measure to what/where is tested" sets an
+observable target without prescribing an apparatus drawing or a particular grid.
+In re-review, check the achieved relationship and regressions, not obedience to
+your proposed design. Preserve working pages; no issue quota or new review role.
+
 - Focus/hierarchy: first glance and reading order; equal columns/weights and long
   headings can obscure emphasis. Identify whether the important quantity, dispute,
   object or relationship actually leads the page, and whether its comparison or
@@ -121,8 +151,9 @@ problem with an easier footnote/spacing suggestion.
   visual evidence/mechanisms rather than enforce a picture count.
   Apply the preference for showing rather than describing: identify pages where
   sentences or text-filled boxes stand in for a subject, scene or concrete output
-  the audience could usefully see. Recommend a specific photo, official frame,
-  generated illustration or visible sample artifact and which prose it replaces;
+  the audience could usefully see. Identify the subject/detail and which prose it
+  would replace or connect; a photo, source frame, illustration or sample artifact
+  can be suggested where useful without locking the author's composition;
   a tiny decorative image or icon is insufficient. Images need not be indispensable
   to improve explanation. Preserve effective native charts, mechanisms and exact-
   wording pages. Judge actual usefulness, not a picture quota. Missing an explicitly
@@ -173,6 +204,16 @@ problem with an easier footnote/spacing suggestion.
   rendering, shape/texture and typography, not just palette names or picture counts.
   Compare the visible treatment with the actual requested experience without
   prescribing a scene-based palette, shape, layout or medium.
+  Judge the background, ink, subject and accent areas together: coherence and
+  legibility alone do not establish a finished template treatment. Explicitly check
+  for AI味: generic, mechanically applied styling that was not adapted to this task.
+  Ground this in the visible combination. Absence of rounded cards, three columns
+  or an explicit style prohibition is not positive evidence of finished treatment.
+  Likewise, a clear process or useful example establishes explanatory value, not
+  its visual maturity. Name the actual type/subject/tonal relationship that works
+  for the audience activity, or the region and operation needed to resolve it.
+  Do not infer quality from palette names, presumed originality or an "AI-like"
+  label; familiar palettes can work and equally finished alternatives are preferences.
   Follow design-completion.md: a consequential supported mismatch
   affects visual_expression and its existing finding/readiness route. Identify where
   the strongest visual emphasis lands and whether that serves the page's task:
@@ -216,8 +257,11 @@ problem with an easier footnote/spacing suggestion.
 Check reference transfer against the actual work: work title/creator and inspected
 evidence, the stated borrowed principle, the concrete operation and its actual
 page. A palette mention, famous name or "hierarchy" claim alone does not prove
-design. Note evidence limitations honestly. Do not copy unrelated source style,
-enforce an artist quota or run a broad inspiration hunt during review.
+design. Check what happened when the author substituted fonts, imagery or native
+shapes: did the useful effect survive, or only the colors? A cover reference does
+not establish the quality of an unseen template body. Reference resemblance is not
+the goal unless requested; a different successful treatment is valid. Note evidence
+limitations honestly. Do not enforce an artist quota or run a broad inspiration hunt.
 
 The existing visual report includes design_assessment with audience_fit,
 sequence and reference_transfer: concise observations grounded in actual pages

@@ -77,7 +77,7 @@ class ReviewRecoveryTests(unittest.TestCase):
         if name.startswith('content-first'):
             self.assertFalse((root/'request.json').exists());self.assertFalse((root/'references').exists())
         if name.startswith('content-evidence'):
-            self.assertEqual(json.loads((root/'request.json').read_text()),self.payload)
+            self.assertEqual(json.loads((root/'request.json').read_text()),getattr(self,'expected_review_payload',self.payload))
             self.assertEqual((root/'references/source.txt').read_text(),'Original source attachment')
         thread,turn=f'reviewer-{index}',f'turn-{index}'
         attempt.started(f'phase-{index}',self.root/f'private-log-{index}.jsonl',f'client-{index}')
@@ -108,6 +108,46 @@ class ReviewRecoveryTests(unittest.TestCase):
         self.assertTrue((visual/'design-reference-images/R1.png').is_file());self.assertTrue((visual/'design-references.json').is_file())
         self.assertFalse((first/'design-task.json').exists());self.assertFalse((evidence/'design-task.json').exists())
         self.assertTrue((visual/'design-task.json').is_file())
+
+    def test_parallel_review_receives_host_revisions_and_verified_attachments_but_not_chat(self):
+        self.cfg['parallel_reviews']=True
+        original_payload=json.loads(json.dumps(self.payload))
+        relative='conversation-assets/revision/proof.txt'
+        path=self.job/relative;path.parent.mkdir(parents=True);path.write_bytes(b'REVISION EVIDENCE')
+        asset={'id':'asset','name':'proof.txt','path':relative,'bytes':len(path.read_bytes()),
+               'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
+        def message(identifier,cursor,text,revision=True,attachments=None):
+            return {'id':identifier,'cursor':cursor,'text':text,'changes_input':revision,
+                    'state':'applied','attachments':attachments or []}
+        self.run.journal=SimpleNamespace(state={'input_revision':2,'plugin_version':'fixture-v1','inbox':{
+            'latest':message('latest',30,'AUTHORIZE FULL REDESIGN',attachments=[asset]),
+            'chat':message('chat',20,'PRIVATE CHAT — not a design requirement',False),
+            'earlier':message('earlier',10,'Preserve source wording')}})
+        expected_asset={k:asset[k] for k in ('id','name','path','sha256')};expected_asset['size']=asset['bytes']
+        self.expected_review_payload={**original_payload,'attachments':[*original_payload['attachments'],expected_asset],
+            'input_revision':2,'user_revisions':[
+                {'id':'earlier','sequence':10,'text':'Preserve source wording','attachments':[]},
+                {'id':'latest','sequence':30,'text':'AUTHORIZE FULL REDESIGN','attachments':[expected_asset]}]}
+        phase=self.phase
+        def inspect(name,prompt,**kwargs):
+            root=kwargs['root']
+            if name.startswith(('content-evidence','visual')):
+                self.assertEqual(json.loads((root/'request.json').read_text()),self.expected_review_payload)
+                self.assertEqual((root/relative).read_bytes(),b'REVISION EVIDENCE')
+                self.assertIn('later explicit user changes supersede',prompt)
+                self.assertNotIn('PRIVATE CHAT',(root/'request.json').read_text())
+            else:
+                self.assertFalse((root/relative).exists())
+                self.assertNotIn('AUTHORIZE FULL REDESIGN',prompt)
+            return phase(name,prompt,**kwargs)
+        self.run.phase=inspect
+        self.review()
+        self.assertEqual(self.payload,original_payload)
+        # Even the same artifact/revision cannot reuse a pass with different requirements.
+        self.run.journal.state['inbox']['latest']['text']='REVISED AUTHORIZED DESIGN'
+        self.expected_review_payload['user_revisions'][1]['text']='REVISED AUTHORIZED DESIGN'
+        before=len(self.calls);self.review()
+        self.assertGreater(len(self.calls),before)
         evidence_prompt=next(prompt for name,_,prompt in self.calls if name.startswith('content-evidence'))
         self.assertIn('read the actual exported notes',evidence_prompt)
 
@@ -126,7 +166,7 @@ class ReviewRecoveryTests(unittest.TestCase):
         from PIL import Image
         from design_completion import CONTRACT, PRESENTATION, PRESENTATION_MARKER, CRAFT, CRAFT_MARKER, CRAFT_DIMENSIONS, VISUAL_COVERAGE_MARKER, VISUAL_COVERAGE
         catalog=self.plugin/'skills/pptx/assets/workflow-choices.json';catalog.parent.mkdir();catalog.write_text('{"version":4}')
-        guide=self.plugin/'skills/pptx/references/design-completion.md';guide.write_text('SHARED COMPLETION POLICY FIXTURE\n'+PRESENTATION_MARKER+'\n'+CRAFT_MARKER+'\n<!-- strict-craft-review/v1 -->\n'+VISUAL_COVERAGE_MARKER)
+        guide=self.plugin/'skills/pptx/references/design-completion.md';guide.write_text('SHARED COMPLETION POLICY FIXTURE\n<!-- shared-aesthetics/v1 -->\nTask-grounded visual judgment; author chooses composition.\n<!-- /shared-aesthetics -->\n'+PRESENTATION_MARKER+'\n'+CRAFT_MARKER+'\n<!-- strict-craft-review/v1 -->\n'+VISUAL_COVERAGE_MARKER)
         images=[]
         for number in (1,2):
             name=f'reading-page-{number}.png';Image.new('RGB',(900,506),'blue').save(self.packet/name)

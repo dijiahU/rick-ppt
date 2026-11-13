@@ -12,15 +12,67 @@ needs intentional proportion, a convincing focal structure, considered type/imag
 relationships and finished details. A pale background, consistent color and aligned
 boxes alone do not demonstrate this. Nor do extra decoration or dramatic color.
 
+## Shared aesthetic judgment
+
+<!-- shared-aesthetics/v1 -->
+**Rick 的审美共识：把内容组织成值得观看、适合实际使用的画面。**
+作者与视觉审核使用以下同一套判断。它指导新稿和已授权的重设计；明确的
+用户需求、真实素材边界和需要保留的源模板优先。它不是统一风格、版式清单
+或额外验收表，也不授权扩大局部修改。
+
+- **真实性是画面与内容、观众情境的贴合，不是照片般逼真。** 入职培训应让
+  人看见有关的工作、人物活动或实际操作；没有公司素材时，可用明确标注的
+  通用情境或示意，不能伪造“本公司照片”。游戏宣发可以通过其虚构世界建立
+  真实感；历史证据必须真实。不要用漂亮但无关的道具、场景或气氛远离主题。
+- **让关键对象和关系进入画面。** 观众应能看见需要理解的机制、差别、位置、
+  状态或实例。说明贴合其对象，素材具有足够的尺度和细节。优先考虑有用的
+  真实图片、原生示意或允许生成的插画，按事实性和编辑需求选择；不把标签树、
+  连着段落的框、统计表或一张装饰性封面图当作全部视觉表达。文字本身是证据、
+  观点或主角时可以主导；图像数量和原生形状数量都不是质量分数。
+- **场合决定表现强度，不决定设计投入。** 严肃汇报需要成熟的比例、层级、
+  图文关系与细节，不等于淡而无设计；宣传页可以有感染力，也不能靠无关装饰。
+  初学者不自动对应卡通，高端不自动对应空白。判断这次具体用途，不按行业
+  标签套固定风格。解释清楚和画面完成度要分别成立。
+- **认真设计整套的背景与前景关系。** 同时看主背景、文字、实际图片或示意、
+  强调色及各自占据的面积。共享色号并不等于延续了参考的成熟感。这里的
+  “AI 味”指可观察的任务脱节或机械套用：例如每块信息都铺相近色底、主体与
+  背景对比被冲淡、泛化道具替代实际对象、不同内容套同一种装饰处理。指出
+  具体原因，不能凭某个颜色、低饱和度或“像 AI”就判好坏，更不能据此判断
+  制作者身份。保留明确的背景禁用要求；除此之外，不设新的默认配色或禁色。
+- **整套统一，页面按内容变化。** 延续对象身份、颜色含义、字体层级和图示
+  语言；通过内容所需的尺度、密度、裁切和重点变化推进叙事。重复结构可以
+  服务比较，不能仅为了统一而复制差构图。连线的归属、方向和阅读顺序应清楚，
+  避免杂乱交叉或在实际展示尺度下细弱难辨；不要为变化而换模板或强加箭头。
+- **借鉴参考中真正起作用的关系。** 观察实际作品里的主体比例、留白、对比、
+  字体与图片关系，再判断如何用于当前内容。替换字体、照片或素材后重新看
+  效果，不能只抄配色就声称完成借鉴。没有合适参考时如实处理，不制造搜索、
+  艺术家或图片配额，也不把已认可案例变成所有任务的固定样式。
+
+把这些判断用于第一次构图和已有的逐页渲染点：先解决主体表达与视觉关系，
+再修细节；发现共享方向有问题时，趁影响范围小调整。有效的画面应保留，
+不要求反复改到某个次数，也不把设计责任全部推到最终审核。被认可版本的
+局部问题应局部修复；减少“AI 味”不等于删除有用图像、降低对比或重新设计整套。
+<!-- /shared-aesthetics -->
+
 ## During initial authoring
 
-Before committing the main composition, select the actual observation the audience
-should make and the source detail or relationship that lets them make it. A product
+Before committing the main composition, establish what the audience should
+understand, recognize or experience from the brief, then select the source detail
+or relationship that lets them do so. Keep this outcome separate from the proposed
+picture: "the chosen objects are recognizable" tests execution, not whether choosing
+them serves this use. For example, recognizable equipment can identify an activity
+without showing how someone participates in it; that distinction matters only when
+participation is the page's job. A cover may establish welcome, identity or atmosphere
+without explaining a procedure. A product
 output named inside a box is not yet an inspectable example; a process label does not
 by itself expose a mechanism. A useful source fragment, changed value, paired state,
 quote or image detail can carry the explanation. Choose from the actual evidence,
 preserving its qualifiers and documentary/illustrative identity. Text itself may
-be the right subject. Do not invent missing source artifacts.
+be the right subject. Do not invent missing source artifacts. If authentic material
+is absent, retain that limit and judge a permitted illustration, generic example or
+text treatment against the same audience need. No medium automatically closes the
+gap. Task authenticity concerns the relevant people, actions, evidence or fictional
+world, not photorealism: a game image may be more faithful than an unrelated photo.
 
 Use the existing first main render to judge the result:
 - Does the visual intensity fit the actual requested experience, audience and viewing
@@ -28,6 +80,10 @@ Use the existing first main render to judge the result:
   headings, standalone numbers and conclusions compete? A quiet frame still needs
   precise explanation; a dramatic treatment needs a purpose supported by this brief.
 - Does the subject carry the central claim or experience, at a useful scale?
+  Check against the audience outcome, not just the chosen object's name. Clear
+  silhouettes, depth and coherent colors show craft, but do not by themselves show
+  a useful connection to this audience's situation. If that connection is missing,
+  reconsider the subject/relationship before polishing its decoration.
 - Can the audience locate the comparison, dependency or evidence without rebuilding
   the important relationship from disconnected paragraphs?
 - Does the body visibly deliver the explanation promised by the title? Distinguish
@@ -59,7 +115,11 @@ Set the expected audience outcome from the original brief and supported evidence
 before assessing the candidate's design. The projected design-task is a proposed
 working brief: it can expose an unfinished task but cannot certify itself or create
 new user constraints. In audience_fit, connect that expectation to the actual page
-subject, focus and visible evidence. Mere factual coverage or a recognizable generic
+subject, focus and visible evidence. Test the proposed treatment as well as its
+execution: do not substitute "the author's chosen subject is rendered well" for
+"this subject serves the audience's task". Name the visible detail or relationship
+supporting the latter. If the proposal narrows the task to recognizing its own props,
+return to the original use before deciding readiness. Mere factual coverage or a recognizable generic
 symbol may fall short when the use needs a particular object, scene, relationship
 or decision. Conversely, do not reject an effective quiet page for lacking spectacle.
 Within that same audience_fit assessment, distinguish whether the content/visual
@@ -84,9 +144,10 @@ For new work/substantive redesign, report design_assessment.readiness:
   relationship is already visibly carried elsewhere and the suggestion is optional,
   identify that visible support in the assessment instead of just citing readability.
 - needs_revision: a concrete main-expression or visual-craft gap prevents that
-  standard. Identify its actual page/region, audience consequence, feasible main
-  action, visible success condition and protected facts/objects in the existing
-  finding fields. Put the finding IDs, most important first, in primary_findings.
+  standard. Identify its actual page/region, audience consequence, visible
+  improvement target and protected facts/objects in the existing finding fields.
+  A feasible expression direction can help; the continuing author chooses the
+  composition. Put the finding IDs, most important first, in primary_findings.
 - uncertain: available evidence does not support a readiness decision. Describe
   the limitation; primary_findings is empty, as it is for ready.
 
@@ -187,9 +248,16 @@ the author's rationale, or "clean, professional, suitable" alone cannot justify 
   cannot by themselves earn 8 in this dimension. Equally, photography, saturated
   color, complexity and novelty earn no automatic credit. Quiet work can have
   strong proportions, precise tonal relationships and carefully realized subjects.
-  Give a concrete visual operation for a real gap without inventing comprehension
-  failure or imposing another style. Protect effective explanation while refining
-  its visible treatment; neither extra decoration nor removing imagery is a default.
+  Keep evidence for this score distinct from coverage: "the ticket shows where the
+  process waits" explains usefulness; explain separately how its scale, line weight,
+  detail and relation to type/background make the picture accomplished. If these
+  compete or remain generic, identify the specific region and change rather than
+  awarding 8 for recognizability. Matching a reference palette or avoiding familiar
+  template devices is not a substitute. A different successful style is valid.
+  Locate a real gap and the visible relationship that needs improvement without
+  inventing comprehension failure. A suggested visual operation is one possible
+  solution, not an imposed layout. Protect effective explanation; extra decoration
+  and removing imagery are not defaults.
 - typography: deliberate hierarchy and reading rhythm, text breaks, alignment,
   contrast and finished labels/notation. No overflow is only a technical baseline.
 - sequence: coherent visual language with deliberate changes in focus, scale and

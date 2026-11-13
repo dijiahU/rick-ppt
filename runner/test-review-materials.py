@@ -113,6 +113,9 @@ class ReviewMaterialsTests(unittest.TestCase):
         documents = {
             'request.json': {'title': 'VISIBLE REQUIREMENT', 'brief': 'SOURCE BRIEF',
                              'api_key': 'PRIVATE HOST VALUE',
+                             'input_revision': 2,
+                             'user_revisions': [{'id':'r1','sequence':10,'text':'AUTHORIZED REDESIGN',
+                                                 'private_transport':'PRIVATE REVISION TRANSPORT'}],
                              'attachments': [{'path': 'references/source.md', 'name': 'ACTUAL SOURCE',
                                               'private_transport': 'PRIVATE TRANSPORT VALUE'}]},
             'first-view.json': {'summary': 'SEALED BLIND JUDGMENT', 'pages_reviewed': [1, 2]},
@@ -144,6 +147,9 @@ class ReviewMaterialsTests(unittest.TestCase):
             self.assertNotIn('PRIVATE HOST VALUE', prompt)
             self.assertNotIn('PRIVATE TRANSPORT VALUE', prompt)
             self.assertNotIn('ACTUAL SOURCE BODY NOT AUTOMATICALLY INLINED', prompt)
+            self.assertNotIn('PRIVATE REVISION TRANSPORT', prompt)
+        self.assertNotIn('AUTHORIZED REDESIGN',blind)
+        for prompt in (evidence,visual):self.assertIn('AUTHORIZED REDESIGN',prompt)
         self.assertEqual(before, {p: p.read_bytes() for p in self.root.rglob('*') if p.is_file()})
 
     def test_oversize_evidence_has_exact_receipt_and_explicit_read_fallback(self):

@@ -37,7 +37,7 @@ def prepared_phase_context(cfg, job, stage):
     remaining = MAX_CONTEXT
     grouped_tools = _grouped_tools(skill, job)
 
-    def add(base, relative, *, kind, fields=None):
+    def add(base, relative, *, kind, fields=None, section=None):
         nonlocal remaining
         path = base / relative
         if not path.exists():
@@ -56,6 +56,15 @@ def prepared_phase_context(cfg, job, stage):
                 raise
             deferred.append(str(path))
             return
+        if section is not None:
+            start, end = section
+            # Older pinned skills do not opt in. Share only the decision guide
+            # during research, not the final reviewer schema/scoring instructions.
+            _, found_start, excerpt = body.partition(start)
+            excerpt, found_end, _ = excerpt.partition(end)
+            if not found_start or not found_end:
+                return
+            body = excerpt.strip()
         format_error = None
         if path.suffix == '.json':
             try:
@@ -78,7 +87,7 @@ def prepared_phase_context(cfg, job, stage):
         remaining -= size
         documents.append({'path': str(path), 'kind': kind,
                           'sha256': hashlib.sha256(raw).hexdigest(),
-                          'complete': fields is None, 'content': body,
+                          'complete': fields is None and section is None, 'content': body,
                           **({'format_error': format_error} if format_error else {})})
 
     # Put task state first so a large reference guide never displaces the brief.
@@ -104,6 +113,8 @@ def prepared_phase_context(cfg, job, stage):
     if continuity:
         add(skill, 'references/execution-continuity.md', kind='installed_instruction')
     if stage == 'research':
+        add(skill, 'references/design-completion.md', kind='installed_instruction',
+            section=('<!-- shared-aesthetics/v1 -->', '<!-- /shared-aesthetics -->'))
         add(skill, 'references/content.md', kind='installed_instruction')
     if stage in ('research', 'author'):
         add(skill, 'references/pinterest.md', kind='installed_instruction')

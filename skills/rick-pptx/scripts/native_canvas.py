@@ -311,7 +311,13 @@ def add_image(workspace,number,source,box,*,fit,layer,task_root=None):
     node(node(fill,A,'stretch'),A,'fillRect');pr=node(pic,P,'spPr');transform(pr,box);node(node(pr,A,'prstGeom',prst='rect'),A,'avLst')
     if layer=='back':shapes.remove(pic);shapes.insert(2,pic)
     types=parse(scoped(root,'[Content_Types].xml'))
-    if not any(t.get('Extension')==suffix[1:] for t in types.getroot()):node(types.getroot(),CT,'Default',Extension=suffix[1:],ContentType=mime)
+    # OPC extensions are case-insensitive; legacy decks may declare JPG (and
+    # even image/.jpg). Reuse that declaration for the detected image format.
+    matches=[t for t in types.getroot() if t.tag=='{'+CT+'}Default' and t.get('Extension','').lower()==suffix[1:]]
+    if matches:
+        matches[0].set('ContentType',mime)
+        for duplicate in matches[1:]:types.getroot().remove(duplicate)
+    else:node(types.getroot(),CT,'Default',Extension=suffix[1:],ContentType=mime)
     write(path,tree);write(relpath,rels);write(scoped(root,'[Content_Types].xml'),types)
     return {**handle(workspace,number,ident),'fit':fit,'layer':layer,'media':'ppt/media/'+name}
 

@@ -80,6 +80,43 @@ class Tests(unittest.TestCase):
         self.assertEqual(sent['sha256'],hashlib.sha256(result['contentItems'][-1]['text'].encode()).hexdigest())
         self.assertEqual(before,{p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()})
 
+    def test_current_deck_direction_reaches_wire_with_page_and_scoped_reference_pixels(self):
+        from design_roles import composition_instruction, rendered_page_instruction
+        self.plan['design_direction']='Provisional: preserve supplied textured background; emphasis belongs to the specimen.'
+        self.save()
+        before={p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()}
+        entry=self.wire(self.params())
+        ctx=json.loads(entry['contentItems'][0]['text'])
+        self.assertEqual(ctx['design_direction'],self.plan['design_direction'])
+        self.assertEqual(entry['contentItems'][-1]['text'],composition_instruction(self.cfg))
+        self.assertEqual(before,{p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()})
+        ws=self.native();preview=self.rendered(ws)
+        self.plan['design_direction']='Revised provisional relationship after inspecting the actual page.'
+        self.save()
+        before={p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()}
+        result=self.wire({**self.params(),'callId':'render-check',
+                          'arguments':{'page_id':'first','workspace':str(ws.root)}})
+        ctx=json.loads(result['contentItems'][0]['text'])
+        self.assertEqual(ctx['design_direction'],self.plan['design_direction'])
+        self.assertEqual(result['contentItems'][-1]['text'],rendered_page_instruction(self.cfg))
+        for role,path in [('page_preview',Path(preview['pages'][0])),('reference:work',self.job/'reference.png')]:
+            row=next(v for v in ctx['visual_inputs'] if v['role']==role)
+            self.assertEqual(row['state'],'attached')
+            self.assertEqual(base64.b64decode(result['contentItems'][row['content_index']]['imageUrl'].split(',',1)[1]),path.read_bytes())
+        self.assertEqual(before,{p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()})
+        later=json.loads(self.wire(self.params('later'))['contentItems'][0]['text'])
+        self.assertEqual(later['design_direction'],self.plan['design_direction'])
+        self.assertEqual(later['references'],[])  # Shared direction is not shared image permission/application.
+
+    def test_missing_direction_does_not_invent_a_palette_or_require_a_record(self):
+        for value in (None, {'palette':'unvalidated record'}):
+            if value is None:self.plan.pop('design_direction',None)
+            else:self.plan['design_direction']=value
+            self.save()
+            result=self.wire(self.params())
+            self.assertTrue(result['success'])
+            self.assertNotIn('design_direction',json.loads(result['contentItems'][0]['text']))
+
     def test_actual_formula_objects_reach_author_wire_and_frozen_review_input(self):
         from lxml import etree
         from pptx_core.common import NS

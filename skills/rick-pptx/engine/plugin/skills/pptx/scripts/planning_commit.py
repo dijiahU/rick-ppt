@@ -22,6 +22,24 @@ MAX_INPUT_BYTES = MAX_OUTLINE_BYTES + MAX_NOTES_BYTES + MAX_PLAN_BYTES + 65536
 OUTPUTS = ('outline.json', 'decision-plan.json', 'source-notes.md')
 
 
+def page_task_receipt(root):
+    """Expose the same projection consumers read, without gating a committed plan."""
+    try:
+        from page_design import brief
+        projection = brief(root)
+        return {'status': 'available', 'coverage': projection['coverage'],
+                'diagnostics': projection['diagnostics'], 'sources': projection['sources'],
+                'required': False,
+                'meaning': 'Only fenced pptx-handoff records are projected. Plain notes remain usable; '
+                           'if an intended page task is not recorded, correct that existing block. '
+                           'Coverage does not verify evidence, visual input or design quality.'}
+    except (ImportError, OSError, ValueError, KeyError, TypeError) as error:
+        # A successful transactional commit must not be reported as failed just
+        # because its optional task projection is unavailable.
+        return {'status': 'unavailable', 'required': False, 'detail': str(error),
+                'meaning': 'Planning files were committed; consult retained source notes.'}
+
+
 def _pairs(pairs):
     result = {}
     for key, value in pairs:
@@ -242,7 +260,7 @@ def commit_bundle(task_root, input_file, *, mode='create', expected_pages=None, 
         raise
     else:
         shutil.rmtree(staging)
-    return {'ok': True, **result,
+    return {'ok': True, **result, 'page_task_projection': page_task_receipt(root),
         **({'source_notes_input': {'path': str(notes_path.relative_to(root)),
                                   'sha256': hashlib.sha256(notes_bytes).hexdigest(),
                                   'bytes': len(notes_bytes)}} if notes_path is not None else {}),

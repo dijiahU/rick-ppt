@@ -184,7 +184,10 @@ def brief(task_root):
             diagnostics.append({'page_id': page['id'], 'detail': 'Ambiguous task; no handoff selected.'})
         result.append({'page': number, 'page_id': page['id'], 'title': page.get('title'),
                        'handoff': task, 'status': 'recorded' if task else 'not_recorded'})
+    coverage = {status: [page['page_id'] for page in result if page['status'] == status]
+                for status in ('recorded', 'not_recorded')}
     return {'purpose': outline.get('purpose'), 'pages': result, 'diagnostics': diagnostics,
+            'coverage': coverage,
             'sources': {'outline.json': hashlib.sha256(outline_raw).hexdigest(),
                         'source-notes.md': hashlib.sha256(raw).hexdigest()},
             'authority': 'Derived research/design proposals, not additional user requirements or a quality verdict. '
@@ -210,6 +213,7 @@ def context(task_root, page_id, workspace=None):
     if len(matching) > 1:
         diagnostics.append({'detail': 'Ambiguous duplicate handoff for this page; retained notes must be reconciled.'})
     resources, references = [], []
+    design_direction = None
     for key, field in [('evidence', 'source'), ('materials', 'file')]:
         for item in handoff.get(key, []) if isinstance(handoff.get(key, []), list) else []:
             if isinstance(item, dict):
@@ -218,6 +222,8 @@ def context(task_root, page_id, workspace=None):
     if decisions_path.is_file():
         try:
             decisions = json.loads(read(root, 'decision-plan.json'))
+            if isinstance(decisions.get('design_direction'), str):
+                design_direction = decisions['design_direction']
             for record in decisions.get('pages', []):
                 if record.get('id') == page_id:
                     for item in record.get('assets', []):
@@ -254,6 +260,10 @@ def context(task_root, page_id, workspace=None):
               'observations': [row for row in observations if row['page_id'] == page_id][-4:],
               'diagnostics': diagnostics + observation_errors,
               'authority': 'Handoffs/observations are author data. Missing optional annotations are not failures; consult original notes/evidence. No visual judgment is inferred.'}
+    if design_direction is not None:
+        # Retain the existing proposal beside actual page/reference inputs. This
+        # is not a new template, inferred palette or approved design decision.
+        result['design_direction'] = design_direction
     if workspace:
         result['native'] = native_state(root, workspace, number)
     return result

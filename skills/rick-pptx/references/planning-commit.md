@@ -10,7 +10,7 @@ Write one task-local JSON file, such as `planning-input.json`:
     "purpose": "What this audience should understand or do",
     "style": "Optional description of the actual visual direction",
     "slides": [
-      {"id": "page-1", "title": "Page title", "summary": "Substantive public explanation", "section": "Optional section"}
+      {"id": "page-1", "title": "Page title", "summary": "Substantive public explanation with a short account of the proposed expression", "section": "Optional section"}
     ]
   },
   "decisions": {"version": 4, "task": {}, "template_preservation": [], "design_direction": "...", "references": [], "pages": []},
@@ -34,8 +34,12 @@ are rejected without replacing outputs. This avoids retyping accumulated researc
 inside JSON; it does not summarize or discard evidence. The original inline form
 remains supported.
 
-Keep reader-facing page summaries in the outline, evidence/details and native
-build plans in source notes, and reference applications in the decision register.
+For new work or authorized redesign, resolve each page's main expression before
+submission using content.md. Keep content and a short reader-facing account of the
+proposed expression in the outline summary; keep the concrete design intention,
+evidence/details and native build plans in the existing source-note handoffs, and
+reference applications in the decision register. A successful commit checks the
+files and transport, not whether the proposed expression is thoughtful or finished.
 Use exact source/page/section pointers where the same detail is needed elsewhere;
 do not copy whole sections into all three files. Preserve substantive summaries,
 source qualifiers and useful examples; no text-length or research quota is imposed.

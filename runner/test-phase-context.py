@@ -60,6 +60,35 @@ class Tests(unittest.TestCase):
         self.assertIn('NEW RESOLVED EVIDENCE',text)
         self.assertNotIn('RETAINED AUTHOR EVIDENCE',text)
 
+    def test_shared_aesthetic_source_reaches_planning_author_and_repair_with_hashes(self):
+        path=self.skill/'references/design-completion.md'
+        path.parent.mkdir(parents=True)
+        shared='Task-specific audience and visual judgment — 真实情境'
+        final_policy='FINAL REVIEW SCORING AND REPORT FIELDS'
+        body='Guide\n<!-- shared-aesthetics/v1 -->\n'+shared+'\n<!-- /shared-aesthetics -->\n'+final_policy
+        path.write_text(body)
+        before={p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()}
+        for stage in ('research','author','repair'):
+            text=prepared_phase_context(self.cfg,self.job,stage)
+            doc=next(d for d in self.documents(text) if d['path']==str(path))
+            self.assertIn(shared,doc['content'])
+            self.assertEqual(doc['sha256'],hashlib.sha256(path.read_bytes()).hexdigest())
+            self.assertEqual(doc['complete'],stage!='research')
+            if stage=='research':self.assertNotIn(final_policy,text)
+            else:self.assertEqual(doc['content'],body)
+        self.assertEqual(before,{p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()})
+
+    def test_legacy_or_incomplete_shared_guide_does_not_load_review_rules_in_planning(self):
+        path=self.skill/'references/design-completion.md'
+        path.parent.mkdir(parents=True)
+        for body in ('LEGACY REVIEW POLICY',
+                     '<!-- shared-aesthetics/v1 -->\nINCOMPLETE SECTION; NOT PLANNING POLICY',
+                     '<!-- /shared-aesthetics -->\n<!-- shared-aesthetics/v1 -->\nREVERSED MARKERS'):
+            path.write_text(body)
+            documents=self.documents(prepared_phase_context(self.cfg,self.job,'research'))
+            self.assertNotIn(str(path),[d['path'] for d in documents])
+            self.assertIn(str(self.job/'request.json'),[d['path'] for d in documents])
+
     def test_submitted_style_reaches_research_author_and_repair_without_plan_override(self):
         from language import presentation_request
         style = '不要用低饱和度有色纯色作为整套主背景；保留附件中指定的标志。'

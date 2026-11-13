@@ -33,7 +33,9 @@ def request(cfg,path,body=b'{}',lease=None,raw=False):
     # Claim can assign a different job if its response is lost. Retry/requeue is
     # version-conditional and requires an explicit operator decision on ambiguity.
     # Heartbeats and previews already have their own bounded background retries.
-    attempts=3 if lease and action in ('attachment','complete','bundle','fail') else 1
+    # Repeating delivery-ready only renews the same pending state. The server
+    # rechecks the lease, revision and native-edit fences on every attempt.
+    attempts=3 if lease and action in ('attachment','delivery-ready','complete','bundle','fail') else 1
     with tempfile.NamedTemporaryFile(prefix='pptx-request-') as payload, tempfile.NamedTemporaryFile(prefix='pptx-response-') as response:
         payload.write(body);payload.flush()
         config='url = '+json.dumps(cfg['site'].rstrip('/')+path)+'\nrequest = "POST"\n'

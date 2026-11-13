@@ -4,6 +4,11 @@ Determine what the audience should understand, do, judge or feel. Respect the ac
 brief, page constraints and source scope. Do not turn policy research into a sales
 pitch or a bounded performance review into a full biography.
 
+Apply [Shared aesthetic judgment](design-completion.md#shared-aesthetic-judgment)
+when selecting material and forming page intentions. Prepare what this audience
+should actually see and the relationship it needs to recognize, not just complete
+prose or a palette. Keep a proposed expression revisable by the continuing author.
+
 ## Investigate questions before arranging pages
 
 <!-- research-breadth/v1 -->
@@ -120,23 +125,73 @@ author compares evidence and owns the synthesis and page sequence.
 
 <!-- design-task/v1 -->
 
-After research, turn the user's brief into a compact, actionable design assignment
-in the existing source notes. Keep the original request intact. Separate explicit
-requirements, supported facts and proposed design choices; proposals are revisable,
-not extra user constraints. Explain what this audience should understand, recognize
-or decide, and why the proposed viewing experience serves that outcome. A short
-request needs professional interpretation, not invented facts or a longer sales pitch.
+During outline planning, resolve both the supported message and a working expression
+for each page in the existing source notes. For new work and authorized redesign,
+choose a plausible treatment now; leaving final composition to the author does not
+mean deferring the page's main design decision until drawing. Establish what this
+audience should understand, recognize, feel or decide, then describe what on the
+page will produce that outcome. Keep the original request intact and distinguish
+explicit requirements, supported facts and revisable design proposals.
 
-For each consequential page task, reuse the `pptx-handoff` fields in page-design.md:
-`question` states the audience's task; `evidence` / `materials` identify real support
-and file/viewing status; `preserve` keeps actual conditions; `uncertainties` names
-missing support. In `visual_opportunity`, connect a plausible expression to an
-observable completion condition: what must be visible for this page to do its job?
-For example, if a decision depends on fitting a device into a small space, a weight
-and dimensions list may not establish the footprint; a labeled concept view or a
-dimensioned native view could. This is a task-dependent choice, not a rule that all
-product pages need a rendering. A definition or exact quotation may need only a
-short hierarchy task. Do not turn every field into a paragraph or add a new form.
+Use the actual request and accepted revisions to establish the area being designed.
+A supplied deck or `edit` entry alone does not mean every old layout is protected.
+Conversely, a reorder, correction or faithful recreation does not authorize broader
+redesign. For genuinely scoped work, state the requested change and the relationships
+to preserve; leave unaffected pages intact rather than inventing new design tasks.
+
+For each consequential page task, write the existing fenced `pptx-handoff` object
+in source-notes.md using page-design.md; headings and prose alone are not projected
+into the author/reviewer page-task input. Keep detailed research once in the notes.
+Check the planning_commit response's page_task_projection for actual recorded IDs;
+if an intended handoff is missing, correct its existing block, not the research.
+Plain notes remain valid and simple/scoped pages need no compulsory record.
+Within that object, `question` states the audience's task; `evidence` / `materials`
+identify real support and file/viewing status; `preserve` keeps actual conditions;
+`uncertainties` names missing support. In `visual_opportunity`, write a compact
+page-specific design intention that connects:
+
+- The main subject or evidence the audience will actually inspect: for example a
+  specimen detail, source passage, worked example, comparison or proposed device.
+- The relationship or emphasis it must make visible, and a chosen way to express it:
+  what is connected to what, where a change occurs, what is compared on a common
+  basis, or which wording should carry the page. Explain the role of supporting
+  text, imagery or data where consequential. A layout name alone is insufficient.
+- The intended reading path or semantic click order when it matters, and a visible
+  completion condition: what this audience can point out, trace, compare or recognize
+  from the resulting page. "Readable and professional" does not specify that task.
+
+These are decisions to connect in useful prose, not additional JSON fields, a fixed
+sentence count or a requirement for a diagram on every page. Choose one supported
+working approach rather than listing interchangeable media for the author to choose
+later. Alternative treatments remain available if the material or render defeats
+it. A cover or exact-quotation page may need only a brief hierarchy/emphasis choice;
+do not invent a mechanism or illustration to make its plan longer.
+
+For example, "evaluation metrics; two-column table" leaves the expression open.
+A useful plan is: "Center the proposed test segment in a bench schematic; attach
+each supported metric to its measurement position or test action, with workflow
+and fault checks in a compact adjacent table. Show the downstream collection point
+separately. Viewers should be able to locate where each metric is obtained; thresholds
+remain undecided." For a meeting-record lesson, a useful plan might instead map
+specific source phrases into action/owner/date fields, keeping a missing date visibly
+unresolved so the audience can trace each entry. These illustrate planning depth,
+not required subjects, page layouts or permission to invent apparatus or records.
+
+Use existing materials/evidence pointers to establish whether that treatment is
+feasible. A missing consequential asset calls for focused acquisition, a supported
+alternative or an explicit remaining gap; do not merely promise "add a suitable
+image". Recognizing the chosen prop or layout is not sufficient when the task needs
+a situation, consequence or experience.
+Keep the outcome when changing media; do not lower it to whatever a convenient
+substitute depicts. Missing authentic material remains a stated limit, not permission
+to invent evidence or proof that a generic substitute meets the task.
+
+Before committing the existing plan, reread the ordered page intentions. If an
+entry could be pasted unchanged onto an unrelated topic, replace its generic
+promise with the actual subject, relationship and proposed expression. Check that
+the sequence develops the explanation rather than repeatedly arranging the same
+summaries. Keep coherent encoding; different layout categories are not a goal.
+This is the author's planning judgment, not another reviewer or approval gate.
 
 For an audience unfamiliar with the subject, identify what they would otherwise
 have to imagine from the prose: an object, operation, state change, spatial relation
@@ -245,7 +300,12 @@ no per-page material requirement or new handoff form. For material-rich pages,
 notes. Plain notes and a supported summary remain sufficient for simple pages.
 Write each detailed evidence passage once in these notes with an exact source
 locator; other page handoffs can point to it instead of repeating the passage.
-Keep the public outline's summaries substantive and references' observed/borrowed/
+Keep the public outline's summaries substantive; for new/designed pages include a
+short reader-facing description of the chosen expression alongside the content,
+such as "Trace the source phrases into the corresponding action, owner and date."
+This makes the design intention visible in the existing outline without adding a
+schema or publishing private notes. Keep detailed evidence, asset paths and build
+instructions in source notes. Keep references' observed/borrowed/
 applications in the existing decision register. Do not duplicate that register or
 expand every optional handoff field into another narrative. Preserve unique facts,
 qualifications, useful examples and build semantics. When notes already exist,

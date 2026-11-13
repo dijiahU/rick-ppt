@@ -50,6 +50,50 @@ def test_valid_create_preserves_all_authored_content_and_input(tmp_path):
     assert (tmp_path / 'source-notes.md').read_bytes() == doc['source_notes'].encode()
     assert not any(item['replaced'] for item in result['files'])
     assert not list(tmp_path.glob('.planning-commit-*'))
+    assert result['page_task_projection']['coverage'] == {'recorded': [], 'not_recorded': ['intro', 'space']}
+    assert result['page_task_projection']['required'] is False
+
+
+def test_committed_page_tasks_reach_author_and_review_projection(tmp_path):
+    import page_design
+    doc = bundle()
+    task = {'page_id': 'space', 'question': 'Which page owns this resource?',
+            'visual_opportunity': 'Let the audience trace the reference to its owner.',
+            'materials': [{'file': 'assets/missing.png', 'role': 'Unacquired reference'}],
+            'readiness': 'PRIVATE AUTHOR VERDICT'}
+    doc['source_notes'] += '\n```pptx-handoff\n' + json.dumps(task) + '\n```\n'
+    source = write(tmp_path, doc)
+    committed = tool.commit_bundle(tmp_path, source, expected_pages=2)
+    files = {name: (tmp_path/name).read_bytes() for name in tool.OUTPUTS}
+    review = page_design.brief(tmp_path)
+    author = page_design.context(tmp_path, 'space')
+    receipt = committed['page_task_projection']
+    assert receipt['coverage'] == review['coverage'] == {'recorded': ['space'], 'not_recorded': ['intro']}
+    assert receipt['sources'] == review['sources']
+    assert author['handoff'] == review['pages'][1]['handoff']
+    assert author['handoff']['question'] == task['question']
+    assert author['resources'][0]['file_check']['availability'] == 'missing'
+    assert 'PRIVATE AUTHOR VERDICT' not in json.dumps(review)
+    assert page_design.context(tmp_path, 'intro')['handoff'] == {}
+    assert files == {name: (tmp_path/name).read_bytes() for name in tool.OUTPUTS}
+
+
+def test_handoff_ambiguity_and_stale_ids_do_not_claim_transport_or_block_commit(tmp_path):
+    doc = bundle()
+    for page_id in ('space', 'space', 'removed'):
+        doc['source_notes'] += '\n```pptx-handoff\n' + json.dumps({'page_id': page_id, 'question': 'Which owner?'}) + '\n```\n'
+    result = tool.commit_bundle(tmp_path, write(tmp_path, doc), expected_pages=2)
+    assert result['ok']
+    assert result['page_task_projection']['coverage'] == {'recorded': [], 'not_recorded': ['intro', 'space']}
+    assert result['page_task_projection']['diagnostics']
+
+
+def test_optional_projection_failure_retains_successful_commit(tmp_path):
+    with mock.patch('page_design.brief', side_effect=ValueError('projection unavailable')):
+        result = tool.commit_bundle(tmp_path, write(tmp_path, bundle()), expected_pages=2)
+    assert result['ok']
+    assert result['page_task_projection']['status'] == 'unavailable'
+    assert all((tmp_path/name).is_file() for name in tool.OUTPUTS)
 
 
 @pytest.mark.parametrize('filename', ['source-notes.md', 'research/evidence.md'])

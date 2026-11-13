@@ -15,6 +15,9 @@ not merely discouraged as a default. Keep its actual scope; do not replace it wi
 another prescribed palette or infer a broader ban. Check the first rendered page
 that exercises the choice before propagating it across the deck.
 The examples in art-direction-examples.md demonstrate decisions, not page templates.
+Use the [shared aesthetic judgment](design-completion.md#shared-aesthetic-judgment)
+at first composition and rendered checks. It connects Rick's preferences to visible
+task fit, pictured relationships and surface/craft, without a fixed visual style.
 
 ## 1. Own a whole visual sequence
 
@@ -98,6 +101,14 @@ content, not to meet a variety quota. Do not interpret this feedback as a reques
 to remove imagery, lower contrast or make the whole deck more restrained. An
 accepted example informs this task; it does not prescribe a palette for other tasks.
 
+Treat independent visual feedback as a diagnosis of the picture, not a second
+author's blueprint. Resolve the identified audience/visual gap and preserve its
+protected facts and scope. A suggested image, diagram or arrangement is a possible
+route: choose the composition using actual material, and judge the changed render
+against the stated visible outcome. Neither following the suggestion verbatim nor
+recording "accepted" establishes improvement. Retain an effective alternative when
+the picture supports it; explain any unresolved scope/material limit in existing notes.
+
 ### Keep an escape route from the initial idea
 
 Separate what is protected from what is proposed. Verified claims, source conditions,
@@ -138,29 +149,80 @@ briefly in existing notes, not a new mandatory status field or decision log.
 
 ## 2. Establish continuity without freezing every composition
 
+<!-- background-exclusion/v1 -->
+**明确禁用：自由设计的新稿或重设计，不得使用浅暖白、奶油白、象牙白、
+浅米白作为整页或占主导面积的背景。** 当前被否决的实例是 `#F5F3ED`；
+不得换成近似色，或改用覆盖全页的矩形来规避。此项是明确的项目要求，
+不是泛泛的审美建议；搜索到的参考也不能覆盖它。检查实际可见底色，
+不能只检查幻灯片背景属性。纯白、其他颜色、图片或纹理并未因此被指定
+为新默认，须按内容重新选择。此项不要求给图片中的浅色区域改色，也不
+授权破坏明确要求保留的源模板或忠实复刻；新的明确用户指令优先。
+
 Identify real protected template elements: a logo/background, a complete inherited
 body style, particular source pages, or an explicit user treatment. An empty
 institutional frame leaves its content area available for design.
 
-<!-- deck-surface/v1 -->
-Before laying out the first page, deliberately design this deck's shared background
-and visual identity. Inspect relevant finished presentations/templates and actual
-imagery through permitted research; a search thumbnail or color swatch alone cannot
-show how a reference works across pages. Within the existing design_direction, settle
-the main background treatment, its relationship to text and images, contrast and
-color area, plus the recurring visual relationship that makes this deck recognizable.
-Choose actual colors/material for this task, not a palette or page recipe supplied
-by this guide. A borrowed or original background may be native, image-based or mixed;
-preserve essential editable content and actual source/template scope.
+<!-- deck-surface/v3 -->
+**Take the background, palette and template decision seriously: it establishes the
+visual language and style of the entire deck. Before production, explicitly check
+for "AI味" (a generic, mechanically applied AI-looking treatment).** This is not an
+absence-of-banned-elements check: avoiding rounded cards, three columns or particular
+colors does not demonstrate a suitable design. State the positive visible relationship
+worth keeping and why it fits the audience's activity. Familiar colors can work;
+changing colors merely to distinguish this deck from another is not improvement.
 
-Give most pages a coherent main treatment; allow content-led alternate backgrounds,
-image-led pages or contrast changes without a fixed count or identical arrangement.
-Build this treatment with real content in page order, then assess the first substantive
-render before propagating it. Check that the background actively organizes the subject
-and supports legibility; plainness, low saturation, decorative texture or bright color
-alone proves nothing. If it fails, revise the shared choice while retaining useful
-imagery and relationships. Do not add a separate approval gate or generate whole
-alternative decks. Background planning does not replace designing the pictured subject.
+Before laying out page 1, evaluate the shared background/template treatment, not
+just a list of hex values. A familiar palette is a valid starting point, not a
+finished decision. Respect the supplied template's protected elements; otherwise
+choose from the brief, actual material and relevant finished works inspected through
+permitted research. A matching topic or template title is a discovery lead, not a
+style decision. Evaluate the visible work for this audience's activity and material:
+what could make it useful here, and what would not transfer? A cover can inform the
+cover or color relationships; it does not demonstrate body-page typography, diagram
+treatment or data density. Investigate the unresolved relationship when useful and
+permitted, rather than collecting more similarly titled templates. References are
+help, not a quota or prerequisite when unavailable or outside the research scope.
+
+Resolve these relationships in the existing design_direction, with a brief reason
+specific to this task rather than only "professional", "restrained" or "premium":
+- What surface occupies most of the page, and how does its temperature, lightness,
+  texture or imagery relate to the actual subject? A background is part of the
+  composition; a colored wash alone does not supply a visual identity.
+- How do body ink, titles, images/native illustrations and accent areas look
+  together? Distinguish the base, supporting surfaces and emphasis by their roles
+  and occupied area, not by assigning a different tint to every box. Semantic color
+  labels alone do not establish a good-looking combination.
+- What makes the useful reference effect work, and can it survive the actual
+  implementation? Use existing observed/borrowed/applications to distinguish the
+  effect from its means: bold type against fine body text, an image against quiet
+  space, or a small accent against a broad field, for example. If a photograph
+  becomes a schematic, a heavy face becomes permitted regular text, or a small
+  accent becomes a large panel, reassess that relationship. Shared hex values do
+  not preserve the source's character. Rebalance scale, spacing, contrast and subject
+  treatment within the real font/material constraints; do not invent font weights,
+  copy unlicensed imagery or assume a simple native icon is an equivalent replacement.
+
+Build the chosen treatment with real content in normal page order. At the existing
+render/view point, inspect the whole page before details: background, ink, main
+subject and emphasis as one picture. On the first substantive page, explicitly
+revisit the AI味 check against the actual render. Name what makes the treatment worth
+repeating beyond correct information, readable text and consistent colors. When an
+applicable reference is available, compare the intended visual effect with its pixels,
+including changed materials, type and color areas; do not just match palette names.
+A successful data page does not validate an illustration introduced later: inspect
+that new treatment at its own normal render point. For example, heavy device outlines
+can dominate a workflow whose important subject is the waiting ticket. This calls
+for reweighting the actual subject, not automatically removing the diagram. Do not
+ban a hue, low saturation or a template by category, or require a change when it works.
+
+If that relationship fails, adjust it before propagating it, retain the useful
+content/composition, then inspect the changed render. Record a consequential choice
+or correction briefly in existing notes; a plan or delivered image is not evidence
+that this judgment happened. Do not open another approval stage, make out-of-order
+pilot pages or generate alternative decks. Once suitable, carry the shared treatment
+through most pages with content-led exceptions, rather than repeatedly redesigning
+it or imposing an identical layout. Background planning does not replace designing
+the informative pictured subject.
 
 Choose useful deck-wide relationships and implement them consistently:
 - Typography roles: claim, body, data, annotation, source and formula; use the

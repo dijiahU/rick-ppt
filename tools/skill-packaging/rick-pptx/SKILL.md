@@ -82,13 +82,16 @@ template does not by itself prohibit relevant visual research. Honor actual
 supplied-only/offline limits and small editing scopes.
 
 Write source-notes.md for evidence, qualifications and useful reference observations.
-After research, expand the short request into actionable page tasks using the
-existing handoffs: audience outcome, useful actual material and a visible completion
-condition. Separate user requirements and facts from revisable design proposals;
-follow content.md / page-design.md. Do not freeze a weak proposal or invent a style.
+During planning, turn the request into page-specific design intentions using the
+existing handoffs: audience outcome, main subject/evidence, the relationship to make
+visible, a chosen working expression and its visible completion condition. Resolve
+these before native authoring; follow content.md / page-design.md. Separate user
+requirements and facts from revisable proposals, and preserve scoped edit boundaries.
 Write outline.json with title, purpose and ordered slides (stable id, title,
-substantive summary). Plan the explanation and a provisional visual direction;
-leave concrete composition and visible wording to the continuing designer.
+substantive summary). Include the content and a short reader-facing account of its
+proposed expression in each designed page's summary. Plan the main visual decision
+now; the continuing designer refines composition and wording against actual material
+and renders. A provisional plan is a concrete starting point, not a final layout.
 Hand over traceable source locations, useful examples and necessary qualifications,
 not final equal-length paragraphs or fixed coordinates. The designer may refine
 expression and request focused missing evidence while preserving factual meaning.
@@ -106,6 +109,11 @@ mandatory design categories or eligibility combinations. Run scripts/workflow_de
 from the task folder. Preserve historically admitted records on recovery.
 
 ## Design and author
+
+Use [Shared aesthetic judgment](references/design-completion.md#shared-aesthetic-judgment)
+from planning through rendered refinement: task authenticity, visible relationships
+and accomplished craft must work together. Review feedback identifies gaps and
+visible improvement targets; the continuing author owns the composition.
 
 The continuing designer reads [Art direction](references/art-direction.md) once
 at design entry and uses [Sequential craft](references/content-led-composition.md)

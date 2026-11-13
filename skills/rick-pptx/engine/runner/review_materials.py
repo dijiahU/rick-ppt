@@ -23,7 +23,7 @@ _ROLE_DOCUMENTS = {
     # records/exported notes remain available for reading after canvas inspection.
     'visual': ('request.json', 'design-task.json', 'references/index.json', 'edit-comparison/index.json', 'refinement-comparison/index.json'),
 }
-_REQUEST_FIELDS = ('title', 'brief', 'pages', 'style', 'mode', 'language', 'attachments')
+_REQUEST_FIELDS = ('title', 'brief', 'pages', 'style', 'mode', 'language', 'attachments', 'input_revision', 'user_revisions')
 _ATTACHMENT_FIELDS = ('id', 'name', 'ext', 'size', 'sha256', 'path')
 _DOCUMENT_LIMIT = 24 * 1024
 _DOCUMENT_BUDGET = 64 * 1024
@@ -52,6 +52,10 @@ def _role_documents(root, role):
         else:
             if name == 'request.json' and isinstance(value, dict):
                 value = {key: value[key] for key in _REQUEST_FIELDS if key in value}
+                if isinstance(value.get('user_revisions'), list):
+                    value['user_revisions'] = [
+                        {key: item[key] for key in ('id','sequence','text') if key in item}
+                        for item in value['user_revisions'] if isinstance(item, dict)]
                 if isinstance(value.get('attachments'), list):
                     value['attachments'] = [
                         {key: item[key] for key in _ATTACHMENT_FIELDS if key in item}

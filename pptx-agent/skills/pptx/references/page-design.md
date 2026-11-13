@@ -19,7 +19,7 @@ outline ID. All other fields are optional; include only useful information.
   "materials": [{"file": "assets/attention-reference.png", "role": "Actual inspected detail useful for this explanation"}],
   "preserve": ["Distinguish illustrative weights from reported measurements"],
   "uncertainties": ["Exact example values still need to be checked"],
-  "visual_opportunity": "Let the audience trace one position's weights to the source values and their combined result. A labeled worked example is one possible treatment; it is finished when those correspondences are visible without reconstructing them from separate paragraphs. Keep the composition open."
+  "visual_opportunity": "Use one source-supported worked example as the main visual: align the current position's weights with their source values and the resulting combination. Attach the calculation to those correspondences instead of a separate explanation paragraph. Reveal the combination after its inputs while keeping the position and source identities visible. It is finished when the audience can trace which values contribute to this result. The exact composition remains provisional."
 }
 ```
 
@@ -29,14 +29,23 @@ Faithful recreation identifies source labels, regions, relationships and uncerta
 it does not authorize adding a new narrative or decorative artwork. Scoped edits
 retain the original meaning, objects and protected user changes.
 
-For new work, use this existing handoff to expand a short brief after research:
-give the author a visible task and a task-specific completion condition, not just
-the information to put on screen. Keep facts and explicit constraints distinct
-from proposed treatments. The host's read-only `brief` projection supplies these
+For new work and authorized redesign, use this existing handoff during planning to
+resolve a visible task, a chosen working expression and a task-specific completion
+condition, following content.md. The main subject and its explanatory relationship
+should already be concrete when the outline is submitted; final composition can
+change after material/render inspection. Keep facts and explicit constraints distinct
+from proposed treatments. Public outline summaries carry a short reader-facing
+description of that expression; detailed evidence and build instructions stay here.
+The host's read-only `brief` projection supplies these
 page tasks at author entry and in the visual review packet. It contains the current
 outline's purpose and only matching handoff fields, never observation/verdict blocks
-or the full source notes. Missing/ambiguous handoffs remain unrecorded; plain notes
-and older tasks still work. It is not an additional admission requirement.
+or the full source notes. Planning submission returns `page_task_projection` with
+recorded/unrecorded current IDs and diagnostics, using this same reader. A prose
+heading alone is not a handoff. If a consequential task you intended to pass is
+unrecorded, put that existing task into a fenced block and reuse the existing notes;
+do not repeat research or infer a task from its title. Missing/ambiguous handoffs
+remain unrecorded; plain notes and older tasks still work. This receipt reports
+transport coverage, not design quality or an additional admission requirement.
 
 ```sh
 HOST_PYTHON PLUGIN/skills/pptx/scripts/page_design.py brief --task-root TASK
@@ -49,8 +58,11 @@ The original request and evidence outrank the proposal. Finishing the proposal i
 not proof that the result serves the user. This command neither fetches nor views
 images; existing image delivery/viewing requirements still apply.
 
-The researcher supplies facts, useful examples, actual material, qualifiers and
-gaps. Leave final wording, composition and scale to the continuing designer.
+The researcher supplies facts, useful examples, actual material, qualifiers, gaps
+and a concrete provisional expression. Leave final wording, composition and scale
+to the continuing designer; this does not defer choosing the main subject and
+relationship until authoring. Reuse a scoped edit's protected expression without
+adding unrelated design work.
 Use visual_opportunity for the audience's visible task (recognize, compare, trace
 or inspect) rather than a fixed layout. A factually supported schematic does not
 automatically close a missing scene/detail needed for that task; retain that gap
@@ -67,7 +79,10 @@ HOST_PYTHON PLUGIN/skills/pptx/scripts/page_design.py context --task-root TASK -
 ```
 
 The result includes the original page summary, optional handoff, selected asset
-records, file checks, note location and recent author observations. It also projects
+records, file checks, note location and recent author observations. When present,
+the existing `design_direction` is included verbatim as a provisional deck-wide
+choice, not a design approval. Compare that background/foreground relationship
+with the current render before repeating it (see art-direction.md). It also projects
 only references whose existing `applications[].pages` explicitly names this stable
 page ID: identity/source, declared inspection, observed/borrowed relationship and
 the current application action. A local-image evidence file is checked without

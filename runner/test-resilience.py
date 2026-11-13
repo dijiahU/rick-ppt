@@ -41,6 +41,26 @@ class TransportTests(unittest.TestCase):
         result,calls=self.invoke('attachment',[(0,7,b''),(200,0,b'original\x00bytes')],raw=True)
         self.assertEqual(result,b'original\x00bytes');self.assertEqual(len(calls),2)
 
+    def test_delivery_ready_lost_reply_retries_the_exact_identity(self):
+        action='delivery-ready&revision=34&sha256='+'a'*64
+        result,calls=self.invoke(action,[(200,28,b'{'),(200,0,b'{"ok":true}')])
+        self.assertEqual(result,{'ok':True});self.assertEqual(len(calls),2)
+        self.assertEqual(calls[0][1]['input'],calls[1][1]['input'])
+        self.assertIn(action.encode(),calls[0][1]['input'])
+
+    def test_delivery_ready_stops_on_new_revision_or_expired_lease(self):
+        for status in (409,412):
+            replies=[(0,28,b''),(status,22,b'private'),(200,0,b'{"ok":true}')]
+            with self.subTest(status=status),self.assertRaises(WorkerHTTPError) as caught:
+                self.invoke('delivery-ready&revision=34&sha256='+'a'*64,replies)
+            self.assertEqual(caught.exception.status,status)
+            self.assertFalse(caught.exception.retryable);self.assertEqual(len(replies),1)
+
+    def test_delivery_ready_retries_remain_bounded(self):
+        replies=[(0,28,b'')]*4
+        with self.assertRaises(WorkerHTTPError):self.invoke('delivery-ready',replies)
+        self.assertEqual(len(replies),1)
+
     def test_attachment_download_bound_matches_file_admission(self):
         for action,maximum in [('attachment',20*1024*1024),('draft-source',10*1024*1024)]:
             _,calls=self.invoke(action,[(200,0,b'original')],raw=True)
@@ -71,7 +91,7 @@ class TransportTests(unittest.TestCase):
                     self.assertTrue(caught.exception.retryable);self.assertEqual(len(replies),1)
 
     def test_http2_failure_retries_only_existing_safe_lease_operations(self):
-        for action in ('attachment','complete','bundle','fail'):
+        for action in ('attachment','delivery-ready','complete','bundle','fail'):
             for status in (0,200):
                 with self.subTest(action=action,status=status):
                     result,calls=self.invoke(action,[(status,16,b'incomplete'),(200,0,b'{"ok":true}')])

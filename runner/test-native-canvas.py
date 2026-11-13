@@ -99,6 +99,36 @@ class NativeCanvasTests(unittest.TestCase):
         rel=next(r for r in tree.getroot() if r.get('Type','').endswith('/slide'));rel.set('Target','../../private.xml');canvas.write(p,tree)
         with self.assertRaisesRegex(ValueError,'escaped'):canvas.page(self.workspace,1)
 
+    def test_jpeg_import_preserves_legacy_picture_and_reuses_case_insensitive_content_type(self):
+        from pptx_core.validator import validate
+        source=self.root/'photo.jpg';Image.new('RGB',(120,80),'red').save(source)
+        original=canvas.add_image(self.workspace,1,source,(1,1,2,1),fit='contain',layer='front',task_root=self.root)
+        old_media=self.workspace/original['media'];upper_media=old_media.with_suffix('.JPG');old_media.rename(upper_media)
+        relpath=self.workspace/'ppt/slides/_rels/slide1.xml.rels';rels=canvas.parse(relpath)
+        for rel in rels.getroot():
+            if rel.get('Target','').endswith(old_media.name):rel.set('Target','../media/'+upper_media.name)
+        canvas.write(relpath,rels)
+        old_picture=E.tostring(canvas.parse(self.workspace/'ppt/slides/slide1.xml').find('.//{'+canvas.P+'}pic'))
+        ctpath=self.workspace/'[Content_Types].xml'
+        for duplicate in (False,True):
+            with self.subTest(existing_duplicate=duplicate):
+                types=canvas.parse(ctpath)
+                for declaration in list(types.getroot()):
+                    if declaration.get('Extension','').lower()=='jpg':types.getroot().remove(declaration)
+                canvas.node(types.getroot(),canvas.CT,'Default',Extension='JPG',ContentType='image/.jpg')
+                if duplicate:canvas.node(types.getroot(),canvas.CT,'Default',Extension='jpg',ContentType='image/jpeg')
+                other=[dict(t.attrib) for t in types.getroot() if t.get('Extension','').lower()!='jpg']
+                canvas.write(ctpath,types)
+                added=canvas.add_image(self.workspace,1,source,(4,1,2,1),fit='contain',layer='front',task_root=self.root)
+                types=canvas.parse(ctpath)
+                declarations=[t for t in types.getroot() if t.get('Extension','').lower()=='jpg']
+                self.assertEqual([dict(t.attrib) for t in declarations],[{'Extension':'JPG','ContentType':'image/jpeg'}])
+                self.assertEqual(other,[dict(t.attrib) for t in types.getroot() if t.get('Extension','').lower()!='jpg'])
+                self.assertEqual(upper_media.read_bytes(),source.read_bytes())
+                self.assertEqual((self.workspace/added['media']).read_bytes(),source.read_bytes())
+                self.assertEqual(old_picture,E.tostring(canvas.parse(self.workspace/'ppt/slides/slide1.xml').find('.//{'+canvas.P+'}pic')))
+                report=validate(self.workspace);self.assertTrue(report.ok,report.errors)
+
     def test_native_bar_chart_and_passive_workbook_preserve_exact_data(self):
         result=canvas.add_bar_chart(self.workspace,1,['Structure','Services','Other'],[12,9,21],'CNY million',['A84D3D','A84D3D','71816B'],(1,2,9,4),font_family='Arial',font_size=18)
         chart=canvas.parse(self.workspace/result['chart']);ns={'c':canvas.C}
