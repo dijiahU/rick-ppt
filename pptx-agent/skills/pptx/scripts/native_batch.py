@@ -339,9 +339,11 @@ def run_batch(workspace, task_root, document, *, check_only=False):
             if receipt.get('after_sha256') != before:
                 raise ValueError('batch already committed, but native parts changed; do not append it again')
             return {**receipt, 'status': 'already_applied'}
-        with tempfile.TemporaryDirectory(prefix='.native-batch-', dir=ws.home) as temporary:
-            stage = Path(temporary) / 'parts'
-            backup = Path(temporary) / 'before'
+        # Keep swap operands in the same directory. Landlock ABI 1 correctly
+        # refuses cross-directory reparenting, even on a single filesystem.
+        with tempfile.TemporaryDirectory(prefix='.native-batch-parts-', dir=ws.home) as stage_name, tempfile.TemporaryDirectory(prefix='.native-batch-before-', dir=ws.home) as backup_name:
+            stage = Path(stage_name);stage.rmdir()
+            backup = Path(backup_name);backup.rmdir()
             shutil.copytree(ws.root, stage)
             handles, results = _execute(stage, prepared)
             # Temporary workspace identities must never escape into durable handles.

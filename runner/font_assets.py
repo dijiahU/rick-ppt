@@ -67,6 +67,11 @@ def publish(root,name,data):
             except FileExistsError:pass
             child=os.open(part,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd);os.close(fd);fd=child
         child=os.open(pending,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=fd)
+        if os.sys.platform=='linux' and os.geteuid()==0:
+            owner=os.stat(root);os.fchown(child,owner.st_uid,owner.st_gid)
+            # Host-created task font directories must be traversable by that
+            # task uid while an existing shell waits for its broker response.
+            os.fchown(fd,owner.st_uid,owner.st_gid)
         with os.fdopen(child,'wb') as stream:stream.write(data)
         os.replace(pending,Path(name).name,src_dir_fd=fd,dst_dir_fd=fd)
     finally:
@@ -221,7 +226,8 @@ def copy_fonts(source,target,ids=None):
 def configure(root):
     from xml.sax.saxutils import escape
     root=Path(root).resolve(strict=True)
-    xml='<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig><dir>/System/Library/Fonts</dir><dir>/Library/Fonts</dir><dir>'+escape(str(root/'fonts'))+'</dir><cachedir>'+escape(str(root/'font-cache'))+'</cachedir></fontconfig>'
+    system='<include>/etc/fonts/fonts.conf</include>' if os.sys.platform=='linux' else '<dir>/System/Library/Fonts</dir><dir>/Library/Fonts</dir>'
+    xml='<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig>'+system+'<dir>'+escape(str(root/'fonts'))+'</dir><cachedir>'+escape(str(root/'font-cache'))+'</cachedir></fontconfig>'
     publish(root,'fonts.conf',xml.encode())
 
 def coverage(root,ids,text):

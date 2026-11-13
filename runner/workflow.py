@@ -205,6 +205,7 @@ class Execution:
         env=self.bridge.environment(root)
         reads=[Path(self.cfg['plugin']).resolve(),Path(self.cfg['python']).parent.parent.resolve(),
                Path('/opt/homebrew'),Path('/Applications/LibreOffice.app'),Path('/System/Library/Fonts'),Path('/Library/Fonts')]
+        if os.sys.platform=='linux':reads += [self.bridge.ROOT.parent/'deploy',Path('/root/miniconda3/lib/python3.12'),Path('/root/miniconda3/bin/python3.12')]
         profile=self.cfg.get('_model_profile')
         meter=self.cfg.get('_usage_ledger')
         usage_options={}
@@ -818,7 +819,7 @@ class Execution:
             if completion:schema=completion_schema(schema,comparison,craft=craft,coverage=coverage)
             if presentation:schema=presentation_schema(schema)
             format_prompt=prompt;format_thread=None
-            for formatting in range(2 if self.cfg.get('_model_profile') else 1):
+            for formatting in range(2):
                 try:
                     result,_=self.phase(name,format_prompt,root=root,content=content,schema=schema,
                                         public=False,timeout=120 if formatting else 900,review_attempt=attempt,thread=format_thread,
@@ -826,7 +827,8 @@ class Execution:
                     checker(result)
                     break
                 except ValueError as error:
-                    if formatting or not self.cfg.get('_model_profile') or str(error)=='Reviewer did not cover all pages':raise
+                    local_quote_error=str(error)=='An image exemption must quote the actual user request verbatim'
+                    if formatting or (not self.cfg.get('_model_profile') and not local_quote_error) or str(error)=='Reviewer did not cover all pages':raise
                     check_identity()
                     if selected_files(root,files,source_identity=sessions.source_identity)!=inputs:raise ReviewSessionError('Reviewer inputs changed during format correction')
                     format_thread=attempt.state.get('thread_id')
@@ -834,7 +836,7 @@ class Execution:
                     attempt=ledger.format_correction(attempt,root)
                     format_prompt=('FORMAT-ONLY CORRECTION. The host rejected your previous report: '+str(error)[:1000]+'. '
                         'Use the same frozen inputs and your already completed inspection. Do not redo the audience pass, invent coverage, add new judgments or consult author rationale. '
-                        'Preserve your observed findings and limitations. Return ONLY one bare JSON object using the exact fields and enum values of this JSON Schema; no Markdown, prose or persona dialogue: '+json.dumps(schema,ensure_ascii=False))
+                        'Preserve your observed findings and limitations. An image_requirement_exemption must copy an exact substring from request.json without adding quotation marks or punctuation. Return ONLY one bare JSON object using the exact fields and enum values of this JSON Schema; no Markdown, prose or persona dialogue: '+json.dumps(schema,ensure_ascii=False))
             check_identity()
             if selected_files(root,files,source_identity=sessions.source_identity)!=inputs:
                 raise ReviewSessionError('Reviewer inputs changed during the independent pass')

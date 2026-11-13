@@ -20,6 +20,7 @@ SCRIPTS = Path(batch.__file__).parent
 FONT = next((path for path in [Path('/System/Library/Fonts/Supplemental/Songti.ttc'),
                               Path('/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc'),
                               Path('/System/Library/Fonts/Supplemental/Arial.ttf'),
+                              Path('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc'),
                               Path('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf')]
              if path.is_file()), None)
 

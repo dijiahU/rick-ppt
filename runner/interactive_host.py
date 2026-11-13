@@ -156,6 +156,8 @@ def _reply(job, identifier, value):
     pending = identifier + '.' + uuid.uuid4().hex + '.host-pending'
     try:
         fd = os.open(pending, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=queue)
+        if os.sys.platform=='linux' and os.geteuid()==0:
+            owner=os.stat(job);os.fchown(fd,owner.st_uid,owner.st_gid)
         with os.fdopen(fd, 'w') as stream:
             json.dump(value, stream, ensure_ascii=False)
             stream.flush()

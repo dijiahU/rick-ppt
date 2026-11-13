@@ -23,9 +23,15 @@ def execute_once(cfg,edit,send):
     scripts=str(Path(cfg['plugin'])/'skills/pptx/scripts')
     if scripts not in sys.path:sys.path.append(scripts)
     from pptx_core.renderer import executables,font_environment,run
-    with tempfile.TemporaryDirectory(prefix='rickppt-direct-save-') as t:
+    with tempfile.TemporaryDirectory(prefix='pptx-direct-save-') as t:
         root=Path(t);artifact=root/'edited.pptx';artifact.write_bytes(result);office,ppm=executables()
-        run([office,f'-env:UserInstallation={(root/"profile").as_uri()}','--headless','--convert-to','pdf:impress_pdf_Export:{"ExportHiddenSlides":{"type":"boolean","value":"true"}}','--outdir',str(root),str(artifact)],90,env=font_environment(root,office))
+        if sys.platform=='linux':
+            from linux_render import render
+            fonts=root/'fonts';fonts.mkdir()
+            converted=render(root,root,root,fonts,artifact.name,{})
+            if converted.returncode:raise ValueError('Isolated native editor rendering failed')
+        else:
+            run([office,f'-env:UserInstallation={(root/"profile").as_uri()}','--headless','--convert-to','pdf:impress_pdf_Export:{"ExportHiddenSlides":{"type":"boolean","value":"true"}}','--outdir',str(root),str(artifact)],90,env=font_environment(root,office))
         pdf=root/'edited.pdf'
         if not pdf.is_file() or pdf.stat().st_size<100:raise ValueError('Native editor produced no render')
         rendered={}

@@ -1,0 +1,5 @@
+#!/root/miniconda3/bin/python3
+import sys
+sys.path.insert(0, '/root/autodl-tmp/rick-ppt/deploy')
+from linux_sandbox import bwrap_entry
+bwrap_entry(sys.argv[1:])

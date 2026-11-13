@@ -111,6 +111,10 @@ def render_input(job,source):
                  'powerpoint_playback_verified':False}
 
 def renderer_font_catalog():
+    if os.sys.platform=='linux':
+        result=subprocess.run(['/usr/bin/fc-list',':','family'],capture_output=True,text=True,timeout=30,check=True)
+        families=sorted({x.strip() for line in result.stdout.splitlines() for x in line.split(',') if x.strip()})
+        return {'image':'linux-landlock-libreoffice','families':families,'scope':'Installed Linux render families; target-player appearance is not verified'}
     command=['/usr/local/bin/docker','run','--rm','--network','none','--read-only','--cap-drop','ALL',
              '--security-opt','no-new-privileges','--entrypoint','fc-list','pptx-lab-renderer:1',':','family']
     result=subprocess.run(command,capture_output=True,text=True,timeout=30,check=True)
@@ -127,6 +131,8 @@ def publish_pdf(job,destination,name,data):
             child=os.open(part,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd)
             os.close(fd);fd=child
         child=os.open(pending,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=fd)
+        if os.sys.platform=='linux':
+            owner=os.fstat(fd);os.fchown(child,owner.st_uid,owner.st_gid)
         with os.fdopen(child,'wb') as stream:stream.write(data)
         os.replace(pending,name,src_dir_fd=fd,dst_dir_fd=fd)
     finally:

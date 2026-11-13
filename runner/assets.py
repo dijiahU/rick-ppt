@@ -86,6 +86,8 @@ class AssetImporter:
                 for target,body in [(name,data),('index.json',json.dumps({'images':list(records.values())},indent=2).encode())]:
                     pending='host-'+uuid.uuid4().hex+'.tmp'
                     fd=os.open(pending,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=dest)
+                    if os.sys.platform=='linux' and os.geteuid()==0:
+                        owner=os.fstat(root);os.fchown(fd,owner.st_uid,owner.st_gid)
                     with os.fdopen(fd,'wb') as stream:stream.write(body)
                     os.replace(pending,target,src_dir_fd=dest,dst_dir_fd=dest)
             finally:os.close(dest)

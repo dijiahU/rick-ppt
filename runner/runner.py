@@ -1,4 +1,4 @@
-"""PPTX LAB local queue bridge. macOS only; jobs run under restricted Codex permissions."""
+"""PPTX LAB queue bridge; tasks run with restricted filesystem/network access."""
 import argparse
 import io
 import hashlib
@@ -51,6 +51,9 @@ def prepare_fonts(job,cfg=None):
         'catalog':'font-catalog.json','installed':'fonts/index.json','same_files_in_renderer':True,
         'defaults':{'latin':'Times New Roman','east_asian':'SimSun','target':'Windows WPS',**defaults},
         'use':'Default new decks to Times New Roman for English/Latin and SimSun (宋体) for Chinese; use the genuine files in fonts/index.json for metrics and rendering. Preserve scoped templates and explicit user font choices. Special fonts need actual glyph/weight/name checks plus recipient availability or verified embedding; downloads are not embedding. Do not silently substitute another family or claim Windows WPS verification from Mac/LibreOffice previews. Read FONTS.md.'}
+    if sys.platform=='linux':
+        capabilities['font_assets']['defaults'].update(latin='DejaVu Serif',east_asian='Noto Serif CJK SC',target='Linux LibreOffice preview')
+        capabilities['font_assets']['use']='On this server the default installed families are DejaVu Serif and Noto Serif CJK SC. Noto Sans CJK SC is also installed. Honor explicitly requested fonts; report missing proprietary fonts instead of claiming Times New Roman or SimSun is available. Actual PowerPoint/WPS playback and font embedding remain unverified. Read FONTS.md for optional verified font acquisition.'
     (job/'capabilities.json').write_text(json.dumps(capabilities,ensure_ascii=False,indent=2))
 
 def settings():
@@ -79,6 +82,7 @@ def settings():
 def permission_args(cfg,job):
     # Exact runtime read grants only. No parent project, private home or other jobs.
     reads=[str(Path(cfg['plugin']).resolve()),str(Path(cfg['python']).parent.parent.resolve()),'/opt/homebrew','/Applications/LibreOffice.app','/System/Library/Fonts','/Library/Fonts']
+    if sys.platform=='linux':reads += [str(ROOT.parent/'deploy'),'/root/miniconda3/lib/python3.12','/root/miniconda3/bin/python3.12']
     # A :tmpdir alias resolves after TMPDIR is set to the task's own directory,
     # and otherwise denies precisely the scratch path intended for this job.
     fs={':root':'deny',':minimal':'read',str(Path(tempfile.gettempdir()).resolve()):'deny',':slash_tmp':'deny',str(job):'write'}
@@ -92,6 +96,7 @@ def environment(job):
     allow=('PATH','LANG','LC_ALL','HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','NO_PROXY')
     result={k:v for k,v in os.environ.items() if k in allow}
     result['PATH']='/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin'
+    if sys.platform=='linux':result['PATH']=str(ROOT.parent/'deploy/bin')+':/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
     result['TMPDIR']=str(job/'tmp')
     result['TMPPREFIX']=str(job/'tmp/zsh')
     result['FONTCONFIG_FILE']=str(job/'fonts.conf')
@@ -239,6 +244,27 @@ def _render_requests_fd(job,qfd,trajectory=None,tick=None):
             render_environment['font_files']=actual_font_records
             render_environment['measurement_environment']='Task-local verified font files shared with production renderer; geometry remains an estimate'
             frozen_source=input_dir/source.name;frozen_source.write_bytes(frozen_bytes)
+            if sys.platform=='linux':
+                from linux_render import render
+                capture(trajectory,'artifact',frozen_bytes,source.name,'render-input',{'request_id':identifier,**render_environment})
+                converted=render(job,input_dir,output_dir,font_dir,source.name,render_environment,tick=tick)
+                if converted.returncode==0:
+                    pdf=read_scoped(output_dir,source.stem+'.pdf',60*1024*1024)
+                    if not pdf.startswith(b'%PDF-'):raise ValueError('Renderer produced invalid PDF')
+                    publish_pdf(job,destination,source.stem+'.pdf',pdf)
+                input_stage.cleanup()
+                capture(trajectory,'emit','render.result',{'request_id':identifier,'returncode':converted.returncode,'stdout':converted.stdout,'stderr':converted.stderr})
+                if converted.returncode==0:
+                    render_environment['renderer_image']='linux-landlock-libreoffice'
+                    render_environment['renderer_version']=subprocess.check_output(['/usr/bin/libreoffice','--version'],text=True).strip()
+                    render_environment['font_diagnostics']='Font families are installed on Linux; target PowerPoint/WPS playback is not verified.'
+                    capture(trajectory,'emit','render.environment',render_environment)
+                    capture(trajectory,'artifact_path',job,destination/(source.stem+'.pdf'),'render-output',{'request_id':identifier})
+                    capture(trajectory,'artifact',json.dumps(render_environment,ensure_ascii=False,indent=2).encode(),'render-environment.json','render-environment',{'request_id':identifier})
+                result={'returncode':converted.returncode,'stdout':converted.stdout[-2000:],'stderr':converted.stderr[-2000:],'environment':render_environment}
+                fd=os.open(reply,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o644,dir_fd=qfd)
+                with os.fdopen(fd,'w') as stream:json.dump(result,stream)
+                continue
             source_arg='/input/'+source.name
             output_arg='/output'
             command=['/usr/local/bin/docker','run','--rm','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','128','--memory','2g','--cpus','2','--user',f'{os.getuid()}:{os.getgid()}','--tmpfs','/tmp:rw,nosuid,nodev,size=512m',
@@ -354,13 +380,13 @@ def self_test(cfg):
     # A synthetic canary outside the job tests denial without reading user files.
     canary=ROOT/('isolation-canary-'+uuid.uuid4().hex+'.txt')
     with canary.open('x') as stream:stream.write('NON_SECRET_TEST_CANARY')
-    test='import pathlib,socket; p=pathlib.Path('+repr(str(canary))+'); denied=False\ntry: p.read_text()\nexcept PermissionError: denied=True\nassert denied, "outside read was allowed"\ns=socket.socket(); s.settimeout(2); denied=False\ntry: s.connect(("1.1.1.1",443))\nexcept PermissionError: denied=True\nexcept OSError: pass\nassert denied,"network was not explicitly denied"\npathlib.Path("allowed.txt").write_text("ok"); print("PASS: outside reads denied, network denied, job writes allowed")'
+    test='import pathlib,socket; p=pathlib.Path('+repr(str(canary))+'); denied=False\ntry: p.read_text()\nexcept PermissionError: denied=True\nassert denied, "outside read was allowed"\ndenied=False\ntry: s=socket.socket(); s.settimeout(2); s.connect(("1.1.1.1",443))\nexcept PermissionError: denied=True\nexcept OSError: pass\nassert denied,"network was not explicitly denied"\npathlib.Path("allowed.txt").write_text("ok"); print("PASS: outside reads denied, network denied, job writes allowed")'
     subprocess.run(sandbox(cfg,job,[cfg['python'],'-c',test]),env=environment(job),check=True,timeout=30)
     subprocess.run(sandbox(cfg,job,[cfg['python'],str(Path(cfg['plugin'])/'skills/pptx/scripts/pptx.py'),'--help']),env=environment(job),check=True,timeout=30,stdout=subprocess.DEVNULL)
     print('Self-test directory:',job)
 
 def codex_command(cfg,job):
-    command=['codex','exec','--ignore-user-config','--ignore-rules','--skip-git-repo-check','--json','-C',str(job),*permission_args(cfg,job),'-c','default_permissions="pptx_job"','-c','approval_policy="never"','-c','shell_environment_policy.inherit="none"']
+    command=['codex','exec','--ignore-user-config','--ignore-rules','--skip-git-repo-check','--json','-C',str(job),*permission_args(cfg,job),'-c','project_doc_max_bytes=0','-c','default_permissions="pptx_job"','-c','approval_policy="never"','-c','shell_environment_policy.inherit="none"']
     command+=['-c','web_search="live"','-c','features.image_generation=true']
     safe_tools={k:v for k,v in environment(job).items() if k in ('PATH','TMPDIR','TMPPREFIX','FONTCONFIG_FILE','PPTX_SOFFICE','PPTX_INTERACTIVE_PROXY')}
     command+=['-c','shell_environment_policy.set={'+','.join(json.dumps(k)+'='+json.dumps(v) for k,v in safe_tools.items())+'}']
@@ -613,7 +639,7 @@ def execute_task(cfg,task):
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--self-test',action='store_true');parser.add_argument('--codex-smoke',action='store_true');parser.add_argument('--render-smoke',action='store_true');parser.add_argument('--model-profile',type=Path);parser.add_argument('--model-smoke',action='store_true');parser.add_argument('--once',action='store_true');parser.add_argument('--wait-for-worker',action='store_true',help='Wait for a draining supervisor to release its lock');args=parser.parse_args()
-    if sys.platform!='darwin': raise SystemExit('This runner is validated only for macOS.')
+    if sys.platform not in ('darwin','linux'): raise SystemExit('Unsupported worker operating system.')
     cfg=settings()
     profile_path=args.model_profile or cfg.get('model_profile')
     if profile_path:
@@ -667,7 +693,7 @@ def main():
     native_editor=start_native_editor(cfg,request,stopping) if not args.once else None
     try:
         serve(lambda:render_health.claim(lambda:request(cfg,'/api/worker',body=claim_body).get('job')),lambda task:execute_task(cfg,task),stopping,
-              lambda error:print('Bridge error:',type(error).__name__,public_text(str(error)),flush=True),once=args.once)
+              lambda error:print('Bridge error:',type(error).__name__,public_text(str(error)),flush=True),once=args.once,capacity=int(cfg.get('capacity',1 if sys.platform=='linux' else 3)))
     finally:
         stopping.set()
         if worker_heartbeat:worker_heartbeat.join(timeout=30)

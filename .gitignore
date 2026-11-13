@@ -25,6 +25,12 @@ runner/launch.lock
 runner/runtime/
 runner/font-cache.local/
 runner/isolation-canary-*.txt
+deploy/private/
+deploy/logs/
+deploy/libexec/
+deploy/bin/codex
+deploy/bin/python3
+deploy/*.so
 trajectory/
 
 # Development artifacts are not part of this source distribution

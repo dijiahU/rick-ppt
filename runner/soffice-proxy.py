@@ -1,4 +1,4 @@
-#!/opt/homebrew/bin/python3.11
+#!/usr/bin/env python3
 """Task-scoped file IPC; the host only accepts a fixed PPTX-to-PDF operation."""
 import json
 import os
