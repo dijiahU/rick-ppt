@@ -116,6 +116,18 @@ class AppServerTests(unittest.TestCase):
         self.journal.accept_message("message-1", text)
         return self.journal
 
+    def test_abrupt_process_exit_is_classified_without_raw_stderr(self):
+        server=self.start()
+        server._stderr_tail.extend(b'synthetic-private-token-must-not-appear')
+        server.process.kill()
+        server.process.wait(timeout=5)
+        server._threads[0].join(timeout=2)
+        with self.assertRaises(TransportError) as caught:
+            for _ in range(10):
+                server.pump(.01)
+        self.assertIn(f'process exit {server.process.returncode}',str(caught.exception))
+        self.assertNotIn('synthetic-private-token',str(caught.exception))
+
     def test_handshake_and_effective_mcp_servers_are_disabled(self):
         s = self.start()
         response = s.start_thread()

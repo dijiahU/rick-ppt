@@ -554,7 +554,9 @@ class AppServer:
             if self._reader_error:
                 raise self._reader_error
             if self._reader_stop.is_set():
-                raise TransportError("App-server ended the stdio connection")
+                code=self.process.poll() if self.process is not None else None
+                suffix=f" (process exit {code})" if type(code) is int else " (process still running)"
+                raise TransportError("App-server ended the stdio connection"+suffix)
             return []
         batch = [message]
         for _ in range(127):
