@@ -150,9 +150,14 @@ def state_previews(root,parts,destination):
                     if prop is not None and prop.get('id') in hidden and node.getparent() is not None:node.getparent().remove(node)
                 path.write_bytes(etree.tostring(tree,xml_declaration=True,encoding='UTF-8',standalone=True))
             package=temp/f'states-{slot}.pptx';pack(copied,package)
-            rendered=render_package(package,temp/f'render-{slot}',expected_pages=len(parts))
+            # One animated page needs only that page's image. Preserve the full
+            # package for shared resources and original numbering. Several pages
+            # still share one conversion instead of starting Office per page.
+            selected=next(iter(selections)) if len(selections)==1 else None
+            rendered=render_package(package,temp/f'render-{slot}',slide=selected,expected_pages=len(parts))
             for number,shown in selections.items():
-                name=f'state-page-{number}-after-{shown}.png';shutil.copyfile(rendered['pages'][number-1],destination/name)
+                image=rendered['pages'][0 if selected is not None else number-1]
+                name=f'state-page-{number}-after-{shown}.png';shutil.copyfile(image,destination/name)
                 frames.append({'page':number,'after_clicks':shown,'file':name,'total_clicks':len(plans[number][0])})
     return {'frames':frames,'unsupported_pages':skipped,'limitation':'Static simulations for simple whole-shape Appear builds only: future shapes removed from separate copies. Sampled initial/middle/pre-final states, not actual playback or every effect.'}
 

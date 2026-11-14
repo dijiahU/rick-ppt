@@ -109,7 +109,8 @@ def test_collect_creates_900px_portrait_index_without_mutating_source(tmp_path, 
     reveal(ws.root, 1, [[handles[0]], [handles[1]]])
     source = {str(p.relative_to(ws.root)): p.read_bytes() for p in ws.root.rglob('*') if p.is_file()}
     final = tmp_path / 'portrait.png'; Image.new('RGB', (720, 1280), 'white').save(final)
-    def fake_render(package, destination, expected_pages):
+    def fake_render(package, destination, expected_pages, slide=None):
+        assert slide==1
         directory = Path(destination); directory.mkdir(parents=True)
         png = directory / 'state.png'; Image.new('RGB', (720, 1280), '#336699').save(png)
         return {'pages': [str(png)]}
