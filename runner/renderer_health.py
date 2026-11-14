@@ -23,8 +23,10 @@ class RendererReadiness:
         reason='renderer_ready'
         try:
             if sys.platform=='linux':
-                result=self._command(['/usr/bin/libreoffice','--version'],6)
+                from linux_render import installation,supports_page_range
+                result=self._command([str(installation()/'program/soffice'),'--version'],6)
                 available=result.returncode==0 and bool(shutil.which('pdftoppm'))
+                if supports_page_range():available=available and bool(shutil.which('pdfinfo'))
                 self.available=available;self.next_check=self.clock()+(15 if available else 5)
                 reason='renderer_ready' if available else 'linux_renderer_unavailable'
                 if reason!=self.reason:
@@ -44,7 +46,7 @@ class RendererReadiness:
                     image=self._command([DOCKER,'image','inspect',QUALIFIED_IMAGE,'--format','{{.Id}}'],6)
                     if image.returncode or not image.stdout.strip().startswith('sha256:'):reason='renderer_image_missing'
         except subprocess.TimeoutExpired:reason='linux_renderer_unavailable' if sys.platform=='linux' else 'docker_not_ready'
-        except OSError:reason='linux_renderer_unavailable' if sys.platform=='linux' else 'docker_command_unavailable'
+        except (OSError,ValueError,RuntimeError):reason='linux_renderer_unavailable' if sys.platform=='linux' else 'docker_command_unavailable'
         if reason=='docker_not_ready' and now>=self.next_launch:
             self.next_launch=now+120
             try:self._command(['/usr/bin/open','-g','-a','/Applications/Docker.app'],5)

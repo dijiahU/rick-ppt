@@ -71,13 +71,41 @@ class RenderPublicationTests(unittest.TestCase):
         def render(job,input_dir,output_dir,font_dir,name,metadata,**options):
             (output_dir/'draft.pdf').write_bytes(b'%PDF-task-readable-fixture')
             return SimpleNamespace(returncode=0,stdout='rendered',stderr='')
-        with patch('linux_render.render',side_effect=render),patch.object(runner.subprocess,'check_output',return_value='LibreOffice test'):
+        with patch('linux_render.render',side_effect=render),patch('linux_render.renderer_version',return_value='LibreOffice test'):
             runner.render_requests(self.job)
         result=self.read_as_task(self.queue/(name+'.reply.json'))
         self.assertEqual(result['returncode'],0)
         self.assertEqual(result['environment']['renderer_image'],'linux-landlock-libreoffice')
         child=subprocess.run([sys.executable,'-c','import os,sys;os.setgroups([]);os.setgid('+str(self.uid)+');os.setuid('+str(self.uid)+');assert open(sys.argv[1],"rb").read().startswith(b"%PDF-")',str(destination/'draft.pdf')],capture_output=True,text=True,timeout=15)
         self.assertEqual(child.returncode,0,child.stderr)
+
+    def test_selected_page_reaches_renderer_and_keeps_timing_out_of_identity(self):
+        from render_options import pdf_filter
+        source=self.job/'draft.pptx';source.write_bytes((runner.ROOT.parent/'pptx-agent/skills/pptx/assets/blank.pptx').read_bytes())
+        destination=self.job/'output';destination.mkdir(mode=0o700);os.chown(destination,self.uid,self.uid)
+        identifier='d'*32
+        (self.queue/(identifier+'.request.json')).write_text(json.dumps({'args':['--convert-to',pdf_filter(1),'--outdir',str(destination),str(source)]}))
+        def render(*args,**options):
+            self.assertEqual(options['page'],1)
+            self.assertEqual(args[-1]['exported_pages'],[1])
+            (args[2]/'draft.pdf').write_bytes(b'%PDF-selected-page')
+            return SimpleNamespace(returncode=0,stdout='',stderr='',timings={'office_process_seconds':.5})
+        with patch('linux_render.render',side_effect=render),patch('linux_render.renderer_version',return_value='LibreOffice test'):
+            runner.render_requests(self.job)
+        result=self.read_as_task(self.queue/(identifier+'.reply.json'))
+        self.assertEqual(result['returncode'],0)
+        self.assertEqual(result['environment']['exported_pages'],[1])
+        self.assertEqual(result['timings'],{'office_process_seconds':.5})
+        self.assertNotIn('timings',result['environment'])
+
+    def test_page_outside_full_source_is_rejected_before_rendering(self):
+        from render_options import pdf_filter
+        source=self.job/'draft.pptx';source.write_bytes((runner.ROOT.parent/'pptx-agent/skills/pptx/assets/blank.pptx').read_bytes())
+        identifier='e'*32
+        (self.queue/(identifier+'.request.json')).write_text(json.dumps({'args':['--convert-to',pdf_filter(2),'--outdir',str(self.job),str(source)]}))
+        with patch('linux_render.render') as convert:runner.render_requests(self.job)
+        convert.assert_not_called()
+        self.assertEqual(self.read_as_task(self.queue/(identifier+'.reply.json'))['returncode'],1)
 
 
 class FontStagingTests(unittest.TestCase):
@@ -96,5 +124,23 @@ class FontStagingTests(unittest.TestCase):
             self.assertEqual((font_dir/'face.ttf').read_bytes(),body)
             self.assertFalse((font_dir/'provenance.json').exists())
             self.assertEqual(records,[{'id':'face',**metadata}])
+
+
+class RenderEnvironmentTests(unittest.TestCase):
+    def test_host_enables_single_page_only_after_capability_verification(self):
+        if sys.platform!='linux':self.skipTest('Linux renderer capability')
+        with patch('linux_render.supports_page_range',return_value=True):
+            self.assertEqual(runner.environment(Path('/tmp/pptx-test'))['PPTX_RENDER_PAGE_RANGE'],'1')
+        with patch('linux_render.supports_page_range',return_value=False):
+            self.assertNotIn('PPTX_RENDER_PAGE_RANGE',runner.environment(Path('/tmp/pptx-test')))
+
+    def test_legacy_codex_command_keeps_render_flags_without_worker_credentials(self):
+        cfg={'plugin':'/trusted/plugin','python':'/trusted/python/bin/python'}
+        with patch.object(runner,'environment',return_value={'PPTX_RENDER_PAGE_RANGE':'1','PPTX_RENDER_TIMEOUT_SECONDS':'210','WORKER_TOKEN':'private-fixture'}):
+            command=runner.codex_command(cfg,Path('/tmp/pptx-test'))
+        setting=next(x for x in command if x.startswith('shell_environment_policy.set='))
+        self.assertIn('"PPTX_RENDER_PAGE_RANGE"="1"',setting)
+        self.assertIn('"PPTX_RENDER_TIMEOUT_SECONDS"="210"',setting)
+        self.assertNotIn('WORKER_TOKEN',setting)
 
 if __name__=='__main__':unittest.main()

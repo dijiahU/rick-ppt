@@ -26,9 +26,9 @@ import tempfile
 
 
 MAX_LINE = 8 * 1024 * 1024
-SAFE_ENV = frozenset({"PATH", "LANG", "LC_ALL", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "PPTX_RENDER_TIMEOUT_SECONDS",
+SAFE_ENV = frozenset({"PATH", "LANG", "LC_ALL", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "PPTX_RENDER_TIMEOUT_SECONDS", "PPTX_RENDER_PAGE_RANGE",
                       "TMPDIR", "FONTCONFIG_FILE", "PPTX_SOFFICE", "PPTX_INTERACTIVE_PROXY"})
-SAFE_TOOL_ENV = frozenset({"PATH", "LANG", "LC_ALL", "TMPDIR", "TMPPREFIX", "FONTCONFIG_FILE", "PPTX_SOFFICE", "PPTX_INTERACTIVE_PROXY", "PPTX_RENDER_TIMEOUT_SECONDS"})
+SAFE_TOOL_ENV = frozenset({"PATH", "LANG", "LC_ALL", "TMPDIR", "TMPPREFIX", "FONTCONFIG_FILE", "PPTX_SOFFICE", "PPTX_INTERACTIVE_PROXY", "PPTX_RENDER_TIMEOUT_SECONDS", "PPTX_RENDER_PAGE_RANGE"})
 DISABLED_FEATURES = ("apps", "plugins", "hooks", "browser_use", "browser_use_external",
                      "computer_use", "chronicle", "memories", "shell_snapshot", "multi_agent")
 REASONING_NOTIFICATIONS = ["item/reasoning/summaryTextDelta", "item/reasoning/summaryPartAdded", "item/reasoning/textDelta"]

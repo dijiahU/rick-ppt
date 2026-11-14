@@ -27,7 +27,7 @@ Supervisor 会在进程退出后启动新进程。不要为了更新强制杀死
 
 - 私密连接参数：`runner/settings.local.json`，权限为 600；其中令牌对应 Sites 的 `WORKER_TOKEN`。迁移时已切换该令牌，旧 Mac 执行端不再有接单权限。
 - Python 环境：`.venv/`，与 MateConv 环境分开。
-- 已验证的插件快照：`runner/runtime/0.1.0+codex.20261114linuxrender2/pptx-agent/`。不要在任务运行期间改这个快照；更新时另行暂存、验证，再温和重启。
+- 已验证的插件快照：`runner/runtime/0.1.0+codex.20261115pagepreview1/pptx-agent/`。不要在任务运行期间改这个快照；更新时另行暂存、验证，再温和重启。
 - 固定的 Codex：`deploy/libexec/codex-0.162.1/`，由官方 npm 平台包安装并核对 SHA-512。`deploy/bin/codex` 指向该副本，避免桌面应用升级清理缓存后破坏接单。
 - 网络：服务器 Mihomo 的 `127.0.0.1:7890`。`keep_proxy.py` 使用已经运行的服务；端口没有服务时，读取服务器私密配置启动 Mihomo。配置中的远端节点没有依赖 Mac 的回环转发。
 - 网站接口连接：此服务器的私密配置启用 `site_http_transport: "pooled"`、`site_http_proxy: "http://127.0.0.1:7890"`，由主机 Python 复用通过代理建立的 HTTPS 连接。每个线程独立连接，空闲 45 秒后关闭；请求仍有超时、大小限制和 TLS 证书校验，不跟随重定向。断线后不会自动重发领取任务；原有续租期限和可安全重复操作的有限重试规则保留。未设置该选项的执行端继续使用原 curl 路径。
@@ -47,7 +47,7 @@ gcc -shared -fPIC -O2 -o deploy/office_tmp.so deploy/office_tmp.c
 
 Linux 的 Office 转换时限为 120 秒，任务端等待回复为 180 秒，原生调用及 PNG 转换的外层预算为 210 秒；未配置的独立插件仍使用原生默认时限。避免外层先于内层退出后重复提交转换。
 
-Office 的线程池按当前容器的 `cpu.max` 和进程允许的 CPU 数量取较小值，向上取整并至少保留一个线程，通过 `MAX_CONCURRENCY` 传入。此机器为 0.5 CPU，因此使用一个工作线程，避免按宿主机的 80 核启动线程池。变量的行为见 [LibreOffice 7.3 线程池实现](https://github.com/LibreOffice/core/blob/libreoffice-7-3/comphelper/source/misc/threadpool.cxx)。字体校验和暂存结束后释放原始字体缓冲，再启动 Office；保留原有字体字节、字体检查和隔离限制。这些措施降低资源压力，不能单独证明异常终止的根因已经解决。
+Office 的线程池按当前容器的 `cpu.max` 和进程允许的 CPU 数量取较小值，向上取整并至少保留一个线程，通过 `MAX_CONCURRENCY` 传入。此机器为 0.5 CPU，因此使用一个工作线程，避免按宿主机的 80 核启动线程池。变量的行为见 [LibreOffice 7.3 线程池实现](https://github.com/LibreOffice/core/blob/libreoffice-7-3/comphelper/source/misc/threadpool.cxx)。字体校验和暂存结束后释放原始字体缓冲、收集字体解析器的无用对象，并在 Linux 上将可释放的主机堆内存归还给系统，再启动 Office；私有字体目录使用文件复制，避免额外创建整份字体的 Python 字节缓冲；保留原有字体字节、字体检查和隔离限制。这些措施降低资源压力，不能单独证明异常终止的根因已经解决。
 
 每次 LibreOffice 转换使用单独的工作目录、用户身份和本地通信路径；不再复用一个固定渲染用户。转换保留父进程的续租与 120 秒时限，并仅对启动返回码 81 和一次异常中断执行有限重试；异常中断后的重试使用新的 LibreOffice 用户配置，保留此前配置供排查。已使用同一份实际 10 页输入完成隔离转换并核对 PDF 页数。
 
@@ -83,7 +83,7 @@ Codex 标准输入输出使用 64 KiB 缓冲；接收队列保留 4096 条上限
 
 运维测试入口为 `/api/worker/benchmarks`，需要原有 Worker 令牌；使用独立系统身份、独立额度和请求幂等键，不冒充网站用户。接口可提交并查询测试任务；重试使用原有任务的失败时间戳作为条件，同一任务的最初创建时间继续作为总计时起点。
 
-当前原生逐页预览仍会重新启动 Office 并转换整份 PPT，再抽取目标页。在 0.5 CPU、2 GiB 且存在其他进程的实例上，制作速度和异常恢复时间必须按实测报告。不得将进程被 SIGKILL 直接认定为内存不足或网络故障；截至本轮排查，观察到了强制终止，但内存控制组没有记录 OOM kill，具体终止来源尚未确认。
+已验证新版渲染器的 Linux 执行端，`pptx.py -w WORKSPACE render N` 使用 PDF `PageRange=N`，只输出目标页的一页 PDF 和 `slide-N.png`，保留原页码、整稿来源哈希及页面预览记录。实际输出必须恰好一页，否则明确失败；不会把整稿第一页当成目标页。整稿预览、最终导出和独立审核仍输出完整稿件。Office 仍需启动、读取整份输入和共享资源，单页输出不会消除这部分成本。每次结果另存 `render-timings.json`，记录 PDF 请求、PNG 转换及主机 Office 转换耗时；耗时不参与审核环境一致性判断。在 0.5 CPU、2 GiB 且存在其他进程的实例上，制作速度和异常恢复时间必须按实测报告。不得将进程被 SIGKILL 直接认定为内存不足或网络故障；截至本轮排查，观察到了强制终止，但内存控制组没有记录 OOM kill，具体终止来源尚未确认。
 
 ## 运维边界
 
@@ -92,3 +92,18 @@ SSH 或 Codex 对话断开后，进程继续运行。服务器实例关机、网
 任务状态、检查点、素材和日志会占用磁盘，应定期检查 `df -h /root/autodl-tmp`。日志已配置轮转；没有自动删除用户成果。历史任务保存在 Mac 上的私密检查点没有随公开 Git 仓库迁移，精确续跑这些旧任务需要另行转移对应状态。
 
 私密配置、令牌、运行日志、任务成果、二进制运行包和临时状态都已在 Git 忽略规则中排除。不要把这些文件上传到公开仓库。
+
+## 安装与验证单页渲染器
+
+系统自带 LibreOffice 7.3 不支持本功能所需的命令行 JSON `PageRange`。安装官方版本至独立目录，不覆盖系统 Office；版本、下载地址和 SHA-256 固定在 `deploy/libreoffice-renderer.lock.json`。先下载该文件指定的归档，再执行：
+
+```bash
+.venv/bin/python deploy/install_renderer.py --archive /path/to/LibreOffice_26.2.7_Linux_x86-64_deb.tar.gz --destination deploy/libexec/libreoffice-26.2.7
+.venv/bin/python runner/verify-renderer.py --prefix deploy/libexec/libreoffice-26.2.7/opt/libreoffice26.2
+```
+
+验证工具使用与生产相同的独立 UID、Landlock/seccomp 和 Office 调用方式，对两页样例请求第 2 页，检查 PDF 页数和实际文字。通过后才写入能力凭据。验证失败不会激活新版。排空正在处理的任务后，将 `deploy/libexec/libreoffice-current` 链接到已验证的 `opt/libreoffice26.2` 目录，暂存新插件快照并重启执行端。未安装链接的 Linux 执行端及未启用能力的独立插件保留原预览方式。
+
+能力开关 `PPTX_RENDER_PAGE_RANGE=1` 由主机根据验证凭据设置，通过执行进程和任务工具的两层环境白名单传递。渲染代理仅接受一个合法页码及既有隐藏页选项，拒绝范围、越界页和其他导出参数；完整 PPTX 仍按原规则冻结、校验和隔离。Office 的官方参数说明见 https://help.libreoffice.org/latest/en-US/text/shared/guide/pdf_params.html 。
+
+单页功能的实测样例为相同的 15 页季度汇报和相同字体文件：整稿输出 15 页；指定第 4、13 页分别只输出一页 PDF 和对应原页码 PNG。第 4 页像素完全一致；第 13 页提取文字完全一致，文字边界最大差异约 0.328 pt（100 dpi 下约 0.455 像素），有少量像素差异，并非严格像素一致。完整测试报告、耗时及初始异常终止记录保存于服务器 `/root/autodl-tmp/rick-ppt-single-page-test.json`；单次结果随机器已有负载变化，不能作为固定性能承诺。

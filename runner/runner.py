@@ -103,6 +103,9 @@ def environment(job):
     result['PATH']='/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin'
     if sys.platform=='linux':result['PATH']=str(ROOT.parent/'deploy/bin')+':/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
     if sys.platform=='linux':result['PPTX_RENDER_TIMEOUT_SECONDS']='210'
+    if sys.platform=='linux':
+        from linux_render import supports_page_range
+        if supports_page_range():result['PPTX_RENDER_PAGE_RANGE']='1'
     result['TMPDIR']=str(job/'tmp')
     result['TMPPREFIX']=str(job/'tmp/zsh')
     result['FONTCONFIG_FILE']=str(job/'fonts.conf')
@@ -235,6 +238,19 @@ def _stage_render_fonts(job,font_dir):
                             **{k:metadata[k] for k in ('family','style','weight','sha256')}})
     return records
 
+def _release_render_staging_memory():
+    # FontTools objects can form cycles; closing a font does not immediately
+    # collect those objects or return glibc's freed large buffers to the OS.
+    # Release only unused host staging memory before starting the Office child.
+    import gc
+    gc.collect()
+    if sys.platform=='linux':
+        import ctypes
+        trim=getattr(ctypes.CDLL(None),'malloc_trim',None)
+        if trim is not None:
+            trim.argtypes=[ctypes.c_size_t];trim.restype=ctypes.c_int
+            trim(0)
+
 def _render_requests_fd(job,qfd,trajectory=None,tick=None):
     from trajectory import record as capture
     names=set(os.listdir(qfd))
@@ -253,6 +269,9 @@ def _render_requests_fd(job,qfd,trajectory=None,tick=None):
                 args=json.loads(stream.read(16001))['args']
             if not isinstance(args,list) or not all(isinstance(x,str) for x in args):raise ValueError('Invalid arguments')
             if len(args)>12 or '--convert-to' not in args or '--outdir' not in args:raise ValueError('Conversion required')
+            from render_options import requested_page
+            selected_page=requested_page(args)
+            if selected_page is not None and sys.platform!='linux':raise ValueError('Selected-page broker is available on Linux')
             source=Path(args[-1]).resolve(strict=True)
             destination=Path(args[args.index('--outdir')+1]).resolve(strict=True)
             if not source.is_relative_to(job) or not destination.is_relative_to(job):raise ValueError('Path outside task')
@@ -261,6 +280,13 @@ def _render_requests_fd(job,qfd,trajectory=None,tick=None):
             from render_inputs import render_input,publish_pdf
             from progress import read_scoped
             frozen_bytes,render_environment=render_input(job,source)
+            if selected_page is not None:
+                import io,zipfile,xml.etree.ElementTree as ET
+                with zipfile.ZipFile(io.BytesIO(frozen_bytes)) as archive:
+                    presentation=ET.fromstring(archive.read('ppt/presentation.xml'))
+                count=len(presentation.findall('.//{http://schemas.openxmlformats.org/presentationml/2006/main}sldId'))
+                if selected_page>count:raise ValueError('Requested PDF page is outside the presentation')
+                render_environment['exported_pages']=[selected_page]
             input_stage=tempfile.TemporaryDirectory(prefix='pptx-render-input-')
             input_dir=Path(input_stage.name)/'input';input_dir.mkdir()
             output_dir=Path(input_stage.name)/'output';output_dir.mkdir()
@@ -271,9 +297,10 @@ def _render_requests_fd(job,qfd,trajectory=None,tick=None):
             render_environment['measurement_environment']='Task-local verified font files shared with production renderer; geometry remains an estimate'
             frozen_source=input_dir/source.name;frozen_source.write_bytes(frozen_bytes)
             if sys.platform=='linux':
-                from linux_render import render
+                from linux_render import render,renderer_version
+                _release_render_staging_memory()
                 capture(trajectory,'artifact',frozen_bytes,source.name,'render-input',{'request_id':identifier,**render_environment})
-                converted=render(job,input_dir,output_dir,font_dir,source.name,render_environment,tick=tick)
+                converted=render(job,input_dir,output_dir,font_dir,source.name,render_environment,tick=tick,page=selected_page)
                 if converted.returncode==0:
                     pdf=read_scoped(output_dir,source.stem+'.pdf',60*1024*1024)
                     if not pdf.startswith(b'%PDF-'):raise ValueError('Renderer produced invalid PDF')
@@ -282,12 +309,14 @@ def _render_requests_fd(job,qfd,trajectory=None,tick=None):
                 capture(trajectory,'emit','render.result',{'request_id':identifier,'returncode':converted.returncode,'stdout':converted.stdout,'stderr':converted.stderr})
                 if converted.returncode==0:
                     render_environment['renderer_image']='linux-landlock-libreoffice'
-                    render_environment['renderer_version']=subprocess.check_output(['/usr/bin/libreoffice','--version'],text=True).strip()
+                    render_environment['renderer_version']=renderer_version()
                     render_environment['font_diagnostics']='Font families are installed on Linux; target PowerPoint/WPS playback is not verified.'
                     capture(trajectory,'emit','render.environment',render_environment)
                     capture(trajectory,'artifact_path',job,destination/(source.stem+'.pdf'),'render-output',{'request_id':identifier})
                     capture(trajectory,'artifact',json.dumps(render_environment,ensure_ascii=False,indent=2).encode(),'render-environment.json','render-environment',{'request_id':identifier})
-                result={'returncode':converted.returncode,'stdout':converted.stdout[-2000:],'stderr':converted.stderr[-2000:],'environment':render_environment}
+                timings=getattr(converted,'timings',{})
+                if timings:capture(trajectory,'emit','render.timing',{'request_id':identifier,**timings})
+                result={'returncode':converted.returncode,'stdout':converted.stdout[-2000:],'stderr':converted.stderr[-2000:],'environment':render_environment,'timings':timings}
                 _publish_render_reply(qfd,reply,result)
                 continue
             source_arg='/input/'+source.name
@@ -410,7 +439,7 @@ def self_test(cfg):
 def codex_command(cfg,job):
     command=['codex','exec','--ignore-user-config','--ignore-rules','--skip-git-repo-check','--json','-C',str(job),*permission_args(cfg,job),'-c','project_doc_max_bytes=0','-c','default_permissions="pptx_job"','-c','approval_policy="never"','-c','shell_environment_policy.inherit="none"']
     command+=['-c','web_search="live"','-c','features.image_generation=true']
-    safe_tools={k:v for k,v in environment(job).items() if k in ('PATH','TMPDIR','TMPPREFIX','FONTCONFIG_FILE','PPTX_SOFFICE','PPTX_INTERACTIVE_PROXY')}
+    safe_tools={k:v for k,v in environment(job).items() if k in ('PATH','TMPDIR','TMPPREFIX','FONTCONFIG_FILE','PPTX_SOFFICE','PPTX_INTERACTIVE_PROXY','PPTX_RENDER_TIMEOUT_SECONDS','PPTX_RENDER_PAGE_RANGE')}
     command+=['-c','shell_environment_policy.set={'+','.join(json.dumps(k)+'='+json.dumps(v) for k,v in safe_tools.items())+'}']
     for feature in ('apps','plugins','hooks','browser_use','browser_use_external','computer_use','chronicle','memories','shell_snapshot','multi_agent'):
         command+=['-c',f'features.{feature}=false']

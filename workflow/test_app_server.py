@@ -351,11 +351,13 @@ class AppServerTests(unittest.TestCase):
         self.assertFalse(config["permissions"]["pptx_job"]["network"]["enabled"])
 
     def test_render_deadline_reaches_both_child_and_task_tool_environment(self):
-        env=child_environment(self.job,{'PPTX_RENDER_TIMEOUT_SECONDS':'210','WORKER_TOKEN':'private'})
+        env=child_environment(self.job,{'PPTX_RENDER_TIMEOUT_SECONDS':'210','PPTX_RENDER_PAGE_RANGE':'1','WORKER_TOKEN':'private'})
         self.assertEqual(env['PPTX_RENDER_TIMEOUT_SECONDS'],'210')
+        self.assertEqual(env['PPTX_RENDER_PAGE_RANGE'],'1')
         self.assertNotIn('WORKER_TOKEN',env)
         config=task_configuration(self.job,config_paths=[],tool_env=env)
         self.assertEqual(config['shell_environment_policy']['set']['PPTX_RENDER_TIMEOUT_SECONDS'],'210')
+        self.assertEqual(config['shell_environment_policy']['set']['PPTX_RENDER_PAGE_RANGE'],'1')
 
     def test_read_grants_cannot_cover_private_home_or_other_task_roots(self):
         for root in ("/", str(self.base), str(Path.home())):

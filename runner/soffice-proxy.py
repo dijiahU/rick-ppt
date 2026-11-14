@@ -24,6 +24,9 @@ while time.monotonic()<deadline:
         if result.get('environment') and '--outdir' in sys.argv:
             destination=Path(sys.argv[sys.argv.index('--outdir')+1])
             (destination/'render-environment.json').write_text(json.dumps(result['environment']))
+        if result.get('timings') and '--outdir' in sys.argv:
+            destination=Path(sys.argv[sys.argv.index('--outdir')+1])
+            (destination/'render-timings.json').write_text(json.dumps(result['timings']))
         print(result.get('stdout',''),end='')
         print(result.get('stderr',''),end='',file=sys.stderr)
         raise SystemExit(result['returncode'])

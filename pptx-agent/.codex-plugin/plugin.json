@@ -1,6 +1,6 @@
 {
   "name": "pptx-agent",
-  "version": "0.1.0+codex.20261114linuxrender2",
+  "version": "0.1.0+codex.20261115pagepreview1",
   "description": "Standalone editable native PowerPoint with native animation and independent reviews.",
   "author": {
     "name": "rick"

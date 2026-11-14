@@ -1,9 +1,13 @@
 """Synthetic startup/dependency failures; no production queue calls or model usage."""
 import subprocess,unittest,threading,json
 from types import SimpleNamespace
+from pathlib import Path
+from unittest.mock import patch
 from renderer_health import RendererReadiness,DOCKER,QUALIFIED_IMAGE,start_heartbeat
 
 class ReadinessTests(unittest.TestCase):
+ def setUp(self):
+  platform=patch('renderer_health.sys.platform','darwin');platform.start();self.addCleanup(platform.stop)
  def make(self,engine=False,image=True):
   self.now=100.;self.engine=engine;self.image=image;self.calls=[];self.states=[]
   def run(args,**kwargs):
@@ -59,5 +63,17 @@ class ReadinessTests(unittest.TestCase):
    return SimpleNamespace(returncode=0,stdout='')
   health=RendererReadiness(run=run,on_state=lambda *a:states.append(a),log=lambda *a,**k:None)
   self.assertIsNone(health.claim(lambda:self.fail('must not claim')));self.assertEqual(states,[(False,'docker_not_ready')])
+
+class LinuxReadinessTests(unittest.TestCase):
+ def test_readiness_checks_selected_installation_and_page_tools(self):
+  calls=[]
+  def run(args,**options):calls.append(args);return SimpleNamespace(returncode=0,stdout='LibreOffice test')
+  with patch('renderer_health.sys.platform','linux'),patch('linux_render.installation',return_value=Path('/trusted/office')),patch('linux_render.supports_page_range',return_value=True),patch('renderer_health.shutil.which',return_value='/usr/bin/tool'):
+   self.assertTrue(RendererReadiness(run=run,log=lambda *a,**k:None).ready())
+  self.assertEqual(calls,[['/trusted/office/program/soffice','--version']])
+ def test_missing_page_inspector_prevents_admission(self):
+  with patch('renderer_health.sys.platform','linux'),patch('linux_render.installation',return_value=Path('/trusted/office')),patch('linux_render.supports_page_range',return_value=True),patch('renderer_health.shutil.which',side_effect=lambda name:'/usr/bin/pdftoppm' if name=='pdftoppm' else None):
+   health=RendererReadiness(run=lambda *a,**k:SimpleNamespace(returncode=0),log=lambda *a,**k:None)
+   self.assertIsNone(health.claim(lambda:self.fail('must remain queued')))
 
 if __name__=='__main__':unittest.main()

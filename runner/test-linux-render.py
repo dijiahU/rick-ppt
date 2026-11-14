@@ -1,11 +1,23 @@
 """Pure conversion retries are bounded; lease/deadline guards stay in parent."""
 import io
+import json
+from pathlib import Path
 from contextlib import redirect_stderr
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from linux_render import convert,fresh_profile,render_parallelism
+from linux_render import convert,fresh_profile,render_parallelism,office_command
+
+
+class PageCommandTests(unittest.TestCase):
+    def test_selected_page_keeps_full_input_and_isolated_profile(self):
+        command=office_command(Path('/tmp/pptx-r-test'),'full.pptx',13,prefix=Path('/trusted/office'))
+        options=json.loads(command[command.index('--convert-to')+1].split(':',2)[2])
+        self.assertEqual(options['PageRange']['value'],'13')
+        self.assertEqual(command[-1],'/tmp/pptx-r-test/full.pptx')
+        self.assertIn('-env:UserInstallation=file:///tmp/pptx-r-test/profile',command)
+        self.assertEqual(command[0],'/trusted/office/program/soffice.bin')
 
 
 class CpuBudgetTests(unittest.TestCase):
