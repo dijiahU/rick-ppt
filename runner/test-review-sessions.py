@@ -8,6 +8,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import zipfile
 from types import SimpleNamespace
@@ -17,6 +18,7 @@ from progress import Reporter
 from review_sessions import (ReviewRole, ReviewSessionError, _load_attempt, _publish,
                              _read_record, encoded, file_receipt, environment_receipt)
 from workflow import Execution,validate_report
+from durable import AppServerProcessExit,TransportError
 
 
 def report():
@@ -94,6 +96,55 @@ class ReviewRecoveryTests(unittest.TestCase):
 
     def review(self,run=None):
         return (run or self.run).review(self.artifact,{'pages':self.pages},self.packet,self.payload,1)
+
+    def interrupted_visual(self,error,*,count=1,mutate=None):
+        original=self.phase;failures=0
+        def phase(name,prompt,**kwargs):
+            nonlocal failures
+            root=kwargs['root']
+            self.assertFalse((root/'failed-reviewer-notes.txt').exists())
+            if name.startswith('visual') and failures<count:
+                failures+=1;self.failure='visual'
+                try:original(name,prompt,**kwargs)
+                except TimeoutError:
+                    (root/'failed-reviewer-notes.txt').write_text('Unaccepted partial judgment')
+                    if mutate:mutate()
+                    raise error
+                finally:self.failure=None
+            return original(name,prompt,**kwargs)
+        self.run.phase=phase
+
+    def test_killed_reviewer_retries_in_fresh_roots_and_keeps_completed_content(self):
+        deadline=self.run.deadline
+        self.interrupted_visual(AppServerProcessExit(-9),count=2)
+        self.review()
+        visual=[root for name,root,_ in self.calls if name.startswith('visual')]
+        self.assertEqual(len(visual),3);self.assertEqual(len(set(visual)),3)
+        self.assertEqual(sum(name.startswith('content-first') for name,_,_ in self.calls),1)
+        self.assertEqual(sum(name.startswith('content-evidence') for name,_,_ in self.calls),1)
+        self.assertEqual(self.run.deadline,deadline)
+        calls=len(self.calls);self.review();self.assertEqual(len(self.calls),calls)
+
+    def test_reviewer_sigkill_retries_stop_after_two(self):
+        self.interrupted_visual(AppServerProcessExit(-9),count=5)
+        with self.assertRaises(AppServerProcessExit):self.review()
+        self.assertEqual(sum(name.startswith('visual') for name,_,_ in self.calls),3)
+
+    def test_other_exits_and_ambiguous_transport_errors_are_not_replayed(self):
+        for error in (AppServerProcessExit(-11),TransportError('Unconfirmed process exit -9')):
+            with self.subTest(error=str(error)):
+                self.calls=[];self.interrupted_visual(error)
+                with self.assertRaises(type(error)):self.review()
+                self.assertEqual(sum(name.startswith('visual') for name,_,_ in self.calls),1)
+
+    def test_revision_and_deadline_prevent_reviewer_retry(self):
+        self.interrupted_visual(AppServerProcessExit(-9),mutate=lambda:self.task.update(input_revision=1))
+        with self.assertRaises(ReviewSessionError):self.review()
+        self.assertEqual(sum(name.startswith('visual') for name,_,_ in self.calls),1)
+        self.task['input_revision']=0;self.calls=[]
+        self.interrupted_visual(AppServerProcessExit(-9),mutate=lambda:setattr(self.run,'deadline',time.monotonic()-1))
+        with self.assertRaises(TimeoutError):self.review()
+        self.assertEqual(sum(name.startswith('visual') for name,_,_ in self.calls),1)
 
     def test_design_reference_evidence_does_not_taint_blind_content_pass(self):
         (self.packet/'design-task.json').write_text('{"pages":[{"page_id":"p1","handoff":{"question":"PROPOSED PAGE TASK"}}]}')

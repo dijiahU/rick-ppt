@@ -15,7 +15,7 @@ import unittest
 import uuid
 from types import SimpleNamespace
 
-from app_server import (AppServer, RPCError, RPCTimeout, TransportError,
+from app_server import (AppServer, AppServerProcessExit, RPCError, RPCTimeout, TransportError,
                         child_environment, command_for, mcp_server_names,
                         normalize_item, redact_text, task_configuration)
 from journal import Journal
@@ -125,6 +125,8 @@ class AppServerTests(unittest.TestCase):
         with self.assertRaises(TransportError) as caught:
             for _ in range(10):
                 server.pump(.01)
+        self.assertIsInstance(caught.exception,AppServerProcessExit)
+        self.assertEqual(caught.exception.returncode,server.process.returncode)
         self.assertIn(f'process exit {server.process.returncode}',str(caught.exception))
         self.assertNotIn('synthetic-private-token',str(caught.exception))
 

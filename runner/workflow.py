@@ -21,7 +21,7 @@ from outline import validate_outline, page_version, MAX_OUTLINE_BYTES
 from progress import read_scoped
 from web_media import WebMediaBroker
 from font_broker import FontBroker
-from durable import AppServer, RPCError, JournalError, task_configuration
+from durable import AppServer, AppServerProcessExit, RPCError, JournalError, task_configuration
 from model_backend import overrides,KEY_ENV,public_identity
 from chat_proxy import provider_session,safe_api_calls
 from contextlib import ExitStack
@@ -1033,10 +1033,28 @@ class Execution:
             return child.review_pass('visual','visual-'+str(round_number),visual_prompt,root,[*common_files,*design_files,*note_files,*source_files,*refinement_files,*original_files],sessions,check_identity,count,scoped=scoped)
         for kind in ('content','visual'):self.reporter.review_state(kind,'reviewing')
         self.reporter.flush(force=True)
+        def fresh_retries(role,operation):
+            def execute(child):
+                for retry in range(3):
+                    try:return operation(child)
+                    except AppServerProcessExit as error:
+                        # Only a confirmed SIGKILL is retryable here. These
+                        # operations create fresh isolated reviewer roots and
+                        # threads; an unfinished review is never resumed or
+                        # accepted, and authoring/RPC delivery is not replayed.
+                        if error.returncode!=-9 or retry==2:raise
+                        child.review_tick();check_identity()
+                        if time.monotonic()>=child.deadline:
+                            raise TimeoutError('Presentation review exceeded the task time budget') from error
+                        child.trace.emit('note','Independent reviewer interrupted; starting a fresh pass',
+                                         detail={'role':role,'exit_code':-9,'retry':retry+1,'retry_limit':2})
+                        child.reporter.event('working',f'Review was interrupted; retrying an independent pass ({retry+1}/2).',category='note')
+            return execute
+        jobs={'content':fresh_retries('content',content_job),'visual':fresh_retries('visual',visual_job)}
         if self.cfg.get('parallel_reviews',False):
-            reports=self._parallel_review({'content':content_job,'visual':visual_job},count)
+            reports=self._parallel_review(jobs,count)
         else:
-            reports={'content':content_job(self),'visual':visual_job(self)}
+            reports={role:operation(self) for role,operation in jobs.items()}
         inventory=json.loads((packet/'inventory.json').read_text())
         motion=any(s.get('timing_targets') or any(any(k in r.get('type','').lower() for k in ('audio','video','media')) for r in s.get('media',[])) for s in inventory.get('slides',[]))
         from design_completion import enabled as completion_enabled,CONTRACT,PRESENTATION,CRAFT,VISUAL_COVERAGE,readiness,presentation_enabled,craft_enabled,coverage_enabled

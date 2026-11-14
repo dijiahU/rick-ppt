@@ -46,6 +46,13 @@ class TransportError(RuntimeError):
     pass
 
 
+class AppServerProcessExit(TransportError):
+    """A confirmed child exit, distinct from an ambiguous broken connection."""
+    def __init__(self, returncode: int, detail="App-server ended the stdio connection"):
+        self.returncode=returncode
+        super().__init__(f"{detail} (process exit {returncode})")
+
+
 class RPCError(TransportError):
     def __init__(self, method: str, error: dict):
         # Raw error text is private protocol context, never a public exception.
@@ -317,8 +324,8 @@ class AppServer:
                     raise TransportError("Oversized app-server frame")
                 if not line.endswith(b"\n"):
                     code=self.process.poll()
-                    suffix=f" (process exit {code})" if type(code) is int else ""
-                    raise TransportError("Incomplete app-server frame"+suffix)
+                    if type(code) is int:raise AppServerProcessExit(code,"Incomplete app-server frame")
+                    raise TransportError("Incomplete app-server frame")
                 value = json.loads(line)
                 if not isinstance(value, dict):
                     raise TransportError("Invalid app-server JSON-RPC object")
@@ -555,8 +562,8 @@ class AppServer:
                 raise self._reader_error
             if self._reader_stop.is_set():
                 code=self.process.poll() if self.process is not None else None
-                suffix=f" (process exit {code})" if type(code) is int else " (process still running)"
-                raise TransportError("App-server ended the stdio connection"+suffix)
+                if type(code) is int:raise AppServerProcessExit(code)
+                raise TransportError("App-server ended the stdio connection (process still running)")
             return []
         batch = [message]
         for _ in range(127):
