@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import stat
 from pathlib import Path
 import select
 import signal
@@ -13,7 +14,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from journal import (AlreadyRecovered, CorruptJournal, Journal, JournalBusy,
+from journal import (AlreadyRecovered, CorruptJournal, SnapshotChanged, Journal, JournalBusy,
                      JournalError, Limits, VersionMismatch, safe_relative)
 
 
@@ -690,6 +691,35 @@ j.bind_session('thread-committed', 'turn-committed')
         with patch.object(j, "checkpoint", changed), self.assertRaises(JournalError):
             j.complete_phase("author", self.job, artifacts=["deck.json"])
         self.assertNotIn("author", j.state["completed_stages"])
+
+    def test_one_concurrent_file_change_reopens_and_verifies_new_bytes(self):
+        j=self.start();original_fsync=os.fsync;changed=False
+        def fsync(fd):
+            nonlocal changed
+            original_fsync(fd)
+            if not changed and stat.S_ISREG(os.fstat(fd).st_mode):
+                changed=True
+                (self.job/'deck.json').write_text('new stable bytes')
+        with patch('journal.os.fsync',side_effect=fsync),patch('journal.time.sleep'):
+            snapshot=j.checkpoint(self.job)
+        self.assertTrue(changed)
+        receipt=snapshot['files']['deck.json']
+        self.assertEqual(receipt['sha256'],hashlib.sha256(b'new stable bytes').hexdigest())
+        self.assertEqual((j.root/'blobs'/receipt['sha256']).read_bytes(),b'new stable bytes')
+        self.assertFalse(list((j.root/'blobs').glob('.pending-*')))
+
+    def test_continuous_changes_keep_previous_snapshot_and_retry_is_bounded(self):
+        j=self.start();previous=j.checkpoint(self.job);original_fsync=os.fsync;changes=[]
+        def fsync(fd):
+            original_fsync(fd)
+            if stat.S_ISREG(os.fstat(fd).st_mode):
+                changes.append(len(changes))
+                (self.job/'deck.json').write_text('changed '+str(len(changes))+'x'*len(changes))
+        with patch('journal.os.fsync',side_effect=fsync),patch('journal.time.sleep'),self.assertRaises(SnapshotChanged):
+            j.checkpoint(self.job)
+        self.assertEqual(len(changes),3)
+        self.assertEqual(j.state['snapshot_id'],previous['id'])
+        self.assertFalse(list((j.root/'blobs').glob('.pending-*')))
 
 
 if __name__ == "__main__":

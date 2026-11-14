@@ -78,6 +78,17 @@ class Files(unittest.TestCase):
         g=self.guard()
         self.assertEqual(self.actions(g,start=8),'stalled')
 
+    def test_new_admission_has_fresh_budget_and_same_attempt_retains_guard(self):
+        def guard(attempt):return OutputProgress(self.job,self.records,'task','author',0,window=4,attempt_id=attempt)
+        first=guard('attempt-1');self.assertEqual(self.actions(first),'nudge');first.applied('nudge')
+        self.assertEqual(self.actions(first,start=4),'rebuild');first.applied('rebuild')
+        continued=guard('attempt-1')
+        self.assertEqual(self.actions(continued,start=8),'stalled')
+        second=guard('attempt-2')
+        self.assertNotEqual(first.path,second.path)
+        self.assertEqual(self.actions(second),'nudge')
+        self.assertEqual(second.state['rebuilds'],0)
+
     def test_native_changes_and_research_notes_reset_counter_without_mutation(self):
         for role,path in [('author','parts/ppt/slides/slide1.xml'),('research','source-notes.md')]:
             g=self.guard(role);self.assertEqual(self.actions(g),'nudge');g.applied('nudge')

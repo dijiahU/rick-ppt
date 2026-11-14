@@ -16,7 +16,8 @@ temporary=queue/(identifier+'.pending')
 temporary.write_text(json.dumps({'args':sys.argv[1:]}))
 os.replace(temporary,request)
 reply=queue/(identifier+'.reply.json')
-deadline=time.monotonic()+85
+reply_timeout=180 if sys.platform=='linux' else 85
+deadline=time.monotonic()+reply_timeout
 while time.monotonic()<deadline:
     if reply.is_file():
         result=json.loads(reply.read_text())
@@ -27,4 +28,4 @@ while time.monotonic()<deadline:
         print(result.get('stderr',''),end='',file=sys.stderr)
         raise SystemExit(result['returncode'])
     time.sleep(.2)
-raise SystemExit('Isolated renderer did not respond within 85 seconds')
+raise SystemExit(f'Isolated renderer did not respond within {reply_timeout} seconds')

@@ -529,6 +529,37 @@ class ReviewRecoveryTests(unittest.TestCase):
         self.assertEqual(corrected['turn_id'],'format-turn')
         self.assertEqual(corrected['thread_id'],'reviewer-1')
 
+    def test_local_nomination_correction_preserves_required_content_finding(self):
+        guide=self.plugin/'skills/pptx/references/design-completion.md'
+        guide.write_text('Frozen presentation nomination policy.')
+        finding={'id':'F1','severity':'required','pages':[1],
+                 'observation':'A source qualification is missing.',
+                 'impact':'Readers may mistake uncertainty for a confirmed fact.',
+                 'recommendation':'Add the verified qualification.',
+                 'route':'content_revision'}
+        original=self.phase
+        def nominated(name,prompt,**kwargs):
+            if prompt.startswith('FORMAT-ONLY CORRECTION'):
+                self.assertIn('Keep every finding id, severity',prompt)
+                self.assertEqual(kwargs['thread'],'reviewer-2')
+                attempt=kwargs['review_attempt']
+                attempt.started('nomination-format',self.root/'format-log.jsonl','format-client')
+                attempt.bind('reviewer-2','format-turn')
+                attempt.observe({'type':'turn.completed','thread_id':'reviewer-2','turn_id':'format-turn','status':'completed'})
+                return {**report(),'findings':[finding],'presentation_findings':[]},'reviewer-2'
+            value,thread=original(name,prompt,**kwargs)
+            if name.startswith('content-evidence'):
+                value.update(findings=[finding],presentation_findings=['F1'])
+            return value,thread
+        self.run.phase=nominated
+        with patch('design_completion.presentation_enabled',return_value=True):
+            result=self.review()
+        self.assertEqual(result['content']['findings'],[finding])
+        self.assertEqual(result['content']['presentation_findings'],[])
+        corrected=next(s for s in self.attempts() if s.get('format_only_of'))
+        self.assertEqual(corrected['status'],'validated')
+        self.assertEqual(corrected['format_only_of']['turn_id'],'turn-2')
+
     def test_incomplete_external_review_cannot_be_format_corrected(self):
         self.cfg['_model_profile']={'model':'external'}
         original=self.phase

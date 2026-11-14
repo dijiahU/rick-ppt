@@ -37,6 +37,8 @@ trajectory/
 tests/
 test-results/
 benchmarks/
+!website/app/api/worker/benchmarks/
+!website/app/api/worker/benchmarks/route.ts
 dist/
 build/
 

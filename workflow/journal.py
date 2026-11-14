@@ -41,6 +41,10 @@ class CorruptJournal(JournalError):
     """A durable record or a referenced file did not verify."""
 
 
+class SnapshotChanged(CorruptJournal):
+    """An active workspace file changed; no checkpoint was committed."""
+
+
 class JournalBusy(JournalError):
     """Another process already owns this task's journal."""
 
@@ -421,7 +425,7 @@ class Journal:
                     target.flush()
                     os.fsync(target.fileno())
                 if _signature(before) != _signature(os.fstat(source.fileno())) or size != before.st_size:
-                    raise CorruptJournal("Snapshot file changed during capture")
+                    raise SnapshotChanged("Snapshot file changed during capture")
             receipt = {"sha256": digest.hexdigest(), "bytes": size,
                        "mode": stat.S_IMODE(before.st_mode) & 0o777, "mtime_ns": before.st_mtime_ns}
             destination = self.root / "blobs" / receipt["sha256"]
@@ -461,8 +465,17 @@ class Journal:
                 safe_relative(relative)
                 if len(files) >= self.limits.files:
                     raise CorruptJournal("Snapshot file count limit exceeded")
-                child = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
-                receipt = self._store_file(child)
+                for attempt in range(3):
+                    child = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
+                    try:
+                        receipt = self._store_file(child)
+                        break
+                    except SnapshotChanged:
+                        # A renderer/tool may finish writing during capture.
+                        # Reopen and verify those bytes afresh; never accept the
+                        # unstable stream or retry immutable journal corruption.
+                        if attempt==2:raise
+                        time.sleep(.05*(attempt+1))
                 total += receipt["bytes"]
                 if total > self.limits.total_bytes:
                     raise CorruptJournal("Snapshot total byte limit exceeded")

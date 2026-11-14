@@ -1,0 +1,42 @@
+// Actual route and authorization against in-memory SQLite; no live tasks.
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {stripTypeScriptTypes} from 'node:module';
+import {DatabaseSync} from 'node:sqlite';
+import {SourceTextModule,SyntheticModule} from 'node:vm';
+const db=new DatabaseSync(':memory:');
+db.exec('CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,request_key TEXT,title TEXT,brief TEXT,pages INTEGER,style TEXT,language TEXT,execution_backend TEXT,attachments TEXT,status TEXT,created_at INTEGER,updated_at INTEGER,result_key TEXT,UNIQUE(user_id,request_key));');
+let loseInsertReply=false;
+const binding={prepare(sql){let args=[];const statement={bind(...values){args=values;return statement;},async first(){const row=db.prepare(sql).get(...args)??null;if(loseInsertReply&&sql.startsWith('INSERT')){loseInsertReply=false;throw Error('simulated lost reply after commit');}return row;}};return statement;}};
+const token='synthetic-benchmark-worker-token-at-least-32-characters';
+const modules=new Map();
+function synthetic(name,values){const m=new SyntheticModule(Object.keys(values),function(){for(const [key,value]of Object.entries(values))this.setExport(key,value);},{identifier:name});modules.set(name,m);return m;}
+synthetic('cloudflare:workers',{env:{DB:binding,WORKER_TOKEN:token}});
+synthetic('@/app/chatgpt-auth',{getChatGPTUser:async()=>{throw Error('Operational tests must not use visitor identity');}});
+const paths={'@/lib/server':'lib/server.ts','@/lib/attachments':'lib/attachments.ts','@/lib/queries':'lib/queries.ts','@/lib/task-mode':'lib/task-mode.ts','./execution-backend':'lib/execution-backend.ts','./slide-limits.mjs':'lib/slide-limits.mjs'};
+async function load(name,path){if(modules.has(name))return modules.get(name);const raw=readFileSync(new URL('../'+path,import.meta.url),'utf8');const code=path.endsWith('.ts')?stripTypeScriptTypes(raw):raw;const m=new SourceTextModule(code,{identifier:name});modules.set(name,m);await m.link(specifier=>load(specifier,paths[specifier]));return m;}
+const route=await load('route','app/api/worker/benchmarks/route.ts');await route.evaluate();
+const POST=route.namespace.POST,GET=route.namespace.GET;
+const key=crypto.randomUUID();
+const body={requestKey:key,title:'团队季度工作汇报',brief:'帮我做一份团队季度工作汇报，15页。',pages:15,user_id:'must-not-impersonate'};
+const request=(value=body,auth=true)=>new Request('https://example.test/api/worker/benchmarks',{method:'POST',headers:{'Content-Type':'application/json',...(auth?{Authorization:'Bearer '+token}:{'oai-authenticated-user-id':'forged-owner'})},body:JSON.stringify(value)});
+const get=(requestKey=key,auth=true)=>GET(new Request('https://example.test/api/worker/benchmarks?requestKey='+requestKey,{headers:auth?{Authorization:'Bearer '+token}:{}}));
+assert.equal((await POST(request(body,false))).status,401);assert.equal((await get(key,false)).status,401);
+assert.equal(db.prepare('SELECT COUNT(*) n FROM jobs').get().n,0);
+let response=await POST(request());assert.equal(response.status,201);const first=await response.json();assert.equal(first.pages,15);assert.equal(first.execution_backend,'codex');
+let saved=db.prepare('SELECT * FROM jobs WHERE id=?').get(first.id);assert.equal(saved.user_id,'system:operator-benchmark');assert.equal(saved.brief,body.brief);assert.equal(saved.attachments,'[]');assert.equal(saved.status,'queued');
+assert.equal((await POST(request())).status,200);assert.equal((await (await POST(request())).json()).id,first.id);assert.equal(db.prepare('SELECT COUNT(*) n FROM jobs').get().n,1);
+assert.equal((await POST(request({...body,title:'different'}))).status,409);
+assert.equal((await get()).status,200);assert.equal((await get('bad-key')).status,400);assert.equal((await get(crypto.randomUUID())).status,404);
+const receipt=await (await get()).json();for(const forbidden of ['user_id','lease','result_key','brief'])assert.equal(forbidden in receipt,false);
+for(const pages of [0,51,1.5])assert.equal((await POST(request({...body,requestKey:crypto.randomUUID(),brief:'帮我做一份团队季度工作汇报。',pages}))).status,400);
+assert.equal((await POST(request({...body,requestKey:crypto.randomUUID(),brief:'帮我做一份季度工作汇报，15到20页。'}))).status,400);
+assert.equal((await POST(request({...body,brief:'过大'.repeat(3000)}))).status,400);
+loseInsertReply=true;response=await POST(request({...body,requestKey:crypto.randomUUID()}));assert.equal(response.status,201);assert.equal(db.prepare('SELECT COUNT(*) n FROM jobs').get().n,2);
+for(let n=2;n<10;n++)assert.equal((await POST(request({...body,requestKey:crypto.randomUUID()}))).status,201);
+assert.equal((await POST(request({...body,requestKey:crypto.randomUUID()}))).status,429);assert.equal(db.prepare('SELECT COUNT(*) n FROM jobs').get().n,10);
+db.exec('DELETE FROM jobs');
+for(let n=0;n<100;n++)db.prepare("INSERT INTO jobs(id,user_id,request_key,status) VALUES(?,?,?,'queued')").run('visitor-'+n,'real-visitor',crypto.randomUUID());
+assert.equal((await POST(request({...body,requestKey:crypto.randomUUID()}))).status,429);assert.equal(db.prepare('SELECT COUNT(*) n FROM jobs WHERE user_id=?').get('real-visitor').n,100);
+console.log('PASS: real route authorization, isolated benchmark identity, 15-page admission, idempotency, payload conflict, bounded input, lost response recovery, quota and global queue limits');
+db.close();

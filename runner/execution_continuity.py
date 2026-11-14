@@ -137,14 +137,18 @@ def declared_output(root,recoveries=()):
 
 
 class OutputProgress:
-    def __init__(self, root, records, task_id, name, revision, window=12):
+    def __init__(self, root, records, task_id, name, revision, window=12, *, attempt_id=None):
         if type(window) is not int or not 4 <= window <= 100:
             raise ValueError('progress_action_window must be an integer from 4 to 100')
         self.root, self.records = Path(root), Path(records)
         self.role, self.window = stage_role(name), window
         self.active, self.seen, self.pending = set(), set(), 0
         self.cache = {}
-        key = hashlib.sha256(json.dumps([task_id, name, revision]).encode()).hexdigest()
+        identity=[task_id,name,revision]
+        if attempt_id is not None:
+            if not isinstance(attempt_id,str) or not 1<=len(attempt_id)<=128:raise ValueError('Invalid progress attempt ID')
+            identity.append(attempt_id)
+        key = hashlib.sha256(json.dumps(identity).encode()).hexdigest()
         self.path = self.records / ('output-progress-' + key + '.json')
         try: self.state = json.loads(read_scoped(self.records, self.path.name, 32768))
         except FileNotFoundError:

@@ -424,7 +424,9 @@ class NativeBaselineTests(unittest.TestCase):
     return json.dumps({'workspace':str(unpack(Path(command[3]),Path(command[5])).root)})
    run=SimpleNamespace(cfg=cfg,task=task,job=job,records=records,journal=None,conversation=None,
                        author_thread='continuing-designer',review_tick=Mock(),run_check=run_check,complete_phase=Mock(),trace=Mock())
-   baseline=save_baseline(run,original,review,{'pages':[str(png)]},{'content':'passed','visual':'unverified'})
+   from render_inputs import source_parts_sha256
+   binding={'source_hash':hashlib.sha256(original).hexdigest(),'environment':{'source_parts_sha256':source_parts_sha256(original),'renderer_version':'fixture'}}
+   baseline=save_baseline(run,original,review,{'pages':[str(png)],**binding},{'content':'passed','visual':'unverified'})
    (job/'failed.pptx').write_bytes(b'Preserved failed native export')
    (job/'source-notes.md').write_bytes(b'Failed optional metadata'*150000)
    (job/'delivery.json').write_text(json.dumps({'path':'failed.pptx'}))
@@ -432,6 +434,7 @@ class NativeBaselineTests(unittest.TestCase):
    result=_rollback_designer_response(run,SimpleNamespace(sandbox=lambda cfg,job,cmd:cmd),cfg,job,SimpleNamespace(check=lambda:None),reporter,baseline)
    delivery=json.loads((job/'delivery.json').read_text());manifest=json.loads((job/'tool-manifest.json').read_text())
    self.assertEqual(result[0],original);self.assertEqual(Path(delivery['path']).read_bytes(),original)
+   self.assertEqual({key:result[2][key] for key in binding},binding)
    self.assertEqual(manifest['parts_dir'],delivery['workspace']);self.assertEqual(len(ticks),1)
    self.assertEqual((job/'source-notes.md').read_text(),'Accepted source qualifiers')
    self.assertGreater(next(job.glob('designer-fallback-*/attempted-source-notes.md')).stat().st_size,2*1024*1024)

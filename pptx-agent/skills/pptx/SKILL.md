@@ -28,8 +28,9 @@ or permitted sourced/generated imagery. Statistical charts/tables and trees of
 text labels do not satisfy this pictorial requirement. See [Art direction](references/art-direction.md#4-turn-content-into-a-visible-relationship)
 for what qualifies; preserve faithful/scoped work and explicit text-only requests.
 
-Default new English/Latin to Times New Roman and Chinese to SimSun (宋体), using
-genuine font metrics and explicit runs/themes. This includes text recreated from an
+For hosted tasks use the verified font pair in `capabilities.json.font_assets.defaults`.
+The standalone default is Times New Roman for English/Latin and SimSun (宋体) for Chinese.
+Use genuine selected font metrics and explicit runs/themes. This includes text recreated from an
 image without a specified source typeface; a rounded or handwritten appearance is
 not permission to choose a decorative font. Preserve explicit user font choices
 and actual supplied template typefaces. Functional exceptions need actual

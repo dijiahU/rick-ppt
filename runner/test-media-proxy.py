@@ -71,7 +71,13 @@ class ClientTests(unittest.TestCase):
                 self.assertNotIn('unit-private-not-propagated',json.dumps(caps))
                 (job/'PREFETCH.md').write_text('retained-old-guide')
                 (job/'material-prefetch/evidence.txt').write_text('retained-prepared-evidence')
+                cfg['plugin']=str(self.root/'upgraded-plugin')
                 runner.refresh_support(cfg,job)
+            refreshed=json.loads((job/'capabilities.json').read_text())
+            self.assertEqual(refreshed['progressive_authoring']['pptx_cli'],
+                str(self.root/'upgraded-plugin/skills/pptx/scripts/pptx.py'))
+            self.assertEqual(refreshed['interactive_content']['runtime'],
+                str(self.root/'upgraded-plugin/runtime'))
             self.assertEqual((job/'material-prefetch/evidence.txt').read_text(),'retained-prepared-evidence')
             backups=list((job/'support-versions').glob('*/PREFETCH.md'))
             self.assertEqual(len(backups),1)

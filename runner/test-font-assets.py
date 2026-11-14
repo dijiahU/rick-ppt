@@ -69,6 +69,41 @@ class FontsTests(unittest.TestCase):
         with patch.object(f,'system_font_candidates',return_value=[substitute]):
             with self.assertRaisesRegex(ValueError,'family mismatch'):f.install(self.root,'simsun-regular')
         self.assertFalse((self.root/'fonts/index.json').exists())
+    def test_linux_defaults_have_verified_provenance_and_copy_without_downloads(self):
+        from fontTools.ttLib import TTFont,TTCollection
+        latin=self.root/'dejavu.ttf';latin.write_bytes(font_bytes('DejaVu Serif','ABC123'))
+        collection=TTCollection();collection.fonts=[TTFont(io.BytesIO(font_bytes(name,'中文'))) for name in ('Other JP','Other KR','Noto Serif CJK SC')]
+        chinese=self.root/'noto.ttc';collection.save(chinese)
+        cache=self.root/'cache';cache.mkdir();task=self.root/'task';task.mkdir()
+        def candidates(ident):return [chinese if ident=='noto-serif-sc-regular' else latin]
+        with patch.object(f,'STARTER_IDS',tuple(f.LINUX_SYSTEM_FONTS)),patch.object(f,'system_font_candidates',side_effect=candidates):
+            result=f.prepare_default_fonts(cache)
+            self.assertEqual(result['missing'],[])
+            self.assertEqual(set(result['available']),set(f.LINUX_SYSTEM_FONTS))
+            f.copy_fonts(cache,task)
+        self.assertEqual(f.verified_files(cache),f.verified_files(task))
+        self.assertTrue(f.coverage(task,None,'中文 ABC 123')['ok'])
+        for item in f.manifest(task)['fonts']:
+            self.assertEqual(item['source_kind'],'host-installed-font')
+            self.assertIn(item['provenance_file'],f.verified_files(task))
+    def test_incomplete_font_source_record_is_rejected_explicitly(self):
+        item=self.install()
+        index=f.manifest(self.root);index['fonts'][0].pop('license_file')
+        f.publish(self.root,'fonts/index.json',json.dumps(index).encode())
+        with self.assertRaisesRegex(ValueError,'provenance record is incomplete'):f.verified_files(self.root)
+    def test_review_initialization_preserves_author_bytes_before_loading_defaults(self):
+        import runner
+        source=self.root/'author';source.mkdir();cache=self.root/'cache';cache.mkdir();review=self.root/'review';review.mkdir()
+        f.install(source,'fixture',descriptor=self.spec,downloader=self.download)
+        other=font_bytes('Test Latin','ABCD123')
+        def cached_download(url):return (self.license if url.endswith('.txt') else other,url,'')
+        f.install(cache,'fixture',descriptor=self.spec,downloader=cached_download)
+        self.assertNotEqual(f.manifest(source)['fonts'][0]['sha256'],f.manifest(cache)['fonts'][0]['sha256'])
+        with patch.object(f,'STARTER_IDS',('fixture',)),patch.object(f,'prepare_default_fonts',return_value={'available':['fixture'],'missing':[]}):
+            runner.prepare_fonts(review,{'font_cache_directory':str(cache),'_task_font_source':str(source)})
+        self.assertEqual(f.verified_files(source),f.verified_files(review))
+        f.copy_fonts(source,review)
+        with self.assertRaisesRegex(ValueError,'immutable'):f.copy_fonts(cache,review)
     def test_html_and_missing_license_or_mismatched_family_are_rejected(self):
         self.font=b'<html>not a font</html>'
         with self.assertRaises(ValueError):self.install()

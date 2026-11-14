@@ -94,6 +94,8 @@ def save_baseline(run,artifact,receipt,rendered,review_states):
             metadata=capture_metadata(job)
             value={'version':1,'identity':identity,'receipt':receipt,'artifact':artifact_info,'pages':pages,
                    'review_states':review_states,'metadata':{name:base64.b64encode(body).decode() if body is not None else None for name,body in metadata.items()}}
+            binding={key:rendered[key] for key in ('source_hash','environment') if key in rendered}
+            if binding:value['render_binding']=put('render-binding.json',json.dumps(binding,ensure_ascii=False).encode())
             put('baseline.json',json.dumps(value,ensure_ascii=False).encode())
             os.rename(temporary,home)
         except BaseException:
@@ -115,6 +117,10 @@ def _load_home(home):
     if hashlib.sha256(value['artifact_bytes']).hexdigest()!=value['receipt']['artifact_sha256']:raise ValueError('Designer baseline review mismatch')
     for item in value['pages']:verified(item,30*1024*1024)
     value['rendered']={'pages':[str(home/item['file']) for item in value['pages']]}
+    if value.get('render_binding'):
+        binding=json.loads(verified(value['render_binding'],8*1024*1024))
+        if not isinstance(binding,dict) or set(binding)-{'source_hash','environment'}:raise ValueError('Invalid saved render binding')
+        value['rendered'].update(binding)
     value['metadata_bytes']={name:base64.b64decode(body,validate=True) if body is not None else None for name,body in value['metadata'].items()}
     value['home']=str(home)
     status=Path(home)/'outcome.json'

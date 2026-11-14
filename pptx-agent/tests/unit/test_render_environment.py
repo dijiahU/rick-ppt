@@ -16,3 +16,18 @@ def test_font_configuration_is_scoped_and_preserves_host_override(tmp_path,monke
 def test_empty_render_failure_has_actionable_diagnostic():
     with patch('pptx_core.renderer.subprocess.run',return_value=SimpleNamespace(returncode=1,stderr='',stdout='')):
         with pytest.raises(PptxError,match='host sandbox access'):run(['soffice'],1)
+
+def test_host_render_budget_covers_bridge_wait_without_changing_default(monkeypatch):
+    monkeypatch.delenv('PPTX_RENDER_TIMEOUT_SECONDS',raising=False)
+    with patch('pptx_core.renderer.subprocess.run',return_value=SimpleNamespace(returncode=0)) as execute:
+        run(['soffice'],90)
+        assert execute.call_args.kwargs['timeout']==90
+        run(['soffice'],90,env={'PPTX_RENDER_TIMEOUT_SECONDS':'210'})
+        assert execute.call_args.kwargs['timeout']==210
+
+@pytest.mark.parametrize('value',['0','89','301','infinite'])
+def test_invalid_host_render_budget_fails_before_start(value):
+    with patch('pptx_core.renderer.subprocess.run') as execute:
+        with pytest.raises(PptxError,match='render timeout'):
+            run(['soffice'],90,env={'PPTX_RENDER_TIMEOUT_SECONDS':value})
+        execute.assert_not_called()

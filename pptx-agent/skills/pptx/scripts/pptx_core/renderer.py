@@ -27,6 +27,12 @@ def executables():
 
 
 def run(command, timeout, env=None):
+    configured=(os.environ if env is None else env).get('PPTX_RENDER_TIMEOUT_SECONDS')
+    if configured is not None:
+        try:seconds=int(configured)
+        except ValueError:raise PptxError('Invalid host render timeout') from None
+        if not timeout<=seconds<=300:raise PptxError('Host render timeout must cover the native default and stay within 300 seconds')
+        timeout=seconds
     try:
         proc = subprocess.run(command, capture_output=True, text=True, timeout=timeout, env=env)
     except (subprocess.TimeoutExpired, OSError) as exc:

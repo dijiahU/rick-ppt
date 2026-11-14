@@ -32,12 +32,14 @@ def checked(result, operation):
 
 def own_workspace(root, uid):
     for directory, dirs, files, fd in os.fwalk(root, follow_symlinks=False):
-        os.fchown(fd, uid, uid)
+        owner=os.fstat(fd)
+        if (owner.st_uid,owner.st_gid)!=(uid,uid):os.fchown(fd, uid, uid)
         for name in dirs + files:
             info = os.stat(name, dir_fd=fd, follow_symlinks=False)
             if stat.S_ISREG(info.st_mode) and info.st_nlink != 1:
                 raise ValueError('Hard-linked workspace file is not supported')
-            os.chown(name, uid, uid, dir_fd=fd, follow_symlinks=False)
+            if (info.st_uid,info.st_gid)!=(uid,uid):
+                os.chown(name, uid, uid, dir_fd=fd, follow_symlinks=False)
 
 def restrict(root, reads=(), *, writes=(), local_socket_server=False, run_uid=None):
     root = Path(root).resolve(strict=True)

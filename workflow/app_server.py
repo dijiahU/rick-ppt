@@ -26,9 +26,9 @@ import tempfile
 
 
 MAX_LINE = 8 * 1024 * 1024
-SAFE_ENV = frozenset({"PATH", "LANG", "LC_ALL", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+SAFE_ENV = frozenset({"PATH", "LANG", "LC_ALL", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "PPTX_RENDER_TIMEOUT_SECONDS",
                       "TMPDIR", "FONTCONFIG_FILE", "PPTX_SOFFICE", "PPTX_INTERACTIVE_PROXY"})
-SAFE_TOOL_ENV = frozenset({"PATH", "LANG", "LC_ALL", "TMPDIR", "TMPPREFIX", "FONTCONFIG_FILE", "PPTX_SOFFICE", "PPTX_INTERACTIVE_PROXY"})
+SAFE_TOOL_ENV = frozenset({"PATH", "LANG", "LC_ALL", "TMPDIR", "TMPPREFIX", "FONTCONFIG_FILE", "PPTX_SOFFICE", "PPTX_INTERACTIVE_PROXY", "PPTX_RENDER_TIMEOUT_SECONDS"})
 DISABLED_FEATURES = ("apps", "plugins", "hooks", "browser_use", "browser_use_external",
                      "computer_use", "chronicle", "memories", "shell_snapshot", "multi_agent")
 REASONING_NOTIFICATIONS = ["item/reasoning/summaryTextDelta", "item/reasoning/summaryPartAdded", "item/reasoning/textDelta"]
@@ -284,7 +284,7 @@ class AppServer:
             raise TransportError("App-server instance cannot be started twice")
         self.process = subprocess.Popen(self.command, cwd=self.cwd, env=self.env,
                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                        start_new_session=True, bufsize=0)
+                                        start_new_session=True, bufsize=65536)
         self._threads = [threading.Thread(target=self._read_stdout, daemon=True),
                          threading.Thread(target=self._read_stderr, daemon=True)]
         for thread in self._threads:
@@ -313,14 +313,32 @@ class AppServer:
                 line = self.process.stdout.readline(self.max_line + 1)
                 if not line:
                     break
-                if len(line) > self.max_line or not line.endswith(b"\n"):
-                    raise TransportError("Oversized or incomplete app-server frame")
+                if len(line) > self.max_line:
+                    raise TransportError("Oversized app-server frame")
+                if not line.endswith(b"\n"):
+                    code=self.process.poll()
+                    suffix=f" (process exit {code})" if type(code) is int else ""
+                    raise TransportError("Incomplete app-server frame"+suffix)
                 value = json.loads(line)
                 if not isinstance(value, dict):
                     raise TransportError("Invalid app-server JSON-RPC object")
-                self._queue.put(value, timeout=1)
+                # Host rendering/checkpoints may pause the consumer. Keep the
+                # queue bounded and apply pipe backpressure instead of losing
+                # a valid frame after a one-second consumer pause.
+                while not self._reader_stop.is_set():
+                    try:
+                        self._queue.put(value, timeout=.2)
+                        break
+                    except queue.Full:
+                        continue
+        except TransportError as error:
+            self._reader_error=error
+        except (json.JSONDecodeError,UnicodeError):
+            self._reader_error=TransportError("Invalid app-server frame JSON")
         except BaseException as error:
-            self._reader_error = TransportError("App-server stream could not be read safely")
+            # Exception type only: payloads and OS error text can contain secrets.
+            if not self._reader_stop.is_set():
+                self._reader_error = TransportError("App-server stream read failed ("+type(error).__name__+")")
         finally:
             self._reader_stop.set()
 

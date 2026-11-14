@@ -20,9 +20,19 @@ SYSTEM_FONTS={
     'times-new-roman-bold-italic':('Times New Roman','timesbi.ttf','Times New Roman Bold Italic.ttf',0),
     'simsun-regular':('SimSun','Simsun.ttc','simsun.ttc',0),
 }
-STARTER_IDS=tuple(SYSTEM_FONTS)
+LINUX_SYSTEM_FONTS={
+    'dejavu-serif-regular':('DejaVu Serif','/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf',0),
+    'noto-serif-sc-regular':('Noto Serif CJK SC','/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc',2),
+}
+STARTER_IDS=tuple(LINUX_SYSTEM_FONTS) if os.sys.platform=='linux' else tuple(SYSTEM_FONTS)
+
+def deployment_defaults(platform=None):
+    if (platform or os.sys.platform)=='linux':
+        return {'latin':'DejaVu Serif','east_asian':'Noto Serif CJK SC','target':'Linux LibreOffice preview'}
+    return {'latin':'Times New Roman','east_asian':'SimSun','target':'Windows WPS'}
 
 def system_font_candidates(font_id):
+    if font_id in LINUX_SYSTEM_FONTS:return [Path(LINUX_SYSTEM_FONTS[font_id][1])]
     _,office,system,_=SYSTEM_FONTS[font_id]
     return [Path('/Applications/Microsoft PowerPoint.app/Contents/Resources/DFonts')/office,
             Path('/System/Library/Fonts/Supplemental')/system,
@@ -130,7 +140,7 @@ def install(root,font_id,*,downloader=direct_download,descriptor=None,text=''):
         meta=inspect(read(root,existing['file']),text)
         if meta['sha256']!=existing['sha256']:raise ValueError('Installed font changed; refusing silent substitution')
         return {**existing,'missing_characters':meta['missing_characters'],'cache_hit':True}
-    if font_id in SYSTEM_FONTS:
+    if font_id in SYSTEM_FONTS or font_id in LINUX_SYSTEM_FONTS:
         if descriptor:raise ValueError('Host font IDs cannot be replaced by a download descriptor')
         return install_system_font(root,font_id,text=text)
     spec=descriptor or next((x for x in catalog()['fonts'] if x['id']==font_id),None)
@@ -161,7 +171,8 @@ def install_system_font(root,font_id,*,text=''):
     installed or embedded into a presentation by this operation.
     """
     from fontTools.ttLib import TTFont
-    expected,_,_,face_index=SYSTEM_FONTS[font_id]
+    if font_id in LINUX_SYSTEM_FONTS:expected,_,face_index=LINUX_SYSTEM_FONTS[font_id]
+    else:expected,_,_,face_index=SYSTEM_FONTS[font_id]
     source=next((p for p in system_font_candidates(font_id) if p.is_file()),None)
     if source is None:raise FileNotFoundError('Actual host font unavailable: '+expected)
     if source.stat().st_size>MAX_FONT:raise ValueError('Host font exceeds size limit')
@@ -199,8 +210,9 @@ def prepare_default_fonts(root):
     return {'available':available,'missing':missing}
 
 def auxiliary_file(item):
-    if item.get('source_kind')=='host-installed-font':return item['provenance_file'],item['provenance_sha256']
-    return item['license_file'],item['license_sha256']
+    keys=('provenance_file','provenance_sha256') if item.get('source_kind')=='host-installed-font' else ('license_file','license_sha256')
+    if not all(isinstance(item.get(key),str) and item[key] for key in keys):raise ValueError('Font license/provenance record is incomplete')
+    return item[keys[0]],item[keys[1]]
 
 def verified_files(root):
     result={}

@@ -1,15 +1,19 @@
 """Mock protocol tests by default; --live --out PATH runs the opt-in real smoke."""
 import argparse
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import queue
+import threading
 import time
 import unittest
 import uuid
+from types import SimpleNamespace
 
 from app_server import (AppServer, RPCError, RPCTimeout, TransportError,
                         child_environment, command_for, mcp_server_names,
@@ -198,7 +202,8 @@ class AppServerTests(unittest.TestCase):
         s.wait_turn(thread, receipt["turn_id"], timeout=2)
 
     def test_lost_response_stays_uncertain_then_reconciles_from_client_id(self):
-        s = self.start(request_timeout=.2)
+        s = self.start()
+        s.request_timeout=.2
         thread = s.start_thread()["thread"]["id"]
         j = self.inbox("TIMEOUT")
         with self.assertRaises(RPCTimeout):
@@ -259,6 +264,31 @@ class AppServerTests(unittest.TestCase):
         with self.assertRaises(TransportError):
             s.request("test/oversize", {})
 
+    def test_slow_consumer_preserves_bounded_frames_after_one_second(self):
+        server=AppServer(cwd=self.job,config=self.config)
+        values=[{'id':n,'result':{'ok':True}} for n in range(3)]
+        stream=io.BytesIO(b''.join(json.dumps(v).encode()+b'\n' for v in values))
+        server.process=SimpleNamespace(stdout=stream,poll=lambda:None)
+        server._queue=queue.Queue(maxsize=1)
+        reader=threading.Thread(target=server._read_stdout,daemon=True);reader.start()
+        try:
+            time.sleep(1.2)
+            self.assertIsNone(server._reader_error)
+            self.assertTrue(reader.is_alive())
+            self.assertEqual([server._queue.get(timeout=2) for _ in values],values)
+            reader.join(timeout=2)
+            self.assertFalse(reader.is_alive())
+            self.assertIsNone(server._reader_error)
+        finally:
+            server._reader_stop.set();reader.join(timeout=2)
+
+    def test_partial_frame_reports_exit_code_without_payload(self):
+        server=AppServer(cwd=self.job,config=self.config)
+        server.process=SimpleNamespace(stdout=io.BytesIO(b'{"private":"sensitive-payload"'),poll=lambda:-9)
+        server._read_stdout()
+        self.assertIn('process exit -9',str(server._reader_error))
+        self.assertNotIn('sensitive-payload',str(server._reader_error))
+
     def test_output_schema_and_client_id_are_exact_protocol_fields(self):
         s = self.start()
         schema = {"type": "object", "properties": {"ok": {"type": "boolean"}}}
@@ -305,6 +335,13 @@ class AppServerTests(unittest.TestCase):
         self.assertNotIn("HTTPS_PROXY", config["shell_environment_policy"]["set"])
         self.assertEqual(config["permissions"]["pptx_job"]["filesystem"][":root"], "deny")
         self.assertFalse(config["permissions"]["pptx_job"]["network"]["enabled"])
+
+    def test_render_deadline_reaches_both_child_and_task_tool_environment(self):
+        env=child_environment(self.job,{'PPTX_RENDER_TIMEOUT_SECONDS':'210','WORKER_TOKEN':'private'})
+        self.assertEqual(env['PPTX_RENDER_TIMEOUT_SECONDS'],'210')
+        self.assertNotIn('WORKER_TOKEN',env)
+        config=task_configuration(self.job,config_paths=[],tool_env=env)
+        self.assertEqual(config['shell_environment_policy']['set']['PPTX_RENDER_TIMEOUT_SECONDS'],'210')
 
     def test_read_grants_cannot_cover_private_home_or_other_task_roots(self):
         for root in ("/", str(self.base), str(Path.home())):
