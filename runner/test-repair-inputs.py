@@ -91,7 +91,7 @@ class Tests(unittest.TestCase):
     def test_content_priority_sends_its_actual_page_and_survives_comparison(self):
         from design_completion import CONTRACT, PRESENTATION, comparison_input
         from review_comparison import prepare_refinement
-        from workflow import _repair_candidate
+        from workflow import _repair_candidate, DESIGN_RESPONSE_SECONDS
         self.run.task['id']='content-priority-pixels'
         self.review.update(design_completion=dict(CONTRACT),content_presentation=dict(PRESENTATION))
         self.review['visual']['design_assessment']={'readiness':'ready','primary_findings':[]}
@@ -108,7 +108,7 @@ class Tests(unittest.TestCase):
         _repair_candidate(self.run,'Host scope','Continue author',findings,1,content_required=False)
         call=self.run.phase.call_args
         self.assertEqual(call.kwargs['thread'],'continuing-author')
-        self.assertEqual(call.kwargs['timeout'],360)
+        self.assertEqual(call.kwargs['timeout'],DESIGN_RESPONSE_SECONDS)
         self.assertEqual([p.name for p in call.kwargs['images']],['page-1.png'])
         with Image.open(call.kwargs['images'][0]) as image:
             self.assertEqual(image.getpixel((0,0)),(255,215,0))
@@ -196,7 +196,7 @@ class Tests(unittest.TestCase):
         self.assertEqual(len(images),1)
 
     def test_repair_call_forwards_actual_images_and_bounded_handoff_identity(self):
-        from workflow import _repair_candidate
+        from workflow import _repair_candidate, DESIGN_RESPONSE_SECONDS
         self.run.author_thread='continuing-author';self.run.recovery_plan={}
         self.run.phase=Mock();self.run.complete_phase=Mock()
         self.run.delivery=lambda:json.loads((self.job/'delivery.json').read_text())
@@ -204,7 +204,7 @@ class Tests(unittest.TestCase):
         _repair_candidate(self.run,'Host scope','Continue the same author',findings,1,content_required=False)
         call=self.run.phase.call_args
         self.assertEqual(call.kwargs['thread'],'continuing-author')
-        self.assertEqual(call.kwargs['timeout'],360)
+        self.assertEqual(call.kwargs['timeout'],DESIGN_RESPONSE_SECONDS)
         self.assertEqual(call.kwargs['timeout_handoff'],self.binding)
         self.assertEqual(len(call.kwargs['images']),1)
         self.assertTrue(call.kwargs['images'][0].read_bytes().startswith(b'\x89PNG\r\n\x1a\n'))

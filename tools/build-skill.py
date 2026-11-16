@@ -15,7 +15,8 @@ OVERLAY = REPO / 'tools/skill-packaging/rick-pptx'
 OVERLAY_FILES = ('SKILL.md', 'agents/openai.yaml', 'references/environment.md',
                  'scripts/doctor.py', 'scripts/native_policy.py', 'scripts/requirements.txt',
                  'scripts/requirements-dsh.txt','scripts/dsh_adapter.py',
-                 'scripts/portable_transport.py','scripts/portable_workflow.py','scripts/portable_auxiliary.py','references/full-workflow.md')
+                 'scripts/portable_transport.py','scripts/portable_workflow.py','scripts/portable_auxiliary.py','references/full-workflow.md',
+                 'references/claude-code.md')
 SCRIPTS = ('pptx.py', 'candidate_save.py', 'native_canvas.py', 'native_builds.py', 'native_timing.py', 'native_structure.py', 'compatibility.py',
            'workflow_decisions.py', 'design_references.py', 'review_packet.py', 'review_index.py', 'inspect_formulas.py', 'font_assets.py',
            'native_batch.py','native_pages.py','planning_commit.py','tool_prepare.py','tool_groups.py','page_design.py','recreation_tools.py')

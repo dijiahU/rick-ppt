@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from design_completion import CONTRACT, PRESENTATION, PRESENTATION_MARKER, CRAFT, CRAFT_MARKER, CRAFT_DIMENSIONS, craft_enabled, schema, selection, notice, presentation_schema, presentation_enabled, response_findings
 from design_feedback import mark_response, optional_response
-from workflow import validate_report, VISUAL_REPORT_SCHEMA, REPORT_SCHEMA
+from workflow import validate_report, VISUAL_REPORT_SCHEMA, REPORT_SCHEMA, DESIGN_RESPONSE_SECONDS
 
 
 spec = importlib.util.spec_from_file_location('feedback_fixture', Path(__file__).with_name('test-design-author.py'))
@@ -274,7 +274,7 @@ class WorkflowTests(unittest.TestCase):
         result, receipt = self.execute()
         self.assertEqual(result['artifact'], (self.job/'changed.pptx').read_bytes())
         self.assertEqual([n for n,_ in self.calls], ['repair-1'])
-        self.assertEqual(self.calls[0][1]['timeout'], 360)
+        self.assertEqual(self.calls[0][1]["timeout"], DESIGN_RESPONSE_SECONDS)
         self.assertEqual(self.run.review.call_count, 2)
         self.assertIn('still needed', notice(receipt))
         decision = json.loads(next(self.records.glob('*-design-selection-*')).read_text())
@@ -346,7 +346,7 @@ class WorkflowTests(unittest.TestCase):
         self.run.review.side_effect=review;self.action='change'
         result,receipt=self.execute()
         self.assertEqual([n for n,_ in self.calls],['repair-1'])
-        self.assertEqual(self.calls[0][1]['timeout'],360)
+        self.assertEqual(self.calls[0][1]["timeout"], DESIGN_RESPONSE_SECONDS)
         self.assertEqual(result['artifact'],(self.job/'changed.pptx').read_bytes())
         self.assertEqual(self.run.review.call_count,2)
         self.assertEqual(receipt['visual']['design_assessment']['readiness'],'ready')

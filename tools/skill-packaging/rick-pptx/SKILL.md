@@ -20,6 +20,11 @@ If the selected harness has no complete adapter, or required prerequisites are
 missing, report the specific gap and preserve work; do not silently downgrade a
 requested complete run. Another harness invoking --backend dsh still uses DSH.
 
+In Claude Code, read [Claude Code route](references/claude-code.md) first. The
+session itself is the continuing author using the core helpers; it maps host
+image viewing, search, independent reviewers and fonts to Claude Code tools.
+State that route in the delivery report; it is not the managed DSH engine run.
+
 Resolve SKILL_ROOT from this file. Use scripts/pptx.py with Python 3.11+, lxml,
 Pillow, jsonschema and fonttools in a separate task folder outside the skill.
 First run `python SKILL_ROOT/scripts/doctor.py`; read
@@ -29,6 +34,7 @@ dependencies. This skill does not provide model keys or website queues. The full
 workflow creates reviewer contexts through its selected harness; search and
 generation use actual configured host services. Never package credentials.
 Save request.json with mode (create/edit) and agreed language.
+Without a host, create them with `tool_prepare.py --task-root TASK_DIR --workspace PARTS_DIR`.
 Use the task's tool-quickstart.md or manifest discovery index to open only needed
 scenario groups with tool_prepare.py --group GROUP_ID; keep full tool details out
 of the initial context. See [Tool discovery](references/tool-preparation.md).

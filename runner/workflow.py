@@ -1109,6 +1109,22 @@ def run_workflow(bridge,cfg,task,job,payload,lease,reporter,trace=None,trajector
             if trace is None:run.trace.close()
 
 
+# A design response must be able to rebuild a main expression, re-render and
+# export; 360s routinely expired first and silently kept the reviewed draft.
+DESIGN_RESPONSE_SECONDS=1800
+DESIGN_RESPONSE_MIN_SECONDS=360
+# Leave room after the response for freeze/render and the parallel re-review
+# (each reviewer phase allows up to 900s), so a used budget is not wasted.
+DESIGN_REVIEW_RESERVE_SECONDS=1200
+
+
+def design_response_timeout(run):
+    deadline=getattr(run,'deadline',None)
+    if isinstance(deadline,bool) or not isinstance(deadline,(int,float)):return DESIGN_RESPONSE_SECONDS
+    available=deadline-time.monotonic()-DESIGN_REVIEW_RESERVE_SECONDS
+    return int(max(DESIGN_RESPONSE_MIN_SECONDS,min(DESIGN_RESPONSE_SECONDS,available)))
+
+
 def _repair_candidate(run,base,author,findings,number,*,content_required=True,repair_thread=None):
     """The ordinary correction sequence also serves a verified recovery route."""
     seed=getattr(run,'seed_repair_workspace',None)
@@ -1156,7 +1172,7 @@ def _repair_candidate(run,base,author,findings,number,*,content_required=True,re
             'If bytes change, export a fresh file and update delivery.json; otherwise preserve the existing artifact. Do not rebuild the entire deck or overwrite previous exports.')
     handoff={'timeout_handoff':{'sha256':review['artifact_sha256'],'input_revision':review['input_revision']}} if optional else {}
     run.phase(repair_name,author+f' Read {findings.name}.'+direction+context+direct,thread=thread,
-              timeout=360 if optional else 2700 if combined_content else 1800,**({'images':images} if images else {}),**handoff)
+              timeout=design_response_timeout(run) if optional else 2700 if combined_content else 1800,**({'images':images} if images else {}),**handoff)
     authored=run.delivery();source=Path(authored['path'])
     relative=source.relative_to(run.job).as_posix() if source.is_absolute() else source.as_posix()
     run.complete_phase(repair_name,['delivery.json',relative,findings.name]+(['decision-plan.json'] if (run.job/'decision-plan.json').is_file() else [])+(['outline.json','source-notes.md'] if combined_content else []),'review')
@@ -1207,7 +1223,13 @@ def validated_planning(run,cfg,job,task,payload,base,*,required,require_variatio
             run.phase('research',prompt,content=True,thread=thread,timeout=300)
 
 
-def _rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline):
+def rollback_reason(kind,error):
+    """Short public cause; a deadline is reported separately from other failures."""
+    if isinstance(error,(StageDeadline,TimeoutError)):return 'repair_timeout' if kind=='repair_failed' else kind+':timeout'
+    return kind+':'+type(error).__name__
+
+
+def _rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline,*,reason='unspecified'):
     """Restore a host-private accepted candidate, without accepting failed edits."""
     from design_feedback import baseline_is_current,restore_baseline,mark_rollback
     run.review_tick()
@@ -1231,7 +1253,8 @@ def _rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline):
     if getattr(run,'trace',None) is not None:
         from public_review import publish as publish_review
         publish_review(run.trace,receipt,run.conversation.server_revision if run.conversation else 0)
-    reporter.event('working','Optional design refinement was not applied; retaining the reviewed presentation.',category='note')
+    record(getattr(run,'trajectory',None),'emit','design.rollback',{'reason':reason})
+    reporter.event('working','Optional design refinement was not applied; retaining the reviewed presentation. Reason: '+reason+'.',category='note')
     return baseline['artifact_bytes'],Path(baseline['home']),baseline['rendered'],receipt
 
 
@@ -1346,7 +1369,7 @@ def _run_workflow(run,bridge,cfg,task,job,payload,lease,reporter):
     baseline=load_baseline(run) if enabled(cfg) and getattr(run,'records',None) is not None else None
     retained=None
     if baseline is not None and baseline['rolled_back']:
-        retained=_rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline)
+        retained=_rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline,reason='recovered_prior_rollback')
     elif recovery.repair_round is not None:
         findings=job/recovery.findings_path if recovery.findings_path else job/('review-findings-'+str(recovery.repair_round)+'-'+uuid.uuid4().hex[:8]+'.json')
         if recovery.findings_path is None:write_json(findings,recovery.findings)
@@ -1355,9 +1378,9 @@ def _run_workflow(run,bridge,cfg,task,job,payload,lease,reporter):
                               content_required=recovery.content_required,repair_thread=recovery.repair_thread)
         except (TaskPaused,RevisionPending,HeartbeatLost,WorkerHTTPError,JournalError,ReviewSessionError):
             raise
-        except Exception:
+        except Exception as error:
             if baseline is None or baseline['receipt']!=recovery.findings:raise
-            retained=_rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline)
+            retained=_rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline,reason=rollback_reason('repair_failed',error))
     elif not author_reusable:
         run.phase('author',author+prepared_phase_context(cfg,job,'author'),timeout=2700)
         authored=run.delivery()
@@ -1403,9 +1426,9 @@ def _run_workflow(run,bridge,cfg,task,job,payload,lease,reporter):
             continue
         except (TaskPaused,HeartbeatLost,WorkerHTTPError,JournalError,ReviewSessionError):
             raise
-        except Exception:
+        except Exception as error:
             if baseline is None:raise
-            artifact,frozen,rendered,receipt=_rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline)
+            artifact,frozen,rendered,receipt=_rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline,reason=rollback_reason('verification_failed',error))
             break
         required=[f for k in ('content','visual') for f in receipt[k]['findings'] if f['severity']=='required']
         if baseline is not None:
@@ -1415,11 +1438,11 @@ def _run_workflow(run,bridge,cfg,task,job,payload,lease,reporter):
                 write_json(run.records/(task['id']+'-design-selection-'+uuid.uuid4().hex+'.json'),choice)
                 record(getattr(run,'trajectory',None),'emit','design.version_selection',choice)
                 if choice['selected']=='baseline':
-                    artifact,frozen,rendered,receipt=_rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline)
+                    artifact,frozen,rendered,receipt=_rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline,reason='comparison_kept_baseline')
                     break
         # An optional response cannot create a new required-repair chain.
         if baseline is not None and required:
-            artifact,frozen,rendered,receipt=_rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline)
+            artifact,frozen,rendered,receipt=_rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline,reason='new_required_findings')
             break
         designer_response=optional_response(receipt)
         if not required and not designer_response:break
@@ -1437,9 +1460,9 @@ def _run_workflow(run,bridge,cfg,task,job,payload,lease,reporter):
                               content_required=needs_content_revision(receipt))
         except (TaskPaused,RevisionPending,HeartbeatLost,WorkerHTTPError,JournalError,ReviewSessionError):
             raise
-        except Exception:
+        except Exception as error:
             if not designer_response:raise
-            artifact,frozen,rendered,receipt=_rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline)
+            artifact,frozen,rendered,receipt=_rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline,reason=rollback_reason('repair_failed',error))
             break
         if designer_response:
             # A deliberate no-op preserves the already reviewed exact bytes.

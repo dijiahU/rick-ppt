@@ -52,6 +52,14 @@ def _scoped(root, value, *, directory=False):
     path = path if path.is_absolute() else root / path
     path = Path(os.path.abspath(path))
     if not path.is_relative_to(root):
+        # A symlinked ancestor of the task root itself (macOS /tmp ->
+        # /private/tmp) is not task traversal: map that spelling onto the
+        # resolved root. Symlinks below the root are still rejected.
+        for ancestor in path.parents:
+            if ancestor.resolve() == root:
+                path = root / path.relative_to(ancestor)
+                break
+    if not path.is_relative_to(root):
         raise ValueError('Path must stay inside the task root')
     current = root
     for part in path.relative_to(root).parts:

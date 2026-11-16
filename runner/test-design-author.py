@@ -9,7 +9,7 @@ from unittest.mock import Mock,patch
 from design_roles import role_contract,handoff_index,role_instruction
 from design_feedback import mark_response,optional_response,host_authorized_response,capture_metadata,restore_baseline,save_baseline,load_baseline
 from phase_context import prepared_phase_context,MAX_DOCUMENT
-from workflow import _run_workflow,_rollback_designer_response
+from workflow import _run_workflow,_rollback_designer_response,DESIGN_RESPONSE_SECONDS
 from progress import Reporter
 from resilience import TaskPaused,HeartbeatLost,WorkerHTTPError
 from conversation import RevisionPending
@@ -250,7 +250,7 @@ class FeedbackTests(unittest.TestCase):
  def test_noop_reuses_reviewed_bytes_and_does_not_repeat_review(self):
   result,_=self.execute();self.assertEqual(result['artifact'],(self.job/'original.pptx').read_bytes())
   self.assertEqual([n for n,_ in self.calls],['repair-1']);self.assertEqual(self.run.review.call_count,1)
-  self.assertEqual(self.calls[0][1]['timeout'],360)
+  self.assertEqual(self.calls[0][1]['timeout'],DESIGN_RESPONSE_SECONDS)
  def test_changed_file_is_reviewed_again_without_a_second_optional_pass(self):
   self.action='change';result,r=self.execute()
   self.assertEqual(self.run.review.call_count,2);self.assertEqual([n for n,_ in self.calls],['repair-1'])
