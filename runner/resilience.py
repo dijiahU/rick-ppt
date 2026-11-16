@@ -70,6 +70,9 @@ def request(cfg,path,body=b'{}',lease=None,raw=False):
         config+='data-binary = '+json.dumps('@'+payload.name)+'\n'
         command=['/usr/bin/curl','--silent','--show-error','--fail-with-body','--connect-timeout','8','--max-time',str(limit),
                  '--max-filesize',str(maximum),'--output',response.name,'--write-out','%{http_code}','--config','-']
+        if cfg.get('deployment_environment') == 'local':
+            command.insert(1, '--disable')  # Ignore per-user curlrc for local queue traffic.
+            command.extend(['--noproxy', '*'])
         for attempt in range(attempts):
             response.seek(0);response.truncate()
             try:

@@ -41,3 +41,4 @@ next-env.d.ts
 
 # Host-only review/database credentials; retain locally, never publish.
 /scripts/local-*.json
+!/scripts/local-db.json

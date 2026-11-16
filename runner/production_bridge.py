@@ -55,6 +55,7 @@ def write_runtime_receipt(root,cfg,status):
     from model_backend import public_identity,available_backends
     plugin=Path(cfg['plugin']).resolve()
     body={'pid':os.getpid(),'status':status,'plugin':str(plugin),
+          'deployment_environment':cfg.get('deployment_environment','legacy'),
           'version':json.loads((plugin/'.codex-plugin/plugin.json').read_text())['version'],
           'workflow_choices':(plugin/'skills/pptx/assets/workflow-choices.json').is_file(),
           'default_model':cfg.get('default_model',DEFAULT_TASK_MODEL),

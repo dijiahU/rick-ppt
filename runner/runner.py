@@ -77,7 +77,8 @@ def settings():
         if os.environ.get(environment_key):data[key]=os.environ[environment_key]
     for key in ('site','token','plugin','python','blank'):
         if not data.get(key): raise RuntimeError(f'Missing setting: {key}')
-    if not data['site'].startswith('https://'): raise RuntimeError('HTTPS required')
+    from environment_profile import validate as validate_environment
+    validate_environment(data, ROOT)
     if len(data['token'])<32: raise RuntimeError('Worker token too short')
     data['progressive_canvas']=True
     data['single_file_pptx']=True

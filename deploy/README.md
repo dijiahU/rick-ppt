@@ -1,5 +1,8 @@
 # 此服务器的 Rick PPT 执行端
 
+本目录是服务器运行入口。本地开发使用独立 checkout 与 `tools/environment.py`，
+参见 [本地与服务器环境隔离](../docs/environments.md)。不要把服务器私密配置复制到 Mac 开发目录。
+
 网站继续使用 https://rickppt.aaarickmorty.chatgpt.site 。网页、登录、数据库和下载文件由 Sites 托管；本机常驻进程通过 HTTPS 领取任务，调用服务器已登录的 Codex，生成原生 PPTX，渲染并审核，再通过原有 Worker API 回传。用户的新任务不再依赖 Mac 开机。
 
 ## 启动与检查

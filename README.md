@@ -26,6 +26,10 @@ Skill 包含原生制作工具、设计分支、参考作品记录、动画和�
 
 ## 本地运行
 
+开发和服务器运行使用**同一份核心代码、独立的工作区与配置**。
+本地初始化、启动及服务器发布步骤见 [环境隔离说明](docs/environments.md)。
+本地 worker 默认仅连接本机测试队列，生产部署继续使用 [deploy/](deploy/README.md)。
+
 需要 Python 3.11+、LibreOffice 和 Poppler。在仓库目录执行：
 
 ```bash

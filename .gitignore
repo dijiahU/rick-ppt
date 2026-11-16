@@ -10,6 +10,9 @@ __pycache__/
 # Local configuration and private material
 .env
 .env.*
+.dev.vars
+.dev.vars.*
+.wrangler/
 *.local.json
 *.local.jsonl
 *.pem

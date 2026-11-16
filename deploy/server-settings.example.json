@@ -1,0 +1,12 @@
+{
+  "deployment_environment": "server",
+  "site": "https://your-production-site.example",
+  "token": "REPLACE_WITH_EXISTING_SERVER_SECRET_DO_NOT_COMMIT",
+  "python": "/root/autodl-tmp/rick-ppt/.venv/bin/python",
+  "plugin": "/root/autodl-tmp/rick-ppt/runner/runtime/REPLACE_WITH_VERIFIED_VERSION/pptx-agent",
+  "blank": "/root/autodl-tmp/rick-ppt/runner/runtime/REPLACE_WITH_VERIFIED_VERSION/pptx-agent/skills/pptx/assets/blank.pptx",
+  "state_directory": "/root/autodl-tmp/rick-ppt/runner/state",
+  "capacity": 1,
+  "parallel_reviews": false,
+  "job_timeout_seconds": 5400
+}
