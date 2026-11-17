@@ -48,6 +48,11 @@ def research_breadth_instruction(cfg):
         text += ('Batch independent native search queries about facts, actual examples and finished visual work. '
                  'Run independent supported tool calls/downloads concurrently and inspect the returned evidence '
                  'in this same author conversation. Keep dependent source verification and composition in order. ')
+        from browser_sources import enabled as browser_enabled
+        if browser_enabled(cfg):
+            text += ('Hosted search cannot see login-gated sites. When pptx_browser_sources is exposed, use it for '
+                     'evidence or finished visual work on its enabled sites: submit up to three independent requests '
+                     'together and inspect the returned captures yourself; captures are references, not assets. ')
     else:text += ('When pptx_search_sources exposes requests, delegate independent research questions together '
              'in one batch to isolated search helpers. Choose useful questions for this brief (for example '
              'factual mechanisms, real cases/material, finished visual work), not a fixed platform roster. '

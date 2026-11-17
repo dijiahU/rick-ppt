@@ -69,7 +69,8 @@ def write_runtime_receipt(root,cfg,status):
     local_cfg=dict(cfg);local_cfg.pop('_model_profile',None)
     body['author_context_by_backend']={'codex':new_task_mode(local_cfg)}
     if 'api' in body['execution_backends']:
-        body['author_context_by_backend']['api']=new_task_mode(cfg)
+        # Split author is resume-only; new API admissions are rejected in pin_mode.
+        body['author_context_by_backend']['api']='resume_only'
     catalog=plugin/'skills/pptx/assets/workflow-choices.json'
     body['decision_contract_version']=json.loads(catalog.read_text()).get('version') if catalog.is_file() else None
     body['new_deck_click_reveal_required']=bool(catalog.is_file() and json.loads(catalog.read_text()).get('requirements',{}).get('new_deck_click_reveal'))

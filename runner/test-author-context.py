@@ -21,17 +21,20 @@ REPO = Path(__file__).resolve().parents[1]
 
 
 class Admission(unittest.TestCase):
-    def test_new_local_pins_but_legacy_and_other_harnesses_keep_split(self):
+    def test_new_tasks_are_continuous_and_split_is_resume_only(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory)
             self.assertEqual(pin_mode({},root,'new',False),'continuous')
             self.assertEqual(pin_mode({'author_context_mode':'split'},root,'new',True),'continuous')
             self.assertEqual(pin_mode({},root,'old',True),'split')
             self.assertFalse((root/'old/author-context.json').exists())
-            self.assertEqual(pin_mode({'author_context_mode':'split'},root,'rollback',False),'split')
+            (root/'pinned').mkdir();(root/'pinned/author-context.json').write_text('{"version":1,"mode":"split"}')
+            self.assertEqual(pin_mode({'_model_profile':{'model':'external'}},root,'pinned',True),'split')
+            with self.assertRaisesRegex(ValueError,'retired'):pin_mode({'author_context_mode':'split'},root,'rollback',False)
             for cfg in ({'_model_profile':{'model':'external'}},{'_harness_transport':'dsh-sdk'}):
-                self.assertEqual(new_task_mode(cfg),'split')
-                with self.assertRaises(ValueError):new_task_mode({**cfg,'author_context_mode':'continuous'})
+                self.assertEqual(new_task_mode(cfg),'continuous')
+                with self.assertRaisesRegex(ValueError,'retired'):pin_mode(cfg,root,'api-new',False)
+                self.assertFalse((root/'api-new/author-context.json').exists())
                 with self.assertRaises(ValueError):pin_mode(cfg,root,'new',True)
             with self.assertRaises(ValueError):new_task_mode({'author_context_mode':'typo'})
 
@@ -49,7 +52,9 @@ class Admission(unittest.TestCase):
     def test_helpers_are_rejected_not_just_hidden_in_prompts(self):
         cfg={'_author_context_mode':'continuous','browser_research':{
             'enabled':True,'browser':'edge','site':'https://www.google.com'}}
-        self.assertIsNone(capability(cfg))
+        # The browser helper is a host tool the continuous author may call;
+        # model-backed prefetch helpers remain disabled for it.
+        self.assertEqual(capability(cfg)['tool'],'pptx_browser_sources')
         self.assertEqual(prefetch_capability(cfg)['mode'],'disabled')
         with tempfile.TemporaryDirectory() as directory:
             broker=MaterialPrefetchBroker(cfg,Path(directory))

@@ -12,11 +12,12 @@ def supported(cfg):
 
 
 def new_task_mode(cfg):
-    mode = cfg.get('author_context_mode', 'continuous' if supported(cfg) else 'split')
+    """New admissions always use one continuous author; split is resume-only."""
+    mode = cfg.get('author_context_mode', 'continuous')
+    if mode == 'split':
+        raise ValueError('author_context_mode=split is retired for new tasks; it remains only for resuming tasks already pinned to it')
     if mode not in MODES:
-        raise ValueError('author_context_mode must be continuous or split')
-    if mode == 'continuous' and not supported(cfg):
-        raise ValueError('Continuous author currently requires local Codex native tools; retain split for API/DSH')
+        raise ValueError('author_context_mode must be continuous')
     return mode
 
 
@@ -31,6 +32,10 @@ def pin_mode(cfg, state_root, task_id, existing):
         return 'split'  # Do not change an older task's admitted execution path.
     else:
         mode = new_task_mode(cfg)
+        if not supported(cfg):
+            # Checked before pinning so a rejected admission leaves no record.
+            raise ValueError('New tasks require the local Codex continuous author; the split API/DSH route '
+                             'is retired for new tasks (existing tasks still resume)')
         path.parent.mkdir(parents=True, exist_ok=True)
         with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w') as stream:
             json.dump({'version': 1, 'mode': mode}, stream)

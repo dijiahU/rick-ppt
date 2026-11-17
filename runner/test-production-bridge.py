@@ -69,8 +69,8 @@ class ProductionBridge(unittest.TestCase):
         cfg={**self.cfg,'_model_profile':{'model':'claude-opus-5-5','base_url':'https://example.test/v1','api_key':'private-provider-key','wire_api':'chat_completions'}}
         receipt=bridge.write_runtime_receipt(self.worker,cfg,'ready');proof=json.loads(receipt.read_text())
         self.assertEqual(proof['model_backend']['model'],'claude-opus-5-5')
-        self.assertEqual(proof['author_context_by_backend'],{'codex':'continuous','api':'split'})
-        self.assertEqual(proof['new_task_author_context'],'split')
+        self.assertEqual(proof['author_context_by_backend'],{'codex':'continuous','api':'resume_only'})
+        self.assertEqual(proof['new_task_author_context'],'continuous')
         self.assertNotIn('private-provider-key',receipt.read_text());self.assertNotIn('api_key',proof['model_backend'])
 
     def test_incomplete_branch_runtime_cannot_launch(self):
@@ -100,7 +100,7 @@ class ProductionBridge(unittest.TestCase):
         self.assertFalse(proof['material_prefetch_available'])
 
     def test_browser_receipt_exposes_only_the_enabled_scoped_capability(self):
-        cfg={**self.cfg,'author_context_mode':'split','browser_research':{'enabled':True,'browser':'edge',
+        cfg={**self.cfg,'browser_research':{'enabled':True,'browser':'edge',
              'site':'https://www.xiaohongshu.com','private_setting':'never-publish'}}
         receipt=bridge.write_runtime_receipt(self.worker,cfg,'ready')
         proof=json.loads(receipt.read_text())

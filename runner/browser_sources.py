@@ -59,8 +59,8 @@ def configured_sites(cfg):
 
 
 def enabled(cfg):
-    from author_context import enabled as continuous_author
-    if continuous_author(cfg):return False
+    # Also offered to the continuous author: it calls this tool, while the
+    # logged-in browser stays inside the isolated helper session.
     policy = cfg.get('browser_research') or {}
     return (isinstance(policy, dict) and policy.get('enabled') is True
             and policy.get('browser') == 'edge' and bool(configured_sites(cfg))

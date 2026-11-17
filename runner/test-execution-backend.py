@@ -86,13 +86,16 @@ class SelectionTests(unittest.TestCase):
              patch.object(runner,'_run_job_locked',side_effect=execute), \
              patch('decision_routing.pin_decision_contract',return_value=0), \
              patch('decision_routing.admitted_click_requirement',return_value=False):
-            for route in ('api','codex'):
-                task={'id':str(uuid.uuid4()),'lease':'SYNTHETIC-LEASE','execution_backend':route}
-                selected,default=runner._run_job(cfg,task,None)
-                self.assertEqual(selected,self.profile if route=='api' else None)
-                self.assertEqual(default,None if route=='api' else 'gpt-6.1-sol')
-                self.assertEqual(json.loads((self.root/'state'/task['id']/'execution-choice.json').read_text()),
-                                 {'execution_backend':route})
+            # New API admissions need the retired split author and are rejected
+            # explicitly; the same global API config still allows Codex tasks.
+            task={'id':str(uuid.uuid4()),'lease':'SYNTHETIC-LEASE','execution_backend':'api'}
+            with self.assertRaisesRegex(ValueError,'retired'):runner._run_job(cfg,task,None)
+            self.assertFalse((self.root/'state'/task['id']/'author-context.json').exists())
+            task={'id':str(uuid.uuid4()),'lease':'SYNTHETIC-LEASE','execution_backend':'codex'}
+            selected,default=runner._run_job(cfg,task,None)
+            self.assertEqual((selected,default),(None,'gpt-6.1-sol'))
+            self.assertEqual(json.loads((self.root/'state'/task['id']/'execution-choice.json').read_text()),
+                             {'execution_backend':'codex'})
         self.assertIs(cfg['_model_profile'],self.profile,'per-task selection must not mutate the worker config')
 
 
