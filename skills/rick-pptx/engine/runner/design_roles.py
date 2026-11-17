@@ -51,7 +51,7 @@ def research_breadth_instruction(cfg):
         from browser_sources import enabled as browser_enabled
         if browser_enabled(cfg):
             text += ('Hosted search cannot see login-gated sites. When pptx_browser_sources is exposed, use it for '
-                     'evidence or finished visual work on its enabled sites: submit up to three independent requests '
+                     'evidence or finished visual work on its enabled sites: submit up to four independent requests '
                      'together and inspect the returned captures yourself; captures are references, not assets. ')
     else:text += ('When pptx_search_sources exposes requests, delegate independent research questions together '
              'in one batch to isolated search helpers. Choose useful questions for this brief (for example '
@@ -71,7 +71,7 @@ def research_breadth_instruction(cfg):
                  'advertised site before settling the outline: ' + ', '.join(browser['sites']) + '. '
                  'Pass site explicitly and tailor query/purpose to that platform; do not omit a site merely '
                  'because ordinary web search already returned material. Submit independent sites together using '
-                 'requests: [{site, query, purpose}, ...] (up to three independent queries) for concurrent isolated '
+                 'requests: [{site, query, purpose}, ...] (up to four independent queries; in the first discovery round put every advertised site\'s question in this one batch rather than site by site) for concurrent isolated '
                  'search sessions/tabs; do not serialize them unnecessarily or operate the browser directly. '
                  'do not retry a permission/login/captcha failure or confirmed shared-browser outage. '
                  'A site timeout/network error does not disable other authorized sites; follow the reported failure scope. Record any '

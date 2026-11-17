@@ -34,6 +34,10 @@ X = 'https://x.com'
 GOOGLE = 'https://www.google.com'
 X_RECENT_DAYS = 90
 BROWSER_TURN_SECONDS = 360
+# One request per enabled site fits a single concurrent first round.
+BATCH_MAX_REQUESTS = 4
+# Browser helpers do mechanical navigation/capture; low effort keeps steps fast.
+HELPER_REASONING_EFFORT = 'low'
 SITE_HOSTS = {
     SITE: ('www.xiaohongshu.com',),
     PINTEREST: ('www.pinterest.com', 'jp.pinterest.com'),
@@ -75,8 +79,8 @@ def capability(cfg):
     if not enabled(cfg): return None
     sites = configured_sites(cfg)
     return {'mode': 'operator-authorized-edge', 'tool': TOOL, 'site': sites[0], 'sites': sites, 'optional': True,
-        'batch_max_requests': 3,
-        'use': 'Authorized public examples, workflows and visual-reference research in Edge; X is for recent developments and first-hand depth: usage experience, tips and opinions (text posts count; attribute views; verify facts at the original source). Submit up to three distinct requests together, each with query, purpose and explicit enabled site. Independent questions may use the same site, including Google; exact duplicate requests are rejected. A single query remains supported. Optional availability is not evidence that a channel was searched. Returned screenshots are reference captures, not original assets or licenses. Respect offline/supplied-only instructions. Blocked/login-required access remains unavailable; never bypass it. No posting, messaging or account access.'}
+        'batch_max_requests': BATCH_MAX_REQUESTS,
+        'use': 'Authorized public examples, workflows and visual-reference research in Edge; X is for recent developments and first-hand depth: usage experience, tips and opinions (text posts count; attribute views; verify facts at the original source). Submit up to four distinct requests together (one per site fits a single first round), each with query, purpose and explicit enabled site. Independent questions may use the same site, including Google; exact duplicate requests are rejected. A single query remains supported. Optional availability is not evidence that a channel was searched. Returned screenshots are reference captures, not original assets or licenses. Respect offline/supplied-only instructions. Blocked/login-required access remains unavailable; never bypass it. No posting, messaging or account access.'}
 
 
 def source_url(value, site=SITE):
@@ -174,11 +178,11 @@ class BrowserSources:
                            'site': {'type': 'string', 'enum': configured_sites(self.cfg)}},
             'required': ['query', 'purpose', 'site']}
         return [{'type': 'function', 'name': TOOL,
-            'description': 'Search public examples and visual references using authorized Edge. Prefer requests for up to three independent questions, on the same or different enabled sites: they run concurrently in separate sessions/tabs and return per-request evidence and actual screenshots. Exact duplicate requests are rejected. Or pass query/purpose/site for one search (legacy default site retained). No private account activity, permission bypass or per-page quota. Reuse findings.',
+            'description': 'Search public examples and visual references using authorized Edge. Prefer requests for up to four independent questions, on the same or different enabled sites: they run concurrently in separate sessions/tabs and return per-request evidence and actual screenshots. Exact duplicate requests are rejected. Or pass query/purpose/site for one search (legacy default site retained). No private account activity, permission bypass or per-page quota. Reuse findings.',
             'inputSchema': {'type': 'object', 'additionalProperties': False,
                 'properties': {'query': {'type': 'string'}, 'purpose': {'type': 'string'},
                                'site': {'type':'string', 'enum': configured_sites(self.cfg)},
-                               'requests': {'type': 'array', 'minItems': 1, 'maxItems': 3, 'items': query}},
+                               'requests': {'type': 'array', 'minItems': 1, 'maxItems': BATCH_MAX_REQUESTS, 'items': query}},
                 'oneOf': [{'required': ['query', 'purpose'], 'not': {'required': ['requests']}},
                           {'required': ['requests'], 'not': {'anyOf': [{'required': [k]} for k in ('query','purpose','site')]}}]}}]
 
@@ -251,7 +255,7 @@ class BrowserSources:
         args = params.get('arguments') or {}
         requests = args.get('requests')
         if (params.get('tool') != TOOL or params.get('namespace') is not None or not enabled(self.cfg)
-                or set(args) != {'requests'} or not isinstance(requests, list) or not 1 <= len(requests) <= 3):
+                or set(args) != {'requests'} or not isinstance(requests, list) or not 1 <= len(requests) <= BATCH_MAX_REQUESTS):
             return self.reply(False, {'status': 'unavailable', 'reason': 'Invalid bounded browser batch'})
         for request in requests:
             if (not isinstance(request, dict) or set(request) != {'site','query','purpose'}
@@ -331,7 +335,9 @@ class BrowserSources:
             config = browser_configuration(root, paths)
             policy = self.cfg['browser_research']
             config.update(model=policy.get('model', self.cfg.get('default_model', 'gpt-6-astra')),
-                          model_reasoning_effort='high')
+                          model_reasoning_effort=policy.get('reasoning_effort', HELPER_REASONING_EFFORT))
+            from model_backend import apply_service_tier
+            apply_service_tier(config, self.cfg)
             # This route/encoding was observed in the site's own search UI.
             if site == SITE:
                 search_url = SITE + '/search_result_ai?' + urlencode({
@@ -403,7 +409,10 @@ class BrowserSources:
                 + search_scope +
                 'Read the results once. A useful search-results capture is a valid first-pass result: identify it as thumbnails, '
                 'capture a relevant public region and finish. For non-Google requests, open at most one specific work only when the purpose needs it '
-                'and there is time to capture it and return the report. Do not explore carousels or additional works in this call. '
+                'and there is time to capture it and return the report. When the purpose asks for usage experience, cases or tips, '
+                'open the result most likely to be a first-hand account of concrete use, not an overview, curated introduction or promotion; '
+                'list the other promising specific-use results with exact URLs so the researcher can follow up. '
+                'Do not explore carousels or additional works in this call. '
                 'Return exact observed source URLs, supported titles, visible useful '
                 'relationships for the stated purpose and honest limitations. Never infer the original creator from '
                 'a reposting account or treat popularity as design quality. Do not invent facts, links or inspection. '

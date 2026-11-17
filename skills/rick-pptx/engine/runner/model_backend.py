@@ -4,8 +4,8 @@ from urllib.parse import urlsplit
 import hashlib,json,os,stat
 
 KEY_ENV='PPTX_MODEL_API_KEY'
-DEFAULT_TASK_MODEL='gpt-6.1-sol'
-DEFAULT_TASK_REASONING_EFFORT='high'
+DEFAULT_TASK_MODEL='gpt-6-astra'
+DEFAULT_TASK_REASONING_EFFORT='xhigh'
 
 def task_default_model(state_root,task_id,existing,configured=DEFAULT_TASK_MODEL,reasoning_effort=DEFAULT_TASK_REASONING_EFFORT):
     """Pin new default-provider tasks without changing legacy or external jobs."""
@@ -24,6 +24,16 @@ def task_default_reasoning_effort(state_root,task_id):
     """Old model-only receipts retain their original implicit effort."""
     path=Path(state_root)/task_id/'default-model.json'
     return json.loads(path.read_text()).get('reasoning_effort') if path.exists() else None
+
+def apply_service_tier(config,cfg):
+    """Worker-level speed tier for the default local Codex route (e.g. "fast").
+    Fast mode trades higher credit use for lower latency; unset keeps Codex's own."""
+    tier=(cfg or {}).get('default_service_tier')
+    if tier is None:return config
+    if tier not in ('auto','default','fast','priority'):raise ValueError('Invalid default_service_tier')
+    config['service_tier']=tier
+    config.setdefault('features',{})['fast_mode']=tier in ('fast','priority')
+    return config
 
 def load_profile(path):
     path=Path(path).resolve(strict=True);info=path.stat()

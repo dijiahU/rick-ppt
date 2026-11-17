@@ -35,10 +35,10 @@ class Tests(unittest.TestCase):
   self.assertEqual(profile_for_task(self.root,'external',p,True),p)
   with self.assertRaises(ValueError):profile_for_task(self.root,'external',None,True)
  def test_new_default_is_61_high_and_persists_on_resume(self):
-  self.assertEqual(task_default_model(self.root,'new',False),'gpt-6.1-sol')
-  self.assertEqual(task_default_reasoning_effort(self.root,'new'),'high')
-  self.assertEqual(task_default_model(self.root,'new',True,'gpt-6-astra','low'),'gpt-6.1-sol')
-  self.assertEqual(task_default_reasoning_effort(self.root,'new'),'high')
+  self.assertEqual(task_default_model(self.root,'new',False),'gpt-6-astra')
+  self.assertEqual(task_default_reasoning_effort(self.root,'new'),'xhigh')
+  self.assertEqual(task_default_model(self.root,'new',True,'gpt-6-luna','low'),'gpt-6-astra')
+  self.assertEqual(task_default_reasoning_effort(self.root,'new'),'xhigh')
  def test_model_only_legacy_receipt_keeps_model_and_implicit_effort(self):
   path=self.root/'legacy/default-model.json';path.parent.mkdir();original=b'{"model":"gpt-6-sol"}\n';path.write_bytes(original)
   self.assertEqual(task_default_model(self.root,'legacy',True),'gpt-6-sol')
@@ -77,4 +77,12 @@ class Tests(unittest.TestCase):
  def test_legacy_default_task(self):
   with self.assertRaises(ValueError):bind_task(self.root,'legacy',self.profile(),True)
   bind_task(self.root,'legacy',None,True)
+ def test_default_service_tier_sets_fast_mode(self):
+  from model_backend import apply_service_tier
+  self.assertEqual(apply_service_tier({'features':{'apps':False}},{}),{'features':{'apps':False}})
+  config=apply_service_tier({'features':{'apps':False}},{'default_service_tier':'fast'})
+  self.assertEqual(config['service_tier'],'fast')
+  self.assertEqual(config['features'],{'apps':False,'fast_mode':True})
+  self.assertFalse(apply_service_tier({},{'default_service_tier':'default'})['features']['fast_mode'])
+  with self.assertRaises(ValueError):apply_service_tier({},{'default_service_tier':'turbo'})
 if __name__=='__main__':unittest.main()

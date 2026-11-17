@@ -138,7 +138,7 @@ class RoleTests(unittest.TestCase):
   cfg={**self.cfg,'browser_research':{'enabled':True,'browser':'edge','sites':[GOOGLE,SITE]}}
   text=research_breadth_instruction(cfg)
   self.assertIn('Prefer explicit Google search',text)
-  self.assertIn('up to three independent queries',text)
+  self.assertIn('up to four independent queries',text)
   self.assertIn('not a fixed platform roster',text)
   self.assertIn('label hosted-search results as Google',text)
   self.assertNotIn('Prefer explicit Google search',research_breadth_instruction(self.cfg))

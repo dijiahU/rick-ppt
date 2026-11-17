@@ -47,15 +47,23 @@ as a dated view of a named account, show the range of views rather than one cher
 and verify factual claims at the original source. A strong text-only finding can still
 become a visual: a native diagram of the described workflow or comparison, or a labeled
 original illustration — never a fabricated screenshot of the real product. Use the
-exposed pptx_browser_sources with site explicitly set. When its schema advertises
-requests, submit independent queries in one batch (up to three, each with its
-own site/query/purpose); the host isolates sessions and tabs. When Google is
+exposed pptx_browser_sources with site explicitly set. Once the subject's identity is
+established (e.g. which company's product shares a common name), include the
+disambiguating terms in later platform queries so results are about that subject. When its schema advertises
+requests, submit independent queries in one batch (up to four, each with its
+own site/query/purpose); the host isolates sessions and tabs. In the first discovery
+round, send every advertised site's independent question in that one batch rather
+than site by site; keep later rounds for follow-ups that depend on results. When Google is
 advertised, prefer its explicit search route for general discovery, including
 different questions on Google concurrently. Do not use the browser's default
 address-bar/Bing search. The hosted public search channel does not expose engine
 selection; label it accurately rather than claiming it used Google. Platform-native
 queries and permitted original-source reading complement discovery.
 Legacy single-site calls remain available for dependent follow-up research.
+When a result names a specific, distinctive use or case you have not yet seen in
+content (e.g. only its title appeared), make one follow-up request to open it before
+discarding it; an unread title is neither evidence nor a reason to drop the lead. For a
+Chinese-speaking audience, prefer including a verified Chinese first-hand case when one exists.
 The host's list is the
 boundary; this instruction grants no browser/account/domain access. If that tool
 is absent, use permitted public search and the current harness's real channels.

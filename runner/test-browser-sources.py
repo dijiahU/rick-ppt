@@ -246,6 +246,7 @@ class Tests(unittest.TestCase):
         # Site-specific guidance: Xiaohongshu (first, timed out) and Pinterest.
         self.assertIn('Chinese first-hand experience',self.servers[0].prompt)
         self.assertIn('Template-shop pins',self.servers[1].prompt)
+        self.assertIn('first-hand account of concrete use',self.servers[0].prompt)
         self.assertRegex(self.servers[-1].prompt,r'x\.com/search\?q=[^ ]*since%3A\d{4}-\d{2}-\d{2}')
         self.assertEqual(len(self.servers),3)
         self.assertIsNone(tool.unavailable_reason)
@@ -443,7 +444,14 @@ class Tests(unittest.TestCase):
         self.assertIn('HTTP 403/access denial',prompt)
         self.assertIn('Google snippets and thumbnails are discovery evidence',prompt)
         self.assertNotIn('search_result_ai?',prompt)
-        self.assertEqual(b.capability(cfg)['batch_max_requests'],3)
+        self.assertEqual(b.capability(cfg)['batch_max_requests'],4)
+        # Schema and handler share the limit: four sites fit one round; five do not.
+        tool=b.BrowserSources(cfg,self.job)
+        schema=tool.specs()[0]['inputSchema']['properties']['requests']
+        self.assertEqual(schema['maxItems'],4)
+        five=[{'site':b.GOOGLE,'query':f'q{i}','purpose':'p'} for i in range(5)]
+        rejected=tool.handle({'tool':b.TOOL,'namespace':None,'arguments':{'requests':five}})
+        self.assertFalse(rejected['success'])
 
     def test_google_sources_clean_public_external_identity_without_widening_other_sites(self):
         external='https://example.org/articles/diagram?id=42&utm_source=search#tracking'

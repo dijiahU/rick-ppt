@@ -254,6 +254,8 @@ class Execution:
             config['model']=self.cfg['_task_default_model']
             if self.cfg.get('_task_default_reasoning_effort'):
                 config['model_reasoning_effort']=self.cfg['_task_default_reasoning_effort']
+            from model_backend import apply_service_tier
+            apply_service_tier(config,self.cfg)
         # The provider session below may replace the origin with a loopback adapter.
         path=self.records/(self.task['id']+'-'+name+'-'+phase_id+'.jsonl')
         log=os.fdopen(os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'wb')
