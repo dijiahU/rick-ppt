@@ -104,6 +104,36 @@ class Environments(unittest.TestCase):
         (source / 'skills/pptx/assets/blank.pptx').write_bytes(b'fixture')
         return tool.initialize_local(self.root, Path(sys.executable))
 
+    def test_mac_requires_macos_and_hosted_https(self):
+        cfg = {**self.cfg, 'deployment_environment': 'mac', 'site': 'https://production.example',
+               'state_directory': str(self.worker / 'state/mac')}
+        self.assertEqual(validate(cfg, self.worker, platform='darwin'), 'mac')
+        with self.assertRaises(ValueError):
+            validate(cfg, self.worker, platform='linux')
+        for site in ('http://production.example', 'https://localhost', 'http://127.0.0.1:3000'):
+            with self.assertRaises(ValueError):
+                validate({**cfg, 'site': site}, self.worker, platform='darwin')
+
+    @unittest.skipUnless(sys.platform == 'darwin', 'Mac worker profile is macOS-only')
+    def test_mac_initialization_is_private_and_never_reports_the_token(self):
+        source = self.root / 'pptx-agent'
+        (source / '.codex-plugin').mkdir(parents=True)
+        (source / 'skills/pptx/assets').mkdir(parents=True)
+        (source / '.codex-plugin/plugin.json').write_text('{"version":"test-v1"}')
+        (source / 'skills/pptx/assets/blank.pptx').write_bytes(b'fixture')
+        cfg = tool.initialize_mac(self.root, Path(sys.executable), 'https://production.example/')
+        self.assertEqual((cfg['deployment_environment'], cfg['site'], cfg['capacity']), ('mac', 'https://production.example', 5))
+        self.assertTrue(cfg['browser_research']['enabled'])
+        self.assertFalse((self.root / 'website/.dev.vars').exists())
+        for path in ('runner/settings.local.json', 'runner/deployment.local.json'):
+            self.assertEqual((self.root / path).stat().st_mode & 0o777, 0o600)
+        with self.assertRaises(ValueError):
+            tool.initialize_mac(self.root, Path(sys.executable), 'https://production.example')
+        _, report = tool.inspect(self.root, 'mac')
+        self.assertNotIn(cfg['token'], json.dumps(report))
+        with self.assertRaises(ValueError):
+            tool.inspect(self.root, 'local')
+
     def test_initialization_private_independent_and_idempotence_safe(self):
         cfg = self.initialize()
         self.assertEqual(cfg['site'], 'http://127.0.0.1:3000')

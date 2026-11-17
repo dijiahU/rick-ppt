@@ -1,6 +1,7 @@
 import {ensureNativeEdits} from '@/lib/native-edit-storage';
 import {MAX_SLIDES,MAX_PROGRESS_BYTES} from '@/lib/slide-limits.mjs';
-import { database,files,json,workerAuthorized } from '@/lib/server';
+import { database,files,json,workerIdentity } from '@/lib/server';
+import {workerRow} from '@/lib/worker-routing';
 import { parseProgress } from '@/lib/progress';
 import {parseAttachments,attachmentKey,attachmentResponse} from '@/lib/attachments';
 import {boundedBody} from '@/lib/attachments';
@@ -9,7 +10,8 @@ import {storeTrace} from '@/lib/admin-trace';
 import {ensureConversation} from '@/lib/conversation';
 import {workerCapabilities} from '@/lib/execution-backend';
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}) {
-  if(!await workerAuthorized(request)) return json({error:'Unauthorized'},401);
+  const identity=await workerIdentity(request);
+  if(!identity) return json({error:'Unauthorized'},401);
   const {id}=await params, lease=request.headers.get('X-Job-Lease');
   const db=database(),query=new URL(request.url).searchParams,action=query.get('action');
   const completionRevision=query.has('revision')?Number(query.get('revision')):null;
@@ -106,8 +108,8 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
     if(!capabilities)return json({error:'Invalid worker capabilities'},400);
     const now=Date.now();
     const workerHeartbeat=capabilities.advertised?
-      db.prepare('INSERT INTO worker(id,heartbeat,execution_backends) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET heartbeat=excluded.heartbeat,execution_backends=excluded.execution_backends').bind('primary',now,JSON.stringify(capabilities.backends)):
-      db.prepare('INSERT INTO worker(id,heartbeat) VALUES (?,?) ON CONFLICT(id) DO UPDATE SET heartbeat=excluded.heartbeat').bind('primary',now);
+      db.prepare('INSERT INTO worker(id,heartbeat,execution_backends) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET heartbeat=excluded.heartbeat,execution_backends=excluded.execution_backends').bind(workerRow(identity),now,JSON.stringify(capabilities.backends)):
+      db.prepare('INSERT INTO worker(id,heartbeat) VALUES (?,?) ON CONFLICT(id) DO UPDATE SET heartbeat=excluded.heartbeat').bind(workerRow(identity),now);
     const [renewed]=await db.batch([db.prepare("UPDATE jobs SET updated_at=? WHERE id=? AND lease=? AND status='running'").bind(now,id,lease),workerHeartbeat]);
     return renewed.meta.changes?json({ok:true}):json({error:'Lease expired'},409);
   }

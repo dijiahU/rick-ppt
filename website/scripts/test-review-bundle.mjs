@@ -26,7 +26,7 @@ const storage={
 const REVIEW_TOKEN='synthetic-review-token-at-least-32-characters',WORKER_TOKEN='synthetic-worker-token-at-least-32-characters';
 modules['cloudflare:workers']={env:{DB:binding,FILES:storage,REVIEW_TOKEN,WORKER_TOKEN}};
 modules['@/app/chatgpt-auth']={getChatGPTUser:async()=>({userId:'ordinary-account'})};
-modules['./execution-backend']=load('lib/execution-backend.ts');modules['@/lib/execution-backend']=modules['./execution-backend'];
+modules['./execution-backend']=load('lib/execution-backend.ts');modules['@/lib/execution-backend']=modules['./execution-backend'];modules['./worker-routing']=modules['@/lib/worker-routing']=load('lib/worker-routing.ts');
 for(const name of ['server','review-auth','review-bundle','progress']){
  modules['@/lib/'+name]=load('lib/'+name+'.ts');modules['./'+name]=modules['@/lib/'+name];
 }

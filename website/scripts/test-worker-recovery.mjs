@@ -15,7 +15,7 @@ const binding={prepare(sql){let args=[];const statement={bind(...values){args=va
 const WORKER_TOKEN='synthetic-worker-secret-at-least-32-characters',REVIEW_TOKEN='synthetic-review-secret-at-least-32-characters';
 modules['cloudflare:workers']={env:{DB:binding,WORKER_TOKEN,REVIEW_TOKEN,FILES:{async head(key){return objects.has(key)?{customMetadata:metadata.get(key)||{}}:null;},async put(key,data,options){puts++;metadata.set(key,options?.customMetadata||{});objects.set(key,new Uint8Array(data));if(putBarrier)await putBarrier();},async get(key){const data=objects.get(key);return data?{body:new Response(data).body}:null;},async delete(key){deletes++;objects.delete(key);}}}};
 modules['@/app/chatgpt-auth']={getChatGPTUser:async()=>null};
-modules['./execution-backend']=load('lib/execution-backend.ts');modules['@/lib/execution-backend']=modules['./execution-backend'];
+modules['./execution-backend']=load('lib/execution-backend.ts');modules['@/lib/execution-backend']=modules['./execution-backend'];modules['./worker-routing']=modules['@/lib/worker-routing']=load('lib/worker-routing.ts');
 for(const name of ['server','attachments','progress','queries'])modules['@/lib/'+name]=load('lib/'+name+'.ts');
 modules['@/lib/admin-trace']=load('lib/admin-trace.ts');
 modules['./server']=modules['@/lib/server'];modules['@/lib/native-edit-storage']=load('lib/native-edit-storage.ts');

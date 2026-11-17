@@ -8,7 +8,7 @@ export const CLAIM_JOB = `UPDATE jobs SET status='running',lease=?,updated_at=?
 WHERE id=(SELECT id FROM jobs WHERE status='queued'
 AND (execution_backend IS NULL OR (execution_backend='api' AND ?=1) OR (execution_backend='codex' AND ?=1))
 ORDER BY created_at,id LIMIT 1)
-AND (SELECT COUNT(*) FROM jobs WHERE status='running') < 3
+AND (SELECT COUNT(*) FROM jobs WHERE status='running') < 5
 RETURNING id,title,brief,pages,style,language,execution_backend,attachments,lease,summary`;
 
 // Legacy workers cannot consume customer-funded work. API support by itself

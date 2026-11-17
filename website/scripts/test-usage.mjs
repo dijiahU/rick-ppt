@@ -13,7 +13,7 @@ let user=null;const secret='fixture-worker-secret-at-least-32-chars';
 modules['cloudflare:workers']={env:{DB:binding,WORKER_TOKEN:secret,ADMIN_USER_ID:'rick'}};
 modules['@/app/chatgpt-auth']={getChatGPTUser:async()=>user};
 modules['./admin-policy']=load('lib/admin-policy.ts');
-for(const name of ['execution-backend','admin-accounts'])if(existsSync(new URL('../lib/'+name+'.ts',import.meta.url)))modules['./'+name]=load('lib/'+name+'.ts');
+for(const name of ['execution-backend','worker-routing','admin-accounts'])if(existsSync(new URL('../lib/'+name+'.ts',import.meta.url)))modules['./'+name]=load('lib/'+name+'.ts');
 for(const name of ['server','admin','attachments','usage']){modules['@/lib/'+name]=load('lib/'+name+'.ts');modules['./'+name]=modules['@/lib/'+name];}
 const post=load('app/api/worker/[id]/usage/route.ts').POST,get=load('app/api/admin/jobs/[id]/usage/route.ts').GET;
 const id=crypto.randomUUID(),other=crypto.randomUUID();

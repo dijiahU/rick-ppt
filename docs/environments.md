@@ -98,3 +98,25 @@ bash deploy/status.sh
 
 若要退休旧 Mac 接单服务，应另外检查并调整它的 LaunchAgent/watchdog；复制代码或
 新建开发目录不会自动停止旧进程。不要把旧线上 worker token 复制到开发配置。
+
+## Mac 生产执行端（本地优先）
+
+网站按"本地优先"派发任务：Mac 生产执行端在线（90 秒内有心跳）时，服务器执行端不领取新任务；
+Mac 离线、关机或断电超过 90 秒后，服务器自动接手排队任务。已经开始的任务保留各自的租约，
+不会被另一端抢走。执行端身份由它出示的密钥决定，不由请求内容自报：服务器继续使用
+`WORKER_TOKEN`，Mac 使用新的站点密钥 `LOCAL_WORKER_TOKEN`。全站同时运行上限为 5 个任务。
+
+Mac 生产执行端使用独立 checkout，不用开发目录（开发目录只接本地测试站点）：
+
+```bash
+git worktree add --detach /absolute/path/rick-ppt-mac origin/main
+cd /absolute/path/rick-ppt-mac
+/absolute/path/rick-ppt-local/.venv/bin/python tools/environment.py init-mac \
+  --site https://rickppt.aaarickmorty.chatgpt.site \
+  --python /absolute/path/rick-ppt-local/.venv/bin/python
+python3 tools/environment.py copy-token     # 复制到剪贴板，不在终端显示
+```
+
+把剪贴板中的值设为网站的站点密钥 `LOCAL_WORKER_TOKEN`，发布含本功能的网站版本后，再运行
+`tools/environment.py start-mac`。配置为 5 并发、fast 模式、Edge 浏览器调研（小红书、X、Pinterest、
+Google），仍遵守"仅插电运行"：拔掉电源时 Mac 停止接单，由服务器接手。

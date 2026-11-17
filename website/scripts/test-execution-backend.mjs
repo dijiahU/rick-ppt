@@ -14,9 +14,10 @@ let user='owner',admin=false;
 const objects=new Map();
 const binding={prepare(sql){let args=[];const s={bind(...values){args=values;return s;},async first(){return db.prepare(sql).get(...args)??null;},async all(){return {results:db.prepare(sql).all(...args)};},async run(){return {meta:{changes:Number(db.prepare(sql).run(...args).changes)}};}};return s;},async batch(items){return Promise.all(items.map(s=>s.run()));}};
 const token='local-synthetic-worker-token-over-32-characters';
-const modules={'./slide-limits.mjs':limits,'@/lib/slide-limits.mjs':limits,'cloudflare:workers':{env:{DB:binding,WORKER_TOKEN:token,FILES:{async put(k,v){objects.set(k,new Uint8Array(v));},async delete(keys){for(const k of Array.isArray(keys)?keys:[keys])objects.delete(k);},async head(){return null;}}}},'@/app/chatgpt-auth':{getChatGPTUser:async()=>user?{userId:user}:null},'@/lib/admin':{isAdmin:async()=>admin}};
+const localToken='local-machine-synthetic-token-over-32-characters';
+const modules={'./slide-limits.mjs':limits,'@/lib/slide-limits.mjs':limits,'cloudflare:workers':{env:{DB:binding,WORKER_TOKEN:token,LOCAL_WORKER_TOKEN:localToken,FILES:{async put(k,v){objects.set(k,new Uint8Array(v));},async delete(keys){for(const k of Array.isArray(keys)?keys:[keys])objects.delete(k);},async head(){return null;}}}},'@/app/chatgpt-auth':{getChatGPTUser:async()=>user?{userId:user}:null},'@/lib/admin':{isAdmin:async()=>admin}};
 function load(path){const code=ts.transpileModule(readFileSync(new URL('../'+path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const exports={};new Function('require','exports',code)(name=>{assert.ok(modules[name],name);return modules[name];},exports);return exports;}
-for(const name of ['execution-backend','server','model-providers','model-accounts','i18n','execution-backend-i18n','attachments','queries','task-mode','task-mode-i18n','page-count-i18n','upload-i18n','progress','conversation','drafts','job-status','admin-trace','staged-uploads']){modules['@/lib/'+name]=load('lib/'+name+'.ts');modules['./'+name]=modules['@/lib/'+name];}
+for(const name of ['execution-backend','worker-routing','server','model-providers','model-accounts','i18n','execution-backend-i18n','attachments','queries','task-mode','task-mode-i18n','page-count-i18n','upload-i18n','progress','conversation','drafts','job-status','admin-trace','staged-uploads']){modules['@/lib/'+name]=load('lib/'+name+'.ts');modules['./'+name]=modules['@/lib/'+name];}
 modules['./server']=modules['@/lib/server'];modules['@/lib/native-edit-storage']=load('lib/native-edit-storage.ts');
 const submit=load('app/api/jobs/route.ts').POST,claim=load('app/api/worker/route.ts').POST,account=load('app/api/account/route.ts').GET,resume=load('app/api/jobs/[id]/resume/route.ts').POST,message=load('app/api/jobs/[id]/conversation/route.ts').POST,worker=load('app/api/worker/[id]/route.ts').POST;
 const base='https://local.test';
@@ -98,8 +99,18 @@ delete revision.execution_backend;assert.equal((await message(taskRequest(editId
 db.exec("UPDATE jobs SET status='complete'");user='fifo-owner';
 for(const [id,route,created] of [['z-api','api',1],['b-codex','codex',2],['a-codex','codex',2],['c-api','api',3]])db.prepare('INSERT INTO jobs(id,user_id,request_key,title,brief,pages,style,status,created_at,updated_at,execution_backend) VALUES(?,?,?,?,?,?,?, ?,?,?,?)').run(id,user,id,'Test','Local test',5,'test','queued',created,created,route);
 const take=async routes=>(await (await claim(claimRequest({execution_backends:routes}))).json()).job;
-assert.equal((await take(['codex'])).id,'a-codex');assert.equal((await take(['api'])).id,'z-api');assert.equal((await take(['codex'])).id,'b-codex');assert.equal(await take(['api','codex']),null);
-db.prepare("UPDATE jobs SET status='complete' WHERE id='a-codex'").run();assert.equal((await take(['api','codex'])).id,'c-api');
+assert.equal((await take(['codex'])).id,'a-codex');assert.equal((await take(['api'])).id,'z-api');assert.equal((await take(['codex'])).id,'b-codex');assert.equal((await take(['api','codex'])).id,'c-api');assert.equal(await take(['api','codex']),null);
+// Local-first: while the local worker (LOCAL_WORKER_TOKEN) is online the server defers new work.
+db.exec("UPDATE jobs SET status='complete'");db.prepare('INSERT INTO jobs(id,user_id,request_key,title,brief,pages,style,status,created_at,updated_at,execution_backend) VALUES(?,?,?,?,?,?,?, ?,?,?,?)').run('l-codex',user,'l-codex','Test','Local test',5,'test','queued',9,9,'codex');
+assert.equal((await claim(claimRequest({execution_backends:['codex']},'wrong-token-that-is-also-long-enough-123'))).status,401);
+assert.equal((await (await claim(new Request(base+'/api/worker?action=heartbeat',{method:'POST',headers:{Authorization:'Bearer '+localToken,'Content-Type':'application/json'},body:JSON.stringify({execution_backends:['codex']})}))).json()).ok,true);
+assert.equal(db.prepare("SELECT COUNT(*) AS n FROM worker WHERE id='local'").get().n,1);
+const deferred=await (await claim(claimRequest({execution_backends:['codex']}))).json();assert.deepEqual(deferred,{job:null,deferred:'local_worker_online'});
+db.prepare("UPDATE worker SET heartbeat=? WHERE id='local'").run(Date.now()-91000);
+assert.equal((await take(['codex'])).id,'l-codex','server claims once local is offline');
+db.prepare('INSERT INTO jobs(id,user_id,request_key,title,brief,pages,style,status,created_at,updated_at,execution_backend) VALUES(?,?,?,?,?,?,?, ?,?,?,?)').run('l2-codex',user,'l2-codex','Test','Local test',5,'test','queued',10,10,'codex');
+assert.equal((await (await claim(claimRequest({execution_backends:['codex']},localToken))).json()).job.id,'l2-codex','local claims directly');
+db.exec("DELETE FROM worker WHERE id='local'");
 db.exec("UPDATE jobs SET status='complete'");user='quota-owner';for(let i=0;i<10;i++)assert.equal((await submit(request(fields(i%2?'api':'codex')))).status,201);assert.equal((await submit(request(fields('api')))).status,429);assert.equal(count(),10);
 const {backendChoiceUnavailable,executionAvailability,workerCapabilities,automaticExecutionBackend}=modules['@/lib/execution-backend'];
 assert.equal(backendChoiceUnavailable('api',false,{api:false,codex:false}),false,'offline allows explicit queue choice');assert.equal(backendChoiceUnavailable('api',true,{api:false,codex:true}),true);assert.deepEqual(executionAvailability(null,true),{api:false,codex:false});assert.deepEqual(workerCapabilities(undefined),{backends:[],advertised:false});

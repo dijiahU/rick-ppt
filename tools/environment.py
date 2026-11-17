@@ -58,6 +58,46 @@ def initialize_local(root, python, port=3000):
     return cfg
 
 
+BROWSER_SITES = ['https://www.xiaohongshu.com', 'https://x.com', 'https://www.pinterest.com', 'https://www.google.com']
+
+
+def initialize_mac(root, python, site):
+    """Production worker on the operator's Mac, in its own checkout.
+
+    The generated token is the site's LOCAL_WORKER_TOKEN (see copy-token); it is
+    written only to this checkout's private settings and never printed.
+    """
+    root = Path(root).resolve()
+    worker = root / 'runner'
+    settings = worker / 'settings.local.json'
+    marker = worker / 'deployment.local.json'
+    if any(p.exists() for p in (settings, marker)):
+        raise ValueError('Existing private configuration preserved; use check instead')
+    python = Path(python).absolute()
+    if not python.is_file():
+        raise ValueError('Python interpreter not found')
+    source = root / 'pptx-agent'
+    version = json.loads((source / '.codex-plugin/plugin.json').read_text())['version']
+    if not version or Path(version).name != version or version in ('.', '..'):
+        raise ValueError('Invalid plugin version')
+    runtime = worker / 'runtime' / version / 'pptx-agent'
+    if runtime.exists():
+        raise ValueError('Existing runtime preserved; initialize a fresh checkout')
+    cfg = {'deployment_environment': 'mac', 'site': site.rstrip('/'),
+           'token': secrets.token_hex(32), 'python': str(python), 'plugin': str(runtime),
+           'blank': str(runtime / 'skills/pptx/assets/blank.pptx'),
+           'state_directory': str(worker / 'state/mac'), 'capacity': 5,
+           'parallel_reviews': True, 'job_timeout_seconds': 7200,
+           'author_context_mode': 'continuous', 'default_service_tier': 'fast',
+           'browser_research': {'enabled': True, 'browser': 'edge', 'sites': BROWSER_SITES}}
+    validate(cfg, worker, expected='mac')
+    shutil.copytree(source, runtime, ignore=shutil.ignore_patterns(
+        '.venv', 'node_modules', '__pycache__', '.pytest_cache', 'test-results'))
+    private_write(settings, json.dumps(cfg, indent=2) + '\n')
+    private_write(marker, '{"environment":"mac"}\n')
+    return cfg
+
+
 def inspect(root, expected):
     worker = Path(root).resolve() / 'runner'
     cfg = json.loads((worker / 'settings.local.json').read_text())
@@ -96,18 +136,34 @@ def main():
     init.add_argument('--python', type=Path, default=ROOT / '.venv/bin/python')
     init.add_argument('--port', type=int, default=3000)
     check = sub.add_parser('check')
-    check.add_argument('environment', choices=['local', 'server'])
+    check.add_argument('environment', choices=['local', 'server', 'mac'])
     start = sub.add_parser('start-local')
     start.add_argument('--reload', action='store_true')
+    init_mac = sub.add_parser('init-mac', help='Production worker on this Mac (own checkout)')
+    init_mac.add_argument('--site', required=True, help='Hosted website origin, https://...')
+    init_mac.add_argument('--python', type=Path, default=ROOT / '.venv/bin/python')
+    start_mac = sub.add_parser('start-mac')
+    start_mac.add_argument('--reload', action='store_true')
+    sub.add_parser('copy-token', help='Copy this Mac worker token to the clipboard for LOCAL_WORKER_TOKEN')
     args = p.parse_args()
     try:
         if args.action == 'init-local':
             initialize_local(ROOT, args.python, args.port)
             _, report = inspect(ROOT, 'local')
+        elif args.action == 'init-mac':
+            initialize_mac(ROOT, args.python, args.site)
+            _, report = inspect(ROOT, 'mac')
+        elif args.action in ('start-mac', 'copy-token'):
+            cfg, report = inspect(ROOT, 'mac')
         else:
             cfg, report = inspect(ROOT, args.environment if args.action == 'check' else 'local')
+        if args.action == 'copy-token':
+            # Clipboard only: the secret never reaches stdout, logs or prompts.
+            subprocess.run(['/usr/bin/pbcopy'], input=cfg['token'].encode(), check=True)
+            print('Copied this Mac worker token; set it as the site secret LOCAL_WORKER_TOKEN.')
+            return 0
         print(json.dumps(report, ensure_ascii=False), flush=True)
-        if args.action == 'start-local':
+        if args.action in ('start-local', 'start-mac'):
             command, env = local_launch(ROOT, cfg, args.reload)
             return subprocess.call(command, cwd=ROOT, env=env)
         return 0

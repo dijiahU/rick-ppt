@@ -12,7 +12,7 @@ const token='synthetic-worker-token-with-over-32-characters';
 const env={DB:binding,FILES:{async head(){return null;},async delete(){}},WORKER_TOKEN:token,BYOK_ENCRYPTION_KEY:'7b'.repeat(32)};
 const modules={'cloudflare:workers':{env},'./slide-limits.mjs':limits,'@/lib/slide-limits.mjs':limits,'@/app/chatgpt-auth':{getChatGPTUser:async()=>user?{userId:user}:null},'@/lib/admin':{isAdmin:async()=>false}};
 function load(path){const code=ts.transpileModule(readFileSync(new URL('../'+path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const out={};new Function('require','exports',code)(name=>{assert.ok(modules[name],name);return modules[name];},out);return out;}
-for(const name of ['execution-backend','server','model-providers','model-accounts','i18n','execution-backend-i18n','attachments','queries','task-mode','task-mode-i18n','page-count-i18n','upload-i18n','progress','conversation','admin-trace','staged-uploads']){const m=load('lib/'+name+'.ts');modules['@/lib/'+name]=modules['./'+name]=m;}
+for(const name of ['execution-backend','worker-routing','server','model-providers','model-accounts','i18n','execution-backend-i18n','attachments','queries','task-mode','task-mode-i18n','page-count-i18n','upload-i18n','progress','conversation','admin-trace','staged-uploads']){const m=load('lib/'+name+'.ts');modules['@/lib/'+name]=modules['./'+name]=m;}
 const accounts=load('app/api/model-accounts/route.ts'),disconnect=load('app/api/model-accounts/[id]/route.ts').DELETE;
 const submit=load('app/api/jobs/route.ts').POST,claim=load('app/api/worker/route.ts').POST,profile=load('app/api/worker/[id]/model-profile/route.ts').POST;
 const resume=load('app/api/jobs/[id]/resume/route.ts').POST;

@@ -11,7 +11,7 @@ const binding={prepare(sql){let args=[];const s={bind(...v){args=v;return s;},as
 let user=null,admin=false,reads=0;const objects=new Map();
 modules['cloudflare:workers']={env:{DB:binding,FILES:{async get(key){reads++;const text=objects.get(key);return text===undefined?null:{json:async()=>JSON.parse(text)};}}}};
 modules['@/app/chatgpt-auth']={getChatGPTUser:async()=>user?{userId:user}:null};modules['@/lib/admin']={isAdmin:async()=>admin};
-modules['./execution-backend']=load('lib/execution-backend.ts');modules['@/lib/server']=load('lib/server.ts');modules['@/lib/attachments']=load('lib/attachments.ts');
+modules['./execution-backend']=load('lib/execution-backend.ts');modules['./worker-routing']=modules['@/lib/worker-routing']=load('lib/worker-routing.ts');modules['@/lib/server']=load('lib/server.ts');modules['@/lib/attachments']=load('lib/attachments.ts');
 modules['@/lib/admin-trace']=load('lib/admin-trace.ts');modules['@/lib/review-results']=load('lib/review-results.ts');
 const {publicReview}=modules['@/lib/review-results'];const get=load('app/api/jobs/[id]/reviews/route.ts').GET;
 const report={summary:'Clear argument <script>alert(1)</script>',pages_reviewed:[1,2],findings:[{id:'R1',pages:[2],severity:'required',observation:'Caption is wrong.',impact:'It changes the actor.',recommendation:'Correct the caption.',reasoning:'PRIVATE_REASONING'}],limitations:['Windows playback not verified.']};

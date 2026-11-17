@@ -16,7 +16,7 @@ const token='synthetic-worker-credential-at-least-32-chars';let user=null;
 modules['cloudflare:workers']={env:{DB:binding,FILES:storage,WORKER_TOKEN:token,ADMIN_USER_ID:'rick'}};
 modules['@/app/chatgpt-auth']={getChatGPTUser:async()=>user};
 modules['./admin-policy']=load('lib/admin-policy.ts');modules['./admin-accounts']=load('lib/admin-accounts.ts');
-modules['./execution-backend']=load('lib/execution-backend.ts');modules['@/lib/execution-backend']=modules['./execution-backend'];
+modules['./execution-backend']=load('lib/execution-backend.ts');modules['@/lib/execution-backend']=modules['./execution-backend'];modules['./worker-routing']=modules['@/lib/worker-routing']=load('lib/worker-routing.ts');
 for(const name of ['server','admin','attachments','progress','queries','admin-trace']){modules['@/lib/'+name]=load('lib/'+name+'.ts');modules['./'+name]=modules['@/lib/'+name];}
 modules['./server']=modules['@/lib/server'];modules['@/lib/native-edit-storage']=load('lib/native-edit-storage.ts');
 const post=load('app/api/worker/[id]/route.ts').POST,get=load('app/api/admin/jobs/[id]/trace/route.ts').GET;

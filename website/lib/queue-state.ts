@@ -1,4 +1,4 @@
-export const QUEUE_CAPACITY = 3;
+export const QUEUE_CAPACITY = 5;
 export type QueueHealth = {
   online: boolean;
   lastHeartbeat: number | null;
