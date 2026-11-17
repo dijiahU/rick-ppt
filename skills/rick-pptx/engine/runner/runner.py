@@ -114,6 +114,23 @@ def environment(job):
     result['PPTX_INTERACTIVE_PROXY']=str(job/'interactive-proxy.py')
     return result
 
+HELPER_SCRIPTS=('soffice-proxy.py','interactive-proxy.py','web-media-proxy.py','font-proxy.py','prefetch-proxy.py')
+
+def bind_helper_interpreter(cfg,job):
+    """Point executable helpers at the worker's Python. `env python3` may resolve
+    outside the task sandbox's read grants (e.g. a Homebrew python3 or the macOS
+    /usr/bin stub), so the renderer proxy failed to start under the sandbox."""
+    python=Path((cfg or {}).get('python') or sys.executable)
+    if not python.is_absolute():return
+    for name in HELPER_SCRIPTS:
+        target=job/name
+        if target.is_symlink() or not target.is_file():continue
+        data=target.read_bytes()
+        if data.startswith(b'#!/usr/bin/env python3\n'):
+            temporary=job/('.helper-'+uuid.uuid4().hex)
+            temporary.write_bytes(b'#!'+str(python).encode()+b'\n'+data.split(b'\n',1)[1])
+            temporary.chmod(0o755);os.replace(temporary,target)
+
 def prepare(cfg):
     job=Path(tempfile.mkdtemp(prefix='pptx-lab-job-')).resolve()
     (job/'tmp').mkdir()
@@ -201,6 +218,7 @@ def prepare(cfg):
         capabilities=json.loads((job/'capabilities.json').read_text())
         capabilities['native_renderer_fonts']=json.loads(font_catalog.read_text())
         (job/'capabilities.json').write_text(json.dumps(capabilities,ensure_ascii=False,indent=2))
+    bind_helper_interpreter(cfg,job)
     return job
 
 def sandbox(cfg,job,command):
@@ -529,6 +547,7 @@ def refresh_support(cfg,job):
         destination=job/name
         if destination.is_symlink():raise ValueError('Unsafe restored support directory')
         destination.mkdir(exist_ok=True)
+    bind_helper_interpreter(cfg,job)
     fonts=job/'fonts.conf'
     if fonts.exists():(backup/'fonts.conf').write_bytes(read_scoped(job,'fonts.conf',100000))
     prepare_fonts(job,cfg)

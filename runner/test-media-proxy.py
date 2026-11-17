@@ -1,3 +1,4 @@
+import os
 """Task client integration: prepare without blocking, then consume host replies."""
 import json
 from pathlib import Path
@@ -83,6 +84,12 @@ class ClientTests(unittest.TestCase):
             self.assertEqual(len(backups),1)
             self.assertEqual(backups[0].read_text(),'retained-old-guide')
             self.assertEqual((job/'PREFETCH.md').read_bytes(),Path(__file__).with_name('PREFETCH.md').read_bytes())
+            # Executable helpers use the worker's Python on prepare and refresh;
+            # `env python3` can resolve outside the sandbox read grants.
+            for name in runner.HELPER_SCRIPTS:
+                first=(job/name).read_bytes().split(b'\n',1)[0]
+                self.assertEqual(first,b'#!'+sys.executable.encode(),name)
+                self.assertTrue(os.access(job/name,os.X_OK),name)
 
 
 if __name__ == '__main__':
