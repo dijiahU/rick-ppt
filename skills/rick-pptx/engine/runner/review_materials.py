@@ -18,7 +18,7 @@ _ROLE_DOCUMENTS = {
     # rationale. Keep the allowlist explicit even if a caller accidentally copies
     # such files into it later.
     'content-first': (),
-    'content-evidence': ('request.json', 'first-view.json', 'references/index.json', 'audience-notes.json', 'edit-comparison/index.json'),
+    'content-evidence': ('request.json', 'first-view.json', 'references/index.json', 'audience-notes.json', 'edit-comparison/index.json', 'prior-content-findings.json'),
     # The visual pass sees requirements and source locations first. Author design
     # records/exported notes remain available for reading after canvas inspection.
     'visual': ('request.json', 'design-task.json', 'references/index.json', 'edit-comparison/index.json', 'refinement-comparison/index.json'),

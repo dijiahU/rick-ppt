@@ -174,9 +174,9 @@ def ensure_page(workspace, task_root, *, page, key, mode, source_slide=None, lay
         layout = _layout(ws.root, layout)
         if page <= len(identities) and _page_layout(ws.root, identities[page - 1]['part']) != layout:
             raise ValueError('Existing page uses another layout; it will not be replaced or cleared')
-        with tempfile.TemporaryDirectory(prefix='.native-page-', dir=ws.home) as temporary:
-            stage = Path(temporary) / 'parts'
-            backup = Path(temporary) / 'before'
+        with tempfile.TemporaryDirectory(prefix='.native-page-parts-', dir=ws.home) as stage_name, tempfile.TemporaryDirectory(prefix='.native-page-before-', dir=ws.home) as backup_name:
+            stage = Path(stage_name);stage.rmdir()
+            backup = Path(backup_name);backup.rmdir()
             shutil.copytree(ws.root, stage)
             existing = page <= len(identities)
             identity = identities[page - 1] if existing else _append(stage, layout)

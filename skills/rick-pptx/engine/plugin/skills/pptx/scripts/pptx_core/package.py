@@ -192,8 +192,10 @@ def export(ws, output=None):
                 resolved.is_relative_to(ws.root) or resolved.suffix.lower() != ".pptx"):
             raise PptxError("Export must target a new .pptx outside the workspace and original")
         wanted.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(prefix=".pptx-export-", dir=wanted.parent) as temp:
-            candidate = Path(temp) / "candidate.pptx"
+        # A sibling temporary file preserves atomic, no-overwrite hard-link
+        # publication on Landlock ABI 1, which prohibits cross-directory links.
+        with tempfile.NamedTemporaryFile(prefix=".pptx-export-", suffix=".pptx", dir=wanted.parent) as temporary:
+            candidate = Path(temporary.name)
             pack(ws.root, candidate)
             rendered = render_package(candidate, ws.home / "renders", expected_pages=len(slide_parts(ws.root)))
             ws.check_original()

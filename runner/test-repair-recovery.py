@@ -124,7 +124,7 @@ class RepairRecoveryTests(unittest.TestCase):
                 self.event=kwargs['on_event'];self.completed_turns={};self.active_turns={}
             def __enter__(self):return self
             def __exit__(self, *args):return False
-            def start_thread(self):
+            def start_thread(self,**options):  # accepts dynamic_tools etc. from phase()
                 self.thread='new-thread-'+uuid.uuid4().hex
                 return {'thread':{'id':self.thread}}
             def resume_thread(self, thread):

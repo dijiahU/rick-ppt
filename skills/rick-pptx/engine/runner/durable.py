@@ -28,5 +28,6 @@ JournalError = journal_module.JournalError
 AppServer = transport_module.AppServer
 RPCError = transport_module.RPCError
 TransportError = transport_module.TransportError
+AppServerProcessExit = transport_module.AppServerProcessExit
 task_configuration = transport_module.task_configuration
 redact_text = transport_module.redact_text

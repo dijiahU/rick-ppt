@@ -8,10 +8,11 @@ from urllib.parse import urlsplit,parse_qs
 from attachments import MAX_FILE
 
 class WorkerHTTPError(RuntimeError):
-    def __init__(self,action,*,status=0,curl=0,reason='request failed',retryable=False):
+    def __init__(self,action,*,status=0,curl=0,reason='request failed',retryable=False,transport='curl'):
         self.action,self.status,self.curl,self.retryable=action,status,curl,retryable
         # Never include response bodies, headers, request URLs or credentials.
-        super().__init__(f'{action}: {reason}; HTTP {status or "unavailable"}; curl {curl}')
+        detail=f'curl {curl}' if transport=='curl' else 'transport '+transport
+        super().__init__(f'{action}: {reason}; HTTP {status or "unavailable"}; {detail}')
 
 class HeartbeatLost(RuntimeError):
     pass
@@ -22,7 +23,32 @@ class TaskPaused(RuntimeError):
 class PowerInterrupted(RuntimeError):
     """Host left AC power; use normal checkpoint/recoverable failure handling."""
 
+def _pooled_request(cfg,path,body,headers,action,limit,maximum,attempts,raw):
+    from site_transport import exchange,ExchangeError
+    for attempt in range(attempts):
+        try:
+            try:
+                status,data=exchange(cfg['site'],path,headers,body,proxy=cfg.get('site_http_proxy'),timeout=limit,maximum=maximum)
+            except ExchangeError as error:
+                raise WorkerHTTPError(action,reason=str(error),retryable=error.retryable,transport='pooled') from None
+            if not 200<=status<300:
+                raise WorkerHTTPError(action,status=status,retryable=status in (408,425,429,500,502,503,504),transport='pooled')
+            if raw:return data
+            try:
+                value=json.loads(data)
+                if not isinstance(value,dict):raise ValueError()
+            except (ValueError,UnicodeDecodeError):
+                raise WorkerHTTPError(action,status=status,reason='invalid JSON response',retryable=True,transport='pooled') from None
+            return value
+        except WorkerHTTPError as caught:
+            error=caught
+        if not error.retryable or attempt+1==attempts:raise error
+        print(f'Worker request retry {attempt+1}/{attempts-1}: {error}',flush=True)
+        time.sleep((1,3)[attempt])
+
 def request(cfg,path,body=b'{}',lease=None,raw=False):
+    transport=cfg.get('site_http_transport','curl')
+    if transport not in ('curl','pooled'):raise ValueError('Unknown site HTTP transport')
     action=parse_qs(urlsplit(path).query).get('action',['claim'])[0]
     headers={'Authorization':'Bearer '+cfg['token'],'Content-Type':'application/json'}
     if lease:headers['X-Job-Lease']=lease
@@ -36,6 +62,7 @@ def request(cfg,path,body=b'{}',lease=None,raw=False):
     # Repeating delivery-ready only renews the same pending state. The server
     # rechecks the lease, revision and native-edit fences on every attempt.
     attempts=3 if lease and action in ('attachment','delivery-ready','complete','bundle','fail') else 1
+    if transport=='pooled':return _pooled_request(cfg,path,body,headers,action,limit,maximum,attempts,raw)
     with tempfile.NamedTemporaryFile(prefix='pptx-request-') as payload, tempfile.NamedTemporaryFile(prefix='pptx-response-') as response:
         payload.write(body);payload.flush()
         config='url = '+json.dumps(cfg['site'].rstrip('/')+path)+'\nrequest = "POST"\n'
@@ -43,6 +70,9 @@ def request(cfg,path,body=b'{}',lease=None,raw=False):
         config+='data-binary = '+json.dumps('@'+payload.name)+'\n'
         command=['/usr/bin/curl','--silent','--show-error','--fail-with-body','--connect-timeout','8','--max-time',str(limit),
                  '--max-filesize',str(maximum),'--output',response.name,'--write-out','%{http_code}','--config','-']
+        if cfg.get('deployment_environment') == 'local':
+            command.insert(1, '--disable')  # Ignore per-user curlrc for local queue traffic.
+            command.extend(['--noproxy', '*'])
         for attempt in range(attempts):
             response.seek(0);response.truncate()
             try:

@@ -21,6 +21,10 @@ VISUAL_COVERAGE_MARKER = '<!-- visual-coverage/v1 -->'
 VISUAL_KINDS = ('embedded_image', 'native_illustration', 'native_schematic', 'native_chart', 'document_example', 'text_only')
 PICTORIAL_KINDS = {'embedded_image', 'native_illustration', 'native_schematic'}
 VISUAL_STATES = ('sufficient', 'text_appropriate', 'missing', 'uncertain')
+GENERATED_LOOK = {'version': 1}
+GENERATED_LOOK_MARKER = '<!-- generated-look/v1 -->'
+GENERATED_LOOK_LEVELS = ('clear', 'some_tells', 'pronounced')
+TELL_FIELDS = ('pages', 'region', 'resembles', 'why_unjustified', 'direction', 'scope', 'finding_ids')
 GUIDE = 'references/design-completion.md'
 STATES = ('ready', 'needs_revision', 'uncertain')
 RESOLUTIONS = ('resolved', 'partial', 'remains', 'regressed', 'not_supported')
@@ -46,6 +50,12 @@ def craft_enabled(cfg):
 
 def coverage_enabled(cfg):
     return craft_enabled(cfg) and VISUAL_COVERAGE_MARKER in read_scoped(Path(cfg['plugin'])/'skills/pptx', GUIDE, 30000).decode()
+
+
+def generated_look_enabled(cfg):
+    """The pinned visual-review guide opts in; the uncalibrated level never gates readiness."""
+    return enabled(cfg) and GENERATED_LOOK_MARKER in read_scoped(
+        Path(cfg['plugin'])/'skills/pptx', 'references/visual-review.md', 100000).decode()
 
 
 def coverage_inventory(root, pages):
@@ -105,7 +115,7 @@ def response_needed(receipt):
     return bool(presentation_ids(receipt)) or readiness(receipt.get('visual', {})) == 'needs_revision'
 
 
-def schema(base, comparison=None, *, craft=False, coverage=False):
+def schema(base, comparison=None, *, craft=False, coverage=False, generated_look=False):
     value = copy.deepcopy(base)
     assessment = value['properties']['design_assessment']
     assessment['properties'].update(
@@ -140,6 +150,17 @@ def schema(base, comparison=None, *, craft=False, coverage=False):
         assessment['required'].append('visual_coverage')
         assessment['properties']['image_requirement_exemption'] = {'type': ['string', 'null']}
         assessment['required'].append('image_requirement_exemption')
+    if generated_look:
+        assessment['properties']['generated_look'] = {'type': 'string', 'enum': list(GENERATED_LOOK_LEVELS)}
+        assessment['properties']['generated_tells'] = {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'properties': {
+                'pages': {'type': 'array', 'items': {'type': 'integer'}},
+                'region': {'type': 'string'}, 'resembles': {'type': 'string'},
+                'why_unjustified': {'type': 'string'}, 'direction': {'type': 'string'},
+                'scope': {'type': 'string', 'enum': ['page', 'deck']},
+                'finding_ids': {'type': 'array', 'items': {'type': 'string'}}},
+            'required': list(TELL_FIELDS)}}
+        assessment['required'] += ['generated_look', 'generated_tells']
     if comparison is not None:
         value['properties']['design_comparison'] = {
             'type': 'object', 'additionalProperties': False,
@@ -244,7 +265,34 @@ def validate_coverage(report, pages, picture_counts=None, request_text=None):
             raise ValueError('Charts/document text do not meet the image requirement; identify a required pictorial correction')
 
 
-def validate(report, comparison=None, *, craft=False, pages=None, coverage=False, picture_counts=None, request_text=None):
+def validate_generated_look(report, pages):
+    """Structure only: every listed tell is located and carried by real findings.
+
+    No count, palette rule or readiness consequence is enforced here; the level is
+    an uncalibrated model judgment recorded for evidence and later calibration.
+    """
+    assessment = report['design_assessment']
+    level, tells = assessment.get('generated_look'), assessment.get('generated_tells')
+    if level not in GENERATED_LOOK_LEVELS or not isinstance(tells, list):
+        raise ValueError('Generated-look check needs a level and a tell list')
+    if (level == 'clear') != (not tells):
+        raise ValueError('Generated-look level must match the listed tells (clear means none listed)')
+    findings = {f['id']: f for f in report['findings']}
+    for tell in tells:
+        if (not isinstance(tell, dict) or set(tell) != set(TELL_FIELDS)
+                or tell['scope'] not in ('page', 'deck')
+                or not isinstance(tell['pages'], list) or not tell['pages']
+                or any(type(p) is not int or not 1 <= p <= pages for p in tell['pages'])
+                or len(set(tell['pages'])) != len(tell['pages'])
+                or any(not isinstance(tell[k], str) or not 2 <= len(tell[k].strip()) <= 1200
+                       for k in ('region', 'resembles', 'why_unjustified', 'direction'))):
+            raise ValueError('Each generated-look tell needs located pages/region, the matched default, the missing reason and a direction')
+        if (not tell['finding_ids'] or not _ids(tell['finding_ids'], findings)
+                or any(not set(findings[i]['pages']) & set(tell['pages']) for i in tell['finding_ids'])):
+            raise ValueError('Each generated-look tell must be carried by actual findings on its pages')
+
+
+def validate(report, comparison=None, *, craft=False, pages=None, coverage=False, picture_counts=None, request_text=None, generated_look=False):
     assessment = report.get('design_assessment', {})
     state = readiness(report)
     ids = [f['id'] for f in report['findings']]
@@ -257,6 +305,7 @@ def validate(report, comparison=None, *, craft=False, pages=None, coverage=False
     if coverage:
         if not craft:raise ValueError('Visual coverage requires craft')
         validate_coverage(report, pages, picture_counts, request_text)
+    if generated_look:validate_generated_look(report, pages)
     value = report.get('design_comparison')
     if comparison is None:
         if value is not None:raise ValueError('Design comparison has no host-bound baseline')
@@ -302,8 +351,12 @@ def comparison_input(root, images, digest):
             'visual_input_complete': complete, 'finding_ids': [f['id'] for f in index['findings']]}
 
 
-def selection(baseline, receipt):
-    """Keep an explicitly unfinished improvement, but reject visual regressions."""
+def selection(baseline, receipt, introduced=None):
+    """Keep an explicitly unfinished improvement, but reject visual regressions.
+
+    introduced: required findings the response actually introduced (host rule in
+    design_feedback.introduced_required). None keeps the historical any-required test.
+    """
     if baseline.get('design_completion') != CONTRACT:return None
     comparison = receipt.get('visual', {}).get('design_comparison')
     decision = {'baseline_sha256': baseline['artifact_sha256'],
@@ -313,7 +366,9 @@ def selection(baseline, receipt):
     if (comparison.get('baseline_sha256') != decision['baseline_sha256']
             or comparison.get('candidate_sha256') != decision['candidate_sha256']):
         raise ValueError('Design selection identity mismatch')
-    if any(f['severity'] == 'required' for k in ('content', 'visual') for f in receipt[k]['findings']):
+    required = (bool(introduced) if introduced is not None else
+                any(f['severity'] == 'required' for k in ('content', 'visual') for f in receipt[k]['findings']))
+    if required:
         decision['reason'] = 'required_regression'
     elif comparison.get('regression_findings') or any(r['status'] == 'regressed' for r in comparison.get('resolutions', [])):
         decision['reason'] = 'design_regression'

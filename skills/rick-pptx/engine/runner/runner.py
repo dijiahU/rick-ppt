@@ -1,4 +1,4 @@
-"""PPTX LAB local queue bridge. macOS only; jobs run under restricted Codex permissions."""
+"""PPTX LAB queue bridge; tasks run with restricted filesystem/network access."""
 import argparse
 import io
 import hashlib
@@ -35,11 +35,15 @@ def prefetch_capability(cfg=None):
         'use':'Submit concrete later-page source searches or selected illustration generation, then continue the current page. Batch status/get return immediately. Inspect and choose ready results before use; assistants never edit the deck. Known media URLs use web-media-proxy.py --submit-only. Respect selected source/asset routes; reuse valid saved results and do not automatically retry failed/interrupted work.'}
 
 def prepare_fonts(job,cfg=None):
-    from font_assets import configure,copy_fonts,manifest,STARTER_IDS,prepare_default_fonts
+    from font_assets import configure,copy_fonts,manifest,STARTER_IDS,prepare_default_fonts,deployment_defaults
     (job/'font-requests').mkdir(exist_ok=True)
     shutil.copyfile(ROOT/'font-proxy.py',job/'font-proxy.py')
     shutil.copyfile(ROOT/'font-catalog.json',job/'font-catalog.json')
     shutil.copyfile(ROOT/'FONTS.md',job/'FONTS.md')
+    # Review/verification must start with the author's exact verified bytes.
+    # Defaults may fill missing ids, never preempt an already admitted face.
+    source=(cfg or {}).get('_task_font_source')
+    if source:copy_fonts(Path(source),job)
     installed={x['id'] for x in manifest(job)['fonts']}
     cache=Path((cfg or {}).get('font_cache_directory',ROOT/'font-cache.local'))
     cache.mkdir(exist_ok=True)
@@ -51,6 +55,10 @@ def prepare_fonts(job,cfg=None):
         'catalog':'font-catalog.json','installed':'fonts/index.json','same_files_in_renderer':True,
         'defaults':{'latin':'Times New Roman','east_asian':'SimSun','target':'Windows WPS',**defaults},
         'use':'Default new decks to Times New Roman for English/Latin and SimSun (宋体) for Chinese; use the genuine files in fonts/index.json for metrics and rendering. Preserve scoped templates and explicit user font choices. Special fonts need actual glyph/weight/name checks plus recipient availability or verified embedding; downloads are not embedding. Do not silently substitute another family or claim Windows WPS verification from Mac/LibreOffice previews. Read FONTS.md.'}
+    capabilities['font_assets']['defaults'].update(deployment_defaults())
+    if sys.platform=='linux':
+        capabilities['font_assets']['defaults'].update(latin='DejaVu Serif',east_asian='Noto Serif CJK SC',target='Linux LibreOffice preview')
+        capabilities['font_assets']['use']='On this server the default installed families are DejaVu Serif and Noto Serif CJK SC. Noto Sans CJK SC is also installed. Honor explicitly requested fonts; report missing proprietary fonts instead of claiming Times New Roman or SimSun is available. Actual PowerPoint/WPS playback and font embedding remain unverified. Read FONTS.md for optional verified font acquisition.'
     (job/'capabilities.json').write_text(json.dumps(capabilities,ensure_ascii=False,indent=2))
 
 def settings():
@@ -69,16 +77,18 @@ def settings():
         if os.environ.get(environment_key):data[key]=os.environ[environment_key]
     for key in ('site','token','plugin','python','blank'):
         if not data.get(key): raise RuntimeError(f'Missing setting: {key}')
-    if not data['site'].startswith('https://'): raise RuntimeError('HTTPS required')
+    from environment_profile import validate as validate_environment
+    validate_environment(data, ROOT)
     if len(data['token'])<32: raise RuntimeError('Worker token too short')
     data['progressive_canvas']=True
     data['single_file_pptx']=True
-    data['parallel_reviews']=True
+    data.setdefault('parallel_reviews',True)
     return data
 
 def permission_args(cfg,job):
     # Exact runtime read grants only. No parent project, private home or other jobs.
     reads=[str(Path(cfg['plugin']).resolve()),str(Path(cfg['python']).parent.parent.resolve()),'/opt/homebrew','/Applications/LibreOffice.app','/System/Library/Fonts','/Library/Fonts']
+    if sys.platform=='linux':reads += [str(ROOT.parent/'deploy'),'/root/miniconda3/lib/python3.12','/root/miniconda3/bin/python3.12']
     # A :tmpdir alias resolves after TMPDIR is set to the task's own directory,
     # and otherwise denies precisely the scratch path intended for this job.
     fs={':root':'deny',':minimal':'read',str(Path(tempfile.gettempdir()).resolve()):'deny',':slash_tmp':'deny',str(job):'write'}
@@ -92,6 +102,11 @@ def environment(job):
     allow=('PATH','LANG','LC_ALL','HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','NO_PROXY')
     result={k:v for k,v in os.environ.items() if k in allow}
     result['PATH']='/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin'
+    if sys.platform=='linux':result['PATH']=str(ROOT.parent/'deploy/bin')+':/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
+    if sys.platform=='linux':result['PPTX_RENDER_TIMEOUT_SECONDS']='210'
+    if sys.platform=='linux':
+        from linux_render import supports_page_range
+        if supports_page_range():result['PPTX_RENDER_PAGE_RANGE']='1'
     result['TMPDIR']=str(job/'tmp')
     result['TMPPREFIX']=str(job/'tmp/zsh')
     result['FONTCONFIG_FILE']=str(job/'fonts.conf')
@@ -197,6 +212,46 @@ def render_requests(job,trajectory=None,tick=None):
     try: _render_requests_fd(job,qfd,trajectory=trajectory,tick=tick)
     finally: os.close(qfd)
 
+def _publish_render_reply(qfd,reply,result):
+    """Publish a complete reply that the already-running task uid can read."""
+    temporary=uuid.uuid4().hex+'.host-pending'
+    try:
+        fd=os.open(temporary,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=qfd)
+        with os.fdopen(fd,'w') as stream:
+            if sys.platform=='linux' and os.geteuid()==0:
+                owner=os.fstat(qfd)
+                os.fchown(stream.fileno(),owner.st_uid,owner.st_gid)
+            json.dump(result,stream)
+        os.replace(temporary,reply,src_dir_fd=qfd,dst_dir_fd=qfd)
+    finally:
+        try:os.unlink(temporary,dir_fd=qfd)
+        except FileNotFoundError:pass
+
+def _stage_render_fonts(job,font_dir):
+    """Release verified source buffers before the Office child is started."""
+    from font_assets import verified_files,inspect as inspect_font
+    records=[]
+    for relative,data in verified_files(job).items():
+        if relative.endswith(('.ttf','.otf')):
+            (font_dir/Path(relative).name).write_bytes(data)
+            metadata=inspect_font(data)
+            records.append({'id':Path(relative).stem.rsplit('-',1)[0],
+                            **{k:metadata[k] for k in ('family','style','weight','sha256')}})
+    return records
+
+def _release_render_staging_memory():
+    # FontTools objects can form cycles; closing a font does not immediately
+    # collect those objects or return glibc's freed large buffers to the OS.
+    # Release only unused host staging memory before starting the Office child.
+    import gc
+    gc.collect()
+    if sys.platform=='linux':
+        import ctypes
+        trim=getattr(ctypes.CDLL(None),'malloc_trim',None)
+        if trim is not None:
+            trim.argtypes=[ctypes.c_size_t];trim.restype=ctypes.c_int
+            trim(0)
+
 def _render_requests_fd(job,qfd,trajectory=None,tick=None):
     from trajectory import record as capture
     names=set(os.listdir(qfd))
@@ -215,6 +270,9 @@ def _render_requests_fd(job,qfd,trajectory=None,tick=None):
                 args=json.loads(stream.read(16001))['args']
             if not isinstance(args,list) or not all(isinstance(x,str) for x in args):raise ValueError('Invalid arguments')
             if len(args)>12 or '--convert-to' not in args or '--outdir' not in args:raise ValueError('Conversion required')
+            from render_options import requested_page
+            selected_page=requested_page(args)
+            if selected_page is not None and sys.platform!='linux':raise ValueError('Selected-page broker is available on Linux')
             source=Path(args[-1]).resolve(strict=True)
             destination=Path(args[args.index('--outdir')+1]).resolve(strict=True)
             if not source.is_relative_to(job) or not destination.is_relative_to(job):raise ValueError('Path outside task')
@@ -223,22 +281,45 @@ def _render_requests_fd(job,qfd,trajectory=None,tick=None):
             from render_inputs import render_input,publish_pdf
             from progress import read_scoped
             frozen_bytes,render_environment=render_input(job,source)
+            if selected_page is not None:
+                import io,zipfile,xml.etree.ElementTree as ET
+                with zipfile.ZipFile(io.BytesIO(frozen_bytes)) as archive:
+                    presentation=ET.fromstring(archive.read('ppt/presentation.xml'))
+                count=len(presentation.findall('.//{http://schemas.openxmlformats.org/presentationml/2006/main}sldId'))
+                if selected_page>count:raise ValueError('Requested PDF page is outside the presentation')
+                render_environment['exported_pages']=[selected_page]
             input_stage=tempfile.TemporaryDirectory(prefix='pptx-render-input-')
             input_dir=Path(input_stage.name)/'input';input_dir.mkdir()
             output_dir=Path(input_stage.name)/'output';output_dir.mkdir()
             font_dir=Path(input_stage.name)/'fonts';font_dir.mkdir()
-            from font_assets import verified_files,inspect as inspect_font
-            font_files=verified_files(job)
-            actual_font_records=[]
-            for relative,data in font_files.items():
-                if relative.endswith(('.ttf','.otf')):
-                    (font_dir/Path(relative).name).write_bytes(data)
-                    metadata=inspect_font(data)
-                    actual_font_records.append({'id':Path(relative).stem.rsplit('-',1)[0],**{k:metadata[k] for k in ('family','style','weight','sha256')}})
+            actual_font_records=_stage_render_fonts(job,font_dir)
             (font_dir/'fonts.conf').write_text('<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig><include>/etc/fonts/fonts.conf</include><dir>/fonts</dir><cachedir>/tmp/font-cache</cachedir></fontconfig>')
             render_environment['font_files']=actual_font_records
             render_environment['measurement_environment']='Task-local verified font files shared with production renderer; geometry remains an estimate'
             frozen_source=input_dir/source.name;frozen_source.write_bytes(frozen_bytes)
+            if sys.platform=='linux':
+                from linux_render import render,renderer_version
+                _release_render_staging_memory()
+                capture(trajectory,'artifact',frozen_bytes,source.name,'render-input',{'request_id':identifier,**render_environment})
+                converted=render(job,input_dir,output_dir,font_dir,source.name,render_environment,tick=tick,page=selected_page)
+                if converted.returncode==0:
+                    pdf=read_scoped(output_dir,source.stem+'.pdf',60*1024*1024)
+                    if not pdf.startswith(b'%PDF-'):raise ValueError('Renderer produced invalid PDF')
+                    publish_pdf(job,destination,source.stem+'.pdf',pdf)
+                input_stage.cleanup()
+                capture(trajectory,'emit','render.result',{'request_id':identifier,'returncode':converted.returncode,'stdout':converted.stdout,'stderr':converted.stderr})
+                if converted.returncode==0:
+                    render_environment['renderer_image']='linux-landlock-libreoffice'
+                    render_environment['renderer_version']=renderer_version()
+                    render_environment['font_diagnostics']='Font families are installed on Linux; target PowerPoint/WPS playback is not verified.'
+                    capture(trajectory,'emit','render.environment',render_environment)
+                    capture(trajectory,'artifact_path',job,destination/(source.stem+'.pdf'),'render-output',{'request_id':identifier})
+                    capture(trajectory,'artifact',json.dumps(render_environment,ensure_ascii=False,indent=2).encode(),'render-environment.json','render-environment',{'request_id':identifier})
+                timings=getattr(converted,'timings',{})
+                if timings:capture(trajectory,'emit','render.timing',{'request_id':identifier,**timings})
+                result={'returncode':converted.returncode,'stdout':converted.stdout[-2000:],'stderr':converted.stderr[-2000:],'environment':render_environment,'timings':timings}
+                _publish_render_reply(qfd,reply,result)
+                continue
             source_arg='/input/'+source.name
             output_arg='/output'
             command=['/usr/local/bin/docker','run','--rm','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','128','--memory','2g','--cpus','2','--user',f'{os.getuid()}:{os.getgid()}','--tmpfs','/tmp:rw,nosuid,nodev,size=512m',
@@ -286,10 +367,7 @@ def _render_requests_fd(job,qfd,trajectory=None,tick=None):
                 capture(trajectory,'artifact_path',job,destination/(source.stem+'.pdf'),'render-output',{'request_id':identifier})
             result={'returncode':converted.returncode,'stdout':converted.stdout[-2000:],'stderr':converted.stderr[-2000:],'environment':render_environment}
         except Exception as error:result['stderr']=f'Isolated render failed: {type(error).__name__}'
-        temporary=uuid.uuid4().hex+'.host-pending'
-        fd=os.open(temporary,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=qfd)
-        with os.fdopen(fd,'w') as stream:stream.write(json.dumps(result))
-        os.replace(temporary,reply,src_dir_fd=qfd,dst_dir_fd=qfd)
+        _publish_render_reply(qfd,reply,result)
 
 def run_with_renderer(cfg,job,command,timeout=150,tick=None,media_broker=None,trajectory=None):
     from interactive_host import InteractiveHostBroker
@@ -354,15 +432,15 @@ def self_test(cfg):
     # A synthetic canary outside the job tests denial without reading user files.
     canary=ROOT/('isolation-canary-'+uuid.uuid4().hex+'.txt')
     with canary.open('x') as stream:stream.write('NON_SECRET_TEST_CANARY')
-    test='import pathlib,socket; p=pathlib.Path('+repr(str(canary))+'); denied=False\ntry: p.read_text()\nexcept PermissionError: denied=True\nassert denied, "outside read was allowed"\ns=socket.socket(); s.settimeout(2); denied=False\ntry: s.connect(("1.1.1.1",443))\nexcept PermissionError: denied=True\nexcept OSError: pass\nassert denied,"network was not explicitly denied"\npathlib.Path("allowed.txt").write_text("ok"); print("PASS: outside reads denied, network denied, job writes allowed")'
+    test='import pathlib,socket; p=pathlib.Path('+repr(str(canary))+'); denied=False\ntry: p.read_text()\nexcept PermissionError: denied=True\nassert denied, "outside read was allowed"\ndenied=False\ntry: s=socket.socket(); s.settimeout(2); s.connect(("1.1.1.1",443))\nexcept PermissionError: denied=True\nexcept OSError: pass\nassert denied,"network was not explicitly denied"\npathlib.Path("allowed.txt").write_text("ok"); print("PASS: outside reads denied, network denied, job writes allowed")'
     subprocess.run(sandbox(cfg,job,[cfg['python'],'-c',test]),env=environment(job),check=True,timeout=30)
     subprocess.run(sandbox(cfg,job,[cfg['python'],str(Path(cfg['plugin'])/'skills/pptx/scripts/pptx.py'),'--help']),env=environment(job),check=True,timeout=30,stdout=subprocess.DEVNULL)
     print('Self-test directory:',job)
 
 def codex_command(cfg,job):
-    command=['codex','exec','--ignore-user-config','--ignore-rules','--skip-git-repo-check','--json','-C',str(job),*permission_args(cfg,job),'-c','default_permissions="pptx_job"','-c','approval_policy="never"','-c','shell_environment_policy.inherit="none"']
+    command=['codex','exec','--ignore-user-config','--ignore-rules','--skip-git-repo-check','--json','-C',str(job),*permission_args(cfg,job),'-c','project_doc_max_bytes=0','-c','default_permissions="pptx_job"','-c','approval_policy="never"','-c','shell_environment_policy.inherit="none"']
     command+=['-c','web_search="live"','-c','features.image_generation=true']
-    safe_tools={k:v for k,v in environment(job).items() if k in ('PATH','TMPDIR','TMPPREFIX','FONTCONFIG_FILE','PPTX_SOFFICE','PPTX_INTERACTIVE_PROXY')}
+    safe_tools={k:v for k,v in environment(job).items() if k in ('PATH','TMPDIR','TMPPREFIX','FONTCONFIG_FILE','PPTX_SOFFICE','PPTX_INTERACTIVE_PROXY','PPTX_RENDER_TIMEOUT_SECONDS','PPTX_RENDER_PAGE_RANGE')}
     command+=['-c','shell_environment_policy.set={'+','.join(json.dumps(k)+'='+json.dumps(v) for k,v in safe_tools.items())+'}']
     for feature in ('apps','plugins','hooks','browser_use','browser_use_external','computer_use','chronicle','memories','shell_snapshot','multi_agent'):
         command+=['-c',f'features.{feature}=false']
@@ -455,6 +533,11 @@ def refresh_support(cfg,job):
     if fonts.exists():(backup/'fonts.conf').write_bytes(read_scoped(job,'fonts.conf',100000))
     prepare_fonts(job,cfg)
     capabilities=json.loads(read_scoped(job,'capabilities.json',2*1024*1024))
+    capabilities.setdefault('progressive_authoring',{}).update(
+        guide='PROGRESS.md',helper='public-progress.py',
+        pptx_cli=str(Path(cfg['plugin'])/'skills/pptx/scripts/pptx.py'))
+    if isinstance(capabilities.get('interactive_content'),dict):
+        capabilities['interactive_content']['runtime']=str(Path(cfg['plugin'])/'runtime')
     capabilities['material_prefetch']=prefetch_capability(cfg)
     from browser_sources import capability as browser_capability
     capabilities.pop('browser_research',None)
@@ -613,7 +696,7 @@ def execute_task(cfg,task):
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--self-test',action='store_true');parser.add_argument('--codex-smoke',action='store_true');parser.add_argument('--render-smoke',action='store_true');parser.add_argument('--model-profile',type=Path);parser.add_argument('--model-smoke',action='store_true');parser.add_argument('--once',action='store_true');parser.add_argument('--wait-for-worker',action='store_true',help='Wait for a draining supervisor to release its lock');args=parser.parse_args()
-    if sys.platform!='darwin': raise SystemExit('This runner is validated only for macOS.')
+    if sys.platform not in ('darwin','linux'): raise SystemExit('Unsupported worker operating system.')
     cfg=settings()
     profile_path=args.model_profile or cfg.get('model_profile')
     if profile_path:
@@ -667,7 +750,7 @@ def main():
     native_editor=start_native_editor(cfg,request,stopping) if not args.once else None
     try:
         serve(lambda:render_health.claim(lambda:request(cfg,'/api/worker',body=claim_body).get('job')),lambda task:execute_task(cfg,task),stopping,
-              lambda error:print('Bridge error:',type(error).__name__,public_text(str(error)),flush=True),once=args.once)
+              lambda error:print('Bridge error:',type(error).__name__,public_text(str(error)),flush=True),once=args.once,capacity=int(cfg.get('capacity',1 if sys.platform=='linux' else 3)))
     finally:
         stopping.set()
         if worker_heartbeat:worker_heartbeat.join(timeout=30)

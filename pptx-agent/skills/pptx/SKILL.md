@@ -93,126 +93,91 @@ its success satisfies the planning check. Otherwise run workflow_decisions.py
 
 Use [Shared aesthetic judgment](references/design-completion.md#shared-aesthetic-judgment)
 from planning through rendered refinement: task authenticity, visible relationships
-and accomplished craft must work together. Review feedback identifies gaps and
-visible improvement targets; the continuing author owns the composition.
+and accomplished craft work together. Review feedback names gaps and visible targets;
+the continuing author owns the composition. Read [Art direction](references/art-direction.md)
+once at design entry and use [Sequential craft](references/content-led-composition.md)
+while authoring; [Worked design decisions](references/art-direction-examples.md) show
+decisions and rendered checks (the host supplies them at first author entry when
+available). Apply operations to current evidence, keeping composition open.
 
-The continuing designer reads [Art direction](references/art-direction.md) once
-at design entry and uses [Sequential craft](references/content-led-composition.md)
-while authoring. The guide gives concrete ways to develop focus, scale, spatial
-relationships, typography, imagery and rhythm without a fixed page taxonomy.
-[Worked design decisions](references/art-direction-examples.md) demonstrate decisions and rendered checks. The host supplies this short guide at first author entry when available; otherwise read a relevant example. Apply the operation to current evidence, keeping composition open.
+Keep one short provisional deck-wide agreement in design_direction and source notes;
+test it on the first substantive page in normal order and recompose before propagating
+if material or render defeats it. Build the main visual relationship before details,
+keep coherent semantic encoding, and let proportion, density and image/type relations
+follow content. For new decks or substantive redesigns with creative latitude,
+actively explore relevant art/design/scientific illustration, inspect actual works and
+transfer useful relationships (procedure in Research and assets; no artist list,
+quota or separate inspiration stage; record only inspected/applied work). A template
+protects its required elements, not every body-page design. For poster, editorial,
+identity or image/type references consider [Pinterest](references/pinterest.md)
+alongside original portfolios; links alone are not inspection.
 
-Establish one short, provisional deck-wide visual agreement in the existing
-design_direction and source notes, then resolve the current page's composition
-and wording. Test the direction on the first substantive page exercising it in
-normal presentation order. If the actual material or render defeats the idea,
-recompose before propagating it. Preserve facts, scope and effective semantic
-encoding; an early layout choice is revisable, not a delivery constraint.
-Let the audience inspect useful subjects, mechanisms, changes and comparisons.
-Build the main visual relationship before supporting details; use actual renders
-to refine expression as well as technical fit. Retain coherent semantic encoding
-while allowing content-led changes in proportion, density and image/type relations.
+Start from the required template/source, otherwise assets/blank.pptx. One continuing
+designer makes pages in presentation order; helpers may prepare later-page
+evidence/assets via the host's PREFETCH.md when available — inspect and choose their
+results, and never assume future files. Use [native pages](references/native-pages.md),
+[native batches](references/native-batch.md) and [native canvas](references/native-canvas.md)
+for pages, font measurement, shapes, crops/layers and editable charts (helpers
+implement chosen objects, not a layout); [image recreation](references/image-recreation.md)
+for supplied-image recreation; [execution continuity](references/execution-continuity.md)
+to resume from current files with all requirements intact.
 
-For new decks or substantive redesigns with creative latitude, actively explore
-whether relevant art/design/scientific illustration can strengthen the direction.
-Inspect the actual work and transfer useful visual relationships into current pages.
-A template protects its required elements; it does not supply every body-page design.
-Use the reference procedure in Research and assets; no artist list, reference quota
-or separate inspiration stage. Record only actually inspected/applied work.
-For relevant poster, editorial, identity or image/type references, consider
-[Pinterest](references/pinterest.md) alongside original portfolios. Use the
-current host's search/browser and image channels; links alone are not inspection.
-
-Start from the supplied template/source when required, otherwise assets/blank.pptx.
-Use one continuing designer/native author and make pages in presentation order. Helpers may prepare
-independent later-page evidence/assets through the host's PREFETCH.md when available; inspect and
-choose their results. Work with actual assets, not assumed future files.
-
-Use [native pages](references/native-pages.md), [native batches](references/native-batch.md)
-and [native canvas](references/native-canvas.md) when available for page creation,
-font measurements, shapes, image crops/layers and editable charts. Helpers implement
-chosen objects, not a universal page layout. Technical references are linked below.
-For supplied-image recreation, use [image recreation](references/image-recreation.md)
-for source-pixel coordinates, editable paths and hash-bound local comparisons.
-Continue from current files using [execution continuity](references/execution-continuity.md);
-preserve all source/design requirements when recovering an interrupted phase.
-
-New presentations require meaningful native click reveals. Plan entry context,
+New presentations require meaningful native click reveals: plan entry context,
 semantic click groups, persistent orientation and a complete readable final view.
-Static covers and single-message pages are allowed; an entirely static deck or
-cosmetic title entrance does not satisfy this requirement. Read
-[Animations](references/animations.md); preserve faithful-source/scoped-edit behavior.
+Static covers and single-message pages are allowed; an entirely static deck or a
+cosmetic title entrance is not. Read [Animations](references/animations.md); keep
+faithful-source/scoped-edit behavior.
 
-Develop each page through a build-render-view-revise loop. Render once its main
-composition, real material and key wording can be judged, before polishing minor
-decoration. View the exact preview through the image channel at normal reading
-scale and inspect uncertain detail at full size. Use the existing page-design host
-context with page_id and workspace after rendering when supported; otherwise open
-the returned image with the available viewer. Paths and render success are not viewing.
-Use the rendered page to choose the most useful feasible design improvement.
-Locate the affected region and decide local repair or substantial recomposition
-within scope; implement it while authoring, then render/view the result before
-proceeding. Final optional repair does not replace developing the page. Keep earlier
-renders and snapshot before substantial recomposition; revert a regression when
-appropriate. Within creative scope, retain a first result when supported meaning,
-the intended visual task and audience-appropriate composition/craft are resolved
-at reading scale. Validity/readability alone is insufficient. Address consequential
-visual gaps within existing time/repair bounds; keep the best verified version at
-the limit and report remaining design limits. No forced edit, revision quota or
-new approval stage. Preserve faithful/scoped work.
-At section boundaries compare saved unchanged previews for sequence coherence.
-The page-design helper can optionally bind consequential author observations to
-render bytes in existing notes; these records grant no independent review pass.
+Develop each page by build-render-view-revise (art-direction.md §6). Render when the
+main composition, real material and key wording can be judged; view the exact preview
+through the image channel at reading scale (page-design host context with page_id and
+workspace when supported) — paths and render success are not viewing. Fix the most
+useful feasible improvement while authoring, keep earlier renders and snapshot before
+substantial recomposition, revert regressions. Validity/readability alone is
+insufficient; within time/repair bounds keep the best verified version and report
+remaining limits. No forced edit, revision quota or approval stage. At section
+boundaries compare saved previews for coherence. The page-design helper may bind
+consequential observations to render bytes; that grants no review pass.
 
-Register each applied outside work once with its inspected evidence and page actions.
-Before saving a complete candidate, use design_references.py --workspace PARTS_DIR
-to write page reference associations/slide notes; preserve existing notes.
-Speaker notes add useful presenter cues, explanation or citations; a full prose
-transcript is needed only when the task calls for one. Preserve requested detail
-and original notes. Reuse the reference writer for registered work attribution
-instead of manually copying the register into another notes file.
-Use `scripts/candidate_save.py --task-root TASK_DIR --workspace PARTS_DIR --output exports/CHOSEN_VERSION.pptx`
-to export/render, run the existing authored check and atomically update delivery.json.
-Save meaningful finished repairs before further optional polish, refreshing after
-additional completed corrections. The check covers assets, notes and native behavior,
-not aesthetic quality. The original export route remains available: run
-workflow_decisions.py --stage authored --artifact YOUR_EXPORT on its exact candidate
-and declare it explicitly. Independent review follows either route.
+Register each applied outside work once with inspected evidence and page actions, then
+before saving a complete candidate run design_references.py --workspace PARTS_DIR to
+write reference associations/slide notes (preserving existing notes; no manual copy of
+the register). Speaker notes carry useful cues, explanation or citations; a full
+transcript only when requested. Export with
+`scripts/candidate_save.py --task-root TASK_DIR --workspace PARTS_DIR --output exports/CHOSEN_VERSION.pptx`,
+which renders, runs the authored check (assets, notes, native behavior — not aesthetics)
+and atomically updates delivery.json. Save meaningful finished repairs before optional
+polish. The original route remains: workflow_decisions.py --stage authored --artifact
+YOUR_EXPORT on the exact candidate, declared explicitly. Independent review follows.
 
 ## Review, revise and deliver
 
-Use two fresh independent contexts: [content review](references/content-review.md)
-and [visual review](references/visual-review.md). Give required artifacts and the
-relevant guide, without the author's conversation. Content first reads the audience
-surface, then sources/brief. Visual review judges actual pages/sequence before
-reference claims. Reviewers do not edit; if independence is unavailable, disclose it.
+Use two fresh independent contexts, [content review](references/content-review.md) and
+[visual review](references/visual-review.md), with required artifacts and the guide but
+not the author's conversation. Content reads the audience surface first, then
+sources/brief; visual judges pages/sequence before reference claims. Reviewers do not
+edit; disclose missing independence.
 
-Report technical delivery validity and design readiness distinctly. A readable,
-accurate deck may still need concrete design refinements. Required findings concern
+Report technical validity and design readiness separately. Required findings concern
 explicit requirements, substantive errors/omissions, comprehension/readability or
-broken native features; discretionary artistic alternatives remain suggestions.
-Authors and visual reviewers use the same [Design completion](references/design-completion.md)
-standard. At first design entry and existing render points, judge the actual
-subject, visible relationships and craft against this task's use, not the presence
-of information alone. 清楚只是最低要求：信息完整、文字可读、没有排版错误，不能代替画面设计完成；严肃可以克制，但不能只是把内容摆齐。
-The independent visual_craft dimension rates composition, visual expression, typography
-and sequence with page/region evidence; a substantive low rating enters the existing
-bounded response. The host consumes ready / needs_revision / uncertain
-separately from technical validity. Substantive primary findings can return once
-to the continuing author within the existing bound; minor preferences alone do
-not trigger a pass. Compare actual before/after pages: keep a valid candidate
-only when supported as better without material regression; otherwise retain the
-reviewed baseline. Preserve incomplete/uncertain design status at the budget
-boundary; no repeated taste-score loop or unsupported readiness claim.
-Historical receipts and scoped fidelity edits retain their prior policy. Record findings/resolutions
-in review.md with reviewer and frozen artifact hash/version. Static timing/state
-inspection is not target-player playback; say exactly what was verified.
+broken native features; artistic alternatives are suggestions. Authors and visual
+reviewers share the [Design completion](references/design-completion.md) standard and
+judge subject, visible relationships and craft against this use, not information
+presence. 清楚只是最低要求：信息完整、文字可读、没有排版错误，不能代替画面设计完成；严肃可以克制，但不能只是把内容摆齐。
+visual_craft rates composition, visual expression, typography and sequence with
+page/region evidence; a substantive low rating enters the bounded response. The host
+reads ready / needs_revision / uncertain apart from validity; substantive primary
+findings return once to the continuing author, minor preferences do not. A changed
+candidate replaces the reviewed baseline only when supported as better without
+material regression. Keep incomplete/uncertain status at the budget boundary; no
+taste-score loop or unsupported readiness claim. Historical receipts and scoped
+fidelity edits keep their policy. Record findings/resolutions in review.md with
+reviewer and frozen hash/version; static timing/state inspection is not playback.
 
-On resume inspect retained pages, exports, sources and receipts before continuing.
-Preserve historical originals and frozen reviewed bytes. Ordinary chat does not
-invalidate reviews; modification requests update only affected material. Deliver
-only the returned export path and briefly identify actual reference applications
-or honestly report that none were used.
+On resume inspect retained pages, exports, sources and receipts. Preserve historical
+originals and frozen reviewed bytes; ordinary chat does not invalidate reviews and
+modification requests update only affected material. Deliver only the returned export
+path and name actual reference applications, or state none were used.
 
 ## Technical references
 

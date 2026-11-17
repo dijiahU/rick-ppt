@@ -9,7 +9,9 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(ROOT/'pptx-agent/skills/pptx/scripts'))
+# Append: runner/font_assets.py (host deployment fonts) must not be shadowed by
+# the plugin's same-named module when this test imports runner.
+sys.path.append(str(ROOT/'pptx-agent/skills/pptx/scripts'))
 from pptx_core.common import atomic_json
 from pptx_core.package import Workspace,unpack
 from recovery_workspace import relocate_task,digest,resolve_delivery

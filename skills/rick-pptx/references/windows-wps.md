@@ -1,6 +1,9 @@
 # Windows WPS compatibility
 
-The default recipient target is Windows WPS. Continue producing one standalone,
+For hosted tasks, the default target and font pair are declared in
+`capabilities.json.font_assets.defaults`; explicit user target/font requirements
+take precedence. The standalone default recipient target is Windows WPS. The
+following Windows font baseline applies to that target. Continue producing one standalone,
 editable PPTX. Apply these checks during the existing authoring and visual review;
 do not add a review stage, routine full-deck slideshow or a Windows-verified label
 without actual target-viewer evidence. Preserve historical files and scoped edits.

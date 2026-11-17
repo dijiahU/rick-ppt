@@ -124,7 +124,9 @@ def _load_home(home):
     value['metadata_bytes']={name:base64.b64decode(body,validate=True) if body is not None else None for name,body in value['metadata'].items()}
     value['home']=str(home)
     status=Path(home)/'outcome.json'
-    value['rolled_back']=status.is_file() and json.loads(read_scoped(home,'outcome.json',10000)).get('status')=='rolled_back'
+    outcome=json.loads(read_scoped(home,'outcome.json',10000)).get('status') if status.is_file() else None
+    value['rolled_back']=outcome=='rolled_back'
+    value['accepted']=outcome=='candidate_accepted'
     return value
 
 
@@ -135,17 +137,75 @@ def load_baseline(run):
     identity=_current_identity(run);matches=[]
     for home in records.glob(run.task['id']+'-designer-baseline-*'):
         value=_load_home(home)
-        if value['identity']==identity:matches.append(value)
+        # An accepted candidate closed this optional transaction; later ordinary
+        # repairs/reviews must not compare against or roll back to it.
+        if value['identity']==identity and not value['accepted']:matches.append(value)
     if len(matches)>1:raise ValueError('Ambiguous designer transaction baseline')
     return matches[0] if matches else None
 
 
-def mark_rollback(baseline):
+def _mark_outcome(baseline,status,**extra):
     home=Path(baseline['home'])
     temporary=home/('.outcome-'+uuid.uuid4().hex)
-    with temporary.open('x') as stream:json.dump({'status':'rolled_back','artifact_sha256':baseline['receipt']['artifact_sha256']},stream)
+    with temporary.open('x') as stream:json.dump({'status':status,'artifact_sha256':baseline['receipt']['artifact_sha256'],**extra},stream)
     os.replace(temporary,home/'outcome.json')
+
+
+def mark_rollback(baseline):
+    _mark_outcome(baseline,'rolled_back')
     baseline['rolled_back']=True
+
+
+def mark_accepted(baseline,candidate_sha256):
+    _mark_outcome(baseline,'candidate_accepted',candidate_sha256=candidate_sha256)
+    baseline['accepted']=True
+
+
+def unchanged_pages(baseline_bytes,candidate_bytes):
+    """Host-proven untouched pages; any parse doubt proves nothing."""
+    try:
+        from canvas_snapshot import native_pages
+        from user_pages import fingerprint
+        from review_comparison import globals_identity
+        count=len(native_pages(candidate_bytes))
+        if count!=len(native_pages(baseline_bytes)) or globals_identity(baseline_bytes)!=globals_identity(candidate_bytes):return set()
+        return {page for page in range(1,count+1) if fingerprint(baseline_bytes,page)==fingerprint(candidate_bytes,page)}
+    except Exception:
+        return set()
+
+
+def introduced_required(baseline_receipt,receipt,unchanged=frozenset()):
+    """Required findings the optional response actually introduced.
+
+    A required finding is pre-existing only when every page it locates is
+    byte-for-byte unchanged since the reviewed baseline, or when its own
+    reviewer linked it (carried_findings) to an overlapping baseline finding
+    of the same review that was not reported regressed. Severity drift on an
+    old issue therefore does not discard a reviewed improvement; anything the
+    reviewers did not tie to the baseline still counts as new.
+    """
+    comparison=receipt.get('visual',{}).get('design_comparison') or {}
+    regressed=set(comparison.get('regression_findings') or [])
+    regressed_prior={r.get('id') for r in comparison.get('resolutions') or [] if r.get('status')=='regressed'}
+    introduced=[];carried=[]
+    for kind in ('content','visual'):
+        prior={f['id']:f for f in baseline_receipt.get(kind,{}).get('findings',[])}
+        if kind=='visual':
+            # Visual comparison IDs may be source-qualified ("visual:F1").
+            prior.update({'visual:'+i:f for i,f in list(prior.items())})
+            prior.update({'content:'+f['id']:f for f in baseline_receipt.get('content',{}).get('findings',[])})
+        links={row.get('id'):row.get('prior_id') for row in receipt[kind].get('carried_findings') or [] if isinstance(row,dict)}
+        for f in receipt[kind]['findings']:
+            if f['severity']!='required':continue
+            pages=set(f['pages'])
+            source=links.get(f['id'])
+            linked=(source in prior and pages&set(prior[source]['pages'])
+                    and not (kind=='visual' and (f['id'] in regressed or source in regressed_prior)))
+            row={'review':kind,'id':f['id'],'pages':sorted(pages)}
+            if pages<=set(unchanged):carried.append({**row,'evidence':'pages_unchanged'})
+            elif linked:carried.append({**row,'evidence':'reviewer_link','prior_id':source})
+            else:introduced.append(row)
+    return introduced,carried
 
 
 def restore_baseline(run,artifact,receipt,metadata,*,unpack=None,prepare=None):

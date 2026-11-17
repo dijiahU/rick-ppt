@@ -173,10 +173,13 @@ def normalize(data):
             '--security-opt','no-new-privileges','--pids-limit','128','--memory','1g','--cpus','1',
             '--user',f'{os.getuid()}:{os.getgid()}','--tmpfs','/tmp:rw,nosuid,nodev,size=128m',
             '--mount',f'type=bind,source={root},target=/work','pptx-lab-media:2']
+        if os.sys.platform=='linux':
+            command=['/usr/bin/python3',str(Path(__file__).resolve().parents[1]/'deploy/linux_media.py'),str(root)]
         try:
             try:run=subprocess.run(command,capture_output=True,timeout=130)
             except subprocess.TimeoutExpired:raise MediaError('decode_timeout','Media validation/conversion timed out; use a smaller source derivative') from None
-        finally:subprocess.run(['/usr/local/bin/docker','rm','-f',container],capture_output=True,timeout=15)
+        finally:
+            if os.sys.platform!='linux':subprocess.run(['/usr/local/bin/docker','rm','-f',container],capture_output=True,timeout=15)
         if run.returncode:
             # Structured allowlisted diagnostics only; never expose raw decoder output.
             failure={}
@@ -244,6 +247,8 @@ class WebMediaBroker:
     def publish(fd,name,body):
         pending='host-'+uuid.uuid4().hex+'.tmp'
         f=os.open(pending,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=fd)
+        if os.sys.platform=='linux' and os.geteuid()==0:
+            owner=os.fstat(fd);os.fchown(f,owner.st_uid,owner.st_gid)
         with os.fdopen(f,'wb') as stream:stream.write(body)
         os.replace(pending,name,src_dir_fd=fd,dst_dir_fd=fd)
 

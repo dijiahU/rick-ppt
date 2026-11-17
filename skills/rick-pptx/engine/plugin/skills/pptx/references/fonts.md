@@ -1,8 +1,10 @@
 # Actual fonts
 
 Use `font-catalog.json` and `fonts/index.json` to choose from real installed files.
-For new work, Rick's default is **Times New Roman for English/Latin** and
-**SimSun (宋体) for Chinese**. Apply the pair to native runs, theme defaults,
+For hosted work, use the verified default pair and available IDs in
+`capabilities.json.font_assets.defaults` and `fonts/index.json`. The Linux host
+uses DejaVu Serif and Noto Serif CJK SC. For standalone Windows WPS work, the
+default remains **Times New Roman for English/Latin** and **SimSun (宋体) for Chinese**. Apply the pair to native runs, theme defaults,
 chart/table labels and inherited text. Preserve explicit user font choices and
 actual supplied template typefaces for scoped edits. Newly recreated image text
 without a specified source typeface still uses the defaults. Descriptions such as

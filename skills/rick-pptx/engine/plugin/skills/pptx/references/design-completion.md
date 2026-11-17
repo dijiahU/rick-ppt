@@ -56,58 +56,47 @@ boxes alone do not demonstrate this. Nor do extra decoration or dramatic color.
 
 ## During initial authoring
 
-Before committing the main composition, establish what the audience should
-understand, recognize or experience from the brief, then select the source detail
-or relationship that lets them do so. Keep this outcome separate from the proposed
-picture: "the chosen objects are recognizable" tests execution, not whether choosing
-them serves this use. For example, recognizable equipment can identify an activity
-without showing how someone participates in it; that distinction matters only when
-participation is the page's job. A cover may establish welcome, identity or atmosphere
-without explaining a procedure. A product
-output named inside a box is not yet an inspectable example; a process label does not
-by itself expose a mechanism. A useful source fragment, changed value, paired state,
-quote or image detail can carry the explanation. Choose from the actual evidence,
-preserving its qualifiers and documentary/illustrative identity. Text itself may
-be the right subject. Do not invent missing source artifacts. If authentic material
-is absent, retain that limit and judge a permitted illustration, generic example or
-text treatment against the same audience need. No medium automatically closes the
-gap. Task authenticity concerns the relevant people, actions, evidence or fictional
-world, not photorealism: a game image may be more faithful than an unrelated photo.
+Before committing the main composition, set what the audience should understand,
+recognize or experience, then select the source detail or relationship that lets them.
+Keep that outcome apart from the proposed picture: "the chosen objects are
+recognizable" tests execution, not whether choosing them serves this use
+(recognizable equipment can identify an activity without showing how someone takes
+part — which matters only when participation is the page's job; a cover may set
+welcome, identity or atmosphere without explaining a procedure). An output named in a
+box is not an inspectable example and a process label does not expose a mechanism; a
+source fragment, changed value, paired state, quote or image detail can. Choose from
+actual evidence with its qualifiers and documentary/illustrative identity; text may be
+the right subject. Never invent missing artifacts: keep the limit and judge a permitted
+illustration, generic example or text treatment against the same need — no medium
+closes the gap automatically. Task authenticity means the relevant people, actions,
+evidence or fictional world, not photorealism (a game image can be more faithful than
+an unrelated photo).
 
-Use the existing first main render to judge the result:
-- Does the visual intensity fit the actual requested experience, audience and viewing
-  conditions? Does the strongest treatment serve the current task rather than make
-  headings, standalone numbers and conclusions compete? A quiet frame still needs
-  precise explanation; a dramatic treatment needs a purpose supported by this brief.
-- Does the subject carry the central claim or experience, at a useful scale?
-  Check against the audience outcome, not just the chosen object's name. Clear
-  silhouettes, depth and coherent colors show craft, but do not by themselves show
-  a useful connection to this audience's situation. If that connection is missing,
-  reconsider the subject/relationship before polishing its decoration.
-- Can the audience locate the comparison, dependency or evidence without rebuilding
-  the important relationship from disconnected paragraphs?
-- Does the body visibly deliver the explanation promised by the title? Distinguish
-  a component inventory from a process, condition, comparison or demonstration.
-- Do emphasis, proportion, alignment and annotations make that reading deliberate?
-  Check both competing emphasis and an overly flat treatment that hides the key
-  distinction. Finish the subject's notation, meaningful text breaks and field-level
-  emphasis; fitting the box is not the end of typography.
-  For diagrams, judge line routes and spacing as well as endpoint validity; for
-  rows/columns, judge shared baselines and label ownership as well as legible text.
-- Does a case following a mechanism visibly retain its necessary entity/branch
-  correspondence and expose a supported operational detail, rather than merely
-  naming components or reporting success? Other page types need no forced example.
-- Is any image detail essential to that explanation readable at the intended size?
-  A small optional overview is acceptable when the main explanation stands on its own.
-- Does the page serve the sequence while preserving necessary facts and conditions?
+At the first main render ask (art-direction.md §6 has the full loop):
+- Does intensity fit the requested experience, audience and viewing, with the strongest
+  treatment serving the task rather than competing headings, numbers and conclusions?
+- Does the subject carry the claim at useful scale and connect to this audience's
+  situation? Clean silhouettes and coherent color show craft, not that connection — if
+  it is missing, reconsider subject/relationship before decoration.
+- Can the comparison, dependency or evidence be located without rebuilding it from
+  paragraphs, and does the body deliver the title's promised explanation (process,
+  condition, comparison or demonstration, not a component inventory)?
+- Do emphasis, proportion, alignment and annotations make the reading deliberate,
+  neither competing nor flat? Finish notation, meaningful breaks and field-level
+  emphasis; judge diagram routes/spacing beyond endpoint validity, and row/column
+  baselines and label ownership beyond legibility.
+- Does a case after a mechanism keep its entity/branch correspondence and show a
+  supported operational detail rather than names or success claims? Other page types
+  need no forced example.
+- Is the essential image detail readable at size (a small optional overview is fine
+  when the explanation stands alone), and does the page serve the sequence with its
+  facts and conditions intact?
 
-Locate a shortcoming in the actual subject/region. If one main design action is
-needed, do it while that page is being authored, before minor decoration. Choose
-the action from the current evidence; do not turn these questions into another
-required form. A successful simple or repeated composition may stand. Follow the
-new-deck visual-presence requirement in art-direction.md; it permits native visual
-construction and individual text-led pages. No per-page image quota, added visual
-complexity, number of revisions, layout family or artist is implied.
+Locate a shortcoming in the actual region and make one main design action while the
+page is being authored, before minor decoration; these questions are not a form. A
+successful simple or repeated composition may stand. The new-deck visual-presence
+requirement in art-direction.md permits native construction and text-led pages; no
+per-page image quota, added complexity, revision count, layout family or artist.
 
 ## In the existing independent visual report
 
@@ -336,7 +325,11 @@ not evidence of improvement. Reject an unsupported original criticism honestly.
 If actual comparison input/correspondence is unavailable, report uncertain.
 
 Only an overall better candidate without material regression replaces the reviewed
-baseline. Otherwise retain its exact bytes. This does not add a second design loop:
+baseline. Otherwise retain its exact bytes. Assign severity on current evidence, then
+list in carried_findings each current finding that is the same still-present defect as
+a prior finding; never link a defect the change introduced, moved or worsened. Only
+required findings introduced by the response restore the baseline; an old issue now
+rated required keeps the better candidate and goes to the ordinary bounded repair. This does not add a second design loop:
 at the budget boundary preserve the best supported valid artifact and report any
 unfinished or uncertain design status explicitly. Never claim human approval or
 completed design merely because the workflow ended.

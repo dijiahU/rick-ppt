@@ -1,5 +1,6 @@
 """Untrusted media decoding runs only inside a no-network, limited container."""
 import io
+import os
 import json
 import math
 from pathlib import Path
@@ -10,7 +11,7 @@ import warnings
 import xml.etree.ElementTree as ET
 from PIL import Image, ImageOps
 
-ROOT=Path('/work');SOURCE=ROOT/'input';LIMIT=28*1024*1024
+ROOT=Path(os.environ.get('PPTX_MEDIA_ROOT','/work'));SOURCE=ROOT/'input';LIMIT=28*1024*1024
 Image.MAX_IMAGE_PIXELS=16777216
 warnings.simplefilter('error',Image.DecompressionBombWarning)
 

@@ -13,6 +13,8 @@ import re
 import shutil
 import stat
 import tempfile
+import errno
+import uuid
 
 from workflow_decisions import MAX_PLAN_BYTES, validate_plan
 
@@ -20,6 +22,21 @@ MAX_OUTLINE_BYTES = 2 * 1024 * 1024
 MAX_NOTES_BYTES = 2 * 1024 * 1024
 MAX_INPUT_BYTES = MAX_OUTLINE_BYTES + MAX_NOTES_BYTES + MAX_PLAN_BYTES + 65536
 OUTPUTS = ('outline.json', 'decision-plan.json', 'source-notes.md')
+
+def atomic_publish(source,target,*,rollback=False):
+    operation=os.rename if rollback else os.replace
+    try:
+        operation(source,target)
+    except OSError as error:
+        if error.errno!=errno.EXDEV:raise
+        # Landlock ABI 1 forbids cross-directory rename. Copy to a unique
+        # sibling first, then retain the same atomic replacement and rollback.
+        pending=target.with_name('.planning-'+uuid.uuid4().hex)
+        try:
+            _write(pending,source.read_bytes(),stat.S_IMODE(source.stat().st_mode))
+            operation(pending,target)
+        finally:
+            pending.unlink(missing_ok=True)
 
 
 def page_task_receipt(root):
@@ -240,7 +257,7 @@ def commit_bundle(task_root, input_file, *, mode='create', expected_pages=None, 
                     raise ValueError(name + ' changed during planning commit')
             elif not target.is_file() or target.read_bytes() != before[name][0]:
                 raise ValueError(name + ' changed during planning commit')
-            os.replace(staging / ('new-' + str(index)), target)
+            atomic_publish(staging / ('new-' + str(index)), target)
             committed.append((index, name))
     except BaseException:
         rollback_errors = []
@@ -251,7 +268,7 @@ def commit_bundle(task_root, input_file, *, mode='create', expected_pages=None, 
                 else:
                     # rename is an atomic same-filesystem replacement on supported
                     # POSIX hosts and remains usable if replace itself was rejected.
-                    os.rename(staging / ('old-' + str(index)), root / name)
+                    atomic_publish(staging / ('old-' + str(index)), root / name,rollback=True)
             except OSError as error:
                 rollback_errors.append(f'{name}: {error}')
         if rollback_errors:

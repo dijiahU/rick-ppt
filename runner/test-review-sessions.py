@@ -225,6 +225,9 @@ class ReviewRecoveryTests(unittest.TestCase):
             images.append({'path':name,'page':number,'sha256':hashlib.sha256(body).hexdigest(),'bytes':len(body)})
         (self.packet/'review-index.json').write_text(json.dumps({'schema':'native-review-index/v1','reading_pages':images,
             'state_contacts':[],'page_contacts':[],'slides':[{'page':n,'text':'Actual canvas'} for n in (1,2)]}))
+        (self.plugin/'skills/pptx/references/visual-review.md').write_text('Review visible content.\n<!-- generated-look/v1 -->')
+        (self.packet/'prior-content-findings.json').write_text(json.dumps({'schema':'prior-content-findings/v1',
+            'source_sha256':'a'*64,'candidate_sha256':hashlib.sha256(self.artifact).hexdigest(),'findings':[{'id':'C1'}]}))
         folder=self.packet/'refinement-comparison';folder.mkdir()
         before='refinement-comparison/before-page-2.png';Image.new('RGB',(900,506),'gold').save(self.packet/before)
         body=(self.packet/before).read_bytes();digest=hashlib.sha256(self.artifact).hexdigest()
@@ -261,13 +264,24 @@ class ReviewRecoveryTests(unittest.TestCase):
                 report['design_comparison']={'baseline_sha256':'a'*64,'candidate_sha256':digest,'verdict':'better',
                     'reason':'The subject and explanation now align.','regression_findings':[],
                     'resolutions':[{'id':'V1','status':'resolved','evidence':'Corresponding regions are visibly linked.'}]}
+                self.assertIn('carried_findings',kwargs['schema']['required'])
+                self.assertIn('REFINEMENT CARRY-OVER',prompt)
+                report['carried_findings']=[]
+                self.assertIn('generated_tells',kwargs['schema']['properties']['design_assessment']['required'])
+                self.assertFalse((kwargs['root']/'prior-content-findings.json').exists())
+                report['design_assessment'].update(generated_look='clear',generated_tells=[])
             else:
                 self.assertFalse(prompt.startswith('You are a strict PowerPoint production acceptance reviewer.'))
                 if name.startswith('content-evidence'):
+                    self.assertTrue((kwargs['root']/'prior-content-findings.json').is_file())
+                    self.assertIn('carried_findings',kwargs['schema']['required'])
+                    report['carried_findings']=[]
                     self.assertIn(guide.read_text(),prompt)
                     self.assertIn('presentation_findings',kwargs['schema']['required'])
                     report['presentation_findings']=[]
                 else:
+                    self.assertFalse((kwargs['root']/'prior-content-findings.json').exists())
+                    self.assertNotIn('carried_findings',kwargs['schema']['properties'])
                     self.assertNotIn('SHARED COMPLETION POLICY FIXTURE',prompt)
                     self.assertNotIn('presentation_findings',kwargs['schema']['properties'])
                 self.assertNotIn(before,kwargs.get('images',[]))
@@ -278,6 +292,9 @@ class ReviewRecoveryTests(unittest.TestCase):
         self.assertEqual(result['content_presentation'],PRESENTATION)
         self.assertEqual(result['visual_craft'],CRAFT)
         self.assertEqual(result['visual_coverage'],VISUAL_COVERAGE)
+        self.assertEqual(result['generated_look'],{'version':1})
+        self.assertEqual(result['visual']['design_assessment']['generated_look'],'clear')
+        self.assertEqual(result['content']['carried_findings'],[])
         recovered=self.execution();recovered.phase=phase
         self.review(recovered);self.assertEqual(len(self.calls),3)
         guide.write_text('CHANGED SHARED COMPLETION POLICY FIXTURE\n'+PRESENTATION_MARKER+'\n'+CRAFT_MARKER)

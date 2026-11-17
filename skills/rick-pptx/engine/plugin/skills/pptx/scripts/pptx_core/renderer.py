@@ -6,6 +6,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import re
+import time
 from pathlib import Path
 from xml.sax.saxutils import escape
 
@@ -27,6 +29,12 @@ def executables():
 
 
 def run(command, timeout, env=None):
+    configured=(os.environ if env is None else env).get('PPTX_RENDER_TIMEOUT_SECONDS')
+    if configured is not None:
+        try:seconds=int(configured)
+        except ValueError:raise PptxError('Invalid host render timeout') from None
+        if not timeout<=seconds<=300:raise PptxError('Host render timeout must cover the native default and stay within 300 seconds')
+        timeout=seconds
     try:
         proc = subprocess.run(command, capture_output=True, text=True, timeout=timeout, env=env)
     except (subprocess.TimeoutExpired, OSError) as exc:
@@ -50,23 +58,42 @@ def font_environment(stage, soffice):
 
 
 def render_package(pptx, destination, slide=None, expected_pages=None):
+    started=time.monotonic()
     soffice, ppm = executables()
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".render-", dir=destination) as temp:
         stage = Path(temp)
         profile = stage / "profile"
+        selection=os.environ.get('PPTX_RENDER_PAGE_RANGE','0')
+        if selection not in ('0','1'):raise PptxError('Invalid selected-page render configuration')
+        selected=slide is not None and selection=='1'
+        options={'ExportHiddenSlides':{'type':'boolean','value':'true'}}
+        if selected:
+            if type(slide) is not int or not 1<=slide<=200:raise PptxError('Invalid selected page')
+            options['PageRange']={'type':'string','value':str(slide)}
+        conversion_started=time.monotonic()
         # Unique user profile prevents collisions with an open LibreOffice session.
         run([soffice, f"-env:UserInstallation={profile.as_uri()}", "--headless",
-             "--convert-to", 'pdf:impress_pdf_Export:{"ExportHiddenSlides":{"type":"boolean","value":"true"}}', "--outdir", str(stage),
+             "--convert-to", 'pdf:impress_pdf_Export:'+json.dumps(options,separators=(',',':')), "--outdir", str(stage),
              str(Path(pptx).resolve())], 90, env=font_environment(stage,soffice))
         pdf = stage / (Path(pptx).stem + ".pdf")
         if not pdf.is_file() or pdf.stat().st_size < 100:
             raise PptxError("LibreOffice produced no PDF")
+        pdf_seconds=time.monotonic()-conversion_started
+        if selected:
+            info=shutil.which('pdfinfo')
+            if not info:raise PptxError('Selected-page export requires Poppler pdfinfo')
+            output=run([info,str(pdf)],30,env={**os.environ,'LC_ALL':'C'}).stdout
+            match=re.search(r'^Pages:\s+(\d+)\s*$',output,re.MULTILINE)
+            if not match or int(match[1])!=1:raise PptxError('Selected-page export did not produce exactly one PDF page')
         args = [ppm, "-png", "-r", "100"]
         if slide is not None:
-            args += ["-f", str(slide), "-l", str(slide)]
+            page=1 if selected else slide
+            args += ["-f", str(page), "-l", str(page)]
+        png_started=time.monotonic()
         run([*args, str(pdf), str(stage / "slide")], 90)
+        png_seconds=time.monotonic()-png_started
         pngs = sorted(stage.glob("slide-*.png"), key=lambda p: int(p.stem.split("-")[-1]))
         count = 1 if slide is not None else expected_pages
         if not pngs or (count is not None and len(pngs) != count):
@@ -79,7 +106,7 @@ def render_package(pptx, destination, slide=None, expected_pages=None):
         final.mkdir()
         output = []
         for path in pngs:
-            number = int(path.stem.split("-")[-1])
+            number = slide if selected else int(path.stem.split("-")[-1])
             dest = final / f"slide-{number}.png"
             shutil.move(path, dest)
             output.append(str(dest))
@@ -89,8 +116,14 @@ def render_package(pptx, destination, slide=None, expected_pages=None):
             'renderer_executable':str(soffice),'platform':sys.platform,'fontconfig':bool(font_environment(stage,soffice).get('FONTCONFIG_FILE')),
             'powerpoint_playback_verified':False}
         (final/'render-environment.json').write_text(json.dumps(environment,ensure_ascii=False,indent=2))
+        host_timing=stage/'render-timings.json'
+        timings={'pdf_request_seconds':round(pdf_seconds,4),'png_seconds':round(png_seconds,4),
+                 'total_seconds':round(time.monotonic()-started,4)}
+        if host_timing.is_file():timings['host']=json.loads(host_timing.read_text())
+        (final/'render-timings.json').write_text(json.dumps(timings,indent=2))
     return {"at": now(), "source_hash": sha256(pptx), "pages": output,
-            "pdf": str(final / "deck.pdf"), "renderer": "LibreOffice", "environment":environment,"ok": True}
+            "pdf": str(final / "deck.pdf"), "renderer": "LibreOffice", "environment":environment,
+            "timings":timings,"selected_page_export":selected,"ok": True}
 
 
 def render(ws, slide=None):

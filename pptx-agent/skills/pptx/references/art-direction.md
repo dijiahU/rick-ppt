@@ -1,151 +1,130 @@
 # Art direction for one continuing deck designer
 
-Use this guide for new slides and substantive visual redesigns. Read it once at
-entry to design/authoring, then return to a relevant section when a page needs it.
-For a typo, number replacement or other small scoped edit, preserve the existing
-visual language and use only the relevant implementation guidance.
+Use this guide for new slides and substantive visual redesigns: read it once at
+design/authoring entry and return to a section when a page needs it. For a typo,
+number replacement or other small scoped edit, keep the existing visual language
+and use only the relevant implementation guidance.
 
-This is a method for making design choices, with room to choose. The protected
-requirements are source meaning, authorized scope, essential readability, native
-editability, actual assets, compatibility and meaningful presentation behavior.
-Composition, visual intensity, density, imagery and color treatment remain choices
-within explicit user requirements, including rejected treatments in the brief,
-style field and current revision requests. A prohibited treatment is excluded,
-not merely discouraged as a default. Keep its actual scope; do not replace it with
-another prescribed palette or infer a broader ban. Check the first rendered page
-that exercises the choice before propagating it across the deck.
-The examples in art-direction-examples.md demonstrate decisions, not page templates.
+This is a method with room to choose. Protected: source meaning, authorized scope,
+essential readability, native editability, actual assets, compatibility and
+meaningful presentation behavior. Composition, intensity, density, imagery and
+color are choices within explicit user requirements, including treatments rejected
+in the brief, style field or revisions. A prohibited treatment is excluded, not just
+discouraged; keep its actual scope, without substituting a prescribed palette or
+inferring a broader ban. Check the first rendered page that exercises a choice
+before propagating it. art-direction-examples.md shows decisions, not templates.
 Use the [shared aesthetic judgment](design-completion.md#shared-aesthetic-judgment)
-at first composition and rendered checks. It connects Rick's preferences to visible
-task fit, pictured relationships and surface/craft, without a fixed visual style.
+at first composition and rendered checks; it ties Rick's preferences to visible
+task fit, pictured relationships and craft, without a fixed style.
 
 ## 1. Own a whole visual sequence
 
-Own evidence, narrative and design together when the host retains one author
-conversation. Research and planning still precede native pages; independent tool
-queries/downloads may overlap. On an admitted split route, inspect the researcher’s
-actual evidence and material. Resolve visual direction, page composition, native
-implementation and rendered refinement together for the whole deck. Preserve that
-ownership during repairs; use source helpers only when advertised by the host.
+With one retained author conversation, own evidence, narrative and design together;
+research and planning precede native pages, independent queries/downloads may
+overlap. On an admitted split route, inspect the researcher's actual evidence. Resolve
+direction, composition, native implementation and rendered refinement for the whole
+deck, and keep that ownership in repairs (source helpers only when advertised).
 
-Use the outline as a story map and the expanded tasks in source-notes.md as the
-working design brief. Before drawing, resolve each page's audience outcome, actual
-subject/material and visible completion condition. Validate inferred requirements
-against the original request; improve a weak proposal rather than faithfully
-executing it. Missing optional handoffs can be resolved in these same notes at point
-of use. Neither the outline summary nor a visual_opportunity is finished slide copy.
-Inspect original material where a figure, example, detail or qualification
-matters. Shorten, combine or relocate wording when the visual now carries it;
-retain the factual meaning and necessary conditions. A factual gap goes back to
-permitted focused investigation; attractive geometry does not supply missing facts.
+The outline is a story map; expanded tasks in source-notes.md are the working design
+brief. Before drawing, resolve each page's audience outcome, actual subject/material
+and visible completion condition. Validate inferred requirements against the request
+and improve a weak proposal rather than execute it. Resolve missing optional handoffs
+in the same notes. Neither outline summaries nor visual_opportunity text is finished
+copy. Inspect original material where a figure, example or qualification matters.
+Shorten or relocate wording the visual now carries, keeping meaning and conditions.
+A factual gap goes back to permitted investigation; geometry does not supply facts.
 
 <!-- developed-composition/v1 -->
-Before creating page 1, reconcile the brief's purpose, audience, viewing conditions,
-requested tone/examples, full outline, supplied frame, available material and tools.
-Choose the intended viewing experience from those needs, not from a topic or industry
-label. Within creative scope, develop the composition: give the
-subject, proportions, image/type relationship or typographic rhythm a deliberate
-main idea, then resolve supporting details around it. A serious topic does not
-justify starting with low emphasis or generic containers. Keep design ambition
-high; choose expressive intensity for the brief. Quiet close reading, a vivid
-demonstration and a dramatic opening all deserve finished visual craft. Establish
-what should dominate, what stays subordinate, how comparisons work and how the
-sequence changes pace. State explicit preferences separately from provisional inferences.
-Keep the resulting short, provisional visual agreement in the existing
-design_direction and source notes. It is a hypothesis to test with actual material
-and rendered pages, not an instruction to reproduce the same arrangement later.
-Describe the intended finished result: what should this audience recognize or
-understand, and how will the subject, type or image/annotation relationship carry
-it? Match the fidelity of the subject to that task. A generic icon can identify a
-category without showing the particular object, scale or material the audience
-needs; a detailed illustration can add nothing to an already clear comparison.
-Resolve the main expression in the first authored candidate rather than
-leaving design to downstream review. Complete text and matching palette/fonts
-alone do not establish that result. Keep it content-led and provisional; a quiet,
-precise page may already be finished. No minimum revision count, fixed planning
-duration, per-page approval or added complexity is a goal.
-Update it when a tested decision changes, not for every small move.
-Do not create another compulsory questionnaire, classification or approval stage.
+Before page 1, reconcile purpose, audience, viewing conditions, requested
+tone/examples, the full outline, supplied frame, material and tools. Choose the
+viewing experience from those needs, not a topic/industry label. Within creative
+scope give the subject, proportions, image/type relationship or typographic rhythm a
+deliberate main idea, then resolve details around it. A serious topic does not
+justify low emphasis or generic containers; keep ambition high at the intensity the
+brief needs — quiet close reading, vivid demonstration and dramatic opening all
+deserve finished craft. Decide what dominates, what is subordinate, how comparisons
+work and how pace changes. Separate explicit preferences from provisional inferences.
+
+Keep this short provisional agreement in design_direction and source notes: a
+hypothesis to test on actual material and renders, not an arrangement to repeat.
+Describe the finished result — what this audience should recognize or understand,
+and how subject, type or image/annotation carries it. Match subject fidelity to that
+task: a generic icon names a category without the object, scale or material needed;
+a detailed illustration can add nothing to a clear comparison. Resolve the main
+expression in the first authored candidate, not in downstream review; complete text
+and matching palette/fonts do not establish it. A quiet, precise page may already be
+finished. No revision count, planning duration, per-page approval or added
+complexity is a goal. Update the agreement when a tested decision changes. Do not
+create another compulsory questionnaire, classification or approval stage.
 
 ### Separate the pictured subject from its treatment
 
 <!-- style-context/v1 -->
-Resolve what the audience needs to see, the visual tone appropriate to this use,
-and the implementation medium as distinct decisions. "Use images" does not mean
-"draw cartoon props"; native editability does not prescribe a pictogram style.
-An unfamiliar audience needs accessible explanation, not automatically a playful
-appearance. A useful illustration can be precise, documentary, diagrammatic or
-expressive; source photos and generated art likewise need an appropriate treatment.
+What the audience must see, the tone appropriate to this use, and the implementation
+medium are distinct decisions. "Use images" does not mean cartoon props; native
+editability does not prescribe pictograms; an unfamiliar audience needs accessible
+explanation, not automatically a playful look. Illustration can be precise,
+documentary, diagrammatic or expressive; photos and generated art need a fitting
+treatment too.
 
-In the existing short design_direction, connect the proposed image treatment,
-color area/contrast and shape/texture to the actual use. A missing style field does
-not erase the use/audience cues. Derive the treatment from this particular brief,
-actual material and inspected work, and identify inferences as revisable. Do not
-map industry, topic or audience labels to a standard palette, layout, shape style,
-illustration treatment, decoration or density. Inspect the rendered combination,
-not a list of color names. Explicit user choices and genuine template/brand
-requirements take priority. No preset look or preferred medium applies to every task.
+In design_direction connect image treatment, color area/contrast and shape/texture to
+the actual use; a missing style field does not erase use/audience cues. Derive the
+treatment from this brief, material and inspected work, marking inferences revisable.
+Never map industry, topic or audience labels to a standard palette, layout, shape
+style, illustration treatment, decoration or density. Judge the rendered combination,
+not color names. Explicit user choices and genuine template/brand requirements take
+priority; no preset look or medium fits every task.
 
-Changing an unsuitable treatment should preserve the useful subject and its
-relationships. Identify the visible mismatch and change the responsible treatment
-while retaining effective explanation, focal scale and necessary imagery. A color
-change alone may not resolve it; replacing all pictures with prose does not make
-the design finished.
+Changing an unsuitable treatment keeps the useful subject and relationships: find the
+visible mismatch and change the responsible treatment, keeping explanation, focal
+scale and needed imagery. Recoloring alone may not fix it; replacing pictures with
+prose does not finish the design.
 
-When the user accepts a version’s design and asks to reduce its remaining generic
-or “AI-like” appearance, preserve the effective subject scale, emphasis and visual
-relationships. Locate the specific surface or repetition causing that impression
-in the actual pages, and refine that treatment. Shared colors, repeated layouts
-and quiet pages can serve a purpose; change them where they flatten distinct
-content, not to meet a variety quota. Do not interpret this feedback as a request
-to remove imagery, lower contrast or make the whole deck more restrained. An
-accepted example informs this task; it does not prescribe a palette for other tasks.
+When the user accepts a version's design and asks to reduce its remaining generic or
+"AI-like" appearance, keep the effective scale, emphasis and relationships. Locate
+the specific surface or repetition causing the impression and refine that. Shared
+colors, repeated layouts and quiet pages can be purposeful; change them where they
+flatten distinct content, not for a variety quota. It is not a request to remove
+imagery, lower contrast or make the deck more restrained. An accepted example
+informs this task; it does not prescribe a palette for others.
 
-Treat independent visual feedback as a diagnosis of the picture, not a second
-author's blueprint. Resolve the identified audience/visual gap and preserve its
-protected facts and scope. A suggested image, diagram or arrangement is a possible
-route: choose the composition using actual material, and judge the changed render
-against the stated visible outcome. Neither following the suggestion verbatim nor
-recording "accepted" establishes improvement. Retain an effective alternative when
-the picture supports it; explain any unresolved scope/material limit in existing notes.
+Independent visual feedback diagnoses the picture; it is not a second author's
+blueprint. Resolve the identified gap within protected facts and scope. A suggested
+image/diagram/arrangement is one route: choose with actual material and judge the
+changed render against the stated visible outcome. Following it verbatim or writing
+"accepted" proves nothing. Keep an effective alternative the picture supports; note
+unresolved scope/material limits in existing notes.
 
 ### Keep an escape route from the initial idea
 
-Separate what is protected from what is proposed. Verified claims, source conditions,
-user scope, real template elements and compatible native behavior stay protected.
-A researcher's suggested visual, a borrowed motif, a layout sketch and your first
-composition remain revisable. A committed planning record validates execution
-fields; it does not certify that the proposed design is good.
+Verified claims, source conditions, user scope, real template elements and compatible
+native behavior are protected. A researcher's suggested visual, a borrowed motif, a
+sketch and your first composition are revisable; a committed planning record
+validates execution fields, not design quality.
 
-Where the choice is consequential and uncertain, briefly contrast plausible ways
-to expose the relationship before investing in details. Ask what each would let
-this audience actually see and which available evidence it depends on. Use this
-to make a decision, not to generate a catalogue of alternatives. Do not resolve
-all later-page compositions before seeing their actual material.
+For a consequential, uncertain choice, briefly contrast plausible ways to expose the
+relationship: what each lets this audience see and what evidence it needs. Decide;
+do not catalogue alternatives or settle later pages before seeing their material.
 
-Author in presentation order. The first substantive page that exercises the chosen
-visual language is evidence about that direction; a successful title page alone
-does not validate the body design. Inspect it as part of ordinary page rendering,
-without jumping ahead to pilot pages or adding an approval gate. Does the actual
-subject lead? Does the mechanism/comparison read? Do real labels and assets still
-fit the chosen scale? Do useful details survive at normal viewing size?
+Author in presentation order. The first substantive page using the chosen language is
+evidence about it; a good title page does not validate body design. Inspect it in
+ordinary rendering, without pilot pages or an approval gate: Does the subject lead?
+Does the mechanism/comparison read? Do real labels and assets fit the scale? Do useful
+details survive normal viewing size?
 
-If the main idea fails, change that idea while the affected work is still small.
-Moving boxes, adding icons or polishing borders cannot fix a comparison that is
-not visible. Recompose around the useful evidence or choose a different visual
-relationship; revise the existing direction/affected page notes accordingly. A
-missing or unsuitable asset can also invalidate a concept: reconsider it against
-actual material instead of squeezing paragraphs into an empty image placeholder.
+If the main idea fails, change it while affected work is small. Moving boxes, adding
+icons or polishing borders cannot fix an invisible comparison: recompose around the
+evidence or choose another relationship and revise the direction/page notes. A
+missing or unsuitable asset can invalidate a concept; do not squeeze paragraphs into
+an empty image placeholder.
 
-Continue testing as the content changes. Repeated difficulty, weak saved previews
-or a more useful source can justify revising a shared treatment at a section
-boundary. Preserve successful pages and stable semantic encoding where they work;
-if the shared premise itself is the cause, revise the affected family coherently
-within the authorized design scope. Consistency is valuable when it carries
-meaning, not when it reproduces an observed failure. Use the existing time/repair
-bounds and saved previews; do not repeatedly restart the deck or keep exploring
-after a suitable expression works. Record the observed problem and chosen change
-briefly in existing notes, not a new mandatory status field or decision log.
+Keep testing as content changes. Repeated difficulty, weak saved previews or a better
+source can justify revising a shared treatment at a section boundary; keep successful
+pages and stable encoding, and if the shared premise is the cause, revise the affected
+family coherently. Consistency is valuable when it carries meaning, not when it
+repeats a failure. Stay within time/repair bounds; do not restart the deck or keep
+exploring after an expression works. Note the problem and change briefly in existing
+notes, not a new status field or decision log.
 
 ## 2. Establish continuity without freezing every composition
 
@@ -158,154 +137,129 @@ briefly in existing notes, not a new mandatory status field or decision log.
 为新默认，须按内容重新选择。此项不要求给图片中的浅色区域改色，也不
 授权破坏明确要求保留的源模板或忠实复刻；新的明确用户指令优先。
 
-Identify real protected template elements: a logo/background, a complete inherited
-body style, particular source pages, or an explicit user treatment. An empty
-institutional frame leaves its content area available for design.
+Identify real protected template elements: logo/background, a complete inherited body
+style, particular source pages or an explicit user treatment. An empty institutional
+frame leaves its content area open for design.
 
 <!-- deck-surface/v3 -->
 **Take the background, palette and template decision seriously: it establishes the
 visual language and style of the entire deck. Before production, explicitly check
-for "AI味" (a generic, mechanically applied AI-looking treatment).** This is not an
-absence-of-banned-elements check: avoiding rounded cards, three columns or particular
-colors does not demonstrate a suitable design. State the positive visible relationship
-worth keeping and why it fits the audience's activity. Familiar colors can work;
-changing colors merely to distinguish this deck from another is not improvement.
+for "AI味" (a generic, mechanically applied AI-looking treatment).** Avoiding rounded
+cards, three columns or particular colors does not demonstrate suitability. State the
+positive visible relationship worth keeping and why it fits the audience's activity.
+Familiar colors can work; changing colors only to differ from another deck is not
+improvement.
 
-Before laying out page 1, evaluate the shared background/template treatment, not
-just a list of hex values. A familiar palette is a valid starting point, not a
-finished decision. Respect the supplied template's protected elements; otherwise
-choose from the brief, actual material and relevant finished works inspected through
-permitted research. A matching topic or template title is a discovery lead, not a
-style decision. Evaluate the visible work for this audience's activity and material:
-what could make it useful here, and what would not transfer? A cover can inform the
-cover or color relationships; it does not demonstrate body-page typography, diagram
-treatment or data density. Investigate the unresolved relationship when useful and
-permitted, rather than collecting more similarly titled templates. References are
-help, not a quota or prerequisite when unavailable or outside the research scope.
+Before page 1, evaluate the shared background/template as a picture, not a hex list.
+A familiar palette is a starting point, not a decision. Respect protected template
+elements; otherwise choose from the brief, actual material and relevant finished works
+inspected through permitted research. A matching topic or template title is a lead,
+not a style decision: what would transfer to this audience's activity and material,
+and what would not? A cover informs cover/color relationships, not body typography,
+diagram treatment or data density. Investigate the unresolved relationship rather
+than collect similarly titled templates. References are help, not a quota or a
+prerequisite when unavailable or out of scope.
 
-Resolve these relationships in the existing design_direction, with a brief reason
-specific to this task rather than only "professional", "restrained" or "premium":
-- What surface occupies most of the page, and how does its temperature, lightness,
-  texture or imagery relate to the actual subject? A background is part of the
-  composition; a colored wash alone does not supply a visual identity.
-- How do body ink, titles, images/native illustrations and accent areas look
-  together? Distinguish the base, supporting surfaces and emphasis by their roles
-  and occupied area, not by assigning a different tint to every box. Semantic color
-  labels alone do not establish a good-looking combination.
-- What makes the useful reference effect work, and can it survive the actual
-  implementation? Use existing observed/borrowed/applications to distinguish the
-  effect from its means: bold type against fine body text, an image against quiet
-  space, or a small accent against a broad field, for example. If a photograph
-  becomes a schematic, a heavy face becomes permitted regular text, or a small
-  accent becomes a large panel, reassess that relationship. Shared hex values do
-  not preserve the source's character. Rebalance scale, spacing, contrast and subject
-  treatment within the real font/material constraints; do not invent font weights,
-  copy unlicensed imagery or assume a simple native icon is an equivalent replacement.
+Resolve in design_direction, with a reason specific to this task (not only
+"professional", "restrained" or "premium"):
+- The surface occupying most of the page: how its temperature, lightness, texture or
+  imagery relates to the subject. A background is composition; a colored wash alone
+  is not an identity.
+- Body ink, titles, images/native illustrations and accents together: distinguish
+  base, supporting surfaces and emphasis by role and occupied area, not a different
+  tint per box. Semantic color labels do not make a good-looking combination.
+- What makes a reference effect work, and whether it survives implementation:
+  separate effect from means (bold type vs fine body, image vs quiet space, small
+  accent vs broad field). If a photo becomes a schematic, heavy type becomes permitted
+  regular text, or a small accent becomes a large panel, reassess it. Shared hex
+  values do not keep a source's character. Rebalance scale, spacing, contrast and
+  subject within real font/material limits; never invent weights, copy unlicensed
+  imagery or assume a simple native icon is equivalent.
 
-Build the chosen treatment with real content in normal page order. At the existing
-render/view point, inspect the whole page before details: background, ink, main
-subject and emphasis as one picture. On the first substantive page, explicitly
-revisit the AI味 check against the actual render. Name what makes the treatment worth
-repeating beyond correct information, readable text and consistent colors. When an
-applicable reference is available, compare the intended visual effect with its pixels,
-including changed materials, type and color areas; do not just match palette names.
-A successful data page does not validate an illustration introduced later: inspect
-that new treatment at its own normal render point. For example, heavy device outlines
-can dominate a workflow whose important subject is the waiting ticket. This calls
-for reweighting the actual subject, not automatically removing the diagram. Do not
-ban a hue, low saturation or a template by category, or require a change when it works.
+Build the treatment with real content in page order. At the render/view point, see
+background, ink, main subject and emphasis as one picture first. On the first
+substantive page explicitly revisit the AI味 check on the actual render: name what
+makes the treatment worth repeating beyond correct information, readable text and
+consistent colors. With an applicable reference, compare the intended effect with its
+pixels, including changed materials, type and color areas. A successful data page
+does not validate an illustration introduced later; inspect that at its own render
+point (heavy device outlines can drown the waiting ticket that is the real subject —
+reweight the subject, do not automatically delete the diagram). Never ban a hue, low
+saturation or template by category, or force change on something that works.
 
-If that relationship fails, adjust it before propagating it, retain the useful
-content/composition, then inspect the changed render. Record a consequential choice
-or correction briefly in existing notes; a plan or delivered image is not evidence
-that this judgment happened. Do not open another approval stage, make out-of-order
-pilot pages or generate alternative decks. Once suitable, carry the shared treatment
-through most pages with content-led exceptions, rather than repeatedly redesigning
-it or imposing an identical layout. Background planning does not replace designing
-the informative pictured subject.
+If the relationship fails, fix it before propagating, keep the useful content, and
+inspect the changed render. Note consequential corrections briefly; a plan or
+delivered image is not evidence the judgment happened. No approval stage, out-of-order
+pilots or alternative decks. Once suitable, carry the treatment through most pages
+with content-led exceptions, without redesigning it or imposing identical layouts.
+Background planning does not replace designing the informative pictured subject.
 
-Choose useful deck-wide relationships and implement them consistently:
-- Typography roles: claim, body, data, annotation, source and formula; use the
-  installed font policy and actual metrics, with scale/weight/spacing for hierarchy.
-- Color meaning: distinguish stable entities, state, baseline and emphasis. The same
-  meaning should not silently change color across pages. Color may also establish
-  an expressive atmosphere when the brief calls for it.
-  Choose hue, saturation, lightness and occupied area together against the actual
-  foreground. Test the chosen relationship on rendered pages rather than inheriting
-  a scene-based color formula. Neither muted nor saturated color is a default.
+Implement deck-wide relationships consistently:
+- Typography roles (claim, body, data, annotation, source, formula) using the installed
+  font policy and real metrics; scale/weight/spacing carry hierarchy.
+- Color meaning for stable entities, state, baseline and emphasis, never silently
+  changing across pages; color may also set atmosphere when the brief calls for it.
+  Choose hue, saturation, lightness and area together against the foreground and test
+  on renders, not a scene-based formula. Neither muted nor saturated is a default.
 - Diagram grammar: how boundaries, links, groups and transitions express this subject.
 - Image treatment: documentary/contextual/conceptual role, crop and nearby labels.
-- Reusable identity: a motif, shared geometry, baseline, annotation style or other
-  useful visual relationship. Reuse objects/styles without turning them into a
-  universal page container.
+- Reusable identity (motif, geometry, baseline, annotation style) reused without
+  becoming a universal page container.
 
-Comparable evidence may share stable axes and panel structure. A case, mechanism
-and conclusion can change proportion, density and focal scale while still belonging
-together. An overview may become a detail view on the next page, preserving object
-identity. A recurring visual language does not require identical layouts.
+Comparable evidence may share axes and panel structure; a case, mechanism and
+conclusion can change proportion, density and focal scale while belonging together;
+an overview may become a detail view that keeps object identity. A recurring visual
+language does not require identical layouts.
 
 ## 3. Study references for the current problem
 
 <!-- concrete-reference-transfer/v1 -->
 
-You own the design investigation left open by the factual handoff. For creative
-work, explore actual finished art/design/scientific examples when they can resolve
-the page's expressive gap, within source permissions and available tools. Combine
-the subject, visual problem and kind of finished work in the search: an illustrator's
-annotated mechanism, an editorial image/type composition, a scientific figure
-comparison or another concrete need. Topic-only searches can keep returning fact
-sheets when the missing help is scene construction or illustration craft.
-Photography, painting, film, editorial/identity design, architecture, illustration
-and scientific visual explanation are possible sources, not a required roster.
+You own the design investigation the factual handoff leaves open. For creative work,
+explore actual finished art/design/scientific examples when they can resolve the
+page's expressive gap, within source permissions and tools. Search subject + visual
+problem + kind of finished work (an illustrator's annotated mechanism, editorial
+image/type composition, scientific figure comparison); topic-only searches return
+fact sheets when the gap is scene construction or illustration craft. Photography,
+painting, film, editorial/identity design, architecture, illustration and scientific
+explanation are possible sources, not a roster.
 
-Open the actual work or representative frames. Select for the visual work still
-unresolved here, not the creator's reputation or topic alone. An icon overview can
-inform grouping while offering little help with a scene, a dominant picture or
-finished image/type composition; keep its useful limited role without treating it
-as the standard for the whole deck.
+Open the actual work or representative frames, chosen for the unresolved visual work,
+not reputation or topic. An icon overview may help grouping but not a scene, dominant
+picture or image/type composition; keep it in that limited role.
 
-Notice the concrete decisions that produce the effect: subject size and crop,
-light/dark area, type placement and density, edges, depth or material. In existing
-borrowed/applications, connect a useful decision to its counterpart on this page.
-"Hierarchy", "consistency" and "three things in one frame" do not identify enough
-of the visible treatment to implement it. Choose the relevant decisions, not an
-exhaustive style inventory. Suitable background, palette and image/type relationships
-can transfer together; no rule requires stripping a reference down to geometry or
-rejecting its actual colors. Adapt them to the brief and explicit exclusions.
-Borrowing a task-specific treatment is different from imposing it on future tasks.
-At the existing render point, compare whether the intended effect survived in this
-subject. A reference name or matching enclosure cannot establish that it did.
-A teaching passage can explain a principle;
-text describing a painting cannot establish that you inspected its composition.
-Assess factual usefulness and visual craft separately. An authoritative teaching
-figure can clarify a mechanism while offering little help with the needed scene,
-hierarchy, material differentiation or illustration craft. Study an actual work
-that addresses the current expressive gap; one work may serve both purposes.
-No second reference category, separate artist search or reference quota is required.
+Name the concrete decisions producing the effect — subject size and crop, light/dark
+area, type placement and density, edges, depth, material — and connect each to its
+counterpart on this page in borrowed/applications. "Hierarchy", "consistency" or
+"three things in one frame" are not implementable. Pick relevant decisions, not a
+style inventory. Background, palette and image/type relationships can transfer
+together; no rule strips a reference to geometry or rejects its colors. Adapt to the
+brief and explicit exclusions; borrowing for this task is not imposing it on future
+tasks. At the render point check the effect survived; a reference name or matching
+enclosure does not show that. A teaching passage can explain a principle; text about
+a painting is not inspection of its composition. Factual usefulness and visual craft
+are separate: an authoritative teaching figure may clarify a mechanism yet not help
+the scene, hierarchy or material differentiation — study a work addressing that gap
+(one work may serve both). No second reference category, artist search or quota.
 
-Transfer a visible operation into this content. A photograph may isolate a subject
-through surrounding quiet space: adjust the current subject's relative scale and
-the nearby annotation density. A sectional illustration may use continuous contours,
-layered silhouettes and attached labels to make material and depth recognizable:
-construct those relationships with native paths/groups while preserving this
-subject's actual mechanism and limits. These are examples, not required treatments.
-“Water and plants coexist” identifies content; it leaves the intended shape,
-hierarchy or spatial treatment undecided. A completed built project pictured in a
-photo can help with scene/material while still leaving explanatory graphic craft
-open. Borrow only what the inspected work actually shows, then compare that
-relationship in the current render; do not overwrite evidence or add detail merely
-to resemble a reference.
+Transfer a visible operation: a photo isolating its subject with quiet space → adjust
+this subject's relative scale and nearby annotation density; a sectional illustration
+with continuous contours, layered silhouettes and attached labels → build those with
+native paths/groups while keeping this mechanism and its limits. These are examples.
+"Water and plants coexist" names content, not shape, hierarchy or space; a photo of a
+built project can help scene/material and leave explanatory craft open. Borrow only
+what the inspected work shows, compare it in the current render, and never overwrite
+evidence or add detail to resemble a reference.
 
-Record the exact work, creator, source, observation, borrowed principle and concrete
-page action once in the existing reference register. Reuse effective study across
-the deck. Search again for a materially different unresolved need; no artist count,
-per-page search quota or fixed local reference corpus. If search/viewing is absent,
-use actual supplied material and existing design knowledge, state consequential
-limits, and do not invent inspection or consume an unapproved account.
+Record work, creator, source, observation, borrowed principle and concrete page action
+once in the reference register; reuse effective study across the deck and search
+again only for a materially different need (no artist count, per-page quota or fixed
+local corpus). Without search/viewing, use supplied material and design knowledge,
+state consequential limits, never invent inspection or use an unapproved account.
 
-Inspiration and asset acquisition have different purposes. A useful composition
-reference need not appear in the deck. Any selected embedded asset still needs its
-actual permitted local bytes and provenance; follow research-and-assets.md.
+Inspiration and asset acquisition differ: a composition reference need not appear in
+the deck, while any embedded asset needs permitted local bytes and provenance
+(research-and-assets.md).
 
 ## 4. Turn content into a visible relationship
 
@@ -321,244 +275,191 @@ actual permitted local bytes and provenance; follow research-and-assets.md.
 图片应展示具体对象、场景、结构、状态或操作。有一张只是最低线，不能替其他
 关键页面缺失的示范交差。原生可编辑绘制仍然有效，不必转成 PNG。**
 
-Prioritize pictorial expression according to the content before committing body
-prose: decide what this page should let the audience see, then choose how to make
-that picture. In a long deck, cover the important examples, mechanisms, subjects
-and sections where pictures aid understanding. One image on the cover or in an
-isolated section cannot cover unrelated text-heavy body pages. Judge distribution
-against actual content, not a fixed image/page ratio; titles, exact wording and
-conclusions can remain text-led when appropriate. Reuse/crop a subject across pages
-when it advances the explanation, not to inflate a count.
+Scope: new work and authorized whole-deck redesigns; faithful recreation, local
+edit/template scope and explicit text-only requests keep their treatment, and a
+template's background/font limits alone do not block imagery. Decide what each page
+should let the audience see before committing prose, then how to make that picture.
+The visual must be on the slide at reading scale (search results, viewed references
+and unused assets do not count) and cover the important examples, mechanisms, subjects
+and sections of a long deck — a cover image or one illustrated section does not cover
+unrelated text-heavy pages. Judge distribution by content, not an image/page ratio or
+per-page quota; titles, exact wording and conclusions may stay text-led, and no page
+needs a token image. Native illustrations and concrete schematics qualify without PNG
+conversion; data charts stay useful for their own comparison but neither meet the
+pictorial requirement nor demonstrate another page's product, workflow or result.
+Text cards, document frames, decorative icons, arrows between paragraphs, a
+field-mapping table, or a table with a selection border/handle/formula leader are not
+schematics. Do not settle pages as `source_grounded_native` before considering their
+visual subject; in materials/visual_opportunity notes separate inspiration works from
+pictures selected for display, and search the subject and visible examples as well as
+inspiration. No stock photos or raster exports of existing text to fill a count.
 
-Choose the medium after the visual idea, using the existing asset routes:
+Choose the medium after the visual idea, using existing asset routes:
 - Real products, paper figures, historical events, actual interfaces or observed
-  results: inspect and use authentic permitted images/figures, often with native
-  labels or annotations. Do not generate substitute evidence.
+  results: authentic permitted images/figures, often with native labels. Never
+  generate substitute evidence, invent a real interface or a reported result.
 - Original conceptual scenes, characters, atmosphere, natural textures or rich
-  illustrative imagery: prefer exposed image generation when it gives the visual
-  better and faster than assembling hundreds of elementary PPT shapes. Generation
-  does not require a failed search first; inspect its result and label concepts.
-- Exact relationships, technical topology, precise geometry, changing states or
-  elements the user must edit/animate: native drawing may be the better picture.
-  Show actual objects and operations, not merely a diagram-shaped paragraph list.
-- Combine image artwork with editable text, factual labels, connectors, values
-  and click reveals when that best meets both visual quality and editability.
+  illustration: prefer exposed generation when it beats assembling hundreds of PPT
+  shapes. No failed search is required first; inspect the result and label concepts.
+- Exact relationships, topology, precise geometry, changing states or elements to
+  edit/animate: native drawing may be the better picture — show actual objects and
+  operations, not a diagram-shaped paragraph list.
+- Combine artwork with editable text, labels, connectors, values and click reveals
+  when that best serves quality and editability.
+Do not pick native construction for tool convenience or generation merely because a
+page lacks a photo; choose for fidelity, evidence, visual complexity and editing needs
+within real capability/source limits. Unavailable rights/capabilities are honest
+limits, not a ban on an illustrative teaching view.
 
-Do not choose native construction merely because its tools are convenient, or
-generation merely because a page has no photo. Choose for fidelity, evidence,
-visual complexity and the requested editing needs. Preserve faithful/scoped work
-and actual capability/source restrictions; no added author form is required.
+For the current page decide what the audience should point to, trace, compare,
+recognize or read, and locate the object, evidence or change that answers it. For an
+unfamiliar audience learning a process or difference, prefer a visible demonstration
+over reconstruction from paragraphs. Choose the subject before allocating text columns:
+- Show the relevant objects and states and what changes or connects them; named boxes
+  and an arrow can still omit the operation being taught. A mechanism may need its
+  operated-on object and changing state; a product its actual or clearly labeled
+  conceptual appearance; an office example a coherent message/action-list artifact
+  with decisive fields highlighted.
+- Use an inspected permitted image directly or with a readable crop/annotation; if none
+  fits, build the supported relationship as a native schematic/chart or labeled
+  original illustration (generation may supply scene/subject; essential labels and
+  analysis stay editable).
+- A teaching view may simplify an object or document without impersonating a real
+  screenshot; mark illustrative examples. Lacking a real screenshot is no reason to
+  drop the visual explanation.
+- Put short labels and conditions at the relevant part. For exact-wording tasks make
+  decisive fields and their transformation traceable (which source fields become which
+  output fields); an outline around unchanged paragraphs adds little.
+Check that the picture reduced reading/inference. A style reference, download, generic
+icon or highlight color does not complete the task.
 
-Apply this deck-level requirement to new work and authorized whole-deck redesigns.
-An informative visual must appear on the actual slide at a useful reading scale;
-search results, viewed references and unused assets do not satisfy it. Native
-illustrations and concrete schematics qualify without conversion to PNG; data
-charts remain useful but do not satisfy this pictorial requirement. Text cards, a document frame,
-decorative icons or arrows between paragraphs alone do not count. A teaching view
-should depict a concrete object, action or changing state; a field-mapping table
-remains useful document content. A selection border, control handle or formula
-leader does not by itself convert a table into a pictorial schematic. Illustrate it
-honestly rather than inventing a real interface or reported result. Use generation
-for suitable illustrative roles, not fabricated documentary evidence.
+Ways to explore (not a menu or eligibility system):
+- Scale and weight: enlarge the consequential object/difference, subordinate context;
+  unequal importance may need unequal space. Keep units and caveats; a big number must
+  not overstate evidence.
+- Position and connection: branch, path, alignment, adjacency or shared axes expose a
+  real relation; arrows only where direction matters.
+- Containment and depth: nesting, overlap, cutaway or attachment show levels and hidden
+  structure — without implying unsupported dependency or hiding essential labels.
+- Time and state: the same object before/after or through intermediate states, with
+  persistent context.
+- Image and annotation: make the subject/output large enough to inspect, crop to the
+  useful detail, attach short native annotations.
+- Typography and space: exact wording, a dispute or a conclusion may be the subject;
+  purposeful breaks, hierarchy and spacing set the reading.
+- Data and comparison: comparable marks, direct labels and honest scales, with detail,
+  uncertainty and units accessible.
 
-Individual text-led pages are allowed. Do not impose a picture on every page or
-add a token image to claim completion: each consequential visual gap still needs
-its own useful expression. Preserve faithful recreation, local edit/template scope
-and explicit text-only requests. A supplied template's background/font constraints
-alone do not prevent useful imagery in a newly authored deck.
+One dominant idea often organizes a page; a layered system can carry attached labels
+and a path rather than sit as a decorative icon between paragraphs. Some pages need a
+quiet, precise evidence display. Choose the intensity that earns its place.
 
-Do not settle all pages as `source_grounded_native` before considering the actual
-visual subject. In existing materials/visual_opportunity notes, distinguish a
-work used for inspiration from a picture/figure selected for display. Search for
-the subject and its visible examples as well as design inspiration; inspect and
-embed useful permitted images. Original conceptual scenes can use exposed image
-generation directly or native illustration. Keep unavailable rights/capabilities
-honest; they do not prohibit constructing an illustrative teaching view.
+Allocate emphasis to the audience's current task: when inspecting a mechanism or
+comparing evidence is the task, give relations and detail the space and keep headings,
+totals and takeaways subordinate; when immediate recognition or emotion is requested,
+a large image, number or type may carry it. Judge from brief and material, not a style
+assigned to research, teaching, marketing or another category. Refinement can reduce
+competing emphasis or add missing focus. A quiet frame still needs differentiated
+subject, evidence, annotations and decisive fields — uniform dark text is not
+hierarchy — and must not flatten a necessary branch, remove comparison context or
+genericize a specific example to look cleaner. Keep units, qualifiers and legibility.
 
-A quantitative chart can fully serve its own comparison without demonstrating a
-different page's product, workflow or result. Check those needs locally. For an
-unfamiliar audience, an office example may need a coherent visible message or
-action-list artifact with the decisive fields highlighted, a mechanism may need
-its operated-on object and changing state, and a product may need its actual or
-clearly labeled conceptual appearance. Use authentic evidence or truthful native
-illustration according to the task. Paragraph fragments plus arrows and a generic
-document outline are not automatically a demonstration. Do not force stock photos
-or a raster export of existing text to satisfy a picture count. Native diagrams
-remain valid; a photo is not a universal requirement.
-
-For the current page, determine what the audience should be able to point to,
-trace, compare, recognize or read. Locate the actual object, evidence or change
-that answers that need. For an unfamiliar audience learning a process or difference,
-prefer a visible demonstration over asking them to reconstruct it from paragraphs.
-Choose the explanatory subject before allocating text columns:
-- Show the relevant objects and states, including what changes or connects them.
-  A list of named boxes and an arrow can still omit the operation being taught.
-- Use an inspected, permitted image directly or with a readable crop/annotation
-  when it helps. If none fits, construct the supported relationship as a native
-  schematic/chart or labeled original illustration; generation can supply a useful
-  scene or subject while essential labels and analysis remain editable.
-- A teaching view can simplify an object or document without impersonating a real
-  application screenshot. Mark illustrative examples honestly. No real screenshot
-  is not a reason to abandon the visual explanation.
-- Place short labels and necessary conditions at the relevant part. For exact-wording
-  tasks, make the decisive fields and their transformation visibly traceable; a
-  document outline around unchanged paragraphs adds little by itself.
-
-For example, a maintenance explanation can show where the part moves and what
-changes; a comparison can use common-scale marks; document processing can expose
-which source fields become which output fields. Select the operation that helps
-this audience, not a fixed page recipe. Inspect whether the picture reduced the
-reading/inference burden. A style reference, successful download, generic icon or
-highlight color does not by itself complete this task. Effective text-led pages,
-faithful recreation and scoped edits retain their appropriate treatment. The new-
-deck visual requirement is not a raster-file count or a visual quota on every page.
-
-These are ways to explore, not an exhaustive menu or an eligibility system:
-- Scale and visual weight: enlarge the consequential object or difference and
-  subordinate context. Unequal importance may need unequal space. Preserve units,
-  caveats and identities; a large number must not overstate the evidence.
-- Position and connection: use branch, path, alignment, adjacency or shared axes to
-  expose a real relation. An arrow supplies direction when direction needs it.
-- Containment and depth: nesting, overlap, cutaway or attachment can expose levels,
-  components and hidden structure. Verify that geometry does not imply an unsupported
-  dependency or hide an essential label.
-- Time and state: show the same object before/after or through useful intermediate
-  states. Persistent context lets the audience see what changed.
-- Image and annotation: make an actual subject/output large enough to inspect;
-  crop toward a useful detail and connect short native annotations to that detail.
-- Typography and space: exact wording, a dispute or a conclusion may itself be the
-  subject. Use purposeful line breaks, hierarchy and spacing to establish reading.
-- Data and comparison: comparable marks, direct labels and honest scales can expose
-  a pattern. Keep required detail, uncertainty and units accessible.
-
-One dominant compositional idea often organizes a page well. A layered system can
-have attached labels and a path through it, rather than sit as a decorative icon
-between unrelated paragraphs. Some pages need a quiet, precise evidence display.
-Choose the intensity that earns its place in this argument.
-
-Allocate emphasis to the audience's current task. If inspecting a mechanism or
-comparing evidence is the task, give its relations and useful detail the space;
-headings, scale totals and takeaway sentences can remain subordinate. If immediate
-recognition or an emotional impression is requested, a larger image, number or
-type treatment may carry the task itself. Judge this from the brief and material,
-not a rule assigning a style to research, teaching, marketing or any other category.
-Refinement may reduce competing emphasis or strengthen a missing focus. A quiet
-frame still needs differentiated subject, evidence, annotations and decisive fields;
-uniform dark text is not a substitute for that hierarchy. It must not flatten a necessary branch,
-remove comparison context or replace a specific example with generic labels merely
-to make the page look cleaner. Preserve units, qualifiers and reading-scale clarity.
-
-When the main composition is unresolved, briefly compare plausible spatial ideas.
-For an important mechanism this may mean a continuous construction versus a set
-of aligned states; for an ordinary page a clear hierarchy may be sufficient.
-Use alternatives to resolve a real choice, not to fill a quota or build every idea.
-See art-direction-examples.md for worked transformations when this step is unclear.
+When the main composition is unresolved, briefly compare spatial ideas (for an
+important mechanism, a continuous construction vs aligned states; for an ordinary page
+a clear hierarchy may suffice) to resolve a real choice, not to fill a quota. See
+art-direction-examples.md for worked transformations.
 
 ## 5. Build the main decision before the details
 
 Start with the large mass, main mechanism, dominant image/crop, comparison axes or
-principal type. Then arrange labels, supporting evidence and source/qualification
-text around the actual structure. Choose line breaks and measurements using the
-native tools. Refine small spacing, borders and local effects after the main
-relationship works. This keeps tool convenience from selecting the page's design.
+principal type; then arrange labels, evidence and qualifications around the real
+structure, with native tools choosing breaks and measurements. Refine spacing, borders
+and local effects last, so tool convenience does not choose the design.
 
-Before committing a composition around a selected image, receive its actual
-picture through the page-context image channel when exposed, or open it with the
-existing image viewer. Do the same for registered visual references applied to
-this page; reuse available files. A search summary, file path or ready state does
-not show you the crop, subject/background relationship or usable detail. Unavailable
-visuals stay unviewed; no new search quota or whole-deck material wait is implied.
+Before composing around a selected image, receive its actual picture through the
+page-context image channel when exposed, or open it with the image viewer; do the same
+for registered references applied to the page, reusing available files. A search
+summary, path or ready state does not show crop, subject/background or usable detail.
+Unavailable visuals stay unviewed; no new search quota or whole-deck material wait.
 
-Effects are materials used by a concept: a shadow can separate layers, a local
-highlight can show active state, and a crop can create focus. Use treatments where
-they support the chosen subject and remain compatible. Surface novelty does not
-replace a clear relation or an actual example.
+Effects serve a concept: a shadow separates layers, a local highlight shows active
+state, a crop creates focus. Use them where they support the subject and stay
+compatible; surface novelty does not replace a clear relation or a real example.
 
-Use installed native_canvas helpers, and native batches when available, for measured text, chosen shapes, groups, crops,
-charts and anchored connections. Advanced native OOXML remains available within
-scope. The helper implements your composition; its object defaults are not a page
-layout. Keep essential text, analytical diagrams, formulas and data editable.
-Choose raster imagery for an actual illustrative/documentary role, not a whole-slide
+Use installed native_canvas helpers, and native batches when available, for measured
+text, chosen shapes, groups, crops, charts and anchored connections; advanced native
+OOXML stays available within scope. Helpers implement your composition — their
+defaults are not a layout. Keep essential text, analytical diagrams, formulas and data
+editable; raster imagery serves a real illustrative/documentary role, not a whole-slide
 substitute for editable content.
 
-Plan the page's entry context, useful click groups and complete final state alongside
-its composition. Related labels/connectors/conditions enter together and persistent
-context remains visible. Select supported timing after deciding what changes and
-what the viewer should learn. Use the existing animation checks; static renders
-and simulated states are not target-player playback.
+Plan entry context, useful click groups and the complete final state with the
+composition: related labels/connectors/conditions enter together and persistent context
+stays visible. Choose supported timing after deciding what changes and what the viewer
+learns; static renders and simulated states are not target-player playback.
 
 ## 6. Make the first render a design decision
 
-Design is developed through actual pages, not settled completely in the initial
-plan. Render when the main composition, real material and key wording can be
-judged; refine minor decoration after that expression works. Open the actual page
-at normal reading scale and inspect uncertain details at full size. Compare the
-visible result with this page's job, not just its intended design.
-Begin with the improvement question: what would most improve this actual page
-for its audience? Locate the affected region before deciding that the draft is
-finished. A correct export, clear labels or consistent palette do not answer it.
-Use whichever questions identify the actual issue:
-- Where does attention land first? Is that the useful object or a competing heading,
-  decoration or qualifier? Adjust relative scale, placement or emphasis accordingly.
-- Has the page's visual task actually been completed? A schematic may explain a
-  route while leaving the real subject unrecognizable. A caption naming a case
-  does not by itself supply its visible identity or relevant detail.
-- Can the comparison/change/dependency be followed in the picture, or must the viewer
-  read all paragraphs to reconstruct it? Recompose the specific relationship.
-- Do image/diagram labels refer to something the audience can actually inspect?
-  Enlarge/crop/relabel a useful region instead of adding more general explanation.
-- Does the composition have enough development for its purpose, or does its
-  treatment exceed that purpose? Strengthen an unresolved subject or relationship.
-  For excess, first adjust competing decoration, color or motion while preserving
-  effective scale, hierarchy and explanatory structure. Rebuild the main idea
-  when it causes the mismatch; do not flatten a successful composition merely to
-  make it quieter. Emotion and atmosphere can be purposeful when the brief calls
-  for them, and purposeful text-led compositions need no added imagery.
-- Is density deliberate for the viewing mode? Reflow/group/edit redundant wording
-  before shrinking necessary content. Evidence pages may need real detail.
-- Are the factual qualifiers, source identity and complete final state still clear?
+Design develops through actual pages. Render once the main composition, real material
+and key wording can be judged; minor decoration comes after the expression works. Open
+the page at normal reading scale, uncertain details at full size, and compare it with
+this page's job, not only its intended design. Ask first: what would most improve this
+page for its audience? Locate that region before calling the draft finished; a correct
+export, clear labels or consistent palette do not answer it. Useful questions:
+- Where does attention land first — the useful object, or a competing heading,
+  decoration or qualifier? Adjust scale, placement or emphasis.
+- Is the visual task actually done? A schematic may explain a route but leave the real
+  subject unrecognizable; a caption naming a case does not show its identity or detail.
+- Can the comparison/change/dependency be followed in the picture, or only by reading
+  all paragraphs? Recompose that relationship.
+- Do labels point to something inspectable? Enlarge/crop/relabel the useful region
+  instead of adding general explanation.
+- Is development right for the purpose? Strengthen an unresolved subject; for excess,
+  first reduce competing decoration, color or motion while keeping effective scale,
+  hierarchy and structure, and rebuild the main idea only when it causes the mismatch.
+  Do not flatten a successful composition to make it quieter. Emotion and atmosphere
+  can be purposeful; purposeful text-led pages need no added imagery.
+- Is density deliberate for the viewing mode? Reflow/group/cut redundancy before
+  shrinking necessary content; evidence pages may need real detail.
+- Are qualifiers, source identity and the complete final state still clear?
 
-These questions guide action, not a scored form. Choose the highest-value feasible
-correction to the observed region. Decide whether local fit repair is sufficient
-or the subject/composition needs rebuilding within the actual scope. Resolve a
-substantial design gap while this page is being authored; the final bounded
-optional repair is not a substitute for developing its main expression. Implement
-the useful change, render and view the result before continuing. Compare
-the affected before/after regions rather than assume that changed code improved
-the page. Keep the prior render and use an existing native snapshot before a
-substantial recomposition; a regression can justify reverting the attempt.
+These guide action, not a scored form. Choose the highest-value feasible correction to
+the observed region, decide whether local repair suffices or the subject/composition
+needs rebuilding within scope, and resolve a substantial gap while authoring the page —
+the final bounded optional repair does not substitute for developing the main
+expression. Render and view the change before continuing; compare before/after regions
+rather than assume changed code improved the page. Keep the prior render and take a
+native snapshot before substantial recomposition; a regression can justify reverting.
 
-A first render can stand when supported meaning, the intended visual task and
-audience-appropriate composition/craft are resolved within the creative scope.
-Technical validity and readable connections alone do not close a consequential
-gap in recognition, material, hierarchy or detail. Prioritize the main deficit
-before incidental polish, using the actual render and useful inspected references.
-Respect existing task/repair bounds; keep the best verified result at the limit
-and report unresolved design limits honestly. No forced edit, iteration quota,
-aesthetic score or style preference gate. Record consequential changes in existing notes. Use saved
-section previews to inspect rhythm without repeatedly rendering unchanged pages.
-Compare actual focus, reading task and density as well as style.
+A first render can stand when meaning, the intended visual task and audience-fit
+composition/craft are resolved in creative scope. Technical validity and readable
+connections do not close a consequential gap in recognition, material, hierarchy or
+detail; fix the main deficit before incidental polish. Respect task/repair bounds, keep
+the best verified result at the limit and report unresolved design limits honestly. No
+forced edit, iteration quota, aesthetic score or style gate. Record consequential
+changes in existing notes; use saved section previews to check rhythm (focus, reading
+task, density as well as style) without re-rendering unchanged pages.
 
 ## 7. Preserve continuity through revisions and recovery
 
 On resume inspect retained pages, exports, template scope, actual reference evidence
-and the existing visual agreement. Reuse valid decisions/assets instead of resetting
-style. Pending user native edits are protected inputs; apply the requested scope.
+and the visual agreement; reuse valid decisions/assets instead of resetting style.
+Pending user native edits are protected inputs; apply the requested scope.
 
 Independent review supplies observation, audience impact and a feasible direction.
-For repair, locate the actual region/object and solve the stated audience problem.
-Preserve successful neighboring pages, source meaning and native behavior. A repair
-may need a new concept when the problem is explanatory, or only a local object change
-when it is geometrical. Do not recast the entire deck for a small finding.
+In repair, locate the actual region/object and solve the stated audience problem while
+keeping successful neighbors, source meaning and native behavior. An explanatory
+problem may need a new concept, a geometric one only a local change; never recast the
+deck for a small finding.
 
-Distinguish required defects from optional artistic alternatives. Assess useful
-suggestions when returned to the designer and record applied/retained decisions;
-never claim an unimplemented suggestion was applied. Existing bounded repair,
-frozen-hash review and single-file delivery remain authoritative.
+Separate required defects from optional artistic alternatives. Assess suggestions when
+returned, record applied/retained decisions, and never claim an unimplemented
+suggestion was applied. Bounded repair, frozen-hash review and single-file delivery
+remain authoritative.
 
 In the hosted workflow, first-review visual suggestions may return once through
-existing repair-1 for a bounded designer response. Assess and apply useful changes
-or retain them with a reason; a cosmetic edit is not compulsory. Unchanged bytes
-reuse their frozen review; changed bytes need normal review. The host preserves
-the reviewed baseline and attempted work if optional refinement fails. User stop,
-new revisions and required defects retain their existing authority.
+repair-1 for a bounded designer response: apply useful changes or retain them with a
+reason (no compulsory cosmetic edit). Unchanged bytes reuse their frozen review; changed
+bytes get normal review. The host keeps the reviewed baseline and the attempt if
+optional refinement fails. User stop, new revisions and required defects keep their
+authority.

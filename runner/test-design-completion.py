@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from design_completion import CONTRACT, PRESENTATION, PRESENTATION_MARKER, CRAFT, CRAFT_MARKER, CRAFT_DIMENSIONS, craft_enabled, schema, selection, notice, presentation_schema, presentation_enabled, response_findings
-from design_feedback import mark_response, optional_response
+from design_feedback import mark_response, optional_response, introduced_required, load_baseline
 from workflow import validate_report, VISUAL_REPORT_SCHEMA, REPORT_SCHEMA, DESIGN_RESPONSE_SECONDS
 
 
@@ -360,6 +360,153 @@ class WorkflowTests(unittest.TestCase):
         value=content_priority(current(state='ready'))
         value['content']['findings'][0]['severity']='required'
         self.assertFalse(optional_response(mark_response(self.cfg,value,scoped=False)))
+
+
+def content_suggestion(value, severity='suggestion', pages=(1,)):
+    value['content']['findings'] = [{'id': 'C1', 'severity': severity, 'pages': list(pages),
+        'observation': 'Sample dates fall in an earlier month than the stated reporting period.',
+        'impact': 'Deadlines read as already past for the intended audience.',
+        'recommendation': 'Re-anchor sample dates to the reporting period; keep durations and ordering.',
+        'route': 'content_revision'}]
+    return value
+
+
+class RequiredOriginTests(unittest.TestCase):
+    def setUp(self):
+        self.base = content_suggestion(current(b'baseline'))
+        self.next = compared(self.base, content_suggestion(current(b'candidate', 2), 'required'))
+
+    def test_linked_severity_drift_is_not_introduced(self):
+        self.next['content']['carried_findings'] = [{'id': 'C1', 'prior_id': 'C1'}]
+        introduced, carried = introduced_required(self.base, self.next)
+        self.assertEqual(introduced, [])
+        self.assertEqual(carried[0]['evidence'], 'reviewer_link')
+        self.assertEqual(selection(self.base, self.next, introduced=introduced)['selected'], 'candidate')
+        self.assertEqual(selection(self.base, self.next)['reason'], 'required_regression')
+
+    def test_unlinked_or_moved_required_finding_is_introduced(self):
+        self.assertEqual(len(introduced_required(self.base, self.next)[0]), 1)
+        self.next['content']['carried_findings'] = [{'id': 'C1', 'prior_id': 'C1'}]
+        self.next['content']['findings'][0]['pages'] = [2]
+        self.assertEqual(len(introduced_required(self.base, self.next)[0]), 1)
+
+    def test_untouched_pages_prove_pre_existing_without_a_link(self):
+        introduced, carried = introduced_required(self.base, self.next, unchanged={1})
+        self.assertEqual((introduced, carried[0]['evidence']), ([], 'pages_unchanged'))
+
+    def test_visual_regression_overrides_reviewer_link(self):
+        self.next['content']['findings'] = []
+        self.next['visual']['findings'][0]['severity'] = 'required'
+        self.next['visual']['carried_findings'] = [{'id': 'F1', 'prior_id': 'F1'}]
+        self.assertEqual(introduced_required(self.base, self.next)[0], [])
+        self.next['visual']['design_comparison']['regression_findings'] = ['F1']
+        self.assertEqual(len(introduced_required(self.base, self.next)[0]), 1)
+        self.next['visual']['design_comparison']['regression_findings'] = []
+        self.next['visual']['design_comparison']['resolutions'][0]['status'] = 'regressed'
+        self.assertEqual(len(introduced_required(self.base, self.next)[0]), 1)
+
+    def test_carried_links_are_validated_against_actual_ids(self):
+        report = self.next['content']
+        with self.assertRaisesRegex(ValueError, 'carried_findings'):
+            validate_report(report, 2, prior_ids=['C1'])
+        for rows in ([{'id': 'C9', 'prior_id': 'C1'}], [{'id': 'C1', 'prior_id': 'X'}],
+                     [{'id': 'C1', 'prior_id': 'C1'}, {'id': 'C1', 'prior_id': 'C1'}]):
+            report['carried_findings'] = rows
+            with self.subTest(rows=rows), self.assertRaises(ValueError):
+                validate_report(report, 2, prior_ids=['C1'])
+        report['carried_findings'] = [{'id': 'C1', 'prior_id': 'C1'}]
+        validate_report(report, 2, prior_ids=['C1'])
+        with self.assertRaises(ValueError):validate_report(report, 2)
+
+
+class RequiredOriginWorkflowTests(unittest.TestCase):
+    setUp = fixture.FeedbackTests.setUp
+    execute = fixture.FeedbackTests.execute
+    fake_restore = fixture.FeedbackTests.fake_restore
+
+    def configure(self, link):
+        baseline = content_suggestion(current((self.job/'original.pptx').read_bytes()))
+        def review(body, rendered, packet, payload, number):
+            if number == 1:
+                value = content_suggestion(current(body))
+            elif number == 2:
+                value = compared(baseline, content_suggestion(current(body, 2), 'required'))
+                if link:value['content']['carried_findings'] = [{'id': 'C1', 'prior_id': 'C1'}]
+            else:
+                value = current(body, number, 'ready')
+            return mark_response(self.cfg, value, scoped=False)
+        self.run.review.side_effect = review
+        self.action = 'change'
+        author_phase = self.run.phase
+        def phase(name, prompt, **options):
+            if 'thread' not in options:  # content-revision research step of a required repair
+                self.calls.append((name, options)); return
+            return author_phase(name, prompt, **options)
+        self.run.phase = phase
+
+    def test_escalated_existing_issue_keeps_improvement_and_repairs_it(self):
+        self.configure(link=True)
+        with patch('design_feedback.restore_baseline', side_effect=self.fake_restore) as fallback:
+            result, receipt = self.execute()
+        fallback.assert_not_called()
+        self.assertEqual([n for n, _ in self.calls if n.startswith('repair-')][:2], ['repair-1', 'repair-2'])
+        self.assertEqual(self.run.review.call_count, 3)
+        self.assertEqual(result['artifact'], (self.job/'changed.pptx').read_bytes())
+        self.assertEqual(receipt['round'], 3)
+        self.assertIsNone(load_baseline(self.run))
+        decision = json.loads(next(self.records.glob('*-design-selection-*')).read_text())
+        self.assertEqual(decision['selected'], 'candidate')
+
+    def test_unlinked_required_finding_still_restores_baseline(self):
+        self.configure(link=False)
+        with patch('design_feedback.restore_baseline', side_effect=self.fake_restore) as fallback:
+            result, receipt = self.execute()
+        fallback.assert_called_once()
+        self.assertEqual(result['artifact'], (self.job/'original.pptx').read_bytes())
+        self.assertEqual(receipt['round'], 1)
+
+
+class GeneratedLookTests(unittest.TestCase):
+    def setUp(self):
+        self.value = current(state='ready')['visual']
+        self.value['design_assessment'].update(generated_look='some_tells', generated_tells=[{
+            'pages': [2], 'region': 'Top KPI strip across the page',
+            'resembles': 'Default four-tile KPI strip with matching pictograms',
+            'why_unjustified': 'The quarter has two meaningful figures; the other tiles restate the title.',
+            'direction': 'Lead with the two figures at the scale of their consequence; drop the filler tiles.',
+            'scope': 'deck', 'finding_ids': ['F1']}])
+
+    def check(self, value=None):
+        return validate_report(value or self.value, 2, require_design=True, completion=True, generated_look=True)
+
+    def test_schema_offers_fields_only_when_enabled(self):
+        enabled = schema(VISUAL_REPORT_SCHEMA, generated_look=True)['properties']['design_assessment']
+        self.assertIn('generated_tells', enabled['required'])
+        self.assertEqual(enabled['properties']['generated_look']['enum'], ['clear', 'some_tells', 'pronounced'])
+        self.assertNotIn('generated_look', schema(VISUAL_REPORT_SCHEMA)['properties']['design_assessment']['properties'])
+        with self.assertRaises(ValueError):
+            validate_report(self.value, 2, require_design=True, completion=True)
+
+    def test_level_does_not_decide_readiness(self):
+        self.check()
+        self.value['design_assessment']['generated_look'] = 'pronounced'
+        self.check()  # ready with pronounced tells stays a valid, uncalibrated report
+        self.assertFalse(any(f['severity'] == 'required' for f in self.value['findings']))
+
+    def test_any_number_of_tells_but_level_must_match(self):
+        self.value['design_assessment'].update(generated_look='clear', generated_tells=[])
+        self.check()
+        self.value['design_assessment']['generated_look'] = 'some_tells'
+        with self.assertRaisesRegex(ValueError, 'level'):self.check()
+
+    def test_each_tell_is_located_and_carried_by_a_real_finding(self):
+        tell = self.value['design_assessment']['generated_tells'][0]
+        for key, bad in (('pages', [3]), ('finding_ids', []), ('finding_ids', ['missing']),
+                         ('pages', [1]), ('resembles', ' '), ('scope', 'site')):
+            original = copy.deepcopy(tell); tell[key] = bad
+            with self.subTest(key=key, bad=bad), self.assertRaises(ValueError):self.check()
+            tell.clear(); tell.update(original)
+        self.check()
 
 
 if __name__ == '__main__': unittest.main()

@@ -39,6 +39,8 @@ class Tests(unittest.TestCase):
         self.candidate=(self.job/'candidate.pptx').read_bytes()
         self.binding={'sha256':hashlib.sha256(self.original).hexdigest(),'input_revision':0}
         (self.job/'delivery.json').write_text(json.dumps({'path':'candidate.pptx'}))
+        # A declared candidate must match the requested page count (declared_output).
+        (self.job/'request.json').write_text(json.dumps({'pages':2}))
         images=[]
         for n in (1,2):
             p=self.root/f'page-{n}.png';Image.new('RGB',(1334,750),'blue').save(p);images.append(str(p))
@@ -215,7 +217,7 @@ class Tests(unittest.TestCase):
         run=Execution.__new__(Execution)
         run.cfg=self.cfg;run.job=self.job;run.task={'id':'repair-fixture','lease':'synthetic'}
         run.records=self.records;run.deadline=__import__('time').monotonic()+10
-        run.journal=Mock();run.journal.state={'input_revision':0,'inbox':{},'recoveries':{}}
+        run.journal=Mock();run.journal.state={'input_revision':0,'inbox':{},'recoveries':{},'run_id':'repair-fixture-run'}
         run.recovery_plan={};run.conversation=Mock();run.conversation.context.return_value=None
         run.bridge=SimpleNamespace(environment=lambda root:{},render_requests=lambda *a,**k:None)
         run.reporter=Mock(last_sent=0,offset=0);run.trace=Mock();run.trajectory=None

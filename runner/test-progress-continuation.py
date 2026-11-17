@@ -8,7 +8,7 @@ from runner import receive_progress_draft
 
 
 ROOT=Path(__file__).resolve().parent
-BLANK=ROOT/'runtime/0.1.0+codex.20260919234350/pptx-agent/skills/pptx/assets/blank.pptx'
+BLANK=ROOT.parent/'pptx-agent/skills/pptx/assets/blank.pptx'  # current source, not a host-local runtime snapshot
 
 
 class ProgressContinuationTests(unittest.TestCase):

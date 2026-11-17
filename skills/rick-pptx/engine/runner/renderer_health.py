@@ -1,5 +1,5 @@
 """Gate queue admission on the actual local rendering dependency, before model work."""
-import subprocess,time,threading
+import subprocess,time,threading,sys,shutil
 
 DOCKER='/usr/local/bin/docker'
 IMAGE='pptx-lab-renderer:1'
@@ -22,6 +22,18 @@ class RendererReadiness:
         if now<self.next_check:return self.available
         reason='renderer_ready'
         try:
+            if sys.platform=='linux':
+                from linux_render import installation,supports_page_range
+                result=self._command([str(installation()/'program/soffice'),'--version'],6)
+                available=result.returncode==0 and bool(shutil.which('pdftoppm'))
+                if supports_page_range():available=available and bool(shutil.which('pdfinfo'))
+                self.available=available;self.next_check=self.clock()+(15 if available else 5)
+                reason='renderer_ready' if available else 'linux_renderer_unavailable'
+                if reason!=self.reason:
+                    self.reason=reason
+                    self.log('Linux renderer ready.' if available else 'Linux renderer unavailable; tasks remain queued.',flush=True)
+                    if self.on_state:self.on_state(available,reason)
+                return available
             engine=self._command([DOCKER,'info','--format','{{.ServerVersion}}'],6)
             if engine.returncode or not engine.stdout.strip():
                 reason='docker_not_ready'
@@ -33,8 +45,8 @@ class RendererReadiness:
                     # reference, without a pull or any container execution.
                     image=self._command([DOCKER,'image','inspect',QUALIFIED_IMAGE,'--format','{{.Id}}'],6)
                     if image.returncode or not image.stdout.strip().startswith('sha256:'):reason='renderer_image_missing'
-        except subprocess.TimeoutExpired:reason='docker_not_ready'
-        except OSError:reason='docker_command_unavailable'
+        except subprocess.TimeoutExpired:reason='linux_renderer_unavailable' if sys.platform=='linux' else 'docker_not_ready'
+        except (OSError,ValueError,RuntimeError):reason='linux_renderer_unavailable' if sys.platform=='linux' else 'docker_command_unavailable'
         if reason=='docker_not_ready' and now>=self.next_launch:
             self.next_launch=now+120
             try:self._command(['/usr/bin/open','-g','-a','/Applications/Docker.app'],5)
@@ -42,7 +54,8 @@ class RendererReadiness:
         self.available=reason=='renderer_ready';self.next_check=self.clock()+(15 if self.available else 5)
         if reason!=self.reason:
             self.reason=reason
-            self.log('Renderer ready; queue admission enabled.' if self.available else 'Renderer unavailable ('+reason+'); tasks remain queued. Docker startup requested when needed.',flush=True)
+            message='Renderer ready; queue admission enabled.' if self.available else ('Linux renderer unavailable; tasks remain queued.' if sys.platform=='linux' else 'Renderer unavailable ('+reason+'); tasks remain queued. Docker startup requested when needed.')
+            self.log(message,flush=True)
             if self.on_state:self.on_state(self.available,reason)
         return self.available
 

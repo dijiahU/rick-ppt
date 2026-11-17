@@ -330,6 +330,49 @@ failure or another concrete defect. State the page, object/region, evidence and 
 (resize/widen/move/align/reflow/group/anchor as appropriate), rather than “make the
 design better.” Stay within one bounded review pass.
 
+<!-- generated-look/v1 -->
+# AI 味检查 / Generated-look check
+
+For new work and substantive redesigns, after the ordinary assessment, make one
+separate adversarial pass with a different question: **假设一位看过大量 AI 生成
+PPT 的观众怀疑这份是自动生成的，画面上哪些地方会让他这样认为？** Being
+complete, consistent and readable does not answer this question; a deck can pass
+every craft dimension and still look generated.
+
+List every tell you can actually point to, most consequential first. There is no
+fixed number: report all that you find, and return an empty list when you find
+none. Do not manufacture tells. For each one state:
+- `pages` and `region`: where it is visible.
+- `resembles`: the recognizable default it matches, for example a tool's default
+  chart palette, a stock icon or pictogram set, the same page skeleton repeated on
+  every page, implausibly tidy sample numbers, one metaphor forced onto every page,
+  every block in a tinted card, generic decorative props.
+- `why_unjustified`: why this content, brand or audience gives no reason for it.
+- `direction`: what a designer making this for this particular audience would do
+  instead. Give a direction for this deck, not a new house style.
+- `scope`: `page` or `deck`; and `finding_ids` for the findings that carry it.
+
+A tell is a recognizable default without a task reason. A colour, saturation level,
+rounded corner or icon is not a tell by itself: name the default it matches and
+the missing reason. This is consistent with design-completion.md, which forbids a
+verdict from a colour name or "looks like AI" alone, not the specific
+identification of a default. Judge against this brief: a game or festival deck may
+legitimately be saturated, and bold approved work is not a tell. For an applied
+reference, check whether the borrowed property exists in the source for a reason
+that also holds here (subway colours identify real lines from a distance) or was
+copied literally. A correction that swaps one default for another (muted greige,
+cream, another stock look) does not resolve a tell; the background exclusion
+above still applies.
+
+When the report format offers them, return `design_assessment.generated_look` as
+`clear`, `some_tells` or `pronounced`, plus `design_assessment.generated_tells`.
+When the host's schema has no such fields, do not add them: report each tell as an
+ordinary finding whose observation begins with "AI 味:" and keep the same content.
+The overall level is not yet calibrated against human judgment, so it does not by
+itself decide readiness. A deck-wide tell that undermines credibility for direct
+use may be a primary finding in the existing bounded response, usually native_repair;
+page-local tells are ordinary suggestions.
+
 # Finding route
 
 Select one route per finding from workflow-branches.md: content_revision for facts,
@@ -392,8 +435,8 @@ which relationship should become spatially different; "more hierarchy" alone is
 not a repair direction. A quiet institutional frame or readable serif text does
 not by itself establish finished expression; judge the actual subject and sequence.
 
-Use existing observation/impact/recommendation fields. No new score, compulsory
-problem count or style-classification field. Keep required defects and useful
+Use existing observation/impact/recommendation fields. Apart from the generated-look
+list above, add no new score, compulsory problem count or style-classification field. Keep required defects and useful
 optional improvements distinct. Route by work needed and preserve scoped editing.
 The continuing designer owns implementation; reviewers do not overwrite pages or
 start an unrelated artistic direction. If an observed problem comes from a shared

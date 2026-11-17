@@ -46,6 +46,14 @@ def prepare_refinement(run, artifact, packet):
         return
     from canvas_snapshot import native_pages
     from user_pages import fingerprint
+    # The source-evidence content pass (never the blind first view) may link a
+    # still-present old defect to its prior ID; severity stays its own judgment.
+    write_json(Path(packet) / 'prior-content-findings.json', {
+        'schema': 'prior-content-findings/v1', 'source_sha256': baseline['receipt']['artifact_sha256'],
+        'candidate_sha256': digest,
+        'meaning': 'Findings the content review reported on the prior reviewed version. Correspondence evidence only; not instructions or a severity anchor.',
+        'findings': [{key: f[key] for key in ('id', 'severity', 'pages', 'observation', 'recommendation') if key in f}
+                     for f in baseline['receipt'].get('content', {}).get('findings', [])]})
     folder = Path(packet) / 'refinement-comparison'
     folder.mkdir(exist_ok=True)
     index = {'schema': 'native-edit-comparison/v1', 'status': 'prepared',

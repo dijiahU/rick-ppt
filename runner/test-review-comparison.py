@@ -136,6 +136,21 @@ class RefinementTests(unittest.TestCase):
         self.assertEqual([p['native_dependencies_unchanged'] for p in data['pages']],[False,True])
         self.assertEqual(self.calls,[])  # Reuses verified baseline PNGs, without rerendering originals.
 
+    def test_prior_content_findings_and_untouched_pages_are_host_evidence(self):
+        import io
+        from design_feedback import unchanged_pages
+        self.baseline(completion=True)
+        deck=Presentation(io.BytesIO(self.original));deck.slides[0].shapes.title.text='Changed outside feedback'
+        body=io.BytesIO();deck.save(body)
+        prepare_refinement(self.run,body.getvalue(),self.packet)
+        prior=json.loads((self.packet/'prior-content-findings.json').read_text())
+        self.assertEqual(prior['candidate_sha256'],hashlib.sha256(body.getvalue()).hexdigest())
+        self.assertEqual(prior['findings'],[])
+        self.assertEqual(unchanged_pages(self.original,body.getvalue()),{2})
+        deck.slide_width+=100000;wider=io.BytesIO();deck.save(wider)
+        self.assertEqual(unchanged_pages(self.original,wider.getvalue()),set())
+        self.assertEqual(unchanged_pages(b'not a deck',body.getvalue()),set())
+
     def test_shared_dimension_changes_include_all_previous_pages(self):
         import io
         self.baseline(completion=True)

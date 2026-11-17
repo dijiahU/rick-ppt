@@ -29,7 +29,7 @@ git fetch origin
 git worktree add -b dev/my-change /absolute/path/rick-ppt-local origin/main
 cd /absolute/path/rick-ppt-local
 python3.11 -m venv .venv
-.venv/bin/python -m pip install -e ./pptx-agent
+.venv/bin/python -m pip install -e './pptx-agent[test]'   # test extra: python-pptx for runner tests
 .venv/bin/python tools/environment.py init-local
 .venv/bin/python tools/environment.py check local
 ```

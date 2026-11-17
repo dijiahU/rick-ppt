@@ -1,4 +1,4 @@
-#!/opt/homebrew/bin/python3.11
+#!/usr/bin/env python3
 """Task-scoped file IPC; the host only accepts a fixed PPTX-to-PDF operation."""
 import json
 import os
@@ -16,15 +16,19 @@ temporary=queue/(identifier+'.pending')
 temporary.write_text(json.dumps({'args':sys.argv[1:]}))
 os.replace(temporary,request)
 reply=queue/(identifier+'.reply.json')
-deadline=time.monotonic()+85
+reply_timeout=180 if sys.platform=='linux' else 85
+deadline=time.monotonic()+reply_timeout
 while time.monotonic()<deadline:
     if reply.is_file():
         result=json.loads(reply.read_text())
         if result.get('environment') and '--outdir' in sys.argv:
             destination=Path(sys.argv[sys.argv.index('--outdir')+1])
             (destination/'render-environment.json').write_text(json.dumps(result['environment']))
+        if result.get('timings') and '--outdir' in sys.argv:
+            destination=Path(sys.argv[sys.argv.index('--outdir')+1])
+            (destination/'render-timings.json').write_text(json.dumps(result['timings']))
         print(result.get('stdout',''),end='')
         print(result.get('stderr',''),end='',file=sys.stderr)
         raise SystemExit(result['returncode'])
     time.sleep(.2)
-raise SystemExit('Isolated renderer did not respond within 85 seconds')
+raise SystemExit(f'Isolated renderer did not respond within {reply_timeout} seconds')
