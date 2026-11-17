@@ -14,13 +14,14 @@ from pathlib import Path
 import tempfile
 import time
 import uuid
+import datetime
 import threading
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from contextlib import contextmanager
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode, quote, unquote
 from jsonschema import validate, ValidationError
 
-from browser_runtime import installed_runtime, browser_configuration, chrome_instructions
+from browser_runtime import installed_runtime, browser_configuration, chrome_instructions_text
 from durable import AppServer, TransportError, RPCError, redact_text
 from progress import read_scoped, public_url
 from trajectory import record
@@ -31,6 +32,7 @@ SITE = 'https://www.xiaohongshu.com'
 PINTEREST = 'https://www.pinterest.com'
 X = 'https://x.com'
 GOOGLE = 'https://www.google.com'
+X_RECENT_DAYS = 90
 SITE_HOSTS = {
     SITE: ('www.xiaohongshu.com',),
     PINTEREST: ('www.pinterest.com', 'jp.pinterest.com'),
@@ -73,7 +75,7 @@ def capability(cfg):
     sites = configured_sites(cfg)
     return {'mode': 'operator-authorized-edge', 'tool': TOOL, 'site': sites[0], 'sites': sites, 'optional': True,
         'batch_max_requests': 3,
-        'use': 'Authorized public examples, workflows and visual-reference research in Edge. Submit up to three distinct requests together, each with query, purpose and explicit enabled site. Independent questions may use the same site, including Google; exact duplicate requests are rejected. A single query remains supported. Optional availability is not evidence that a channel was searched. Returned screenshots are reference captures, not original assets or licenses. Respect offline/supplied-only instructions. Blocked/login-required access remains unavailable; never bypass it. No posting, messaging or account access.'}
+        'use': 'Authorized public examples, workflows and visual-reference research in Edge; X is for recent developments and first-hand depth: usage experience, tips and opinions (text posts count; attribute views; verify facts at the original source). Submit up to three distinct requests together, each with query, purpose and explicit enabled site. Independent questions may use the same site, including Google; exact duplicate requests are rejected. A single query remains supported. Optional availability is not evidence that a channel was searched. Returned screenshots are reference captures, not original assets or licenses. Respect offline/supplied-only instructions. Blocked/login-required access remains unavailable; never bypass it. No posting, messaging or account access.'}
 
 
 def source_url(value, site=SITE):
@@ -334,7 +336,13 @@ class BrowserSources:
                 search_url = SITE + '/search_result_ai?' + urlencode({
                     'keyword': quote(args['query'], safe=''), 'source': 'web_explore_feed'})
             elif site == X:
-                search_url = X + '/search?' + urlencode({'q': args['query'], 'src':'typed_query'})
+                # Top ranking within a recent window: newer than Top alone, less noisy
+                # than Latest. An explicit since:/until: in the query wins.
+                query = args['query']
+                if not re.search(r'\b(?:since|until):', query):
+                    start = datetime.date.today() - datetime.timedelta(days=X_RECENT_DAYS)
+                    query += ' since:' + start.isoformat()
+                search_url = X + '/search?' + urlencode({'q': query, 'src':'typed_query'})
             elif site == GOOGLE:
                 search_url = GOOGLE + '/search?' + urlencode({'q': args['query']})
             else:
@@ -353,7 +361,15 @@ class BrowserSources:
                 'permission to browse those sites. Google snippets and thumbnails are discovery evidence, not '
                 'verification of the original source or complete artwork. State this limit explicitly; the main '
                 'researcher may separately verify a public original through its permitted web tools. '
-                if site == GOOGLE else '')
+                if site == GOOGLE else
+                'X serves recent developments and first-hand depth: announcements and releases, people\'s own usage '
+                'experience, workflows, tips, problems, and opinions on a product or event. Text posts are valid evidence; '
+                'images are optional. Most results are noise: prefer posts with concrete specifics (steps, results, '
+                'comparisons, limits) over hype or promotion, and include differing views when present. In each observed '
+                'field state the post\'s visible date, author handle and what it says. Capture the relevant post or results '
+                'region. A post is a claim or opinion, not a verified fact: say so, and leave verification at the original '
+                'source to the main researcher. '
+                if site == X else '')
             prompt = (
                 'Perform only the authorized public example/workflow/visual-reference search below in Edge. Do not create a PPT. '
                 'Stay on these operator-approved origins: ' + origins + '. Create your own tab; do not list or read unrelated user tabs, '
@@ -396,7 +412,7 @@ class BrowserSources:
                 'Captured files are references, not original licensed assets. Finish promptly within four minutes. '
                 'Return only the requested JSON. Set each source screenshot to its actual saved filename or null.\n'
                 'Research request:\n' + json.dumps(args, ensure_ascii=False) + '\n\nBrowser instructions:\n'
-                + chrome_instructions(paths).read_text())
+                + chrome_instructions_text(paths))
             calls = []
             def event(value):
                 item = value.get('item') or {}

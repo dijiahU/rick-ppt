@@ -14,6 +14,7 @@ from pathlib import Path
 import tempfile
 import time
 import uuid
+import datetime
 import threading
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from contextlib import contextmanager
@@ -31,6 +32,7 @@ SITE = 'https://www.xiaohongshu.com'
 PINTEREST = 'https://www.pinterest.com'
 X = 'https://x.com'
 GOOGLE = 'https://www.google.com'
+X_RECENT_DAYS = 90
 SITE_HOSTS = {
     SITE: ('www.xiaohongshu.com',),
     PINTEREST: ('www.pinterest.com', 'jp.pinterest.com'),
@@ -73,7 +75,7 @@ def capability(cfg):
     sites = configured_sites(cfg)
     return {'mode': 'operator-authorized-edge', 'tool': TOOL, 'site': sites[0], 'sites': sites, 'optional': True,
         'batch_max_requests': 3,
-        'use': 'Authorized public examples, workflows and visual-reference research in Edge. Submit up to three distinct requests together, each with query, purpose and explicit enabled site. Independent questions may use the same site, including Google; exact duplicate requests are rejected. A single query remains supported. Optional availability is not evidence that a channel was searched. Returned screenshots are reference captures, not original assets or licenses. Respect offline/supplied-only instructions. Blocked/login-required access remains unavailable; never bypass it. No posting, messaging or account access.'}
+        'use': 'Authorized public examples, workflows and visual-reference research in Edge; X is for recent developments and first-hand depth: usage experience, tips and opinions (text posts count; attribute views; verify facts at the original source). Submit up to three distinct requests together, each with query, purpose and explicit enabled site. Independent questions may use the same site, including Google; exact duplicate requests are rejected. A single query remains supported. Optional availability is not evidence that a channel was searched. Returned screenshots are reference captures, not original assets or licenses. Respect offline/supplied-only instructions. Blocked/login-required access remains unavailable; never bypass it. No posting, messaging or account access.'}
 
 
 def source_url(value, site=SITE):
@@ -334,8 +336,13 @@ class BrowserSources:
                 search_url = SITE + '/search_result_ai?' + urlencode({
                     'keyword': quote(args['query'], safe=''), 'source': 'web_explore_feed'})
             elif site == X:
-                # Media tab: only posts with images/video, so captures show visual work.
-                search_url = X + '/search?' + urlencode({'q': args['query'], 'src':'typed_query', 'f':'media'})
+                # Top ranking within a recent window: newer than Top alone, less noisy
+                # than Latest. An explicit since:/until: in the query wins.
+                query = args['query']
+                if not re.search(r'\b(?:since|until):', query):
+                    start = datetime.date.today() - datetime.timedelta(days=X_RECENT_DAYS)
+                    query += ' since:' + start.isoformat()
+                search_url = X + '/search?' + urlencode({'q': query, 'src':'typed_query'})
             elif site == GOOGLE:
                 search_url = GOOGLE + '/search?' + urlencode({'q': args['query']})
             else:
@@ -355,8 +362,13 @@ class BrowserSources:
                 'verification of the original source or complete artwork. State this limit explicitly; the main '
                 'researcher may separately verify a public original through its permitted web tools. '
                 if site == GOOGLE else
-                'This X search opens the Media results, which list only posts with images or video. Capture the visible '
-                'image grid, or open one post\'s image when the purpose needs detail; text-only posts are out of scope. '
+                'X serves recent developments and first-hand depth: announcements and releases, people\'s own usage '
+                'experience, workflows, tips, problems, and opinions on a product or event. Text posts are valid evidence; '
+                'images are optional. Most results are noise: prefer posts with concrete specifics (steps, results, '
+                'comparisons, limits) over hype or promotion, and include differing views when present. In each observed '
+                'field state the post\'s visible date, author handle and what it says. Capture the relevant post or results '
+                'region. A post is a claim or opinion, not a verified fact: say so, and leave verification at the original '
+                'source to the main researcher. '
                 if site == X else '')
             prompt = (
                 'Perform only the authorized public example/workflow/visual-reference search below in Edge. Do not create a PPT. '

@@ -36,8 +36,16 @@ discovery. Follow-up questions may depend on earlier evidence and remain sequent
 
 When capabilities.json exposes authorized browser sites, actually try each listed
 channel with a task-specific query before narrowing: Pinterest for finished visual
-work, X for public examples/processes, and Xiaohongshu for relevant Chinese examples
-are possible entry questions, not exclusive roles or a source whitelist. Use the
+work, X for recent developments and first-hand depth, and Xiaohongshu for relevant Chinese
+examples are possible entry questions, not exclusive roles or a source whitelist.
+X adds what official pages lack: people's own usage experience, workflows, tips,
+problems and opinions on a product or event (e.g. how users actually work with a newly
+released tool). Text posts count. Most results are noise: keep posts with concrete
+specifics (steps, results, comparisons, limits) over hype or promotion, attribute each
+as a dated view of a named account, show the range of views rather than one cherry-pick,
+and verify factual claims at the original source. A strong text-only finding can still
+become a visual: a native diagram of the described workflow or comparison, or a labeled
+original illustration — never a fabricated screenshot of the real product. Use the
 exposed pptx_browser_sources with site explicitly set. When its schema advertises
 requests, submit independent queries in one batch (up to three, each with its
 own site/query/purpose); the host isolates sessions and tabs. When Google is
