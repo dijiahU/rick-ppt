@@ -54,6 +54,26 @@ class BrowserRuntimeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             b.browser_configuration(self.job, self.paths)
 
+    def test_app_bundle_instructions_only_for_same_plugin_version(self):
+        # Plugin cache 26.1111+ ships no skills/; the app bundle beside node_repl does.
+        version = self.root / 'cache/chrome/26.1111.21308'
+        (self.paths['chrome_plugin'] / 'scripts').rename(self.root / 'scripts')
+        version.mkdir(parents=True); (self.root / 'scripts').rename(version / 'scripts')
+        paths = {**self.paths, 'chrome_plugin': version}
+        with self.assertRaisesRegex(ValueError, 'chrome_plugin'):
+            b.validate_runtime(paths)
+        bundle = self.paths['node_runtime'].parent / 'plugins/openai-bundled/plugins/chrome'
+        (bundle / b.SKILL).parent.mkdir(parents=True)
+        (bundle / b.SKILL).write_text('Bundled browser instructions')
+        (bundle / '.codex-plugin').mkdir()
+        (bundle / '.codex-plugin/plugin.json').write_text(json.dumps({'version': '26.0000.1'}))
+        with self.assertRaisesRegex(ValueError, 'chrome_plugin'):
+            b.validate_runtime(paths)
+        (bundle / '.codex-plugin/plugin.json').write_text(json.dumps({'version': '26.1111.21308'}))
+        b.validate_runtime(paths)
+        self.assertEqual(b.chrome_instructions(paths).read_text(), 'Bundled browser instructions')
+        self.assertEqual(b.chrome_instructions(self.paths), self.paths['chrome_plugin'] / b.SKILL)
+
     def test_broad_read_grants_are_still_rejected(self):
         with patch.object(b, 'validate_runtime'):
             with self.assertRaises(ValueError):

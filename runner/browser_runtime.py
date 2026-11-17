@@ -36,10 +36,33 @@ def installed_runtime(config_file=None):
     return paths
 
 
+SKILL = 'skills/control-chrome/SKILL.md'
+
+
+def chrome_instructions(paths):
+    """Official browser instructions for the exact installed plugin version.
+
+    Plugin cache 26.1111+ no longer carries skills/; the ChatGPT app bundle that
+    owns the configured node_repl keeps them. Accept that copy only when its
+    plugin manifest names the same version as the cached client.
+    """
+    cached = Path(paths['chrome_plugin']) / SKILL
+    if cached.is_file():
+        return cached
+    bundle = Path(paths['node_runtime']).parent / 'plugins/openai-bundled/plugins/chrome'
+    try:
+        version = json.loads((bundle / '.codex-plugin/plugin.json').read_text()).get('version')
+    except (OSError, ValueError):
+        version = None
+    if version == Path(paths['chrome_plugin']).name and (bundle / SKILL).is_file():
+        return bundle / SKILL
+    raise ValueError('Missing installed browser component: chrome_plugin')
+
+
 def validate_runtime(paths):
+    chrome_instructions(paths)
     for key, relative in (
         ('chrome_plugin', 'scripts/browser-client.mjs'),
-        ('chrome_plugin', 'skills/control-chrome/SKILL.md'),
         ('browser_plugin', 'scripts/browser-service.mjs'),
         ('node_runtime', 'bin/node'),
         ('node_runtime', 'bin/node_repl'),
@@ -82,7 +105,7 @@ def connection_probe(output, paths, *, model=DEFAULT_TASK_MODEL, effort=DEFAULT_
         'attempt another transport. An empty session tab list is a successful connection, not a failure. '
         'Stop on a denied action. Return a concise connection result. Website permissions and login '
         'inheritance remain unverified regardless of connection success.\n\n'
-        + (Path(paths['chrome_plugin']) / 'skills/control-chrome/SKILL.md').read_text()
+        + chrome_instructions(paths).read_text()
     )
     started = time.monotonic()
     calls = []
