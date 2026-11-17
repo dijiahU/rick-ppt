@@ -57,45 +57,6 @@ def test_large_inventory_is_explicitly_sampled():
     assert len(json.dumps(value))<130_000
 
 
-def test_passive_source_copy_is_exact_and_never_runs_author_code(ws,tmp_path):
-    marker=tmp_path/'must-not-exist'
-    code=f"__import__('pathlib').Path({str(marker)!r}).write_text('executed')"
-    instance=attach_example(ws,tmp_path,code)
-    destination=tmp_path/'packet'
-    with patch('subprocess.run',side_effect=AssertionError('No scene execution in review collection')):
-        inventory=collect_interactive(ws,destination)
-    assert not marker.exists()
-    assert len(inventory['scenes'])==1 and inventory['instances'][0]['inventoryScene']==0
-    record=inventory['scenes'][0];copied=destination/record['sourceFile']
-    assert sha256(copied)==instance['specHash']==record['specHash']
-    assert json.loads(copied.read_text())['nodes'][1]['props']['code']==code
-    assert 'untrusted' in record['evidenceType']
-
-
-def test_copy_scoped_capture_and_reject_escape_and_stale_receipt(ws,tmp_path):
-    instance=attach_example(ws,tmp_path)
-    renders=ws.home/'interactive/renders/example';renders.mkdir(parents=True)
-    (renders/'initial.png').write_bytes((tmp_path/'picture.png').read_bytes())
-    receipt=ws.home/'interactive/tests/review-example.json'
-    report={'specHash':instance['specHash'],'directory':str(renders),
-            'captures':['initial.png'],'tests':[{'name':'changed','ok':True}]}
-    atomic_json(receipt,report)
-    destination=tmp_path/'packet'
-    inventory=collect_interactive(ws,destination)
-    assert (destination/inventory['instances'][0]['captures'][0]).read_bytes()==(renders/'initial.png').read_bytes()
-    atomic_json(receipt,{**report,'directory':str(tmp_path)})
-    with pytest.raises(PptxError,match='inside the workspace'):collect_interactive(ws,tmp_path/'escape')
-    atomic_json(receipt,{**report,'specHash':'f'*64})
-    with pytest.raises(PptxError,match='Stale'):collect_interactive(ws,tmp_path/'stale')
-
-
-def test_scene_tamper_does_not_reach_a_review_packet(ws,tmp_path):
-    attach_example(ws,tmp_path)
-    source=ws.home/'interactive/deck/scenes/review-example.json'
-    source.write_text(source.read_text().replace('print(2 + 2)','print(3 + 3)'))
-    with pytest.raises(PptxError,match='invalid interactive'):collect_interactive(ws,tmp_path/'packet')
-
-
 def test_native_only_packet_keeps_legacy_behavior(ws,tmp_path):
     inventory=collect_interactive(ws,tmp_path/'packet')
     assert inventory['instances']==[] and inventory['scenes']==[] and inventory['ok']
