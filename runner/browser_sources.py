@@ -20,7 +20,7 @@ from contextlib import contextmanager
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode, quote, unquote
 from jsonschema import validate, ValidationError
 
-from browser_runtime import installed_runtime, browser_configuration, chrome_instructions
+from browser_runtime import installed_runtime, browser_configuration, chrome_instructions_text
 from durable import AppServer, TransportError, RPCError, redact_text
 from progress import read_scoped, public_url
 from trajectory import record
@@ -396,7 +396,7 @@ class BrowserSources:
                 'Captured files are references, not original licensed assets. Finish promptly within four minutes. '
                 'Return only the requested JSON. Set each source screenshot to its actual saved filename or null.\n'
                 'Research request:\n' + json.dumps(args, ensure_ascii=False) + '\n\nBrowser instructions:\n'
-                + chrome_instructions(paths).read_text())
+                + chrome_instructions_text(paths))
             calls = []
             def event(value):
                 item = value.get('item') or {}

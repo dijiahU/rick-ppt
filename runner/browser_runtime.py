@@ -37,6 +37,8 @@ def installed_runtime(config_file=None):
 
 
 SKILL = 'skills/control-chrome/SKILL.md'
+# The extension host listens here (fixed by the official browser service).
+BROWSER_SOCKETS = '/private/tmp/codex-browser-use'
 
 
 def chrome_instructions(paths):
@@ -57,6 +59,16 @@ def chrome_instructions(paths):
     if version == Path(paths['chrome_plugin']).name and (bundle / SKILL).is_file():
         return bundle / SKILL
     raise ValueError('Missing installed browser component: chrome_plugin')
+
+
+def chrome_instructions_text(paths):
+    """Official instructions bound to the trusted, version-matched client.
+
+    The bundled SKILL.md may come from the app bundle, but node_repl trusts only
+    the cached plugin roots, so `<plugin root>` must name the cached copy.
+    """
+    root = str(Path(paths['chrome_plugin']).resolve())
+    return chrome_instructions(paths).read_text().replace('<plugin root>', root)
 
 
 def validate_runtime(paths):
@@ -83,6 +95,15 @@ def browser_configuration(workspace, paths):
     if sys.platform == 'darwin':
         config['permissions']['pptx_job']['filesystem']['/System/Library/OpenSSL/openssl.cnf'] = 'read'
     config['features'].update(browser_use=True, browser_use_external=True, image_generation=False)
+    # The sandboxed Node REPL reaches the Edge extension only through the host's
+    # Unix sockets. Seatbelt allows Unix sockets only with networking enabled, so
+    # route all other traffic through Codex's managed proxy with no allowed
+    # domains: direct sockets are denied and every proxied host is refused.
+    profile = config['permissions']['pptx_job']
+    profile['filesystem'][BROWSER_SOCKETS] = 'read'
+    profile['network'] = {'enabled': True, 'mode': 'limited', 'domains': {},
+                          'unix_sockets': {BROWSER_SOCKETS: 'allow'}}
+    config['features']['network_proxy'] = True
     config['mcp_servers.node_repl.enabled'] = True
     roots = [paths['browser_plugin'], paths['chrome_plugin'], Path(paths['node_runtime']) / 'lib/node_modules']
     config['mcp_servers.node_repl.env.NODE_REPL_TRUSTED_CODE_PATHS'] = ':'.join(str(Path(p).resolve()) for p in roots)
@@ -105,7 +126,7 @@ def connection_probe(output, paths, *, model=DEFAULT_TASK_MODEL, effort=DEFAULT_
         'attempt another transport. An empty session tab list is a successful connection, not a failure. '
         'Stop on a denied action. Return a concise connection result. Website permissions and login '
         'inheritance remain unverified regardless of connection success.\n\n'
-        + chrome_instructions(paths).read_text()
+        + chrome_instructions_text(paths)
     )
     started = time.monotonic()
     calls = []

@@ -38,7 +38,12 @@ class BrowserRuntimeTests(unittest.TestCase):
         self.assertEqual(fs['/System/Library/OpenSSL/openssl.cnf'], 'read')
         for root in self.paths.values():
             self.assertEqual(fs[str(root)], 'read')
-        self.assertFalse(config['permissions']['pptx_job']['network']['enabled'])
+        # Only the extension host's Unix sockets; no allowed domains.
+        self.assertEqual(config['permissions']['pptx_job']['network'],
+                         {'enabled': True, 'mode': 'limited', 'domains': {},
+                          'unix_sockets': {b.BROWSER_SOCKETS: 'allow'}})
+        self.assertTrue(config['features']['network_proxy'])
+        self.assertEqual(fs[b.BROWSER_SOCKETS], 'read')
         self.assertFalse(config['features']['computer_use'])
         self.assertFalse(config['features']['plugins'])
         self.assertFalse(config['features']['image_generation'])
@@ -64,14 +69,18 @@ class BrowserRuntimeTests(unittest.TestCase):
             b.validate_runtime(paths)
         bundle = self.paths['node_runtime'].parent / 'plugins/openai-bundled/plugins/chrome'
         (bundle / b.SKILL).parent.mkdir(parents=True)
-        (bundle / b.SKILL).write_text('Bundled browser instructions')
+        (bundle / b.SKILL).write_text('Bundled browser instructions: import("<plugin root>/scripts/browser-client.mjs")')
         (bundle / '.codex-plugin').mkdir()
         (bundle / '.codex-plugin/plugin.json').write_text(json.dumps({'version': '26.0000.1'}))
         with self.assertRaisesRegex(ValueError, 'chrome_plugin'):
             b.validate_runtime(paths)
         (bundle / '.codex-plugin/plugin.json').write_text(json.dumps({'version': '26.1111.21308'}))
         b.validate_runtime(paths)
-        self.assertEqual(b.chrome_instructions(paths).read_text(), 'Bundled browser instructions')
+        self.assertEqual(b.chrome_instructions(paths), bundle / b.SKILL)
+        text = b.chrome_instructions_text(paths)
+        # The trusted cached client, never the untrusted app-bundle copy.
+        self.assertIn(str(version.resolve()) + '/scripts/browser-client.mjs', text)
+        self.assertNotIn('<plugin root>', text)
         self.assertEqual(b.chrome_instructions(self.paths), self.paths['chrome_plugin'] / b.SKILL)
 
     def test_broad_read_grants_are_still_rejected(self):
