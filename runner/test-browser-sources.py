@@ -240,6 +240,9 @@ class Tests(unittest.TestCase):
             result=tool.handle({**self.params,'arguments':{**self.params['arguments'],'site':site}})
             self.assertTrue(result['success'])
             self.assertEqual(len(result['contentItems']),2)
+        # X opens its Media results so captures show images, not text posts.
+        self.assertIn('https://x.com/search?q=','\n'.join(s.prompt for s in self.servers))
+        self.assertIn('f=media',self.servers[-1].prompt)
         self.assertEqual(len(self.servers),3)
         self.assertIsNone(tool.unavailable_reason)
 

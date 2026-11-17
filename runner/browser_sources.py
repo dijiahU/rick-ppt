@@ -334,7 +334,8 @@ class BrowserSources:
                 search_url = SITE + '/search_result_ai?' + urlencode({
                     'keyword': quote(args['query'], safe=''), 'source': 'web_explore_feed'})
             elif site == X:
-                search_url = X + '/search?' + urlencode({'q': args['query'], 'src':'typed_query'})
+                # Media tab: only posts with images/video, so captures show visual work.
+                search_url = X + '/search?' + urlencode({'q': args['query'], 'src':'typed_query', 'f':'media'})
             elif site == GOOGLE:
                 search_url = GOOGLE + '/search?' + urlencode({'q': args['query']})
             else:
@@ -353,7 +354,10 @@ class BrowserSources:
                 'permission to browse those sites. Google snippets and thumbnails are discovery evidence, not '
                 'verification of the original source or complete artwork. State this limit explicitly; the main '
                 'researcher may separately verify a public original through its permitted web tools. '
-                if site == GOOGLE else '')
+                if site == GOOGLE else
+                'This X search opens the Media results, which list only posts with images or video. Capture the visible '
+                'image grid, or open one post\'s image when the purpose needs detail; text-only posts are out of scope. '
+                if site == X else '')
             prompt = (
                 'Perform only the authorized public example/workflow/visual-reference search below in Edge. Do not create a PPT. '
                 'Stay on these operator-approved origins: ' + origins + '. Create your own tab; do not list or read unrelated user tabs, '
