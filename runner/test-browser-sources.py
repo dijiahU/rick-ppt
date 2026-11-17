@@ -243,6 +243,9 @@ class Tests(unittest.TestCase):
         # X is used for recent developments; text posts are valid evidence.
         self.assertIn('https://x.com/search?q=','\n'.join(s.prompt for s in self.servers))
         self.assertIn('recent developments',self.servers[-1].prompt)
+        # Site-specific guidance: Xiaohongshu (first, timed out) and Pinterest.
+        self.assertIn('Chinese first-hand experience',self.servers[0].prompt)
+        self.assertIn('Template-shop pins',self.servers[1].prompt)
         self.assertRegex(self.servers[-1].prompt,r'x\.com/search\?q=[^ ]*since%3A\d{4}-\d{2}-\d{2}')
         self.assertEqual(len(self.servers),3)
         self.assertIsNone(tool.unavailable_reason)

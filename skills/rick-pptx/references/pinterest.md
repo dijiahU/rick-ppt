@@ -4,7 +4,9 @@ Use Pinterest when a finished poster, editorial layout, identity, photograph or
 other visual work can answer the current page's design question. It is one
 discovery source alongside original portfolios, museums and publications. Search
 the subject plus the visual relationship you need, not only “beautiful PPT”.
-For example, a music poster's type/image hierarchy is a useful question; the
+Words like "template" or "PPT infographic" mostly return template-shop listings
+with placeholder text; prefer editorial, information-design, poster or designer
+terms when you need craft. For example, a music poster's type/image hierarchy is a useful question; the
 example is not a required genre, query, style or reference count. Respect the
 task's search permissions, faithful-edit scope and supplied-only requirements.
 

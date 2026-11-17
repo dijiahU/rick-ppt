@@ -36,8 +36,9 @@ discovery. Follow-up questions may depend on earlier evidence and remain sequent
 
 When capabilities.json exposes authorized browser sites, actually try each listed
 channel with a task-specific query before narrowing: Pinterest for finished visual
-work, X for recent developments and first-hand depth, and Xiaohongshu for relevant Chinese
-examples are possible entry questions, not exclusive roles or a source whitelist.
+work, X for recent developments and first-hand depth, and Xiaohongshu for Chinese
+first-hand experience, tutorials and image-led notes (check whether a note reposts
+someone else) are possible entry questions, not exclusive roles or a source whitelist.
 X adds what official pages lack: people's own usage experience, workflows, tips,
 problems and opinions on a product or event (e.g. how users actually work with a newly
 released tool). Text posts count. Most results are noise: keep posts with concrete

@@ -33,6 +33,7 @@ PINTEREST = 'https://www.pinterest.com'
 X = 'https://x.com'
 GOOGLE = 'https://www.google.com'
 X_RECENT_DAYS = 90
+BROWSER_TURN_SECONDS = 360
 SITE_HOSTS = {
     SITE: ('www.xiaohongshu.com',),
     PINTEREST: ('www.pinterest.com', 'jp.pinterest.com'),
@@ -369,7 +370,18 @@ class BrowserSources:
                 'field state the post\'s visible date, author handle and what it says. Capture the relevant post or results '
                 'region. A post is a claim or opinion, not a verified fact: say so, and leave verification at the original '
                 'source to the main researcher. '
-                if site == X else '')
+                if site == X else
+                'Pinterest serves finished visual work. Template-shop pins (placeholder text, "PPT template" listings) are '
+                'weak references: prefer editorial, information-design, poster or designer work, and say when only '
+                'templates were found. Choose the pin to open by visual craft for the stated relationship, not by literal topic words. When opening a pin, capture the work at readable size and report its linked '
+                'original source URL if shown (do not visit it). '
+                if site == PINTEREST else
+                'Xiaohongshu serves Chinese first-hand experience and examples: workplace practice, tutorials, pitfalls, '
+                'opinions and image-led notes whose pictures often carry the content (infographics, screenshots, '
+                'handwritten summaries). Text-only findings count. Many notes repost or summarize others: say when a note '
+                'cites an interview, article or another account, and do not present it as the poster\'s own experience. '
+                'State each note\'s visible date and author. When opening one note, capture its most informative image. '
+                if site == SITE else '')
             prompt = (
                 'Perform only the authorized public example/workflow/visual-reference search below in Edge. Do not create a PPT. '
                 'Stay on these operator-approved origins: ' + origins + '. Create your own tab; do not list or read unrelated user tabs, '
@@ -409,7 +421,7 @@ class BrowserSources:
                 'report the missing visual evidence; a saved file is not successful visual inspection. '
                 'Keep the original screenshot bytes, which may be JPEG despite the .png filename. '
                 'A search thumbnail is not a full work. Do not save other file types. Avoid private account details. '
-                'Captured files are references, not original licensed assets. Finish promptly within four minutes. '
+                'Captured files are references, not original licensed assets. Finish promptly within five minutes. '
                 'Return only the requested JSON. Set each source screenshot to its actual saved filename or null.\n'
                 'Research request:\n' + json.dumps(args, ensure_ascii=False) + '\n\nBrowser instructions:\n'
                 + chrome_instructions_text(paths))
@@ -436,7 +448,8 @@ class BrowserSources:
                 thread = server.start_thread()['thread']['id']
                 turn = server.start_turn(thread, prompt, output_schema=SCHEMA)['id']
                 try:
-                    result = server.wait_turn(thread, turn, timeout=240)
+                    # Opening one work takes ~8 browser steps of 30-40 s each; 240 s was marginal.
+                    result = server.wait_turn(thread, turn, timeout=BROWSER_TURN_SECONDS)
                     if result.get('status') != 'completed': raise TransportError('Browser search did not complete')
                     report = json.loads(server.result_text(thread, turn))
                     validate(report, SCHEMA)
