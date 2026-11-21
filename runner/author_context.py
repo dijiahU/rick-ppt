@@ -63,15 +63,7 @@ def saved_thread(journal):
 
 
 def instruction():
-    return ('CONTINUOUS AUTHOR: you own research, source/asset inspection, design, native implementation '
-            'and repairs in this conversation. Phase boundaries are host checkpoints, not a handoff to '
-            'another designer. Preserve the actual inspected evidence and decisions; revise provisional '
-            'choices against the page. Keep research/planning validation before sequential native authoring. '
-            'Batch independent native search queries and run independent supported tool calls concurrently; '
-            'known asset URLs may download through web-media-proxy.py --submit-only while you continue. '
-            'Do not serialize independent I/O merely because there is one author. Inspect material needed '
-            'for the current composition before committing it. Use native search, image viewing/generation '
-            'and deterministic tools. Model-backed search/browser/prefetch helpers and subagents are disabled '
-            'in this mode; do not infer logged-in browser access or relabel hosted search as Google. '
-            'This host policy overrides older separate-designer/helper descriptions in supplied guides. '
-            'The host alone runs independent reviews in fresh contexts; do not impersonate reviewers. ')
+    return ('CONTINUOUS AUTHOR: one conversation owns research, design, native pages and repairs; phase boundaries are host '
+            'checkpoints. Run independent searches, downloads (web-media-proxy.py --submit-only) and tool calls concurrently; '
+            'keep page authoring in order. Use the tools actually exposed to you. The host runs the independent reviews; '
+            'do not impersonate reviewers. ')

@@ -51,7 +51,7 @@ def prepare(run, review):
         info = baseline['pages'][page - 1]
         row = {'page': page, 'image_status': 'unavailable'}
         payload['pages'].append(row)
-        body = read_scoped(baseline['home'], info['file'], 30*1024*1024)
+        body = read_scoped(baseline['home'], info['file'], 80*1024*1024)
         if hashlib.sha256(body).hexdigest() != info['sha256']:
             raise ValueError('Reviewed repair image changed')
         try:
@@ -73,7 +73,7 @@ def prepare(run, review):
             row['image_status'] = 'initial image budget; view scoped page through normal tools'
             continue
         destination = folder/f'page-{page}.png'
-        if destination.exists() and read_scoped(job, destination, 30*1024*1024) != prepared:
+        if destination.exists() and read_scoped(job, destination, 80*1024*1024) != prepared:
             raise ValueError('Repair input receipt collision')
         from font_assets import publish
         publish(job, str(destination.relative_to(job)), prepared)

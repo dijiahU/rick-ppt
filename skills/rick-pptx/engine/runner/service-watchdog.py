@@ -10,7 +10,8 @@ STATE=ROOT/'service-watchdog.local.json'
 LOGIN=Path.home()/'Library/LaunchAgents/chat.rickppt.worker.plist'
 
 def command(args,timeout=6):
-    try:return subprocess.run(args,capture_output=True,text=True,timeout=timeout)
+    from renderer_health import run_group
+    try:return run_group(args,timeout=timeout)
     except (OSError,subprocess.TimeoutExpired):return None
 
 def manual_wake_active(now):

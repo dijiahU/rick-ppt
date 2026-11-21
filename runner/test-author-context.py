@@ -121,6 +121,9 @@ class Phases(unittest.TestCase):
                     self.assertFalse(threads[reviewer])
                     names=[t['name'] for t in threads[research]]
                     self.assertIn(TOOL,names)
+                    # The continuing thread keeps its research-time tool list, so the
+                    # author-time critique must already be registered there.
+                    self.assertIn('pptx_design_critique',names)
                     self.assertNotIn('pptx_search_sources',names)
                     self.assertNotIn('pptx_browser_sources',names)
                     response=image_results[0]

@@ -81,14 +81,14 @@ def prepare_refinement(run, artifact, packet):
             if type(page) is not int or not 1 <= page <= count:
                 raise ValueError('Refinement feedback page outside its reviewed baseline')
             info = baseline['pages'][page - 1]
-            body = read_scoped(home, info['file'], 30 * 1024 * 1024)
+            body = read_scoped(home, info['file'], 80 * 1024 * 1024)
             if hashlib.sha256(body).hexdigest() != info['sha256']:
                 raise ValueError('Refinement baseline preview changed')
             name = f'refinement-comparison/before-page-{page}.png'
             with Image.open(io.BytesIO(body)) as image:
                 image.convert('RGB').resize((900, round(image.height * 900 / image.width)),
                     Image.Resampling.LANCZOS).save(Path(packet) / name)
-            prepared = read_scoped(packet, name, 30 * 1024 * 1024)
+            prepared = read_scoped(packet, name, 80 * 1024 * 1024)
             before, after = fingerprint(original, page), fingerprint(artifact, page)
             index['pages'].append({'page': page, 'source_fingerprint': before,
                 'candidate_fingerprint': after, 'native_dependencies_unchanged': before == after and globals_unchanged,

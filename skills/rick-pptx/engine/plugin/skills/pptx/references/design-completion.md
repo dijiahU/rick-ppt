@@ -1,359 +1,133 @@
 # Design completion for the stated use
 
-Author and independent reviewers use the same outcome criteria. Technical
-validity, design readiness and improvement relative to a prior version are separate.
-These criteria and model ratings are not human-calibrated scores or a promise of excellent design.
+Author and reviewers share these criteria. Technical validity, design readiness and
+improvement over a prior version are separate judgments; model ratings are not
+human-calibrated scores.
 
-**清楚只是最低要求，不能因为信息完整、文字可读、没有排版错误，就判定设计完成。
-任何场景都需要完成画面设计；严肃场景可以克制，但不能退化成把内容摆齐。**
-Clarity is a minimum, not finished design. Style intensity changes with the brief;
-the obligation to compose and finish the actual picture does not. Quiet work still
-needs intentional proportion, a convincing focal structure, considered type/image
-relationships and finished details. A pale background, consistent color and aligned
-boxes alone do not demonstrate this. Nor do extra decoration or dramatic color.
+**清楚只是最低要求：信息完整、文字可读、没有排版错误，不等于设计完成。风格要符合
+场合和观众的期待：庆典要热闹，讲人的故事要看到人，汇报要快读；不能因为"克制"安全
+就把每个场合都做成留白和小物件。**
 
 ## Shared aesthetic judgment
 
 <!-- shared-aesthetics/v1 -->
-**Rick 的审美共识：把内容组织成值得观看、适合实际使用的画面。**
-作者与视觉审核使用以下同一套判断。它指导新稿和已授权的重设计；明确的
-用户需求、真实素材边界和需要保留的源模板优先。它不是统一风格、版式清单
-或额外验收表，也不授权扩大局部修改。
+**Rick 的审美共识：把内容组织成值得观看、适合实际使用的画面。** 明确的用户要求、
+真实素材边界和需要保留的模板优先。
 
-- **真实性是画面与内容、观众情境的贴合，不是照片般逼真。** 入职培训应让
-  人看见有关的工作、人物活动或实际操作；没有公司素材时，可用明确标注的
-  通用情境或示意，不能伪造“本公司照片”。游戏宣发可以通过其虚构世界建立
-  真实感；历史证据必须真实。不要用漂亮但无关的道具、场景或气氛远离主题。
-- **让关键对象和关系进入画面。** 观众应能看见需要理解的机制、差别、位置、
-  状态或实例。说明贴合其对象，素材具有足够的尺度和细节。优先考虑有用的
-  真实图片、原生示意或允许生成的插画，按事实性和编辑需求选择；不把标签树、
-  连着段落的框、统计表或一张装饰性封面图当作全部视觉表达。文字本身是证据、
-  观点或主角时可以主导；图像数量和原生形状数量都不是质量分数。
-- **场合决定表现强度，不决定设计投入。** 严肃汇报需要成熟的比例、层级、
-  图文关系与细节，不等于淡而无设计；宣传页可以有感染力，也不能靠无关装饰。
-  初学者不自动对应卡通，高端不自动对应空白。判断这次具体用途，不按行业
-  标签套固定风格。解释清楚和画面完成度要分别成立。
-- **认真设计整套的背景与前景关系。** 同时看主背景、文字、实际图片或示意、
-  强调色及各自占据的面积。共享色号并不等于延续了参考的成熟感。这里的
-  “AI 味”指可观察的任务脱节或机械套用：例如每块信息都铺相近色底、主体与
-  背景对比被冲淡、泛化道具替代实际对象、不同内容套同一种装饰处理。指出
-  具体原因，不能凭某个颜色、低饱和度或“像 AI”就判好坏，更不能据此判断
-  制作者身份。保留明确的背景禁用要求；除此之外，不设新的默认配色或禁色。
-- **整套统一，页面按内容变化。** 延续对象身份、颜色含义、字体层级和图示
-  语言；通过内容所需的尺度、密度、裁切和重点变化推进叙事。重复结构可以
-  服务比较，不能仅为了统一而复制差构图。连线的归属、方向和阅读顺序应清楚，
-  避免杂乱交叉或在实际展示尺度下细弱难辨；不要为变化而换模板或强加箭头。
-- **借鉴参考中真正起作用的关系。** 观察实际作品里的主体比例、留白、对比、
-  字体与图片关系，再判断如何用于当前内容。替换字体、照片或素材后重新看
-  效果，不能只抄配色就声称完成借鉴。没有合适参考时如实处理，不制造搜索、
-  艺术家或图片配额，也不把已认可案例变成所有任务的固定样式。
-
-把这些判断用于第一次构图和已有的逐页渲染点：先解决主体表达与视觉关系，
-再修细节；发现共享方向有问题时，趁影响范围小调整。有效的画面应保留，
-不要求反复改到某个次数，也不把设计责任全部推到最终审核。被认可版本的
-局部问题应局部修复；减少“AI 味”不等于删除有用图像、降低对比或重新设计整套。
+- **像这一类真实作品。** 先判断这是什么样的 PPT、在哪里使用：教室投影的初二历史课件、
+  笔记本上阅读的周报、大屏路演。好的成品应像这一类里优秀的真实例子，采用该类型的
+  惯例（课件有清楚的标题、真实的图片、课堂提问与讨论、小结；汇报先给结论和数据）。
+  把课件做成博物馆展板、科技仪表盘或暗色海报，就是类型错位。
+- **真实性是画面贴合内容和观众情境，不是照片般逼真。** 历史证据必须真实；没有素材时
+  可以用标注清楚的示意或生成图，不能伪造真实照片、截图或结果。
+- **让关键对象和关系进入画面。** 观众应能看见要理解的对象、过程、差别或位置；标签树、
+  连着段落的框和装饰性小图不算完成视觉表达。文字本身是主角时可以主导。
+- **配色从主题、素材或参考作品中来。** 不要默认深蓝、深灰蓝或每块信息都铺相近色底；
+  “AI 味”指可观察的机械套用：泛化道具替代真实对象、用形状拼出的图标或物件、所有页面
+  同一种卡片网格。指出具体位置和原因。浅暖白、奶油白底由保存检查自动拦截。
+- **整套统一，页面按内容变化。** 延续颜色含义、字体层级和图示语言；尺度、密度、裁切
+  和重点随内容变化。连线方向和归属清楚。
+- **借鉴参考中真正起作用的关系**（主体比例、明暗面积、字图关系），而不是只抄配色。
 <!-- /shared-aesthetics -->
 
-## During initial authoring
+## Independent visual report
 
-Before committing the main composition, set what the audience should understand,
-recognize or experience, then select the source detail or relationship that lets them.
-Keep that outcome apart from the proposed picture: "the chosen objects are
-recognizable" tests execution, not whether choosing them serves this use
-(recognizable equipment can identify an activity without showing how someone takes
-part — which matters only when participation is the page's job; a cover may set
-welcome, identity or atmosphere without explaining a procedure). An output named in a
-box is not an inspectable example and a process label does not expose a mechanism; a
-source fragment, changed value, paired state, quote or image detail can. Choose from
-actual evidence with its qualifiers and documentary/illustrative identity; text may be
-the right subject. Never invent missing artifacts: keep the limit and judge a permitted
-illustration, generic example or text treatment against the same need — no medium
-closes the gap automatically. Task authenticity means the relevant people, actions,
-evidence or fictional world, not photorealism (a game image can be more faithful than
-an unrelated photo).
+Set the expected audience outcome from the original brief before judging the pages;
+design-task.json holds derived page tasks, not new user requirements. In
+audience_fit, say what this audience should get, whether the deck looks like a strong
+real example of its kind for its setting, and which visible evidence supports that.
 
-At the first main render ask (art-direction.md §6 has the full loop):
-- Does intensity fit the requested experience, audience and viewing, with the strongest
-  treatment serving the task rather than competing headings, numbers and conclusions?
-- Does the subject carry the claim at useful scale and connect to this audience's
-  situation? Clean silhouettes and coherent color show craft, not that connection — if
-  it is missing, reconsider subject/relationship before decoration.
-- Can the comparison, dependency or evidence be located without rebuilding it from
-  paragraphs, and does the body deliver the title's promised explanation (process,
-  condition, comparison or demonstration, not a component inventory)?
-- Do emphasis, proportion, alignment and annotations make the reading deliberate,
-  neither competing nor flat? Finish notation, meaningful breaks and field-level
-  emphasis; judge diagram routes/spacing beyond endpoint validity, and row/column
-  baselines and label ownership beyond legibility.
-- Does a case after a mechanism keep its entity/branch correspondence and show a
-  supported operational detail rather than names or success claims? Other page types
-  need no forced example.
-- Is the essential image detail readable at size (a small optional overview is fine
-  when the explanation stands alone), and does the page serve the sequence with its
-  facts and conditions intact?
+`design_assessment.readiness` for new work or substantive redesign:
+- **ready**: usable for this purpose without a main composition or expression
+  revision; remaining findings are local refinements or taste alternatives.
+- **needs_revision**: a concrete main-expression, genre-fit or craft gap remains.
+  Identify the page/region, audience consequence, visible improvement target and
+  protected content; list the finding IDs, most important first, in
+  primary_findings.
+- **uncertain**: the evidence does not support a decision; primary_findings is empty
+  (as for ready).
 
-Locate a shortcoming in the actual region and make one main design action while the
-page is being authored, before minor decoration; these questions are not a form. A
-successful simple or repeated composition may stand. The new-deck visual-presence
-requirement in art-direction.md permits native construction and text-led pages; no
-per-page image quota, added complexity, revision count, layout family or artist.
+Severity still separates required factual/technical/explicit-requirement fixes from
+suggestions; needs_revision may rest on a substantive design suggestion. Faithful
+recreation and local edits keep their scope.
 
-## In the existing independent visual report
-
-Set the expected audience outcome from the original brief and supported evidence
-before assessing the candidate's design. The projected design-task is a proposed
-working brief: it can expose an unfinished task but cannot certify itself or create
-new user constraints. In audience_fit, connect that expectation to the actual page
-subject, focus and visible evidence. Test the proposed treatment as well as its
-execution: do not substitute "the author's chosen subject is rendered well" for
-"this subject serves the audience's task". Name the visible detail or relationship
-supporting the latter. If the proposal narrows the task to recognizing its own props,
-return to the original use before deciding readiness. Mere factual coverage or a recognizable generic
-symbol may fall short when the use needs a particular object, scene, relationship
-or decision. Conversely, do not reject an effective quiet page for lacking spectacle.
-Within that same audience_fit assessment, distinguish whether the content/visual
-demonstration serves the task from whether its visible treatment fits the requested
-use. Support the latter with actual imagery, color distribution, shape/texture and
-typography. "Practical examples", "consistent blue/orange" or "has pictures" do not
-establish tone. Use explicit preferences and supported use context, not an industry
-stereotype; acknowledge uncertainty when the brief genuinely leaves the choice open.
-
-For new work/substantive redesign, report design_assessment.readiness:
-- ready: usable for this purpose without a main composition/expression revision;
-  remaining findings can be optional local refinements or taste alternatives.
-  Repeated unfinished notation, accidental wrapping or undifferentiated key fields
-  across main pages may form one consequential craft gap, even when each sentence
-  is readable. Judge their actual effect on this use, not a count of minor defects;
-  a shared cause can have one finding with affected regions and a concrete action.
-  Before selecting ready, reconcile it with the audience impact in your findings:
-  if the intended main relationship can only be reconstructed from prose/notes,
-  its essential evidence cannot be inspected, the main treatment visibly conflicts
-  with the requested use/tone, or the subject needs substantial
-  recomposition to establish clear routing/hierarchy, use needs_revision. If the same
-  relationship is already visibly carried elsewhere and the suggestion is optional,
-  identify that visible support in the assessment instead of just citing readability.
-- needs_revision: a concrete main-expression or visual-craft gap prevents that
-  standard. Identify its actual page/region, audience consequence, visible
-  improvement target and protected facts/objects in the existing finding fields.
-  A feasible expression direction can help; the continuing author chooses the
-  composition. Put the finding IDs, most important first, in primary_findings.
-- uncertain: available evidence does not support a readiness decision. Describe
-  the limitation; primary_findings is empty, as it is for ready.
-
-Do not infer an intensity requirement from a subject or industry label, or promote
-personal color/layout preference into a main design gap. Identify any mismatch with
-the actual brief or its observable audience consequence. Refinement can strengthen a
-missing focus or reduce competing emphasis, preserving detail and relationships.
-Neither plainness nor extra decoration is evidence of completion. Conversely,
-do not classify an unfinished central explanation as ready simply because its
-sentences are accurate, its labels readable or its export valid. Finding severity
-still distinguishes required factual/technical/explicit-task corrections from
-suggestions; needs_revision can refer to a substantive design suggestion without
-inventing a factual error. Faithful recreation and local edits retain their scope
-and the existing review contract, without unsolicited redesign.
-
-## Picture design: an independent assessed dimension
+## Visual coverage
 
 <!-- visual-coverage/v1 -->
 
-In the same substantive visual report, return `design_assessment.visual_coverage`,
-one short row for every page in order: `page`, `kind`, `subject`, `status`,
-`evidence`, `finding_ids`. Inspect what is actually on that page before assigning
-the kind: embedded_image, native_illustration, native_schematic, native_chart, document_example or
-text_only. Choose the principal treatment; a title, logo, decoration or an image
-only present in the reference folder is not the explanatory subject. Do not label
-parallel paragraphs as a schematic merely because arrows connect them.
+Return `design_assessment.visual_coverage`: one row per page in order with `page`,
+`kind`, `subject`, `status`, `evidence`, `finding_ids`.
 
-Status is sufficient, text_appropriate, missing or uncertain. Describe the visible
-subject and the local audience task in evidence. `sufficient` means the actual
-picture/example demonstrates what this page needs, not that some other page has a
-chart. A document_example must let the audience inspect the relevant artifact and
-its consequential fields/transformation; a frame around unchanged prose is not
-proof. A native chart is a legitimate quantitative demonstration, not automatic
-coverage of product appearance, a working scene or a different operation.
+- kind: embedded_image, native_illustration, native_schematic, native_chart,
+  document_example or text_only (the principal treatment actually on the page; a
+  reference-folder image or decoration is not it; paragraphs joined by arrows are not
+  a schematic).
+- status: sufficient, text_appropriate (only with text_only, when wording itself is
+  the subject; give the reason), missing or uncertain.
+- missing: cite a same-page finding with a feasible action; link it in
+  visual_expression and primary_findings, score visual_expression below 7 and use
+  needs_revision. Uncertain cannot support ready.
 
-Use text_appropriate with text_only when wording itself is the useful subject or
-the page intentionally introduces/concludes a demonstrated sequence. Explain why
-no pictured subject is needed for this page; "serious", "editable" and "the chart
-on another page meets the minimum" are insufficient reasons. Preserve explicit
-text-only briefs. Missing means a consequential local demonstration is absent;
-cite a same-page finding with a feasible action, visible success condition and
-protected content. Link it to visual_expression and primary_findings, score that
-unfinished expression below 8 and use needs_revision through the existing bounded
-response. Do not mark a known gap sufficient just to make the report validate.
-Uncertain evidence cannot support ready. These are reviewer observations, not a
-new author form, image quota, additional model or proof of aesthetic quality.
+The deck needs at least one sufficient embedded_image, native_illustration or concrete
+native_schematic; a statistical chart, document example or text page does not count.
+If none exists, mark the best page missing with a required finding.
+`image_requirement_exemption` is null unless the user explicitly asked for no images:
+then quote that request verbatim.
 
-The deck's pictorial minimum requires at least one sufficient embedded_image,
-native_illustration or concrete native_schematic. A statistical native_chart,
-document_example or text_only page does not satisfy that minimum. A schematic
-shows concrete objects/states or the actual operation, not a tree of paragraph
-labels. Adding a selection border, control handle, formula leader or document frame
-to a data table does not by itself turn it into a qualifying pictorial schematic;
-judge the substantive depicted subject/action separately from that table's analysis.
-If no qualifying pictured subject appears, locate a useful insertion or
-reconstruction on a relevant page, mark its status missing and give a required
-finding; preserve any useful chart elsewhere. Do not relabel a chart to get a pass.
-`image_requirement_exemption` is normally null. Only for an explicit user demand
-for text-only/no imagery, supply its verbatim quote from the original brief/style;
-neither author preference nor missing optional reference rights grants an exemption.
-Faithful/local edits remain under their existing scoped policy.
+## Visual craft scores
 
 <!-- visual-craft/v2 -->
 <!-- strict-craft-review/v1 -->
 
-**你是一名严格的 PPT 制作验收审核员。以挑刺、验收的态度检查真实画面，
-主动找出影响直接使用的主问题，而不是替作者证明任务已经完成。高分必须有证据；
-同一画面处于相邻档位之间时，宁可采用有证据支持的较低档，也不要向上取整放行。
-不能只因为信息写出来、能读懂，就判定画面设计完成。**
+**你是严格的 PPT 验收审核员。先找出影响直接使用的主要问题，再打分；高分必须有证据，
+处于两档之间时取较低一档。不要因为信息写出来、能读懂就判定完成。**
 
-Inspect before choosing scores or readiness. Actively try to disprove completion:
-locate the most consequential unresolved region, if any, and the main design change
-it needs. Then assign each dimension independently from visible evidence. Do not
-start at the passing score and look only for reasons to deduct; do not reward effort,
-tool use, consistency with the author's plan, or improvement over a poorer draft.
-Strictness means substantiated criticism, not manufactured defects or forced low
-scores. Missing visual evidence is null/uncertain, not proof of poor design.
+Return `design_assessment.visual_craft` with four entries, each with score (integer
+1–10, or null when evidence is unavailable), pages, evidence (name the weakest page or
+region and why the band fits) and finding_ids:
 
-For substantive visual reviews, return design_assessment.visual_craft with four
-entries. Each has score (integer 1–10, or null if evidence is unavailable), pages,
-evidence and finding_ids. Inspect the rendered pages before rating; cite actual
-regions, the treatment visible there and its effect. Readability/content coverage,
-the author's rationale, or "clean, professional, suitable" alone cannot justify 8.
+- **composition**: focal structure, scale, proportion, spacing, balance.
+- **visual_expression**: the realized visual treatment, meaning image quality and
+  crop, figure and ground, image/type integration, rendering of native subjects, and
+  fit to the genre and setting. Correct facts and consistent colours do not earn 8;
+  pictograms or objects assembled from primitive shapes and generic decoration cost
+  points.
+- **typography**: hierarchy, reading rhythm, line breaks, alignment, finished labels
+  and notation.
+- **sequence**: coherent visual language with deliberate change of focus, scale and
+  density across the argument.
 
-- composition: focal structure, scale, proportion, spacing and balance. Empty space
-  should shape attention; it is not automatically sophistication. A large empty
-  subject area with equally weighted small boxes needs more than a suitable palette.
-- visual_expression: the realized visual treatment of the subject, separately from
-  whether its facts and relationships are present. Visual_coverage already checks
-  that demonstration. Here inspect figure/ground, actual image quality and crop,
-  image/type integration, rendering of native subjects and the visual rhythm of
-  their important details. Judge the visible result against this brief, not an
-  industry stereotype. A document, diagram or text-led subject can be excellent;
-  it still needs a convincing visual treatment beyond a recognizable container,
-  matching labels or correctly colored fields. Identify the actual graphic choices
-  worth retaining and the consequential region that remains visually unresolved,
-  if any. Correct facts, traceable arrows, useful examples and consistent colors
-  cannot by themselves earn 8 in this dimension. Equally, photography, saturated
-  color, complexity and novelty earn no automatic credit. Quiet work can have
-  strong proportions, precise tonal relationships and carefully realized subjects.
-  Keep evidence for this score distinct from coverage: "the ticket shows where the
-  process waits" explains usefulness; explain separately how its scale, line weight,
-  detail and relation to type/background make the picture accomplished. If these
-  compete or remain generic, identify the specific region and change rather than
-  awarding 8 for recognizability. Matching a reference palette or avoiding familiar
-  template devices is not a substitute. A different successful style is valid.
-  Locate a real gap and the visible relationship that needs improvement without
-  inventing comprehension failure. A suggested visual operation is one possible
-  solution, not an imposed layout. Protect effective explanation; extra decoration
-  and removing imagery are not defaults.
-- typography: deliberate hierarchy and reading rhythm, text breaks, alignment,
-  contrast and finished labels/notation. No overflow is only a technical baseline.
-- sequence: coherent visual language with deliberate changes in focus, scale and
-  density for the argument. Repetition can be excellent; automatic reuse without
-  regard to the changing subject is not. For one page, judge its internal reading
-  progression; do not require additional pages or layout diversity.
-  Inspect the shared background/foreground relationship across substantive pages:
-  does it support recognizable identity and the actual content, including appropriate
-  departures? A repeated pale fill or identical frame is not enough. Judge actual
-  contrast, color area and image/type relationships, not compliance with a preset
-  palette or template category; neither saturation nor simplicity earns a score.
+Anchors: 1–2 unresolved; 3–4 content placed with little design; 5 some useful
+decisions, unconvincing main treatment; 6 working draft; 7 close but a consequential
+region needs a main design action; 8 finished for this brief with only local
+refinements; 9 exceptionally resolved; 10 exemplary. For 8 or above name the specific
+design decisions that earn it; "clear", "consistent", "no overflow" are not enough.
 
-Use these ten-point anchors. 1–2: unresolved construction; 3–4: content placed with
-little useful visual authorship; 5: some useful decisions but an unconvincing main
-treatment; 6: a clear working draft with substantial design work remaining;
-7: close, but a consequential region still needs a main design action;
-8: finished for this brief, with only local refinement remaining;
-9: exceptionally resolved subject, expression and craft; 10: exemplary at the
-requested use, with no consequential gap demonstrated. Do not demand 10.
-
-The 6/7/8 boundary must be judged separately, not inferred from a shared palette:
-
-| Dimension | 6 — working draft | 7 — nearly finished | 8 — finished for direct use |
-| --- | --- | --- | --- |
-| composition | Readable blocks are arranged, but focal scale, proportion or space still feels uncommitted. | The focus exists, but a consequential region is compressed, floating or competes; it needs rebalancing. | Subject scale, proportion and space visibly direct attention to the task; no main rearrangement remains. |
-| visual_expression | The subject is understandable, but its visible treatment remains incidental or underdeveloped; ordinary object placement carries most of the picture. | A convincing direction exists, but a consequential subject region still needs stronger integration, proportion, crop, contrast or realization. | The subject has an accomplished, coherent visual treatment for this use; specific graphic decisions visibly strengthen its presence and character, with only local refinements remaining. |
-| typography | Text fits and is readable, but levels, line breaks and emphasis are mostly defaults or uniform. | Hierarchy works overall, but decisive values, labels or notation repeatedly need restructuring. | Scale, rhythm, breaks and field-level emphasis make the reading intentional; notation and label ownership are finished. |
-| sequence | Pages cover the topics but mostly repeat the same reading task, without developing the explanation. | The arc works, but a consequential transition, correspondence or emphasis remains unresolved. | Each page advances the intended explanation; consistent encoding and purposeful repetition/variation support that progression. |
-
-For every dimension, use the existing evidence field to name its consequential
-weakest page/region and explain why the chosen band fits. For 8 or above, identify
-the specific visible design decisions that earn it and why remaining suggestions
-are only local refinements. "No overflow", "clear", "consistent", "has a table",
-"uses colors/numbered correspondences" are observations, not sufficient high-score
-arguments. Do not copy the same praise across dimensions or let one strong chart
-cancel unfinished main pages. This is one deck assessment, not a new per-page form.
-
-No medium, palette, visual intensity or template family earns a band by itself.
-Rate the actual composition and informative subject using the anchors above;
-text-led work remains possible but does not waive the deck's pictorial requirement.
-For a supported treatment mismatch, recommend the surface change that resolves it
-while protecting effective content, visual relationships and native behavior. Do
-not trade a tone correction for a text-only downgrade or unnecessary recomposition.
-
-Any dimension below 8 requires needs_revision and at least one actual, actionable
-finding in both that entry's finding_ids and primary_findings. Identify page/region,
-visible unfinished decision, effect on the intended viewing experience, a feasible
-main change and a visible success condition; preserve meaning and native behavior.
-The gap can concern picture quality even when the information is already clear.
-Do not invent comprehension failure to justify a design correction. Required versus
-suggestion severity stays unchanged; a substantive craft suggestion still receives
-the existing bounded response. Equally finished alternative styles remain optional.
-Do not mark these low-score findings retain_suggestion. Null cannot establish ready;
-report uncertain unless a different, observed main gap already requires revision.
-
-Use this same standard at the author's existing composition and render points;
-do not add a score form or extra reviewer per page. Finish the first composition
-against the actual brief, then make targeted adjustments when the render exposes
-a gap. The host checks rating/readiness/finding consistency, not aesthetic truth.
+Any dimension below 7 requires needs_revision and at least one actionable finding (not
+retain_suggestion) listed in both that entry's finding_ids and primary_findings, with
+page/region, the unfinished decision, its effect, a feasible change and a visible
+success condition. Null cannot establish ready. With every dimension 7 or above, no
+required finding and no deck-wide generated look, use ready and keep refinements as
+suggestions; a revision round is for decisive gaps, not polish.
 
 ## Bounded response and version choice
 
-The current host permits one design response on the first otherwise-valid review
-when visual readiness is needs_revision or the final content report nominates a
-consequential presentation finding. Ready/uncertain alone do not trigger cosmetic
-work. Nominated findings and actual target images go directly to the same
-continuing author. Finish the main action and declare a complete candidate before
-peripheral polish; ordinary freezing, native checks and independent reviews follow.
+With before/after images, report whether the candidate is better, equivalent, worse or
+uncertain, how the original findings were resolved and any material regressions. Only
+an overall better candidate without material regression replaces the reviewed
+baseline. In carried_findings list each current finding that is the same still-present
+defect as a prior finding; never link a defect the change introduced, moved or made
+worse. At the budget boundary keep the best supported artifact and report unfinished
+or uncertain status honestly.
 
-When host-bound before/after images are supplied, separately report whether the
-candidate is better, equivalent, worse or uncertain, the original findings'
-resolution, and material regressions linked to current findings. Partial improvement
-can be worth keeping while readiness remains needs_revision. Compare every supplied
-changed region and the sequence; changed bytes, more objects and author claims are
-not evidence of improvement. Reject an unsupported original criticism honestly.
-If actual comparison input/correspondence is unavailable, report uncertain.
-
-Only an overall better candidate without material regression replaces the reviewed
-baseline. Otherwise retain its exact bytes. Assign severity on current evidence, then
-list in carried_findings each current finding that is the same still-present defect as
-a prior finding; never link a defect the change introduced, moved or worsened. Only
-required findings introduced by the response restore the baseline; an old issue now
-rated required keeps the better candidate and goes to the ordinary bounded repair. This does not add a second design loop:
-at the budget boundary preserve the best supported valid artifact and report any
-unfinished or uncertain design status explicitly. Never claim human approval or
-completed design merely because the workflow ended.
-
-## In the final source-checked content report
+## Final source-checked content report
 
 <!-- content-presentation/v1 -->
 
-Return presentation_findings as IDs from your existing findings, most consequential
-first. Nominate only source-confirmed gaps in the way existing information is
-presented that materially impede the intended explanation or interpretation, with
-an actionable page/region, visible success condition and protected meaning in the
-existing finding fields. Examples include a necessary comparison mapping that must
-be reconstructed from prose, or a consequential qualifier obscured in tiny credits.
-Verify that another visible element does not already carry the relationship.
-
-Use [] when no such gap is supported. Do not nominate optional context, redundant
-overviews, personal layout preferences, or requests for new facts/research. Source
-corrections stay on content_revision; this list does not change finding severity.
-The blind first audience pass remains unchanged. This final report checks its
-assumptions against the sources without seeing the visual review or author rationale.
-
-The host preserves both independent judgments and qualifies their IDs when sending
-them into the existing response/comparison. A visual ready verdict cannot silently
-cancel a nominated content presentation gap. Likewise, a nomination is not proof
-that a change helped: verify the repaired pixels and source meaning again. Ordinary
-suggestions remain optional, and no number of nominations or revisions is required.
+Return presentation_findings as IDs from your findings, most consequential first:
+only source-confirmed presentation gaps that materially impede the explanation (for
+example a comparison that must be rebuilt from prose, or a key qualifier hidden in tiny
+credits), with page/region, success condition and protected meaning. Use [] when there
+are none. No optional context, layout preferences or new research. Source corrections
+stay on content_revision. A visual ready verdict does not cancel a nominated content
+gap.

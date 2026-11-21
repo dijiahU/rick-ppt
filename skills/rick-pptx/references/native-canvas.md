@@ -72,7 +72,8 @@ claim about aesthetic quality, factual provenance or PowerPoint playback.
 
 ## Safe object handles and semantic groups
 
-Python callers can use add_text/add_image/add_bar_chart, add_shape and add_path; each returns
+Python callers can use add_text/add_image/add_bar_chart, add_shape, add_path and add_icon (a pptx_icons
+file placed as recolourable native paths, aspect kept inside the box); each returns
 workspace, slide and shape_id. Feed those handles directly to add_connector,
 semantic_group and reveal. Cross-workspace/page handles, missing targets and
 non-adjacent groups are rejected before writing. Grouping preserves coordinates,

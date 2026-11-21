@@ -5,6 +5,7 @@ from pathlib import Path
 import posixpath
 from lxml import etree as E
 import workflow_decisions as decisions
+import speaker_notes
 
 P='http://schemas.openxmlformats.org/presentationml/2006/main'
 A='http://schemas.openxmlformats.org/drawingml/2006/main'
@@ -66,47 +67,19 @@ def apply(workspace,plan,outline,*,root,language='en',allow_legacy=False):
     rels=parse(scoped(workspace,'ppt/_rels/presentation.xml.rels'))
     targets={r.get('Id'):r.get('Target') for r in rels.getroot() if r.get('TargetMode')!='External'}
     lookup={r['id']:r for r in plan['references']};updated=[]
-    types=parse(scoped(workspace,'[Content_Types].xml'))
-    if len(pres.findall('{'+P+'}sldIdLst/{'+P+'}sldId'))!=len(plan['pages']):raise ValueError('Write final reference notes after all planned pages exist')
+    built=len(pres.findall('{'+P+'}sldIdLst/{'+P+'}sldId'))
+    if built!=len(plan['pages']):raise ValueError(f'Deck has {built} slides but decision-plan.json lists {len(plan["pages"])} pages; run design_references.py once after the last page is built, just before candidate_save')
     for number,(slide,page) in enumerate(zip(pres.findall('{'+P+'}sldIdLst/{'+P+'}sldId'),plan['pages']),1):
         reference_ids = decisions.page_reference_ids(plan, page)
         target=targets[slide.get('{'+R+'}id')]
         part=posixpath.normpath(target.lstrip('/') if target.startswith('/') else posixpath.join('ppt',target))
-        relpart=posixpath.join(posixpath.dirname(part),'_rels',posixpath.basename(part)+'.rels')
-        relpath=scoped(workspace,relpart)
-        sr=parse(relpath) if relpath.is_file() else E.ElementTree(E.Element('{'+PKG+'}Relationships',nsmap={None:PKG}))
-        note_rel=next((r for r in sr.getroot() if r.get('Type','').endswith('/notesSlide') and r.get('TargetMode')!='External'),None)
-        if note_rel is not None:
-            note_target=note_rel.get('Target');note_part=posixpath.normpath(note_target.lstrip('/') if note_target.startswith('/') else posixpath.join(posixpath.dirname(part),note_target))
-        else:
-            if not reference_ids:continue
-            folder=scoped(workspace,'ppt/notesSlides');folder.mkdir(exist_ok=True)
-            ident=number
-            while (folder/f'notesSlide{ident}.xml').exists():ident+=1
-            note_part=f'ppt/notesSlides/notesSlide{ident}.xml'
-            used={r.get('Id') for r in sr.getroot()};rid='rIdDesignNotes';suffix=1
-            while rid in used:rid='rIdDesignNotes'+str(suffix);suffix+=1
-            E.SubElement(sr.getroot(),'{'+PKG+'}Relationship',Id=rid,Type=R+'/notesSlide',Target='../notesSlides/'+Path(note_part).name)
-            relpath.parent.mkdir(parents=True,exist_ok=True);write(relpath,sr)
+        note_part,notes=speaker_notes.notes_part(workspace,part,create=bool(reference_ids))
+        if note_part is None:continue
         note_path=scoped(workspace,note_part)
-        if note_path.exists():notes=parse(note_path)
-        else:
-            notes=E.ElementTree(E.Element('{'+P+'}notes',nsmap={'p':P,'a':A,'r':R}))
-            tree=E.SubElement(E.SubElement(notes.getroot(),'{'+P+'}cSld'),'{'+P+'}spTree')
-            nv=E.SubElement(tree,'{'+P+'}nvGrpSpPr');E.SubElement(nv,'{'+P+'}cNvPr',id='1',name='');E.SubElement(nv,'{'+P+'}cNvGrpSpPr');E.SubElement(nv,'{'+P+'}nvPr');E.SubElement(tree,'{'+P+'}grpSpPr')
-            E.SubElement(E.SubElement(notes.getroot(),'{'+P+'}clrMapOvr'),'{'+A+'}masterClrMapping')
-            nr=E.Element('{'+PKG+'}Relationships',nsmap={None:PKG})
-            E.SubElement(nr,'{'+PKG+'}Relationship',Id='rId1',Type=R+'/slide',Target='../slides/'+Path(part).name)
-            rp=scoped(workspace,posixpath.join(posixpath.dirname(note_part),'_rels',Path(note_part).name+'.rels'));rp.parent.mkdir(exist_ok=True);write(rp,nr)
-        body=next((sp.find('{'+P+'}txBody') for sp in notes.findall('.//{'+P+'}sp') if sp.find('.//{'+P+'}ph[@type="body"]') is not None),None)
+        body=speaker_notes.body_of(notes,create=bool(reference_ids))
         if not reference_ids:
             if body is not None and remove_managed(body):write(note_path,notes);updated.append(number)
             continue
-        if body is None:
-            tree=notes.find('{'+P+'}cSld/{'+P+'}spTree')
-            ids=[int(n.get('id')) for n in tree.iter('{'+P+'}cNvPr')]
-            sp=E.SubElement(tree,'{'+P+'}sp');nv=E.SubElement(sp,'{'+P+'}nvSpPr');E.SubElement(nv,'{'+P+'}cNvPr',id=str(max(ids,default=1)+1),name='Design source notes');E.SubElement(nv,'{'+P+'}cNvSpPr');E.SubElement(E.SubElement(nv,'{'+P+'}nvPr'),'{'+P+'}ph',type='body',idx='1');E.SubElement(sp,'{'+P+'}spPr')
-            body=E.SubElement(sp,'{'+P+'}txBody');E.SubElement(body,'{'+A+'}bodyPr');E.SubElement(body,'{'+A+'}lstStyle')
         remove_managed(body)
         lines=[BEGIN]
         for ident in reference_ids:lines+=paragraphs(lookup[ident],page['id'],language)
@@ -114,10 +87,7 @@ def apply(workspace,plan,outline,*,root,language='en',allow_legacy=False):
         for line in lines:
             p=E.SubElement(body,'{'+A+'}p');r=E.SubElement(p,'{'+A+'}r');pr=E.SubElement(r,'{'+A+'}rPr',sz='1200');E.SubElement(pr,'{'+A+'}latin',typeface='Times New Roman');E.SubElement(pr,'{'+A+'}ea',typeface='SimSun');E.SubElement(r,'{'+A+'}t').text=line
         write(note_path,notes)
-        override='/'+note_part
-        if not any(x.get('PartName')==override for x in types.getroot()):E.SubElement(types.getroot(),'{'+CT+'}Override',PartName=override,ContentType='application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml')
         updated.append(number)
-    if updated:write(scoped(workspace,'[Content_Types].xml'),types)
     return {'pages_updated':updated,'references_recorded':sum(bool(r['applications']) for r in plan['references'])}
 
 

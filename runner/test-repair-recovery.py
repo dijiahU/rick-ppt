@@ -182,7 +182,7 @@ class RepairRecoveryTests(unittest.TestCase):
         context=json.loads(next((run.job/'conversation-inputs').glob('*.json')).read_text())
         self.assertEqual([r['text'] for r in context['requests']],[f'Ordered revision {n}' for n in range(1,8)])
         self.assertIn(self.findings_name,self.journal.state['completed_stages']['repair-1']['artifacts'])
-        self.assertIn('fresh filename under exports/',self.calls[0][2])
+        self.assertIn('fresh exports/ filename',self.calls[0][2])
 
     def test_unfinished_content_can_repair_its_partial_outline_before_host_validation(self):
         self.seed(phase='content')

@@ -91,7 +91,7 @@ def write_design_packet(cfg,job,packet,artifact):
             source=policy._local_file(job,entry['evidence'])
             relative=Path('design-reference-images')/(entry['id']+source.suffix.lower())
             destination=Path(packet)/relative;destination.parent.mkdir(parents=True,exist_ok=True)
-            destination.write_bytes(read_scoped(job,source.relative_to(Path(job).resolve()),30*1024*1024))
+            destination.write_bytes(read_scoped(job,source.relative_to(Path(job).resolve()),80*1024*1024))
             entry['review_image']=relative.as_posix()
     (Path(packet)/'design-references.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
 

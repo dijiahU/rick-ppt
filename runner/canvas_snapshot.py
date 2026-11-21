@@ -64,7 +64,7 @@ def collect(job,artifact,lease):
         try:
             candidate=json.loads(read_scoped(job,path,8*1024*1024));output=Path(candidate.get('latest_output',''))
             if not output.is_absolute():output=job/output
-            if hashlib.sha256(read_scoped(job,output,30*1024*1024)).hexdigest()!=digest:continue
+            if hashlib.sha256(read_scoped(job,output,80*1024*1024)).hexdigest()!=digest:continue
             if candidate.get('last_compatibility',{}).get('artifact_sha256') not in (None,digest):continue
             state=candidate;break
         except (ValueError,OSError,KeyError):continue
@@ -111,7 +111,7 @@ def scoped_requests(journal,job):
         try:
             request=json.loads(message['text'].split(marker,1)[1].split('\n',1)[0])
             if request.get('schema')!='rickppt-visual-edits/v1' or request.get('scope')!='selected_objects_and_pages' or not request.get('changes'):return None
-            source=read_scoped(Path(job),f'visual-inputs/{message["id"]}/baseline.pptx',30*1024*1024)
+            source=read_scoped(Path(job),f'visual-inputs/{message["id"]}/baseline.pptx',80*1024*1024)
             if hashlib.sha256(source).hexdigest()!=request['baseSha256']:raise ValueError('Visual request baseline changed')
             result.append(request)
         except (ValueError,KeyError,IndexError,OSError):return None

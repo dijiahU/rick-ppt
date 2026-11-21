@@ -47,6 +47,14 @@ class PowerTests(unittest.TestCase):
         with self.assertRaises(PowerInterrupted): lease.check()
         self.assertFalse(issubclass(PowerInterrupted, TaskPaused))
 
+    def test_battery_worker_holds_idle_sleep_only_for_its_own_lifetime(self):
+        import power_policy
+        calls=[]
+        power_policy.keep_awake(pid=4321,popen=lambda command,**kw:calls.append((command,kw)))
+        if os.path.exists('/usr/bin/caffeinate'):
+            self.assertEqual(calls[0][0],['/usr/bin/caffeinate','-i','-w','4321'])
+            self.assertTrue(calls[0][1]['start_new_session'])
+
     def test_owner_pause_still_takes_precedence(self):
         interrupt=threading.Event();interrupt.set()
         lease=LeaseKeeper(lambda:{'ok':True, 'stop':True}, interrupt=interrupt)

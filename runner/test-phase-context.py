@@ -42,7 +42,7 @@ class Tests(unittest.TestCase):
         self.assertIn('A real brief', text)
         self.assertNotIn('RETAINED AUTHOR EVIDENCE', text)
         self.assertNotIn('UNINSPECTED ACTUAL SOURCE', text)
-        self.assertIn('read/inspect', text)
+        self.assertIn('Inspect the actual attachment', text)
         request = next(d for d in self.documents(text) if d['path'].endswith('/request.json'))
         self.assertEqual(json.loads(request['content']), self.request)
         self.assertEqual(request['sha256'], hashlib.sha256((self.job/'request.json').read_bytes()).hexdigest())
@@ -60,23 +60,16 @@ class Tests(unittest.TestCase):
         self.assertIn('NEW RESOLVED EVIDENCE',text)
         self.assertNotIn('RETAINED AUTHOR EVIDENCE',text)
 
-    def test_shared_aesthetic_source_reaches_planning_author_and_repair_with_hashes(self):
+    def test_review_standard_reaches_repair_only(self):
         path=self.skill/'references/design-completion.md'
         path.parent.mkdir(parents=True)
-        shared='Task-specific audience and visual judgment — 真实情境'
-        final_policy='FINAL REVIEW SCORING AND REPORT FIELDS'
-        body='Guide\n<!-- shared-aesthetics/v1 -->\n'+shared+'\n<!-- /shared-aesthetics -->\n'+final_policy
+        body='Guide\n<!-- shared-aesthetics/v1 -->\nshared\n<!-- /shared-aesthetics -->\nFINAL REVIEW SCORING'
         path.write_text(body)
-        before={p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()}
-        for stage in ('research','author','repair'):
-            text=prepared_phase_context(self.cfg,self.job,stage)
-            doc=next(d for d in self.documents(text) if d['path']==str(path))
-            self.assertIn(shared,doc['content'])
-            self.assertEqual(doc['sha256'],hashlib.sha256(path.read_bytes()).hexdigest())
-            self.assertEqual(doc['complete'],stage!='research')
-            if stage=='research':self.assertNotIn(final_policy,text)
-            else:self.assertEqual(doc['content'],body)
-        self.assertEqual(before,{p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()})
+        for stage in ('research','author'):
+            self.assertNotIn(str(path),[d['path'] for d in self.documents(prepared_phase_context(self.cfg,self.job,stage))])
+        doc=next(d for d in self.documents(prepared_phase_context(self.cfg,self.job,'repair')) if d['path']==str(path))
+        self.assertEqual(doc['content'],body)
+        self.assertEqual(doc['sha256'],hashlib.sha256(path.read_bytes()).hexdigest())
 
     def test_legacy_or_incomplete_shared_guide_does_not_load_review_rules_in_planning(self):
         path=self.skill/'references/design-completion.md'
@@ -132,43 +125,13 @@ class Tests(unittest.TestCase):
         (self.skill/'references/tool-preparation.md').write_text('Historical tool preparation')
         self.assertIn('NOT YET NEEDED',prepared_phase_context(self.cfg,self.job,'author'))
 
-    def test_author_and_repair_receive_actual_completion_standard_not_just_its_path(self):
+    def test_optional_guides_are_not_attached(self):
         (self.skill/'references').mkdir()
-        guide=self.skill/'references/design-completion.md';guide.write_text('Shared actual subject/craft completion criteria.')
-        for stage in ('author','repair'):
-            docs=self.documents(prepared_phase_context(self.cfg,self.job,stage))
-            supplied=next(d for d in docs if d['path']==str(guide))
-            self.assertEqual(supplied['content'],guide.read_text())
-            self.assertEqual(supplied['sha256'],hashlib.sha256(guide.read_bytes()).hexdigest())
-        self.assertFalse(any(d['path']==str(guide) for d in self.documents(prepared_phase_context(self.cfg,self.job,'research'))))
-
-    def test_existing_worked_decisions_are_actual_author_entry_content_once(self):
-        (self.skill/'references').mkdir()
-        guide=self.skill/'references/art-direction-examples.md'
-        guide.write_text('# Example\nAn input and a visual operation with a rendered check.\n')
-        before=guide.read_bytes()
-        docs=self.documents(prepared_phase_context(self.cfg,self.job,'author'))
-        supplied=next(d for d in docs if d['path']==str(guide))
-        self.assertEqual(supplied['content'].encode(),before)
-        self.assertEqual(supplied['sha256'],hashlib.sha256(before).hexdigest())
-        for stage in ('research','repair'):
-            self.assertFalse(any(d['path']==str(guide) for d in self.documents(prepared_phase_context(self.cfg,self.job,stage))))
-        self.assertEqual(guide.read_bytes(),before)
-
-    def test_visual_discovery_guide_comes_from_pinned_plugin_at_entry(self):
-        (self.skill/'references').mkdir()
-        guide=self.skill/'references/pinterest.md'
-        guide.write_text('Pinned optional visual-discovery instructions; no network operation.')
-        before={p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()}
-        for stage in ('research','author'):
-            docs=self.documents(prepared_phase_context(self.cfg,self.job,stage))
-            supplied=next(d for d in docs if d['path']==str(guide))
-            self.assertEqual(supplied['content'],guide.read_text())
-            self.assertEqual(supplied['sha256'],hashlib.sha256(guide.read_bytes()).hexdigest())
-        self.assertFalse(any(d['path']==str(guide) for d in self.documents(prepared_phase_context(self.cfg,self.job,'repair'))))
-        self.assertEqual(before,{p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()})
-        guide.unlink()  # Old pinned runtimes remain usable, without invented guidance.
-        self.assertFalse(any(d['path']==str(guide) for d in self.documents(prepared_phase_context(self.cfg,self.job,'author'))))
+        names=('art-direction-examples.md','pinterest.md','content-led-composition.md')
+        for name in names:(self.skill/'references'/name).write_text('OPTIONAL '+name)
+        for stage in ('research','author','repair'):
+            paths=[d['path'] for d in self.documents(prepared_phase_context(self.cfg,self.job,stage))]
+            for name in names:self.assertNotIn(str(self.skill/'references'/name),paths)
 
     def test_enabled_role_entry_executes_for_research_author_and_repair(self):
         from design_roles import role_instruction
@@ -307,6 +270,31 @@ class Tests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'disconnect'):
             self.repair(failed=True)
         self.assertEqual((self.job/'candidate.pptx').read_bytes(),b'UNTOUCHED FROZEN CANDIDATE')
+
+
+class OmitDeliveredTests(unittest.TestCase):
+    def prompt(self, docs):
+        from phase_context import HEADER
+        return 'TASK' + HEADER + 'The documents below are complete.\n' + json.dumps({'stage': 'repair', 'documents': docs}) + '\nTAIL'
+
+    def test_only_unchanged_complete_documents_already_delivered_are_omitted(self):
+        from phase_context import omit_delivered
+        docs = [{'path': 'SKILL.md', 'sha256': 'a', 'complete': True, 'content': 'skill text'},
+                {'path': 'outline.json', 'sha256': 'b', 'complete': True, 'content': 'new outline'},
+                {'path': 'tool-manifest.json', 'sha256': 'a', 'complete': False, 'content': 'subset'}]
+        out, hashes = omit_delivered(self.prompt(docs), {'a'})
+        self.assertTrue(out.startswith('TASK') and out.endswith('\nTAIL'))
+        packet = json.loads(out.split('\n')[-2])
+        self.assertIsNone(packet['documents'][0]['content']); self.assertIn('unchanged', packet['documents'][0])
+        self.assertEqual(packet['documents'][1]['content'], 'new outline')   # changed or new: sent in full
+        self.assertEqual(packet['documents'][2]['content'], 'subset')        # partial views always sent
+        self.assertEqual(hashes, {'a', 'b'})
+
+    def test_first_phase_and_unrelated_prompts_unchanged(self):
+        from phase_context import omit_delivered
+        prompt = self.prompt([{'path': 'SKILL.md', 'sha256': 'a', 'complete': True, 'content': 'x'}])
+        self.assertEqual(omit_delivered(prompt, set())[0], prompt)
+        self.assertEqual(omit_delivered('plain prompt', {'a'}), ('plain prompt', set()))
 
 
 if __name__ == '__main__':

@@ -116,7 +116,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   if(action==='complete') {
     if(completionRevision!==null)await ensureConversation();
     const length=Number(request.headers.get('Content-Length'));
-    if(!length||length>30*1024*1024) return json({error:'PPTX must be at most 30 MB'},413);
+    if(!length||length>80*1024*1024) return json({error:'PPTX must be at most 80 MB'},413);
     const bytes=await request.arrayBuffer(); if(bytes.byteLength!==length||new Uint8Array(bytes)[0]!==80||new Uint8Array(bytes)[1]!==75) return json({error:'Invalid PPTX upload'},400);
     const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
     if(expectedDigest!==null&&digest!==expectedDigest)return json({error:'Artifact checksum mismatch'},400);

@@ -81,7 +81,7 @@ class AttachmentsTests(unittest.TestCase):
                 with self.assertRaises((OSError,ValueError)):
                     receive({}, {'id':str(uuid.uuid4()),'lease':'l','attachments':[self.item]},Path(root),lambda *a,**k:self.fail('Must not overwrite a bad existing input'),recover=True)
     def test_limits_and_ids(self):
-        for change in [{'id':'../../x'},{'ext':'exe'},{'size':20*1024*1024+1},{'sha256':'bad'},{'size':True}]:
+        for change in [{'id':'../../x'},{'ext':'exe'},{'size':60*1024*1024+1},{'sha256':'bad'},{'size':True}]:
             with self.assertRaises((ValueError,TypeError)):metadata([{**self.item,**change}])
         with self.assertRaises(ValueError):metadata([{**self.item,'id':str(uuid.uuid4())} for _ in range(11)])
         with self.assertRaises(ValueError):metadata([self.item]*2)

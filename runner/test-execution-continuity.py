@@ -69,6 +69,15 @@ class Files(unittest.TestCase):
                            'item':{'id':str(n),'type':'image_view'}})
         return guard.action()
 
+    def test_saved_references_are_research_progress_but_not_author_progress(self):
+        g=self.guard('research')
+        self.assertIsNone(self.actions(g,count=3))
+        (self.job/'references/pinterest').mkdir(parents=True);(self.job/'references/pinterest/1.jpg').write_bytes(b'pin')
+        self.assertIsNone(self.actions(g,start=3))  # the saved pin reset the quiet count
+        g=self.guard('author')
+        (self.job/'references/pinterest/2.jpg').write_bytes(b'pin2')
+        self.assertEqual(self.actions(g,start=10),'nudge')
+
     def test_waits_and_inspection_do_not_prove_outputs(self):
         g=self.guard()
         for _ in range(50):self.assertIsNone(g.action())
@@ -256,7 +265,7 @@ class Phase(unittest.TestCase):
         cfg={'token':'fake-token','plugin':str(REPO/'pptx-agent'),'python':PYTHON,
              'progress_action_window':4}
         if allow_handoff:cfg['_allow_declared_author_handoff']=True
-        if browser:cfg['browser_research']={'enabled':True,'browser':'edge','site':'https://www.xiaohongshu.com'}
+        if browser:cfg['browser_research']={'enabled':True,'browser':'edge','site':'https://www.pinterest.com'}
         bridge=SimpleNamespace(ROOT=root,environment=lambda root:{},request=lambda *a,**k:{'ok':True},render_requests=Mock())
         reporter=Reporter(cfg,task,job,bridge.request,explicit_previews=True)
         journal=Journal(root/'state',task['id'],plugin_version='test');self.addCleanup(journal.close)
@@ -347,7 +356,9 @@ class Phase(unittest.TestCase):
             with self.subTest(phase=phase),patch.object(workflow,'continuity_enabled',return_value=False):
                 server,_,error,_,_=self.run_phase(mode='complete',name=phase,browser=True)
             self.assertIsNone(error)
-            self.assertEqual(any(s['name']=='pptx_browser_sources' for s in server.tool_specs),phase in ('author','research'))
+            # The default browsing mode is the dedicated CDP browser (pptx_browse); the helper tool is the older mode.
+            names={s['name'] for s in server.tool_specs}
+            self.assertEqual(bool(names&{'pptx_browse','pptx_browser_sources'}),phase in ('author','research'))
             self.assertFalse(server.kw['config']['features']['browser_use'])
 
     def test_completed_valid_handoff_does_not_get_extra_turn(self):

@@ -27,7 +27,7 @@ export async function POST(request:Request){
  if(action==='rebase-source'&&progressive){const head=await liveHead(edit.job_id,meta.producerLease);if(!head||head.sha256!==q.get('parent'))return json({error:'Progress changed'},409);const object=await files().get(head.source_key);return object?new Response(object.body):json({error:'Source unavailable'},404);}
  if(action==='picture'){const key=q.get('picture'),payload=JSON.parse(edit.payload);if(!payload.patches.some((p:NativePatch)=>p.image?.id===key))return json({error:'Picture unavailable'},404);const picture=await files().get(nativeKey(edit.job_id,id,key!));return picture?new Response(picture.body):json({error:'Picture unavailable'},404);}
  if(action==='artifact'){
-  const bytes=await boundedBody(request,30*1024*1024);if(bytes[0]!==80||bytes[1]!==75)return json({error:'PPTX required'},400);const sha=await hash(bytes);await files().put(nativeKey(edit.job_id,id,'result.pptx'),bytes,{httpMetadata:{contentType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'},customMetadata:{sha256:sha}});return json({sha256:sha});
+  const bytes=await boundedBody(request,80*1024*1024);if(bytes[0]!==80||bytes[1]!==75)return json({error:'PPTX required'},400);const sha=await hash(bytes);await files().put(nativeKey(edit.job_id,id,'result.pptx'),bytes,{httpMetadata:{contentType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'},customMetadata:{sha256:sha}});return json({sha256:sha});
  }
  if(action==='page'){
   const n=Number(q.get('page'));const base=await canvasSnapshot(edit.job_id,edit.base_sha);if(!Number.isSafeInteger(n)||!base?.pages[n-1])return json({error:'Page unavailable'},400);

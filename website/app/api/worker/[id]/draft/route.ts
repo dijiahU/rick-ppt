@@ -11,7 +11,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
  const guard=backfill?"id=? AND status='failed' AND updated_at=?":"id=? AND lease=? AND status='running'";
  const args=[id,backfill?expected:lease];
  if(!await db.prepare('SELECT id FROM jobs WHERE '+guard).bind(...args).first())return json({error:'Task attempt changed'},409);
- let bytes:Uint8Array;try{bytes=await boundedBody(request,30*1024*1024);}catch{return json({error:'Draft exceeds 30 MiB'},413);}
+ let bytes:Uint8Array;try{bytes=await boundedBody(request,80*1024*1024);}catch{return json({error:'Draft exceeds 80 MiB'},413);}
  if(bytes.length<22||bytes[0]!==80||bytes[1]!==75||bytes[2]!==3||bytes[3]!==4)return json({error:'PPTX required'},400);
  const actual=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(bytes).buffer))).map(v=>v.toString(16).padStart(2,'0')).join('');
  if(actual!==sha)return json({error:'Draft checksum mismatch'},400);

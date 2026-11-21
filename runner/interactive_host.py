@@ -367,7 +367,7 @@ def _publish_reviewed_bundle(private, assembled, frozen_root, target, reviewed, 
     assembled = Path(assembled)
     source = assembled.relative_to(private)
     inventory = _inventory(private, source)
-    generated = _read(private, source / 'presentation.pptx', 30 * 1024 * 1024)
+    generated = _read(private, source / 'presentation.pptx', 80 * 1024 * 1024)
     if _archive_parts(generated) != _archive_parts(reviewed):
         raise InteractiveHostError('Re-exported PPTX parts differ from the reviewed presentation')
     bundle = _json(private, source / 'deck/bundle.json')
@@ -394,7 +394,7 @@ def _publish_reviewed_bundle(private, assembled, frozen_root, target, reviewed, 
     published = _inventory(frozen_root, destination)
     if {name: value['sha256'] for name, value in published.items() if name != 'checksums.json'} != checksums:
         raise InteractiveHostError('Published bundle checksum verification failed')
-    if (_read(frozen_root, destination / 'presentation.pptx', 30 * 1024 * 1024) != reviewed or
+    if (_read(frozen_root, destination / 'presentation.pptx', 80 * 1024 * 1024) != reviewed or
             _json(frozen_root, destination / 'deck/bundle.json').get('pptxHash') != _sha(reviewed)):
         raise InteractiveHostError('Published bundle lost reviewed presentation identity')
     zipped = None
@@ -615,7 +615,7 @@ def verify_frozen(cfg, author_job, delivery, frozen_root, frozen_workspace, *, t
     if not inspection['instances']:
         return {'interactive': False, 'runtime_verified': False, 'powerpoint_playback_verified': False}
     reviewed_path = frozen_home.relative_to(frozen_root) / 'original.pptx'
-    reviewed_sha = _sha(_read(frozen_root, reviewed_path, 30 * 1024 * 1024))
+    reviewed_sha = _sha(_read(frozen_root, reviewed_path, 80 * 1024 * 1024))
     if not isinstance(delivery, dict) or not isinstance(delivery.get('workspace'), str):
         raise InteractiveHostError('Interactive delivery.json must include its author workspace')
     source_home = _workspace(author_job, delivery['workspace'])
@@ -634,7 +634,7 @@ def verify_frozen(cfg, author_job, delivery, frozen_root, frozen_workspace, *, t
     result = _run_worker(cfg, {'operation': 'verify', 'workspace': str(frozen_home)}, private, tick=tick, timeout=900)
     if _runtime_inventory(cfg) != runtime_before:
         raise InteractiveHostError('Installed runtime changed during host verification')
-    if _sha(_read(frozen_root, reviewed_path, 30 * 1024 * 1024)) != reviewed_sha:
+    if _sha(_read(frozen_root, reviewed_path, 80 * 1024 * 1024)) != reviewed_sha:
         raise InteractiveHostError('Frozen presentation changed during host verification')
     token = uuid.uuid4().hex
     record = {'root': str(frozen_root), 'home': str(frozen_home), 'native': _inventory(frozen_root, frozen_home.relative_to(frozen_root) / 'workspace'), 'interactive': _inventory(frozen_root, frozen_home.relative_to(frozen_root) / 'interactive'), 'runtime': runtime_before, 'reports': result['reports'], 'reviewed_pptx': reviewed_path.as_posix(), 'reviewed_sha256': reviewed_sha}
@@ -653,7 +653,7 @@ def bundle_frozen(cfg, frozen_root, frozen_workspace, verification, output, *, z
         raise InteractiveHostError('Frozen native/scene/test bytes changed after host verification')
     if _runtime_inventory(cfg) != record['runtime']:
         raise InteractiveHostError('Installed runtime changed after host verification')
-    reviewed = _read(frozen_root, record['reviewed_pptx'], 30 * 1024 * 1024)
+    reviewed = _read(frozen_root, record['reviewed_pptx'], 80 * 1024 * 1024)
     if _sha(reviewed) != record['reviewed_sha256']:
         raise InteractiveHostError('Frozen presentation changed after host verification')
     target = frozen_root.joinpath(*_parts(frozen_root, output))
@@ -680,7 +680,7 @@ def bundle_frozen(cfg, frozen_root, frozen_workspace, verification, output, *, z
         raise InteractiveHostError('Installed runtime changed during bundle assembly')
     if (_inventory(frozen_root, home.relative_to(frozen_root) / 'workspace') != record['native'] or
             _inventory(frozen_root, home.relative_to(frozen_root) / 'interactive') != record['interactive'] or
-            _sha(_read(frozen_root, record['reviewed_pptx'], 30 * 1024 * 1024)) != record['reviewed_sha256']):
+            _sha(_read(frozen_root, record['reviewed_pptx'], 80 * 1024 * 1024)) != record['reviewed_sha256']):
         raise InteractiveHostError('Frozen presentation or scene changed during bundle assembly')
     published = _publish_reviewed_bundle(private, assembled, frozen_root, target, reviewed, zip_output=zip_output)
     if _runtime_inventory(cfg) != record['runtime']:

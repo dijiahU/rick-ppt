@@ -92,7 +92,7 @@ class ProductionBridge(unittest.TestCase):
         receipt=bridge.write_runtime_receipt(self.worker,self.cfg,'ready')
         proof=json.loads(receipt.read_text())
         self.assertEqual(proof['plugin'],str(self.plugin));self.assertEqual(proof['version'],'new')
-        self.assertTrue(proof['workflow_choices']);self.assertEqual(proof['default_model'],'gpt-6-astra')
+        self.assertTrue(proof['workflow_choices']);self.assertEqual(proof['default_model'],'gpt-6.2-sol')
         self.assertEqual(proof['default_reasoning_effort'],'xhigh');self.assertNotIn('token',proof)
         self.assertEqual(receipt.stat().st_mode&0o777,0o600)
         self.assertEqual(proof['new_task_author_context'],'continuous')
@@ -101,7 +101,7 @@ class ProductionBridge(unittest.TestCase):
 
     def test_browser_receipt_exposes_only_the_enabled_scoped_capability(self):
         cfg={**self.cfg,'browser_research':{'enabled':True,'browser':'edge',
-             'site':'https://www.xiaohongshu.com','private_setting':'never-publish'}}
+             'site':'https://www.pinterest.com','private_setting':'never-publish'}}
         receipt=bridge.write_runtime_receipt(self.worker,cfg,'ready')
         proof=json.loads(receipt.read_text())
         self.assertEqual(proof['browser_research']['tool'],'pptx_browser_sources')

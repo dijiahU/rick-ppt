@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from queue_pool import serve
 
 class PoolTest(unittest.TestCase):
-    def test_simultaneous_sql_claims_never_exceed_three(self):
+    def test_simultaneous_sql_claims_never_exceed_five(self):
         source=(Path(__file__).resolve().parent.parent/'website/lib/queries.ts').read_text()
         query=source.split('export const CLAIM_JOB = `',1)[1].split('`',1)[0]
         with tempfile.TemporaryDirectory() as directory:
@@ -22,7 +22,11 @@ class PoolTest(unittest.TestCase):
                     return db.execute(query,(str(i),1,1,1)).fetchone()
             with ThreadPoolExecutor(max_workers=12) as pool:rows=list(pool.map(claim,range(12)))
             accepted=[row for row in rows if row]
-            self.assertEqual(len(accepted),3);self.assertEqual(len({row[0] for row in accepted}),3)
+            self.assertEqual(len(accepted),5);self.assertEqual(len({row[0] for row in accepted}),5)
+
+    def test_capacity_bounds_match_site_limit(self):
+        for bad in (0,6,'3'):
+            with self.assertRaises(ValueError):serve(None,None,threading.Event(),None,capacity=bad)
 
     def test_three_overlap_and_fourth_waits_then_refills(self):
         stop=threading.Event();release=[threading.Event() for _ in range(4)]

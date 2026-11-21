@@ -63,7 +63,7 @@ def render_source_resolver(task_trajectory_roots):
         if raw_sha256 in identities:
             root,relative=evidence[raw_sha256]
             try:
-                data=read_scoped(root,relative,30*1024*1024)
+                data=read_scoped(root,relative,80*1024*1024)
                 if hashlib.sha256(data).hexdigest()==raw_sha256:return identities[raw_sha256]
             except (OSError,ValueError):pass
             identities.pop(raw_sha256,None);evidence.pop(raw_sha256,None)
@@ -71,17 +71,17 @@ def render_source_resolver(task_trajectory_roots):
             for path in root.glob('*/artifacts/render-input/*.pptx'):
                 try:
                     info=path.stat(follow_symlinks=False)
-                    if not stat.S_ISREG(info.st_mode) or info.st_size>30*1024*1024:continue
+                    if not stat.S_ISREG(info.st_mode) or info.st_size>80*1024*1024:continue
                     key=(str(path),info.st_size,info.st_mtime_ns)
                     if key not in inspected:
-                        data=read_scoped(root,path.relative_to(root),30*1024*1024)
+                        data=read_scoped(root,path.relative_to(root),80*1024*1024)
                         actual=hashlib.sha256(data).hexdigest();inspected[key]=actual
                         if actual==raw_sha256:
                             identities[actual]=source_parts_sha256(data)
                             evidence[actual]=(root,path.relative_to(root))
                     if inspected[key]==raw_sha256:
                         if raw_sha256 not in identities:
-                            data=read_scoped(root,path.relative_to(root),30*1024*1024)
+                            data=read_scoped(root,path.relative_to(root),80*1024*1024)
                             if hashlib.sha256(data).hexdigest()!=raw_sha256:continue
                             identities[raw_sha256]=source_parts_sha256(data)
                             evidence[raw_sha256]=(root,path.relative_to(root))
@@ -91,7 +91,7 @@ def render_source_resolver(task_trajectory_roots):
     return resolve
 
 def render_input(job,source):
-    data=read_scoped(job,source.relative_to(job),30*1024*1024)
+    data=read_scoped(job,source.relative_to(job),80*1024*1024)
     fonts=set();expanded=0
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
         for item in archive.infolist():

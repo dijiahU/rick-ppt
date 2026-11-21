@@ -19,11 +19,12 @@ import tempfile
 from PIL import Image, ImageOps
 
 import native_canvas as canvas
+import deck_style
 from native_structure import shape
 from pptx_core.package import select
 
 OPERATIONS = {'text': canvas.add_text, 'shape': canvas.add_shape,
-              'path': canvas.add_path,
+              'path': canvas.add_path, 'icon': canvas.add_icon,
               'image': canvas.add_image, 'connector': canvas.add_connector,
               'group': canvas.semantic_group, 'reveal': canvas.reveal,
               'bars': canvas.add_bar_chart}
@@ -163,7 +164,7 @@ def _pixel_geometry(operation, frame):
         operation['width'] = value(operation['width'])
         if operation['max_height'] != 'auto': operation['max_height'] = value(operation['max_height'])
         if 'padding' in operation: operation['padding'] = value(operation['padding'])
-    elif op in ('shape', 'path', 'image', 'bars'):
+    elif op in ('shape', 'path', 'image', 'bars', 'icon'):
         x, y, w, h = operation['box']
         operation['box'] = [left + value(x), top + value(y), value(w), value(h)]
     elif op == 'connector':
@@ -192,6 +193,10 @@ def _prepare(root, parts, document):
             raise BatchError([{'message': 'Unsupported defaults for ' + str(op) + '; only documented style fields are reusable',
                                'code': 'schema'}])
     errors, prepared, names, dependencies, measurements = [], [], {}, {}, []
+    try:
+        style = deck_style.load(root)
+    except ValueError as error:
+        raise BatchError([{'message': str(error), 'code': 'deck_style'}])
     frame = _source_frame(root, document)
     if frame is not None:
         dependencies[frame['image']] = frame['sha256']
@@ -205,6 +210,9 @@ def _prepare(root, parts, document):
             # Per-object values (including explicit null) override defaults.
             # The expanded call uses the same validation, scopes and native API.
             operation = {**copy.deepcopy(defaults.get(op, {})), **operation}
+            for key in ('ink', 'fill', 'stroke', 'colors'):
+                if key in operation:
+                    operation[key] = deck_style.resolve(operation[key], style)
             operation = _pixel_geometry(operation, frame)
             slide = operation.get('slide')
             if type(slide) is not int or slide <= 0:
@@ -245,12 +253,13 @@ def _prepare(root, parts, document):
                         shape(canvas.page(parts, slide)[2], target)
                     else:
                         raise ValueError('Use a named handle or existing positive integer ID')
-            if op == 'image':
-                source = _scoped(root, params['source'])
-                params['source'] = str(source)
+            if op in ('image', 'icon'):
+                key = 'source' if op == 'image' else 'icon'
+                source = _scoped(root, params[key])
+                params[key] = str(source)
                 # The caller cannot override scope through the helper argument.
                 if params.get('task_root') not in (None, str(root)):
-                    raise ValueError('image.task_root is supplied by the batch runner')
+                    raise ValueError(op + '.task_root is supplied by the batch runner')
                 params['task_root'] = str(root)
                 if str(source) not in dependencies:
                     dependencies[str(source)] = _hash_file(source)

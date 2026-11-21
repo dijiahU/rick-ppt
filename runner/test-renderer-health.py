@@ -76,4 +76,19 @@ class LinuxReadinessTests(unittest.TestCase):
    health=RendererReadiness(run=lambda *a,**k:SimpleNamespace(returncode=0),log=lambda *a,**k:None)
    self.assertIsNone(health.claim(lambda:self.fail('must remain queued')))
 
+class DiskGateTests(unittest.TestCase):
+ def test_low_disk_keeps_tasks_queued(self):
+  calls=[];states=[]
+  health=RendererReadiness(run=lambda *a,**k:calls.append(a),on_state=lambda *a:states.append(a),log=lambda *a,**k:None,free_bytes=lambda:1024**3)
+  self.assertFalse(health.ready());self.assertEqual(calls,[]);self.assertEqual(states,[(False,'disk_low')])
+
+class RunGroupTests(unittest.TestCase):
+ def test_timeout_kills_children(self):
+  import uuid,time
+  from renderer_health import run_group
+  tag=str(uuid.uuid4().int%10**6+300)
+  with self.assertRaises(subprocess.TimeoutExpired):run_group(['sh','-c',f'sleep {tag} & sleep {tag}'],timeout=0.5)
+  time.sleep(0.3)
+  self.assertEqual(subprocess.run(['pgrep','-f',f'sleep {tag}'],capture_output=True,text=True).stdout.strip(),'')
+
 if __name__=='__main__':unittest.main()

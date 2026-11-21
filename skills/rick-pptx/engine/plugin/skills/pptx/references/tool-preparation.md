@@ -1,68 +1,25 @@
-# Current tool preparation
+# Tool preparation
 
 <!-- tool-groups/v1 -->
 
-Start with the scenario folders, not a dump of every callable. The prepared
-manifest's `discovery.groups` lists short names/use cases and `open_command` opens
-one group. Replace GROUP_ID with plan, recreate, compose, images, edit, animate,
-fonts or verify. A task may use several folders; this does not classify it into a
-new workflow branch or remove any native capability.
+The prepared manifest's `discovery.groups` lists scenario folders and `open_command`
+opens one: plan, recreate, compose, images, edit, animate, fonts or verify. Open what
+the page needs (for example `images` and `compose` for original design, `recreate` for
+image recreation). `tool_prepare.py --task-root TASK --list-groups` / `--group NAME`
+are read-only lookups. The complete tool-manifest.json remains available.
 
-For image recreation, open `recreate`: source inspection/crops/comparisons and
-source-pixel native operations are together. For original design, open `images`
-to choose an actual source/generated subject and `compose` when native drawing or
-hybrid construction is useful. `edit` preserves supplied objects; `animate` and
-`verify` expose their exact operations only when needed. Group output links the
-relevant guides and adjacent folders. Reuse details already opened.
-
-`tool_prepare.py --task-root TASK --list-groups` lists the folders;
-`tool_prepare.py --task-root TASK --group recreate` reads one. Both lookups are
-read-only: they do not unpack, draw, generate images, acquire permissions or call a
-provider. They return exact prepared interfaces. Refresh after workspace changes;
-unsupported/absent capabilities stay absent. Complete `tool-manifest.json` remains
-available for advanced needs and older callers.
-
-The host can prepare `tool-quickstart.md` and `tool-manifest.json` in the task root.
-Read the quickstart for the folder index and workspace bootstrap commands, then
-open the relevant group for exact operations and linked guides. These describe
-the installed tools; they do not choose content, design,
-references, branch values or a page template, and do not replace SKILL requirements.
-When the host includes complete current documents in a phase's initial prompt,
-use that reading directly. Read only deferred/changed files and needed detail;
-do not reopen the same instructions or print every manifest section for discovery.
-Original source/visual attachments still require actual inspection.
-
-The planning interface supports one combined `planning_commit` submission instead
-of separate scaffold generation and three-file writes. The native `ensure_next_page`
-interface safely appends a blank page from an explicitly selected existing layout
-or returns the existing page on retry; it never clones source content or chooses
-style. See [planning-commit.md](planning-commit.md) and [native-pages.md](native-pages.md).
-
-Use the exact interpreter path in `tool-manifest.json.python` for scripts and
-inline patches. Keep its venv invocation path even if it is a symlink; do not
-substitute bare python/python3 or resolve it into a system binary.
-
-If the host has not prepared the files, replace `HOST_PYTHON` below with the exact
-provided interpreter and `PLUGIN` with the exposed plugin path:
+Always use the exact interpreter in `tool-manifest.json.python` (keep its venv path;
+not bare python/python3). Without host preparation run:
 
 ```
 HOST_PYTHON PLUGIN/skills/pptx/scripts/tool_prepare.py --task-root . --python HOST_PYTHON
 ```
 
-Choose the task-appropriate original or blank source yourself and unpack it using
-the quickstart command. Refresh preparation with `--workspace RETURNED_PATH` after
-unpacking or recovery. The manifest then supplies actual `session_dir` and
-`parts_dir`: pptx/native_builds accept either; native_canvas/design_references need
-the parts directory. No source is automatically unpacked or authored by this tool.
+Unpack your chosen blank/template, then refresh with `--workspace RETURNED_PATH` to
+get `session_dir` and `parts_dir` (native_canvas and design_references need the parts
+directory). `planning_commit` submits outline, decisions and notes in one call;
+`ensure_next_page` appends a blank page from a chosen layout (see planning-commit.md,
+native-pages.md).
 
-The manifest reads current CLI parsers, native_canvas function signatures and
-decision options. With an existing outline it includes the existing unselected
-decision scaffold. Preserve explicit delivery decisions, source meaning and actual
-reference inspection. A local reference `source` is its exact task-relative file
-path without a provenance label; record display attribution in title/observed.
-Fill observed/borrowed/applications only after inspecting the material.
-
-Script operations can partially complete before a later call fails. Inspect the
-saved objects or restore the snapshot before retrying; use returned handles and
-existing IDs rather than appending hardcoded duplicate IDs. Tool preparation does
-not certify the page, replace independent review or change frozen delivery rules.
+A script can partially complete before failing: inspect saved objects or restore the
+snapshot before retrying, and use returned handles instead of hard-coded IDs.

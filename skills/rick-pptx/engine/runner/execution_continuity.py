@@ -125,7 +125,7 @@ def declared_output(root,recoveries=()):
         value=resolve_delivery(value,root,recoveries)
         path=value.get('path')
         if not isinstance(path,str) or Path(path).suffix.lower()!='.pptx':return None
-        body=read_scoped(Path(root).resolve(strict=True),Path(path),30*1024*1024)
+        body=read_scoped(Path(root).resolve(strict=True),Path(path),80*1024*1024)
         from office_policy import validate_delivery
         validate_delivery(body,single_file=True)
         from draft_progress import validate_native
@@ -172,14 +172,17 @@ class OutputProgress:
     def fingerprint(self):
         entries, scanned, total = [], 0, 0
         for base, dirs, files in os.walk(self.root, followlinks=False):
-            dirs[:] = sorted(d for d in dirs if d not in SKIP and not (Path(base) / d).is_symlink())
+            skip = SKIP - {'references'} if self.role == 'research' else SKIP
+            dirs[:] = sorted(d for d in dirs if d not in skip and not (Path(base) / d).is_symlink())
             for filename in sorted(files):
                 scanned += 1
                 if scanned > 20000: return None  # Cannot establish stagnation.
                 p = Path(base) / filename; rel = p.relative_to(self.root)
-                planning = self.role == 'research' and rel.as_posix() in (
+                # Saved references (browse screenshots, Pinterest pins, library picks) are real
+                # research progress, not idle tool use.
+                planning = self.role == 'research' and (rel.as_posix() in (
                     'outline.json', 'source-notes.md', 'decision-plan.json', 'planning-input.json',
-                    'assets/index.json', 'assets/web-index.json')
+                    'assets/index.json', 'assets/web-index.json') or rel.parts[0] == 'references')
                 native = self.role == 'author' and (('ppt' in rel.parts and any(
                     x in rel.parts for x in ('slides', 'charts', 'media', 'embeddings')))
                     or 'native-pages' in rel.parts and p.suffix == '.json'

@@ -11,7 +11,9 @@ class TypographyTests(unittest.TestCase):
 
     def test_mac_retains_existing_windows_wps_default(self):
         defaults=deployment_defaults('darwin');text=deployment_font_instruction('darwin')
-        self.assertEqual(defaults,{'latin':'Times New Roman','east_asian':'SimSun','target':'Windows WPS'})
+        self.assertEqual({k:defaults[k] for k in ('latin','east_asian','target')},{'latin':'Times New Roman','east_asian':'SimSun','target':'Windows WPS'})
         self.assertIn('Times New Roman',text);self.assertIn('SimSun',text)
+        # Approved display fonts (since 2026-11-19) must not read as a violation to reviewers.
+        self.assertIn('DengXian',text);self.assertIn('Arial',text);self.assertIn('not a font violation',text)
 
 if __name__=='__main__':unittest.main()

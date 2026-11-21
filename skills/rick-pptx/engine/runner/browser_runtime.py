@@ -89,12 +89,23 @@ def browser_configuration(workspace, paths):
     """Exact installed code read grants; browser policy remains authoritative."""
     validate_runtime(paths)
     config = task_configuration(workspace, web_search='disabled', read_roots=list(paths.values()))
+    enable_browser(config, paths)
+    config['features']['image_generation'] = False
+    return config
+
+
+def enable_browser(config, paths):
+    """Give an existing task configuration the operator's browser through the official client."""
+    validate_runtime(paths)
+    filesystem = config['permissions']['pptx_job']['filesystem']
+    for path in paths.values():
+        filesystem[str(Path(path).resolve())] = 'read'
     # Bundled macOS Node probes this path even when the config is absent.
     # EPERM aborts OpenSSL initialization; allowing this exact read preserves
     # normal missing-file behavior without exposing a private directory.
     if sys.platform == 'darwin':
-        config['permissions']['pptx_job']['filesystem']['/System/Library/OpenSSL/openssl.cnf'] = 'read'
-    config['features'].update(browser_use=True, browser_use_external=True, image_generation=False)
+        filesystem['/System/Library/OpenSSL/openssl.cnf'] = 'read'
+    config['features'].update(browser_use=True, browser_use_external=True)
     # The sandboxed Node REPL reaches the Edge extension only through the host's
     # Unix sockets. Seatbelt allows Unix sockets only with networking enabled, so
     # route all other traffic through Codex's managed proxy with no allowed

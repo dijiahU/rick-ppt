@@ -52,6 +52,7 @@ without defaults work unchanged. Inspect the rendered result as before.
 | text | add_text | text,font_file,size,ink,x,y,width,max_height |
 | shape | add_shape | box,geometry,fill,stroke,line_width,name |
 | path | add_path | box,commands,path_size,fill,stroke,line_width,name |
+| icon | add_icon | icon (assets/icons/*.json from pptx_icons),box,ink,name; optional line_scale |
 | image | add_image | source,box,fit,layer |
 | connector | add_connector | start,end,points,start_site,end_site,ink,line_width,arrow,name |
 | group | semantic_group | members,name |

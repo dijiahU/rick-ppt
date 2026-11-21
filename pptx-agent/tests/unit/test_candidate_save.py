@@ -124,3 +124,14 @@ def test_concurrent_declaration_change_is_preserved(task):
     with mock.patch.object(tool, 'export', side_effect=changed), pytest.raises(ValueError, match='changed while'):
         save(task)
     assert (root / 'delivery.json').read_bytes() == other
+
+
+def test_unshipped_text_fonts_are_listed_and_fallback_rows_ignored(tmp_path):
+    path = tmp_path / 'fonts.pptx'
+    with zipfile.ZipFile(path, 'w') as archive:
+        archive.writestr('ppt/slides/slide1.xml', '<p:sld xmlns:a="a" xmlns:p="p"><a:rPr><a:latin typeface="思源黑体 CN Heavy"/>'
+                         '<a:ea typeface="思源黑体 CN Heavy"/></a:rPr><a:rPr><a:latin typeface="Arial"/><a:ea typeface="+mn-ea"/>'
+                         '</a:rPr></p:sld>')
+        archive.writestr('ppt/theme/theme1.xml', '<a:theme xmlns:a="a"><a:latin typeface="微软雅黑"/>'
+                         '<a:font script="Thai" typeface="Angsana New"/></a:theme>')
+    assert tool.unshipped_fonts(path) == {'思源黑体 CN Heavy': 2}

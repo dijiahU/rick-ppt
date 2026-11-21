@@ -160,6 +160,10 @@ class Environments(unittest.TestCase):
         self.assertIn('127.0.0.1', env['NO_PROXY'])
         self.assertEqual(env['HTTP_PROXY'], 'keep-for-models')
         self.assertIn('--reload', command)
+        # Battery operation is an explicit private setting; the inherited flag is dropped.
+        with patch.dict(os.environ, {'PPTX_WORKER_AC_ONLY': '1'}, clear=True):
+            _, battery = tool.local_launch(self.root, {**self.cfg, 'ac_power_only': False})
+        self.assertNotIn('PPTX_WORKER_AC_ONLY', battery)
 
     def test_real_local_transport_ignores_proxy_without_claiming_any_job(self):
         from resilience import request

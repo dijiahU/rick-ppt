@@ -28,6 +28,11 @@ export async function POST(request:Request) {
     if(deferToLocal(identity,local?.heartbeat,now))return json({job:null,deferred:'local_worker_online'});
   }
   // Fail stale tasks, never silently replay potentially executed user work.
+  if(process.env.NODE_ENV!=='production'){
+    // Local diagnostics: record what the stale-task sweep is about to fail and why.
+    const stale=await db.prepare("SELECT id,updated_at FROM jobs WHERE status='running' AND updated_at<?").bind(now-180000).all<{id:string;updated_at:number}>();
+    for(const row of stale.results??[])console.warn('[stale-sweep]',row.id,'updated_at',row.updated_at,typeof row.updated_at,'now',now,'age_ms',now-Number(row.updated_at),'worker',identity);
+  }
   await db.prepare("UPDATE jobs SET status='failed',summary=CASE WHEN summary='delivery_pending' THEN summary ELSE 'interrupted' END,updated_at=? WHERE status='running' AND updated_at<?").bind(now,now-180000).run();
   await ensureModelAccounts();
   const job=await db.prepare(CLAIM_ACCOUNT_JOB).bind(crypto.randomUUID(),now,capabilities.backends.includes('api')?1:0,capabilities.backends.includes('codex')?1:0,body.funding_version===1&&capabilities.backends.length>0?1:0).first();

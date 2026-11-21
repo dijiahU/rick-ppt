@@ -25,6 +25,8 @@ GENERATED_LOOK = {'version': 1}
 GENERATED_LOOK_MARKER = '<!-- generated-look/v1 -->'
 GENERATED_LOOK_LEVELS = ('clear', 'some_tells', 'pronounced')
 TELL_FIELDS = ('pages', 'region', 'resembles', 'why_unjustified', 'direction', 'scope', 'finding_ids')
+READING_ORDER = {'version': 1}
+READING_ORDER_MARKER = '<!-- reading-order/v1 -->'
 GUIDE = 'references/design-completion.md'
 STATES = ('ready', 'needs_revision', 'uncertain')
 RESOLUTIONS = ('resolved', 'partial', 'remains', 'regressed', 'not_supported')
@@ -55,6 +57,11 @@ def coverage_enabled(cfg):
 def generated_look_enabled(cfg):
     """The pinned visual-review guide opts in; the uncalibrated level never gates readiness."""
     return enabled(cfg) and GENERATED_LOOK_MARKER in read_scoped(
+        Path(cfg['plugin'])/'skills/pptx', 'references/visual-review.md', 100000).decode()
+
+
+def reading_order_enabled(cfg):
+    return enabled(cfg) and READING_ORDER_MARKER in read_scoped(
         Path(cfg['plugin'])/'skills/pptx', 'references/visual-review.md', 100000).decode()
 
 
@@ -115,9 +122,13 @@ def response_needed(receipt):
     return bool(presentation_ids(receipt)) or readiness(receipt.get('visual', {})) == 'needs_revision'
 
 
-def schema(base, comparison=None, *, craft=False, coverage=False, generated_look=False):
+def schema(base, comparison=None, *, craft=False, coverage=False, generated_look=False, reading_order=False):
     value = copy.deepcopy(base)
     assessment = value['properties']['design_assessment']
+    # Strict structured output needs every offered property in required (2026-11-21: an
+    # optional reading_order made the visual reviewer's schema invalid and both test jobs failed).
+    if not reading_order:assessment['properties'].pop('reading_order', None)
+    elif 'reading_order' not in assessment['required']:assessment['required'] = assessment['required'] + ['reading_order']
     assessment['properties'].update(
         readiness={'type': 'string', 'enum': list(STATES)},
         primary_findings={'type': 'array', 'items': {'type': 'string'}})
@@ -210,7 +221,7 @@ def validate_craft(report, pages):
             raise ValueError('Visual craft evidence and findings must refer to matching pages')
         if score is None and assessment['readiness'] == 'ready':
             raise ValueError('Uncertain visual craft cannot establish ready')
-        if score is not None and score < 8:
+        if score is not None and score < 7:
             if (assessment['readiness'] != 'needs_revision' or not row['finding_ids']
                     or not set(row['finding_ids']) <= set(assessment['primary_findings'])
                     or any(findings[i].get('route') == 'retain_suggestion' for i in row['finding_ids'])):
@@ -247,7 +258,7 @@ def validate_coverage(report, pages, picture_counts=None, request_text=None):
                     or not set(ids) <= set(assessment['primary_findings'])
                     or any(findings[i].get('route') == 'retain_suggestion' for i in ids)
                     or not set(ids) <= set(assessment['visual_craft']['visual_expression']['finding_ids'])
-                    or score is None or score >= 8):
+                    or score is None or score >= 7):
                 raise ValueError('Missing demonstration needs a same-page actionable finding, unfinished expression score and revision')
         if row['status'] == 'uncertain' and assessment['readiness'] == 'ready':
             raise ValueError('Uncertain visual coverage cannot establish ready')
@@ -268,8 +279,8 @@ def validate_coverage(report, pages, picture_counts=None, request_text=None):
 def validate_generated_look(report, pages):
     """Structure only: every listed tell is located and carried by real findings.
 
-    No count, palette rule or readiness consequence is enforced here; the level is
-    an uncalibrated model judgment recorded for evidence and later calibration.
+    No count or palette rule is enforced. Deck-wide or pronounced tells must reach the
+    bounded design response; page-local tells may remain suggestions.
     """
     assessment = report['design_assessment']
     level, tells = assessment.get('generated_look'), assessment.get('generated_tells')
@@ -290,6 +301,62 @@ def validate_generated_look(report, pages):
         if (not tell['finding_ids'] or not _ids(tell['finding_ids'], findings)
                 or any(not set(findings[i]['pages']) & set(tell['pages']) for i in tell['finding_ids'])):
             raise ValueError('Each generated-look tell must be carried by actual findings on its pages')
+    # A deck-wide or pronounced generated look undermines direct use: it enters the
+    # existing bounded design response instead of staying an ignorable suggestion.
+    serious = [t for t in tells if t['scope'] == 'deck' or level == 'pronounced']
+    if serious:
+        ids = {i for t in serious for i in t['finding_ids']}
+        if (assessment.get('readiness') != 'needs_revision'
+                or not ids & set(assessment.get('primary_findings') or [])
+                or all(findings[i].get('route') == 'retain_suggestion' for i in ids)):
+            raise ValueError('Deck-wide generated look needs an actionable primary finding and needs_revision')
+
+
+def normalize_derived(report):
+    """Fill fields that follow from the reviewer's own judgments (2026-11-21).
+
+    A low craft score, a missing demonstration or a serious generated-look tell that the
+    reviewer already linked to actionable findings implies those findings are primary and
+    the deck needs revision. Reviewers (GPT and Claude alike) often forget to copy the links;
+    the host derives them instead of failing the report. Judgments are never changed: a
+    low score linked only to retained suggestions still goes back for a format correction.
+    """
+    if not isinstance(report, dict) or not isinstance(report.get('design_assessment'), dict):
+        return report
+    report = json.loads(json.dumps(report))
+    a = report['design_assessment']
+    findings = {f.get('id'): f for f in report.get('findings') or [] if isinstance(f, dict)}
+    actionable = lambda ids: [i for i in ids or [] if i in findings and findings[i].get('route') != 'retain_suggestion']
+    implied = []
+    for row in (a.get('visual_craft') or {}).values():
+        # A linked finding on other pages extends the entry's pages (2026-11-21: 3 of 12 Claude reviews
+        # failed "must refer to matching pages" for exactly this and cost a format-correction call).
+        if isinstance(row, dict) and isinstance(row.get('pages'), list):
+            for i in row.get('finding_ids') or []:
+                extra = [p for p in (findings.get(i) or {}).get('pages') or [] if type(p) is int and p not in row['pages']]
+                if extra and not set(row['pages']) & set((findings.get(i) or {}).get('pages') or []):
+                    row['pages'] = sorted(row['pages'] + extra)
+    for row in (a.get('visual_craft') or {}).values():
+        if isinstance(row, dict) and type(row.get('score')) is int and row['score'] < 7:
+            implied += actionable(row.get('finding_ids'))
+    expression = (a.get('visual_craft') or {}).get('visual_expression')
+    for row in a.get('visual_coverage') or []:
+        if isinstance(row, dict) and row.get('status') == 'missing':
+            ids = actionable(row.get('finding_ids'))
+            implied += ids
+            # A missing demonstration is a visual-expression gap; link it when that score is already low.
+            if isinstance(expression, dict) and type(expression.get('score')) is int and expression['score'] < 7:
+                linked = list(expression.get('finding_ids') or [])
+                expression['finding_ids'] = linked + [i for i in ids if i not in linked]
+    for tell in a.get('generated_tells') or []:
+        if isinstance(tell, dict) and (tell.get('scope') == 'deck' or a.get('generated_look') == 'pronounced'):
+            implied += actionable(tell.get('finding_ids'))
+    implied += [i for i, f in findings.items() if f.get('severity') == 'required' and f.get('route') != 'retain_suggestion']
+    if implied:
+        primary = list(a.get('primary_findings') or [])
+        a['primary_findings'] = primary + [i for i in dict.fromkeys(implied) if i not in primary]
+        a['readiness'] = 'needs_revision'
+    return report
 
 
 def validate(report, comparison=None, *, craft=False, pages=None, coverage=False, picture_counts=None, request_text=None, generated_look=False):
@@ -351,11 +418,13 @@ def comparison_input(root, images, digest):
             'visual_input_complete': complete, 'finding_ids': [f['id'] for f in index['findings']]}
 
 
-def selection(baseline, receipt, introduced=None):
+def selection(baseline, receipt, introduced=None, polish=False):
     """Keep an explicitly unfinished improvement, but reject visual regressions.
 
     introduced: required findings the response actually introduced (host rule in
     design_feedback.introduced_required). None keeps the historical any-required test.
+    polish: a finishing-polish candidate fixes small suggestions, so an "equivalent" page
+    with at least one suggestion verified as resolved (and no regression) is selected.
     """
     if baseline.get('design_completion') != CONTRACT:return None
     comparison = receipt.get('visual', {}).get('design_comparison')
@@ -381,6 +450,9 @@ def selection(baseline, receipt, introduced=None):
         decision['reason'] = 'presentation_regression'
     elif comparison.get('verdict') == 'better':
         decision.update(selected='candidate', reason='reviewed_improvement')
+    elif (polish and comparison.get('verdict') == 'equivalent'
+          and any(r.get('status') == 'resolved' for r in comparison.get('resolutions', []))):
+        decision.update(selected='candidate', reason='polish_resolved')
     else:
         decision['reason'] = 'comparison_' + str(comparison.get('verdict', 'unavailable'))
     return decision

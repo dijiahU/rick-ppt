@@ -28,30 +28,37 @@ from trajectory import record
 from web_media import WebMediaBroker
 
 TOOL = 'pptx_browser_sources'
-SITE = 'https://www.xiaohongshu.com'
 PINTEREST = 'https://www.pinterest.com'
+SITE = PINTEREST  # default site
 X = 'https://x.com'
 GOOGLE = 'https://www.google.com'
+BESTPITCH = 'https://bestpitchdeck.com'
 X_RECENT_DAYS = 90
-BROWSER_TURN_SECONDS = 360
+BROWSER_TURN_SECONDS = 200
 # One request per enabled site fits a single concurrent first round.
 BATCH_MAX_REQUESTS = 4
 # Browser helpers do mechanical navigation/capture; low effort keeps steps fast.
 HELPER_REASONING_EFFORT = 'low'
+# Concurrent jobs share one browser. A request waits in line this long (with
+# heartbeats/user stop still serviced) before reporting busy.
+BROWSER_QUEUE_SECONDS = 480
+BROWSER_QUEUE_POLL = 2.0
+BUSY_REPLY = {'status': 'busy', 'reason': 'Browser research stayed in use by another task for the whole queue window',
+              'meaning': 'Not a site failure. Continue other research now and send this browser request again once later in this phase.'}
 SITE_HOSTS = {
-    SITE: ('www.xiaohongshu.com',),
     PINTEREST: ('www.pinterest.com', 'jp.pinterest.com'),
     X: ('x.com',),
     GOOGLE: ('www.google.com', 'www.google.com.hk'),
+    BESTPITCH: ('bestpitchdeck.com', 'www.bestpitchdeck.com'),
 }
 SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['status', 'summary', 'sources', 'limitations'],
     'properties': {
         'status': {'type': 'string', 'enum': ['results', 'no_results', 'blocked', 'unavailable']},
         'summary': {'type': 'string'}, 'limitations': {'type': 'string'},
         'sources': {'type': 'array', 'items': {'type': 'object', 'additionalProperties': False,
-            'required': ['url', 'title', 'observed', 'screenshot'], 'properties': {
+            'required': ['url', 'title', 'observed', 'screenshot', 'media_url'], 'properties': {
                 'url': {'type': 'string'}, 'title': {'type': 'string'}, 'observed': {'type': 'string'},
-                'screenshot': {'type': ['string', 'null']}}}}}}
+                'screenshot': {'type': ['string', 'null']}, 'media_url': {'type': ['string', 'null']}}}}}}
 
 
 def configured_sites(cfg):
@@ -75,12 +82,21 @@ def enabled(cfg):
             and cfg.get('_harness_transport') != 'dsh-sdk')
 
 
+def mode(cfg):
+    """cdp (default): host-driven dedicated Edge; direct: extension via Node REPL; helper: old sub-agent tool."""
+    return cfg['browser_research'].get('mode', 'cdp') if enabled(cfg) else None
+
+
+def direct(cfg):
+    return mode(cfg) == 'direct'
+
+
 def capability(cfg):
     if not enabled(cfg): return None
     sites = configured_sites(cfg)
     return {'mode': 'operator-authorized-edge', 'tool': TOOL, 'site': sites[0], 'sites': sites, 'optional': True,
         'batch_max_requests': BATCH_MAX_REQUESTS,
-        'use': 'Authorized public examples, workflows and visual-reference research in Edge; X is for recent developments and first-hand depth: usage experience, tips and opinions (text posts count; attribute views; verify facts at the original source). Submit up to four distinct requests together (one per site fits a single first round), each with query, purpose and explicit enabled site. Independent questions may use the same site, including Google; exact duplicate requests are rejected. A single query remains supported. Optional availability is not evidence that a channel was searched. Returned screenshots are reference captures, not original assets or licenses. Respect offline/supplied-only instructions. Blocked/login-required access remains unavailable; never bypass it. No posting, messaging or account access.'}
+        'use': 'Authorized public examples, workflows and visual-reference research in Edge; X is for recent developments and first-hand depth: usage experience, tips and opinions (text posts count; attribute views; verify facts at the original source). Submit up to four distinct requests together , each with query, purpose and explicit enabled site. Independent questions may use the same site, including Google; exact duplicate requests are rejected. A single query remains supported. Optional availability is not evidence that a channel was searched. Returned screenshots are reference captures, not original assets or licenses. For Google, set images=true to search Google Images with the Creative Commons usage-rights filter: sources then carry media_url (direct original file) to import with web-media-proxy.py after checking the licence on its source page. Respect offline/supplied-only instructions. Blocked/login-required access remains unavailable; never bypass it. No posting, messaging or account access.'}
 
 
 def source_url(value, site=SITE):
@@ -104,10 +120,7 @@ def source_url(value, site=SITE):
         if (url.scheme != 'https' or url.netloc not in SITE_HOSTS.get(site, ())
                 or url.username or url.password):
             return None
-        if site == SITE:
-            valid = url.path.startswith(('/explore', '/discovery/item/', '/search_result'))
-            keys = ('keyword',)
-        elif site == PINTEREST:
+        if site == PINTEREST:
             valid = bool(re.fullmatch(r'/pin/[\w-]+/?', url.path) or url.path == '/search/pins/')
             keys = ('q',)
         elif site == X:
@@ -115,12 +128,30 @@ def source_url(value, site=SITE):
             keys = ('q','f','src')
         elif site == GOOGLE:
             valid = url.path == '/search'
-            keys = ('q','tbm','udm','start')
+            keys = ('q','tbm','udm','tbs','start')
         else: return None
         if not valid: return None
         query = urlencode([(k,v) for k,v in parse_qsl(url.query) if k in keys])
         return urlunsplit(('https', url.netloc, url.path, query, ''))
     except ValueError: return None
+
+
+def media_url(value):
+    """A direct public file URL seen in a Google Images preview, for later import.
+
+    Google-hosted thumbnails, signed/credentialed URLs and non-HTTPS links are
+    dropped; the main author still imports and verifies through its own route.
+    """
+    if not isinstance(value, str) or len(value) > 2048 or any(ord(c) < 33 for c in value): return None
+    try: url = urlsplit(value)
+    except ValueError: return None
+    host = (url.hostname or '').lower()
+    if (url.scheme != 'https' or not host or url.username or url.password
+            or re.search(r'(^|\.)(?:google|gstatic|googleusercontent|ggpht)\.[a-z.]+$', host)
+            or any(re.search(r'(?i)(?:token|signature|credential|password|secret|session|^sig$|^auth|^code$|^x-amz-|^x-goog-|^expires$)', k)
+                   for k, _ in parse_qsl(url.query))):
+        return None
+    return public_url(value)
 
 
 def safe_text(value, limit, site=SITE):
@@ -175,32 +206,47 @@ class BrowserSources:
         query = {'type': 'object', 'additionalProperties': False,
             'properties': {'query': {'type': 'string', 'minLength': 1, 'maxLength': 200},
                            'purpose': {'type': 'string', 'minLength': 1, 'maxLength': 2000},
-                           'site': {'type': 'string', 'enum': configured_sites(self.cfg)}},
+                           'site': {'type': 'string', 'enum': configured_sites(self.cfg)},
+                           'images': {'type': 'boolean', 'description': 'Google only: Google Images with the Creative Commons licence filter; returns media_url per source'}},
             'required': ['query', 'purpose', 'site']}
         return [{'type': 'function', 'name': TOOL,
             'description': 'Search public examples and visual references using authorized Edge. Prefer requests for up to four independent questions, on the same or different enabled sites: they run concurrently in separate sessions/tabs and return per-request evidence and actual screenshots. Exact duplicate requests are rejected. Or pass query/purpose/site for one search (legacy default site retained). No private account activity, permission bypass or per-page quota. Reuse findings.',
             'inputSchema': {'type': 'object', 'additionalProperties': False,
                 'properties': {'query': {'type': 'string'}, 'purpose': {'type': 'string'},
-                               'site': {'type':'string', 'enum': configured_sites(self.cfg)},
+                               'site': {'type':'string', 'enum': configured_sites(self.cfg)}, 'images': {'type': 'boolean'},
                                'requests': {'type': 'array', 'minItems': 1, 'maxItems': BATCH_MAX_REQUESTS, 'items': query}},
                 'oneOf': [{'required': ['query', 'purpose'], 'not': {'required': ['requests']}},
-                          {'required': ['requests'], 'not': {'anyOf': [{'required': [k]} for k in ('query','purpose','site')]}}]}}]
+                          {'required': ['requests'], 'not': {'anyOf': [{'required': [k]} for k in ('query','purpose','site','images')]}}]}}]
 
     @staticmethod
     def reply(ok, value, images=()):
         return {'success': ok, 'contentItems': [{'type': 'inputText', 'text': json.dumps(value, ensure_ascii=False)}, *images]}
 
     @contextmanager
-    def browser_guard(self):
-        # Reserve the browser for one job/batch. Only its isolated site sessions
-        # overlap; unrelated jobs still receive busy without waiting.
+    def browser_guard(self, wait_seconds=None):
+        # Reserve the browser for one job/batch; only its isolated site sessions
+        # overlap. Other jobs queue (polling, so heartbeats and user stop keep
+        # running) and report busy only after the queue window.
         lock = Path(self.cfg.get('state_directory', Path(__file__).parent / 'state')) / 'browser-research.lock'
         lock.parent.mkdir(parents=True, exist_ok=True)
+        wait_seconds = BROWSER_QUEUE_SECONDS if wait_seconds is None else wait_seconds
         with os.fdopen(os.open(lock, os.O_WRONLY|os.O_CREAT|os.O_NOFOLLOW, 0o600), 'w') as guard:
-            try: fcntl.flock(guard, fcntl.LOCK_EX|fcntl.LOCK_NB)
-            except BlockingIOError:
-                yield False
-            else: yield True
+            deadline = time.monotonic() + wait_seconds; queued = False
+            while True:
+                try: fcntl.flock(guard, fcntl.LOCK_EX|fcntl.LOCK_NB)
+                except BlockingIOError:
+                    if time.monotonic() >= deadline:
+                        record(self.trajectory, 'emit', 'browser.queue_timeout', {'waited_seconds': wait_seconds})
+                        yield False; return
+                    if not queued:
+                        queued = True
+                        record(self.trajectory, 'emit', 'browser.queued', {})
+                        if self.reporter:
+                            self.reporter.event('working', 'Waiting for the shared browser', state='running', category='search')
+                    if self.tick: self.tick()
+                    time.sleep(BROWSER_QUEUE_POLL)
+                    continue
+                yield True; return
 
     def handle(self, params, *, _lock_owned=False):
         args = params.get('arguments')
@@ -209,7 +255,8 @@ class BrowserSources:
             except OSError:
                 return self.reply(False, {'status': 'unavailable', 'reason': 'Browser batch environment unavailable'})
         if (params.get('tool') != TOOL or params.get('namespace') is not None or not enabled(self.cfg)
-                or not isinstance(args, dict) or set(args)-{'query', 'purpose', 'site'}
+                or not isinstance(args, dict) or set(args)-{'query', 'purpose', 'site', 'images'}
+                or ('images' in args and (type(args['images']) is not bool or args.get('site') != GOOGLE))
                 or any(not isinstance(args.get(k), str) or not 1 <= len(args[k].strip()) <= size
                        for k, size in (('query', 200), ('purpose', 2000)))):
             return self.reply(False, {'status': 'unavailable', 'reason': 'Browser research is unavailable or the bounded query/purpose is invalid'})
@@ -225,6 +272,7 @@ class BrowserSources:
             return self.reply(False, {'status': 'unavailable', 'reason': self.unavailable_reason,
                 'meaning': 'Browser research is unavailable in this phase; continue permitted non-browser task work without repeating this request'})
         args = {**args, 'site': site}
+        if not args.get('images'): args.pop('images', None)
         key = json.dumps(args, sort_keys=True)
         if key in self.cache: return self.cache[key]
         try:
@@ -233,7 +281,7 @@ class BrowserSources:
             else:
                 with self.browser_guard() as acquired:
                     if not acquired:
-                        return self.reply(False, {'status': 'busy', 'reason': 'Browser research is in use; continue other task work'})
+                        return self.reply(False, BUSY_REPLY)
                     result = self.execute(args)
         except (TransportError, RPCError, OSError, ValueError, ValidationError) as error:
             if type(error).__name__ == 'RPCTimeout': self.unavailable_sites[site] = 'request_timeout'
@@ -258,14 +306,17 @@ class BrowserSources:
                 or set(args) != {'requests'} or not isinstance(requests, list) or not 1 <= len(requests) <= BATCH_MAX_REQUESTS):
             return self.reply(False, {'status': 'unavailable', 'reason': 'Invalid bounded browser batch'})
         for request in requests:
-            if (not isinstance(request, dict) or set(request) != {'site','query','purpose'}
+            if (not isinstance(request, dict) or not {'site','query','purpose'} <= set(request)
+                    or set(request) - {'site','query','purpose','images'}
+                    or ('images' in request and (type(request['images']) is not bool or request.get('site') != GOOGLE))
                     or not isinstance(request.get('site'), str)
                     or request['site'].strip() not in configured_sites(self.cfg)
                     or any(not isinstance(request.get(k), str) or not 1 <= len(request[k].strip()) <= size
                            for k, size in (('query',200),('purpose',2000)))):
                 return self.reply(False, {'status': 'unavailable', 'reason': 'Invalid or unauthorized batch query'})
-        requests = [{k: v.strip() for k, v in request.items()} for request in requests]
-        if len({(r['site'],r['query'],r['purpose']) for r in requests}) != len(requests):
+        requests = [{k: (v.strip() if isinstance(v, str) else v) for k, v in request.items() if not (k == 'images' and not v)}
+                    for request in requests]
+        if len({(r['site'],r['query'],r['purpose'],bool(r.get('images'))) for r in requests}) != len(requests):
             return self.reply(False, {'status': 'unavailable', 'reason': 'Duplicate browser requests in a batch'})
         cancel = threading.Event()
         def worker_tick():
@@ -273,7 +324,7 @@ class BrowserSources:
         responses = [None] * len(requests)
         with self.browser_guard() as acquired:
             if not acquired:
-                return self.reply(False, {'status': 'busy', 'reason': 'Browser research is in use; continue other task work'})
+                return self.reply(False, BUSY_REPLY)
             batch_id = uuid.uuid4().hex
             record(self.trajectory, 'emit', 'browser.batch_started', {'id': batch_id, 'sites': [r['site'] for r in requests]})
             pool = ThreadPoolExecutor(max_workers=len(requests), thread_name_prefix='pptx-browser')
@@ -334,15 +385,12 @@ class BrowserSources:
             root = Path(temp).resolve(); (root/'tmp').mkdir()
             config = browser_configuration(root, paths)
             policy = self.cfg['browser_research']
-            config.update(model=policy.get('model', self.cfg.get('default_model', 'gpt-6-astra')),
+            config.update(model=policy.get('model', self.cfg.get('default_model', 'gpt-6.2-sol')),
                           model_reasoning_effort=policy.get('reasoning_effort', HELPER_REASONING_EFFORT))
             from model_backend import apply_service_tier
             apply_service_tier(config, self.cfg)
             # This route/encoding was observed in the site's own search UI.
-            if site == SITE:
-                search_url = SITE + '/search_result_ai?' + urlencode({
-                    'keyword': quote(args['query'], safe=''), 'source': 'web_explore_feed'})
-            elif site == X:
+            if site == X:
                 # Top ranking within a recent window: newer than Top alone, less noisy
                 # than Latest. An explicit since:/until: in the query wins.
                 query = args['query']
@@ -350,13 +398,27 @@ class BrowserSources:
                     start = datetime.date.today() - datetime.timedelta(days=X_RECENT_DAYS)
                     query += ' since:' + start.isoformat()
                 search_url = X + '/search?' + urlencode({'q': query, 'src':'typed_query'})
+            elif site == GOOGLE and args.get('images'):
+                # Google Images, usage rights: Creative Commons licences.
+                search_url = GOOGLE + '/search?' + urlencode({'q': args['query'], 'udm': '2', 'tbs': 'sur:cl'})
             elif site == GOOGLE:
                 search_url = GOOGLE + '/search?' + urlencode({'q': args['query']})
             else:
                 # Observed after the operator-authorized regional redirect.
                 search_url = 'https://jp.pinterest.com/search/pins/?' + urlencode({'q':args['query'], 'rs':'typed'})
             origins = ', '.join('https://' + host for host in SITE_HOSTS[site])
-            search_scope = (
+            image_scope = (
+                'This is a Google Images search with the usage-rights filter set to Creative Commons licences (already '
+                'in the URL; keep it). Choose by fit to the purpose and visible quality, not position. Click up to three '
+                'relevant result thumbnails one at a time; each opens Google\'s preview panel without leaving Google. From '
+                'that panel read, via the DOM, the large preview image\'s https src when it is the original file (not an '
+                'encrypted-tbn/gstatic thumbnail) and the "Visit"/source page link. Report each as a source whose url is '
+                'the source page link, media_url the original file URL (null if only a Google thumbnail was available), '
+                'and observed the visible subject, size if shown and licence wording if shown. Do not visit source pages '
+                'or download files. Capture the results grid or the open preview once. Google\'s filter is a discovery '
+                'hint; the main researcher verifies the licence on the source page before import. '
+                if site == GOOGLE and args.get('images') else '')
+            search_scope = image_scope + (
                 'This request explicitly uses Google Search, not Edge\'s default search engine. Navigate to the exact '
                 'Google URL below; never type the query into the address bar, use default Bing, or substitute another '
                 'search engine and label it Google. Stay on www.google.com and its observed www.google.com.hk redirect. '
@@ -381,13 +443,7 @@ class BrowserSources:
                 'weak references: prefer editorial, information-design, poster or designer work, and say when only '
                 'templates were found. Choose the pin to open by visual craft for the stated relationship, not by literal topic words. When opening a pin, capture the work at readable size and report its linked '
                 'original source URL if shown (do not visit it). '
-                if site == PINTEREST else
-                'Xiaohongshu serves Chinese first-hand experience and examples: workplace practice, tutorials, pitfalls, '
-                'opinions and image-led notes whose pictures often carry the content (infographics, screenshots, '
-                'handwritten summaries). Text-only findings count. Many notes repost or summarize others: say when a note '
-                'cites an interview, article or another account, and do not present it as the poster\'s own experience. '
-                'State each note\'s visible date and author. When opening one note, capture its most informative image. '
-                if site == SITE else '')
+                if site == PINTEREST else '')
             prompt = (
                 'Perform only the authorized public example/workflow/visual-reference search below in Edge. Do not create a PPT. '
                 'Stay on these operator-approved origins: ' + origins + '. Create your own tab; do not list or read unrelated user tabs, '
@@ -412,7 +468,7 @@ class BrowserSources:
                 'and there is time to capture it and return the report. When the purpose asks for usage experience, cases or tips, '
                 'open the result most likely to be a first-hand account of concrete use, not an overview, curated introduction or promotion; '
                 'list the other promising specific-use results with exact URLs so the researcher can follow up. '
-                'Do not explore carousels or additional works in this call. '
+                'Do not explore carousels or additional works in this call' + (' beyond the Google Images preview clicks described above. ' if site == GOOGLE and args.get('images') else '. ') + 
                 'Return exact observed source URLs, supported titles, visible useful '
                 'relationships for the stated purpose and honest limitations. Never infer the original creator from '
                 'a reposting account or treat popularity as design quality. Do not invent facts, links or inspection. '
@@ -430,7 +486,7 @@ class BrowserSources:
                 'report the missing visual evidence; a saved file is not successful visual inspection. '
                 'Keep the original screenshot bytes, which may be JPEG despite the .png filename. '
                 'A search thumbnail is not a full work. Do not save other file types. Avoid private account details. '
-                'Captured files are references, not original licensed assets. Finish promptly within five minutes. '
+                'Captured files are references, not original licensed assets. Finish promptly within three minutes: prefer one good capture over exploring. '
                 'Return only the requested JSON. Set each source screenshot to its actual saved filename or null.\n'
                 'Research request:\n' + json.dumps(args, ensure_ascii=False) + '\n\nBrowser instructions:\n'
                 + chrome_instructions_text(paths))
@@ -457,7 +513,8 @@ class BrowserSources:
                 thread = server.start_thread()['thread']['id']
                 turn = server.start_turn(thread, prompt, output_schema=SCHEMA)['id']
                 try:
-                    # Opening one work takes ~8 browser steps of 30-40 s each; 240 s was marginal.
+                    # Measured: requests that ran to 360 s rarely gained evidence after ~3 min;
+                    # 200 s bounds queueing for other jobs sharing this browser.
                     result = server.wait_turn(thread, turn, timeout=BROWSER_TURN_SECONDS)
                     if result.get('status') != 'completed': raise TransportError('Browser search did not complete')
                     report = json.loads(server.result_text(thread, turn))
@@ -476,7 +533,8 @@ class BrowserSources:
                 sources.append({'url': source_url(item['url'],site),
                     'title': safe_text(item.get('title',''),300,site),
                     'observed': safe_text(item.get('observed',''),2000,site),
-                    'screenshot': item.get('screenshot') if item.get('screenshot') in ('reference-1.png','reference-2.png','reference-3.png') else None})
+                    'screenshot': item.get('screenshot') if item.get('screenshot') in ('reference-1.png','reference-2.png','reference-3.png') else None,
+                    **({'media_url': media_url(item.get('media_url'))} if site == GOOGLE and args.get('images') else {})})
             output = {'request_id': ident, 'status': report['status'], 'site': site,
                 'query': args['query'], 'purpose': args['purpose'], 'sources': sources,
                 'summary': safe_text(report.get('summary',''),6000,site),
@@ -485,6 +543,10 @@ class BrowserSources:
                 'files': []}
             if site == GOOGLE:
                 output['assessment_scope'] += ' Google snippets/thumbnails are search-result evidence only; external source verification is not established by this call.'
+            if site == GOOGLE and args.get('images'):
+                output['images_mode'] = True
+                output['import'] = ('For a chosen media_url: confirm the licence and creator on its source page with your web tools, then '
+                                    'python web-media-proxy.py MEDIA_URL --source-page SOURCE_URL --purpose "..."; credit as licensed.')
             images = []
             if report['status'] == 'results' and any(c['status']=='completed' for c in calls):
                 images = self.import_captures(root, ident, sources, output)

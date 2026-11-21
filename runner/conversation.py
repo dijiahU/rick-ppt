@@ -106,9 +106,9 @@ class Conversation:
             value=json.loads(body.split('\n',2)[1]);digest=value.get('baseSha256','')
             if value.get('schema')!='rickppt-visual-edits/v1' or not re.fullmatch('[0-9a-f]{64}',digest):raise ValueError('Invalid visual revision identity')
             relative=f'visual-inputs/{identifier}/baseline.pptx'
-            try:data=read_scoped(self.job,relative,30*1024*1024)
+            try:data=read_scoped(self.job,relative,80*1024*1024)
             except FileNotFoundError:data=self.send(self.cfg,f'/api/worker/{self.task["id"]}/canvas?action=source&sha256={digest}&message={identifier}',b'{}',self.task['lease'],raw=True)
-            if len(data)>30*1024*1024 or hashlib.sha256(data).hexdigest()!=digest:raise ValueError('Visual baseline checksum mismatch')
+            if len(data)>80*1024*1024 or hashlib.sha256(data).hexdigest()!=digest:raise ValueError('Visual baseline checksum mismatch')
             from office_policy import validate_delivery
             validate_delivery(data,single_file=True)
             _publish_task_file(self.job,relative,data)

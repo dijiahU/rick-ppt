@@ -15,7 +15,7 @@ python runner/browser_runtime.py
 Run one bounded local Codex connection check, with a new output directory:
 
 ```sh
-python runner/browser_runtime.py --probe-connection /private/tmp/rick-browser-check --model gpt-6-astra --effort high
+python runner/browser_runtime.py --probe-connection /private/tmp/rick-browser-check --model gpt-6.2-sol --effort high
 ```
 
 This only connects and lists session-owned tabs. The receipt intentionally keeps
@@ -42,7 +42,7 @@ The alternative settings entry is documented in the
 
 Observed on 2026-11-03: connection succeeded after the component configuration
 fix, but site navigation was initially rejected after about 30 seconds without
-a visible prompt. After Rick configured the Xiaohongshu website permission in
+a visible prompt. After Rick configured the site permission in
 the Browser panel, a new independent worker completed navigation, screenshot
 capture and DOM inspection in 146 seconds. The requested search results were
 visible with no login barrier. This is a specific-site access test, not evidence
@@ -68,13 +68,13 @@ research/author/repair phases. Set it in the private settings actually selected
 by the production launcher (not in a task file):
 
 ```json
-{"browser_research":{"enabled":true,"browser":"edge","site":"https://www.xiaohongshu.com","model":"gpt-6-astra"}}
+{"browser_research":{"enabled":true,"browser":"edge","site":"https://www.pinterest.com","model":"gpt-6.2-sol"}}
 ```
 
-To opt in to the separately authorized Pinterest and X routes, use `sites`:
+To opt in to several authorized routes (Pinterest, X, Google, bestpitchdeck.com), use `sites`.
 
 ```json
-{"browser_research":{"enabled":true,"browser":"edge","sites":["https://www.xiaohongshu.com","https://www.pinterest.com","https://x.com"],"model":"gpt-6-astra"}}
+{"browser_research":{"enabled":true,"browser":"edge","sites":["https://www.pinterest.com","https://x.com"],"model":"gpt-6.2-sol"}}
 ```
 
 The legacy single `site` setting still works. The author can select only an

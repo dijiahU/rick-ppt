@@ -13,7 +13,7 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
  if(q.get('request')){const r=await database().prepare('SELECT * FROM native_edits WHERE id=? AND job_id=?').bind(q.get('request'),id).first<NativeEditRow>();return r?json(nativeStatus(r)):json({error:'Save unavailable.'},404);}
  const sha=q.get('sha256')||'';await ensureProgressiveCanvas();const saved=a.job.status==='running'?await database().prepare('SELECT source_key FROM canvas_sources WHERE job_id=? AND sha256=? AND producer_lease=?').bind(id,sha,a.job.lease).first<{source_key:string}>():null;const object=await files().get(saved?.source_key||a.job.result_key||'missing');
  if(!digestPattern.test(sha)||object?.customMetadata?.sha256!==sha)return json({error:'The saved PPTX has changed. Refresh the version.'},409);
- if(object.size>30*1024*1024)return json({error:'PPTX exceeds the 30 MiB editor limit.'},400);
+ if(object.size>80*1024*1024)return json({error:'PPTX exceeds the 80 MiB editor limit.'},400);
  return new Response(object.body,{headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.presentationml.presentation','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
 }
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){

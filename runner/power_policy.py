@@ -8,6 +8,22 @@ def enabled(environ=None):
     return (os.environ if environ is None else environ).get('PPTX_WORKER_AC_ONLY') == '1'
 
 
+def keep_awake(pid=None, popen=None):
+    """macOS: hold an idle-sleep assertion for this worker's lifetime.
+
+    Used when the worker may run on battery. `caffeinate -i -w PID` exits by
+    itself when the worker exits; closing the lid still sleeps the Mac.
+    """
+    if not os.path.exists('/usr/bin/caffeinate'):
+        return None
+    try:
+        return (subprocess.Popen if popen is None else popen)(
+            ['/usr/bin/caffeinate', '-i', '-w', str(pid or os.getpid())],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    except OSError:
+        return None
+
+
 def power_source(run=None):
     try:
         result = (subprocess.run if run is None else run)(

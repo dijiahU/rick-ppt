@@ -88,7 +88,7 @@ class RoleTests(unittest.TestCase):
   for text in [json.dumps(research),json.dumps(author)]:
    for absent in ['SYNTHETIC-HOST-SECRET','SYNTHETIC-PROVIDER-SECRET']:self.assertNotIn(absent,text)
   self.assertNotIn('OPTIONAL EXAMPLE BODY',json.dumps(research))
-  self.assertIn('OPTIONAL EXAMPLE BODY',json.dumps(author))
+  self.assertNotIn('OPTIONAL EXAMPLE BODY',json.dumps(author))
   self.assertNotIn('OPTIONAL EXAMPLE BODY',json.dumps(self.packet('repair')))
  def test_partial_and_oversized_evidence_stays_available_without_invented_summaries(self):
   original=b'{"version":4,"pages":[';(self.job/'decision-plan.json').write_bytes(original)
@@ -119,46 +119,58 @@ class RoleTests(unittest.TestCase):
  def test_research_breadth_uses_only_current_authorized_sites_without_secrets(self):
   from browser_sources import capability,SITE,PINTEREST,X
   (self.skill/'references/content.md').write_text('<!-- research-breadth/v1 -->')
-  cfg={**self.cfg,'browser_research':{'enabled':True,'browser':'edge','sites':[SITE,PINTEREST,X]}}
+  cfg={**self.cfg,'browser_research':{'enabled':True,'browser':'edge','sites':[SITE,PINTEREST,X],'mode':'helper'}}
   prompt=role_instruction(cfg,'research')
   for site in capability(cfg)['sites']:self.assertIn(site,prompt)
-  self.assertIn('EACH currently advertised site',prompt)
-  self.assertIn('offline/supplied-only',prompt)
+  self.assertIn('requests that suit this topic',prompt)
   self.assertNotIn('SYNTHETIC-HOST-SECRET',prompt)
   self.assertNotIn('SYNTHETIC-PROVIDER-SECRET',prompt)
   before=(self.job/'source-notes.md').read_bytes()
   role_instruction(cfg,'author');role_instruction(cfg,'repair')
-  self.assertNotIn('EACH currently advertised site',role_instruction(cfg,'author'))
+  self.assertNotIn('requests that suit this topic',role_instruction(cfg,'author'))
   self.assertEqual((self.job/'source-notes.md').read_bytes(),before)
 
  def test_google_preference_requires_an_advertised_google_route(self):
   from design_roles import research_breadth_instruction
   from browser_sources import GOOGLE,SITE
   (self.skill/'references/content.md').write_text('<!-- research-breadth/v1 -->')
-  cfg={**self.cfg,'browser_research':{'enabled':True,'browser':'edge','sites':[GOOGLE,SITE]}}
+  cfg={**self.cfg,'browser_research':{'enabled':True,'browser':'edge','sites':[GOOGLE,SITE],'mode':'helper'}}
   text=research_breadth_instruction(cfg)
-  self.assertIn('Prefer explicit Google search',text)
-  self.assertIn('up to four independent queries',text)
-  self.assertIn('not a fixed platform roster',text)
-  self.assertIn('label hosted-search results as Google',text)
-  self.assertNotIn('Prefer explicit Google search',research_breadth_instruction(self.cfg))
+  self.assertIn('Built-in web search is the fast main channel',text)
+  self.assertIn('up to four',text)
+  self.assertNotIn('Use Google for general discovery',research_breadth_instruction(self.cfg))
 
  def test_shared_surface_decision_reaches_existing_roles_without_a_palette_or_new_form(self):
   from design_roles import style_context_instruction,rendered_page_instruction
   guide=self.skill/'references/art-direction.md'
-  guide.write_text('<!-- style-context/v1 -->')
-  self.assertNotIn('Before page 1',style_context_instruction(self.cfg,'author'))
-  guide.write_text('<!-- style-context/v1 -->\n<!-- deck-surface/v1 -->')
   before={p.relative_to(self.job).as_posix():p.read_bytes() for p in self.job.rglob('*') if p.is_file()}
-  self.assertIn('finished presentations/templates',role_instruction(self.cfg,'research'))
+  self.assertIn('genre examples for the conventions',role_instruction(self.cfg,'research'))
   self.assertIn('Before page 1',role_instruction(self.cfg,'author'))
-  self.assertIn('existing design_direction',role_instruction(self.cfg,'author'))
-  self.assertIn('actual foreground',rendered_page_instruction(self.cfg))
+  self.assertIn('deck-style.json',role_instruction(self.cfg,'author'))
+  self.assertIn('real example of this kind of deck',rendered_page_instruction(self.cfg))
   for stage in ('research','author','render'):
    cue=style_context_instruction(self.cfg,stage)
    for preset in ('white paper','ink-blue','warm accent','navy palette','pastel-filled panels'):
     self.assertNotIn(preset,cue)
   self.assertEqual(before,{p.relative_to(self.job).as_posix():p.read_bytes() for p in self.job.rglob('*') if p.is_file()})
+
+ def test_direct_mode_lets_the_agent_drive_the_browser_read_only(self):
+  from design_roles import research_breadth_instruction
+  from browser_sources import SITE,X
+  from unittest.mock import patch
+  cfg={**self.cfg,'browser_research':{'enabled':True,'browser':'edge','sites':[SITE,X],'mode':'direct'}}
+  with patch('browser_runtime.installed_runtime',return_value={'chrome_plugin':Path('/opt/client')}):
+   text=research_breadth_instruction(cfg)
+  for needle in (SITE,X,'/opt/client/scripts/browser-client.mjs','never post','close the tabs you opened'):self.assertIn(needle,text)
+  self.assertNotIn('pptx_browser_sources',text)
+  self.assertNotIn('SYNTHETIC-HOST-SECRET',text)
+
+ def test_cdp_mode_offers_the_host_browse_tool_for_authorized_sites(self):
+  from design_roles import research_breadth_instruction
+  from browser_sources import SITE,X
+  text=research_breadth_instruction({**self.cfg,'browser_research':{'enabled':True,'browser':'edge','sites':[SITE,X]}})
+  for needle in ('pptx_browse',SITE,X,'search/pins/?q='):self.assertIn(needle,text)
+  self.assertNotIn('pptx_browser_sources',text);self.assertNotIn('Node REPL',text)
 
  def test_breadth_never_promises_operator_channels_to_dsh_customer_or_disabled_host(self):
   from design_roles import research_breadth_instruction
@@ -168,19 +180,11 @@ class RoleTests(unittest.TestCase):
   for cfg in (self.cfg,{**enabled,'_harness_transport':'dsh-sdk'},
               {**enabled,'_customer_funded':True},{**enabled,'browser_research':{'enabled':False}}):
    text=research_breadth_instruction(cfg)
-   self.assertIn('No operator browser is advertised',text)
    for site in (SITE,PINTEREST,X):self.assertNotIn(site,text)
-
- def test_historical_pinned_research_keeps_its_original_discovery_policy(self):
-  from design_roles import research_breadth_instruction
-  (self.skill/'references/content.md').write_text('Historical discovery guidance')
-  self.assertEqual(research_breadth_instruction(self.cfg),'')
 
  def test_style_context_reaches_existing_entry_points_without_rewriting_user_tone(self):
   from design_roles import style_context_instruction,rendered_page_instruction
   guide=self.skill/'references/art-direction.md'
-  for stage in ('research','author','render'):
-   self.assertEqual(style_context_instruction(self.cfg,stage),'')
   guide.write_text('<!-- style-context/v1 -->\nCurrent use-context guidance')
   for brief in ('Formal company review; preserve the supplied red brand identity.',
                 'Playful company launch; preserve the supplied illustrated identity.'):

@@ -4,14 +4,17 @@ Use `font-catalog.json` and `fonts/index.json` to choose from real installed fil
 For hosted work, use the verified default pair and available IDs in
 `capabilities.json.font_assets.defaults` and `fonts/index.json`. The Linux host
 uses DejaVu Serif and Noto Serif CJK SC. For standalone Windows WPS work, the
-default remains **Times New Roman for English/Latin** and **SimSun (宋体) for Chinese**. Apply the pair to native runs, theme defaults,
+default remains **Times New Roman for English/Latin** and **SimSun (宋体) for Chinese**. Apply the pair to native runs, theme defaults, For headings, figures and display text the deck may add DengXian (等线; IDs `dengxian-light|regular|bold`) and Arial (`arial-regular|bold`), which give the weight contrast SimSun lacks. Also approved, installed on use (host FONTS.md):
+Microsoft YaHei 微软雅黑, SimHei 黑体, KaiTi 楷体, FangSong 仿宋, Calibri, Cambria, Georgia,
+Century Gothic, Verdana, Tahoma; they ship with Windows and Office for Mac. Fonts outside
+these lists are substituted on Windows and break the layout.
 chart/table labels and inherited text. Preserve explicit user font choices and
 actual supplied template typefaces for scoped edits. Newly recreated image text
 without a specified source typeface still uses the defaults. Descriptions such as
 "rounded", "handwritten" or "looks like" a font are uncertain visual observations,
 not an explicit font requirement or verified template font metadata; do not use
 them to justify a decorative replacement. Read [Windows WPS compatibility](windows-wps.md).
-Use size, spacing, hierarchy and real weights rather than acquiring more families.
+Use size, spacing, hierarchy and real weights; one or two families per deck.
 The default IDs are `times-new-roman-regular`, `times-new-roman-bold`,
 `times-new-roman-italic`, `times-new-roman-bold-italic`, and `simsun-regular`.
 Use actual returned family/style names; do not simulate an unavailable SimSun bold.

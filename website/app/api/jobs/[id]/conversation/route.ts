@@ -21,7 +21,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   else if(type.startsWith('application/json'))body=JSON.parse(new TextDecoder().decode(await boundedBody(request,40000)));
   else return json({error:'请求格式无效。'},415);
  }catch{return json({error:'内容或附件超过限制。'},400);}
- if(!body||typeof body.id!=='string'||!uuid.test(body.id)||!['chat','revision'].includes(body.kind)||typeof body.body!=='string'||body.body.length>MAX_MESSAGE||(!body.body.trim()&&!uploads.length&&!(Array.isArray(body.uploadIds)&&body.uploadIds.length))||!validFiles(uploads)||uploads.reduce((sum,f)=>sum+f.size,0)>MAX_INLINE_BYTES||(uploads.length&&body.uploadIds!==undefined))return json({error:'请填写消息，最多 8000 字；最多 10 个附件，每个 20 MB、合计 200 MB。'},400);
+ if(!body||typeof body.id!=='string'||!uuid.test(body.id)||!['chat','revision'].includes(body.kind)||typeof body.body!=='string'||body.body.length>MAX_MESSAGE||(!body.body.trim()&&!uploads.length&&!(Array.isArray(body.uploadIds)&&body.uploadIds.length))||!validFiles(uploads)||uploads.reduce((sum,f)=>sum+f.size,0)>MAX_INLINE_BYTES||(uploads.length&&body.uploadIds!==undefined))return json({error:'请填写消息，最多 8000 字；最多 10 个附件，每个 60 MB、合计 200 MB。'},400);
  if(body.execution_backend!==undefined&&body.execution_backend!==job.execution_backend)return json({error:'任务提交后的制作方式不能更改。',code:'execution_backend_locked'},409);
  await ensureConversation();const db=database();
  const prior=await db.prepare('SELECT * FROM task_messages WHERE job_id=? AND id=?').bind(id,body.id).first<MessageRow>();

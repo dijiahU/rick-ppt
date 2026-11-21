@@ -54,7 +54,7 @@ def prepare_fonts(job,cfg=None):
     capabilities['font_assets']={'mode':'public-https-font-broker','guide':'FONTS.md','helper':'font-proxy.py',
         'catalog':'font-catalog.json','installed':'fonts/index.json','same_files_in_renderer':True,
         'defaults':{'latin':'Times New Roman','east_asian':'SimSun','target':'Windows WPS',**defaults},
-        'use':'Default new decks to Times New Roman for English/Latin and SimSun (宋体) for Chinese; use the genuine files in fonts/index.json for metrics and rendering. Preserve scoped templates and explicit user font choices. Special fonts need actual glyph/weight/name checks plus recipient availability or verified embedding; downloads are not embedding. Do not silently substitute another family or claim Windows WPS verification from Mac/LibreOffice previews. Read FONTS.md.'}
+        'use':'Default new decks to Times New Roman for English/Latin and SimSun (宋体) for Chinese reading text; DengXian (等线) and Arial are approved for headings, figures and display text; Microsoft YaHei, SimHei, KaiTi, FangSong, Calibri, Cambria, Georgia, Century Gothic, Verdana and Tahoma are also approved and installed on use with font-proxy.py ID (see defaults.optional); use the genuine files in fonts/index.json for metrics and rendering. Preserve scoped templates and explicit user font choices. Special fonts need actual glyph/weight/name checks plus recipient availability or verified embedding; downloads are not embedding. Do not silently substitute another family or claim Windows WPS verification from Mac/LibreOffice previews. Read FONTS.md.'}
     capabilities['font_assets']['defaults'].update(deployment_defaults())
     if sys.platform=='linux':
         capabilities['font_assets']['defaults'].update(latin='DejaVu Serif',east_asian='Noto Serif CJK SC',target='Linux LibreOffice preview')
@@ -131,7 +131,35 @@ def bind_helper_interpreter(cfg,job):
             temporary.write_bytes(b'#!'+str(python).encode()+b'\n'+data.split(b'\n',1)[1])
             temporary.chmod(0o755);os.replace(temporary,target)
 
+_LAST_SWEEP=[0.0]
+SWEPT_PREFIXES=('pptx-lab-job-','pptx-journal-preflight-')
+
+def sweep_stale_job_dirs(cfg,*,now=None,base=None):
+    """Delete this worker's own temporary task folders older than temp_retention_hours.
+
+    Every prepare() makes a temp folder (author, frozen candidate, each review) and nothing
+    removed them: 738 folders / 42 GB filled the disk on 2026-11-21. Delivered files, review
+    records and journals live elsewhere. The default 24 h is far beyond the 2 h job timeout,
+    so a running task is never touched. Set temp_retention_hours to 0 to disable.
+    """
+    hours=cfg.get('temp_retention_hours',24)
+    if not hours:return []
+    now=now or time.time();base=Path(base or tempfile.gettempdir())
+    removed=[]
+    for path in base.iterdir():
+        if not path.name.startswith(SWEPT_PREFIXES) or path.is_symlink() or not path.is_dir():continue
+        try:
+            if path.stat().st_uid!=os.getuid() or now-path.stat().st_mtime<hours*3600:continue
+            shutil.rmtree(path);removed.append(path.name)
+        except OSError:
+            continue
+    return removed
+
 def prepare(cfg):
+    if time.time()-_LAST_SWEEP[0]>600:
+        _LAST_SWEEP[0]=time.time()
+        swept=sweep_stale_job_dirs(cfg)
+        if swept:print('Removed',len(swept),'stale temporary task folders',flush=True)
     job=Path(tempfile.mkdtemp(prefix='pptx-lab-job-')).resolve()
     (job/'tmp').mkdir()
     seed=Path(cfg.get('blank',''))
@@ -190,6 +218,14 @@ def prepare(cfg):
     if browser:
         capabilities=json.loads((job/'capabilities.json').read_text())
         capabilities['browser_research']=browser
+        (job/'capabilities.json').write_text(json.dumps(capabilities,indent=2))
+    from asset_libraries import enabled as libraries_enabled
+    if libraries_enabled(cfg):
+        capabilities=json.loads((job/'capabilities.json').read_text())
+        capabilities['icon_library']={'mode':'host-tool','tool':'pptx_icons','optional':True,
+            'use':'Consistent open-licence icon sets (Material Symbols, Tabler, Lucide, Phosphor, Fluent, Carbon and others) as native editable vectors via native_canvas.add_icon / batch op "icon". Prefer them over hand-drawn pictograms when an icon is the right expression; keep one set and the deck palette.'}
+        capabilities['open_images']={'mode':'host-tool','tool':'pptx_open_images','optional':True,
+            'use':'Direct open-licence image search (Wikimedia Commons, The Met, Art Institute of Chicago) returning media URLs, source pages, licences and a preview sheet. Import chosen files with web-media-proxy.py and credit as licensed.'}
         (job/'capabilities.json').write_text(json.dumps(capabilities,indent=2))
     catalog=Path(cfg['plugin'])/'skills/pptx/assets/workflow-choices.json'
     if catalog.is_file():
@@ -294,7 +330,7 @@ def _render_requests_fd(job,qfd,trajectory=None,tick=None):
             source=Path(args[-1]).resolve(strict=True)
             destination=Path(args[args.index('--outdir')+1]).resolve(strict=True)
             if not source.is_relative_to(job) or not destination.is_relative_to(job):raise ValueError('Path outside task')
-            if source.suffix!='.pptx' or not source.is_file() or source.stat().st_size>30*1024*1024:raise ValueError('Invalid PPTX')
+            if source.suffix!='.pptx' or not source.is_file() or source.stat().st_size>80*1024*1024:raise ValueError('Invalid PPTX')
             if not destination.is_dir():raise ValueError('Invalid output directory')
             from render_inputs import render_input,publish_pdf
             from progress import read_scoped
@@ -569,7 +605,7 @@ def receive_progress_draft(cfg,task,job,send=request):
     if task.get('summary')!='resume_from_draft':return None
     from attachments import validate_content
     data=send(cfg,f'/api/worker/{task["id"]}?action=draft-source',lease=task['lease'],raw=True)
-    if not isinstance(data,bytes) or not 0<len(data)<=30*1024*1024:
+    if not isinstance(data,bytes) or not 0<len(data)<=80*1024*1024:
         raise ValueError('Progress copy exceeds the continuation limit')
     validate_content(data,'pptx')
     identifier=str(uuid.uuid5(uuid.UUID(task['id']),'rickppt-progress-draft'))
@@ -659,6 +695,12 @@ def _run_job_locked(cfg,task,lease,job,journal,recovery_plan):
         record(trajectory,'emit','delivery.completed',{'artifact_sha256':hashlib.sha256(artifact).hexdigest(),'bytes':len(artifact)})
         outcome='complete'
         trace.emit('phase','Presentation uploaded',detail={'bytes':len(artifact)})
+        try:
+            from local_copy import copy as local_copy
+            saved=local_copy(cfg,task,artifact)
+            if saved:print('Saved local copy',saved,flush=True)
+        except Exception as copy_error:
+            print('Local copy skipped:',type(copy_error).__name__,copy_error,flush=True)
         lease.finish()
         print('Completed reviewed job',task['id'],flush=True)
         return result
@@ -710,8 +752,15 @@ def execute_task(cfg,task):
         except OSError as record_error:print('Failure record unavailable:',type(record_error).__name__,flush=True)
         # A rejected lease cannot mutate another attempt or an already delivered job.
         if isinstance(error,WorkerHTTPError) and error.status in (401,403,409):return
-        try:request(cfg,f'/api/worker/{task["id"]}?action=fail',lease=task['lease'])
-        except Exception as notify_error:print('Failure notification pending:',task['id'],type(notify_error).__name__,public_text(str(notify_error)),flush=True)
+        # Retry: the cause (a full disk, a network drop) often also breaks the first notice,
+        # and without one the site shows the job as running forever.
+        for wait in (0,)+tuple(cfg.get('fail_notify_backoff',(15,60,180))):
+            time.sleep(wait)
+            try:request(cfg,f'/api/worker/{task["id"]}?action=fail',lease=task['lease']);break
+            except WorkerHTTPError as notify_error:
+                if notify_error.status in (401,403,409):break
+                print('Failure notification pending:',task['id'],type(notify_error).__name__,public_text(str(notify_error)),flush=True)
+            except Exception as notify_error:print('Failure notification pending:',task['id'],type(notify_error).__name__,public_text(str(notify_error)),flush=True)
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--self-test',action='store_true');parser.add_argument('--codex-smoke',action='store_true');parser.add_argument('--render-smoke',action='store_true');parser.add_argument('--model-profile',type=Path);parser.add_argument('--model-smoke',action='store_true');parser.add_argument('--once',action='store_true');parser.add_argument('--wait-for-worker',action='store_true',help='Wait for a draining supervisor to release its lock');args=parser.parse_args()
@@ -734,9 +783,10 @@ def main():
         local=dict(cfg);local.pop('_model_profile',None)
         return codex_smoke(local)
     if args.render_smoke:return render_smoke(cfg)
-    from power_policy import enabled as ac_only, may_start, watch as watch_power
+    from power_policy import enabled as ac_only, may_start, watch as watch_power, keep_awake
     if not may_start():
         print('AC-only worker is off: external power is not confirmed.',flush=True);return
+    if not ac_only() and sys.platform=='darwin':keep_awake()
     worker_lock=(ROOT/'worker.lock').open('a+')
     from production_bridge import write_runtime_receipt
     write_runtime_receipt(ROOT,cfg,'waiting' if args.wait_for_worker else 'starting')
@@ -756,10 +806,13 @@ def main():
         power_interrupt.set();stopping.set()
         print('AC power unavailable; checkpoint active work and stop queue execution.',flush=True)
     signal.signal(signal.SIGUSR1,power_stop)
+    # Diagnostics: `kill -USR2 <worker pid>` writes every thread's stack to the worker log,
+    # so a worker that does not exit after a drain can be inspected without stopping it.
+    import faulthandler;faulthandler.register(signal.SIGUSR2,file=sys.stderr,all_threads=True,chain=False)
     power_watch=watch_power(stopping,power_interrupt) if ac_only() else None
     self_test(cfg)
     from renderer_health import RendererReadiness,start_heartbeat
-    render_health=RendererReadiness(on_state=lambda ready,reason:write_runtime_receipt(ROOT,cfg,'ready' if ready else 'waiting_for_renderer'))
+    render_health=RendererReadiness(min_free_gb=cfg.get('min_free_disk_gb',3),on_state=lambda ready,reason:write_runtime_receipt(ROOT,cfg,'ready' if ready else 'waiting_for_renderer'))
     render_health.ready()
     print('Bridge started; rendering dependencies checked before each queue admission.',flush=True)
     from model_backend import available_backends

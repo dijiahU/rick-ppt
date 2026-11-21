@@ -29,8 +29,8 @@ class Tests(unittest.TestCase):
         p=self.paths['chrome_plugin']/'skills/control-chrome/SKILL.md';p.parent.mkdir(parents=True);p.write_text('Fixture browser instructions')
         blob=io.BytesIO();Image.new('RGB',(12,10),'navy').save(blob,format='PNG');self.png=blob.getvalue()
         self.report={'status':'results','summary':'Observed a rendered source','limitations':'Search results are thumbnails',
-            'sources':[{'url':b.SITE+'/explore/123?xsec_token=private-signed-query',
-                        'title':'Reference','observed':'Large subject with aligned annotations','screenshot':'reference-1.png'}]}
+            'sources':[{'url':b.SITE+'/pin/123/?q=ok&xsec_token=private-signed-query',
+                        'title':'Reference','observed':'Large subject with aligned annotations','screenshot':'reference-1.png','media_url':None}]}
         self.servers=[];outer=self
         class Server:
             usage={('t','u'):{'input_tokens':10}}
@@ -85,7 +85,6 @@ class Tests(unittest.TestCase):
                 self.assertEqual(len(response['contentItems']),2)
                 self.assertNotIn('tracking',data['sources'][0]['url'])
                 self.assertIn(site,self.servers[-1].prompt)
-                self.assertNotIn('search_result_ai?',self.servers[-1].prompt)
         for url in ('https://jp.pinterest.com/private/board/',b.X+'/messages',b.X+'/designer',
                     'https://x.com.evil.test/search?q=test','https://other.pinterest.com/pin/123/'):
             self.assertIsNone(b.source_url(url,b.PINTEREST))
@@ -116,7 +115,7 @@ class Tests(unittest.TestCase):
         self.assertNotIn('private-signed-query',json.dumps(response))
         self.assertEqual(self.servers[0].kw['enabled_mcp_servers'],('node_repl',))
         self.assertIn('No raw CDP',self.servers[0].prompt)
-        self.assertIn('search_result_ai?keyword=%25',self.servers[0].prompt)
+        self.assertIn('https://jp.pinterest.com/search/pins/?q=',self.servers[0].prompt)
         self.assertIs(self.source.handle(self.params),response);self.assertEqual(len(self.servers),1)
         with patch.object(b,'record') as log:
             self.source.sent({**self.params,'threadId':'author','callId':'call'},response)
@@ -229,7 +228,7 @@ class Tests(unittest.TestCase):
 
     def test_one_site_timeout_does_not_disable_other_authorized_sites(self):
         from durable import transport_module
-        cfg={**self.cfg,'browser_research':{**self.cfg['browser_research'],'sites':[b.SITE,b.PINTEREST,b.X]}}
+        cfg={**self.cfg,'browser_research':{**self.cfg['browser_research'],'sites':[b.GOOGLE,b.PINTEREST,b.X]}}
         tool=b.BrowserSources(cfg,self.job)
         class TimedOut(self.Server):
             def wait_turn(self,*a,**kw):raise transport_module.RPCTimeout('private timeout detail')
@@ -243,10 +242,10 @@ class Tests(unittest.TestCase):
         # X is used for recent developments; text posts are valid evidence.
         self.assertIn('https://x.com/search?q=','\n'.join(s.prompt for s in self.servers))
         self.assertIn('recent developments',self.servers[-1].prompt)
-        # Site-specific guidance: Xiaohongshu (first, timed out) and Pinterest.
-        self.assertIn('Chinese first-hand experience',self.servers[0].prompt)
+        # Site-specific guidance: Google (first, timed out) and Pinterest.
+        self.assertIn('Stay on www.google.com',self.servers[0].prompt)
         self.assertIn('Template-shop pins',self.servers[1].prompt)
-        self.assertIn('first-hand account of concrete use',self.servers[0].prompt)
+        self.assertIn('first-hand depth',self.servers[-1].prompt)
         self.assertRegex(self.servers[-1].prompt,r'x\.com/search\?q=[^ ]*since%3A\d{4}-\d{2}-\d{2}')
         self.assertEqual(len(self.servers),3)
         self.assertIsNone(tool.unavailable_reason)
@@ -272,21 +271,34 @@ class Tests(unittest.TestCase):
 
     def test_busy_browser_does_not_start_or_wait_for_model(self):
         state=Path(self.cfg['state_directory']);state.mkdir()
-        with (state/'browser-research.lock').open('w') as lock:
+        ticks=[];self.source.tick=lambda:ticks.append(1)
+        with (state/'browser-research.lock').open('w') as lock,patch.object(b,'BROWSER_QUEUE_SECONDS',0.3),patch.object(b,'BROWSER_QUEUE_POLL',0.05):
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
             response=self.source.handle(self.params)
-        self.assertEqual(json.loads(response['contentItems'][0]['text'])['status'],'busy')
+        value=json.loads(response['contentItems'][0]['text'])
+        self.assertEqual(value['status'],'busy');self.assertIn('once later',value['meaning'])
         self.assertEqual(self.servers,[])
+        self.assertTrue(ticks,'heartbeats/user stop must keep running while queued')
+        # Busy is not cached: the same request runs once the browser frees up.
+        self.assertTrue(self.source.handle(self.params)['success'])
+
+    def test_queued_request_runs_when_other_job_releases_browser(self):
+        state=Path(self.cfg['state_directory']);state.mkdir()
+        lock=(state/'browser-research.lock').open('w');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        threading.Timer(0.2,lock.close).start()
+        with patch.object(b,'BROWSER_QUEUE_POLL',0.05):
+            response=self.source.handle(self.params)
+        self.assertTrue(response['success'])
 
     def test_untrusted_results_outside_source_site_cannot_be_published_as_sources(self):
         self.report['sources'][0]['url']='https://other.test/private'
         response=self.source.handle(self.params)
         self.assertFalse(response['success'])
         self.assertEqual(json.loads(response['contentItems'][0]['text'])['sources'],[])
-        for url in ('https://www.xiaohongshu.com@evil.test/explore/abc','file:///private/a',
-                    b.SITE+'/user/profile/me',b.SITE+'/api/account',b.SITE+'/explore/abc\n'):
+        for url in ('https://www.pinterest.com@evil.test/pin/abc','file:///private/a',
+                    b.SITE+'/user/profile/me',b.SITE+'/api/account',b.SITE+'/pin/abc\n'):
             self.assertIsNone(b.source_url(url))
-        self.assertNotIn('signed-value',b.safe_text(b.SITE+'/explore/abc?xsec_token=signed-value',1000))
+        self.assertNotIn('signed-value',b.safe_text(b.SITE+'/pin/abc/?xsec_token=signed-value',1000))
         self.assertNotIn('private.invalid',b.safe_text('Look https://private.invalid/account',1000))
 
     def test_incomplete_model_turn_does_not_turn_existing_capture_into_success(self):
@@ -299,19 +311,19 @@ class Tests(unittest.TestCase):
 
     def batch_setup(self, *, tick=None):
         cfg={**self.cfg,'browser_research':{**self.cfg['browser_research'],
-            'sites':[b.SITE,b.PINTEREST,b.X]}}
+            'sites':[b.GOOGLE,b.PINTEREST,b.X]}}
         tool=b.BrowserSources(cfg,self.job,tick=tick)
         params={'tool':b.TOOL,'arguments':{'requests':[
             {'site':site,'query':'Office examples','purpose':'Inspect task-relevant public material'}
-            for site in (b.SITE,b.PINTEREST,b.X)]}}
+            for site in (b.GOOGLE,b.PINTEREST,b.X)]}}
         return tool,params
 
     def batch_server(self, *, barrier=None, failures=None, pixels=None):
         """Independent deterministic sources, exercising actual import/assembly."""
         outer=self
-        urls={b.SITE:b.SITE+'/explore/123',
+        urls={b.GOOGLE:'https://example.org/public-guide',
               b.PINTEREST:'https://jp.pinterest.com/pin/456/',b.X:b.X+'/designer/status/789',
-              b.GOOGLE:'https://example.org/public-guide'}
+              b.BESTPITCH:b.BESTPITCH+'/'}
         images={}
         for site,color in zip(urls,('navy','red','green','purple')):
             blob=io.BytesIO();Image.new('RGB',(12,10),color).save(blob,format='PNG')
@@ -339,7 +351,7 @@ class Tests(unittest.TestCase):
                 return json.dumps({'status':'results','summary':'Observed public example',
                     'limitations':'Thumbnail, not the original asset','sources':[{
                     'url':urls[self.args['site']],'title':self.args['site'],
-                    'observed':'Concrete input/output example','screenshot':'reference-1.png'}]})
+                    'observed':'Concrete input/output example','screenshot':'reference-1.png','media_url':None}]})
         return MultiServer,images
 
     def test_batch_overlaps_three_sites_and_preserves_exact_source_pixels(self):
@@ -348,7 +360,7 @@ class Tests(unittest.TestCase):
         with patch.object(b,'AppServer',Server):response=tool.handle(params)
         self.assertTrue(response['success'])
         results=json.loads(response['contentItems'][0]['text'])['results']
-        self.assertEqual([r['site'] for r in results],[b.SITE,b.PINTEREST,b.X])
+        self.assertEqual([r['site'] for r in results],[b.GOOGLE,b.PINTEREST,b.X])
         self.assertEqual(len(self.servers),3)
         self.assertEqual(len({s.kw['cwd'] for s in self.servers}),3)
         for result,image in zip(results,response['contentItems'][1:]):
@@ -363,13 +375,13 @@ class Tests(unittest.TestCase):
         receipts=[c.args[-1] for c in record.call_args_list]
         self.assertEqual(len(receipts),3)
         self.assertEqual({r['files'][0]['sha256'] for r in receipts},
-                         {hashlib.sha256(pixels[s]).hexdigest() for s in (b.SITE,b.PINTEREST,b.X)})
+                         {hashlib.sha256(pixels[s]).hexdigest() for s in (b.GOOGLE,b.PINTEREST,b.X)})
 
     def test_batch_site_timeout_or_denial_does_not_cancel_other_sites(self):
         for failure in ('timeout','denied'):
             with self.subTest(failure=failure):
                 tool,params=self.batch_setup();before=len(self.servers)
-                Server,_=self.batch_server(barrier=threading.Barrier(3),failures={b.SITE:failure})
+                Server,_=self.batch_server(barrier=threading.Barrier(3),failures={b.GOOGLE:failure})
                 with patch.object(b,'AppServer',Server):response=tool.handle(params)
                 results=json.loads(response['contentItems'][0]['text'])['results']
                 self.assertTrue(response['success'])
@@ -410,7 +422,8 @@ class Tests(unittest.TestCase):
         tool,params=self.batch_setup();state=Path(self.cfg['state_directory']);state.mkdir()
         with (state/'browser-research.lock').open('w') as lock:
             fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-            response=tool.handle(params)
+            with patch.object(b,'BROWSER_QUEUE_SECONDS',0.2),patch.object(b,'BROWSER_QUEUE_POLL',0.05):
+                response=tool.handle(params)
         self.assertEqual(json.loads(response['contentItems'][0]['text'])['status'],'busy')
         self.assertEqual(self.servers,[])
 
@@ -443,7 +456,6 @@ class Tests(unittest.TestCase):
         self.assertIn('www.google.com.hk redirect',prompt)
         self.assertIn('HTTP 403/access denial',prompt)
         self.assertIn('Google snippets and thumbnails are discovery evidence',prompt)
-        self.assertNotIn('search_result_ai?',prompt)
         self.assertEqual(b.capability(cfg)['batch_max_requests'],4)
         # Schema and handler share the limit: four sites fit one round; five do not.
         tool=b.BrowserSources(cfg,self.job)
@@ -453,10 +465,41 @@ class Tests(unittest.TestCase):
         rejected=tool.handle({'tool':b.TOOL,'namespace':None,'arguments':{'requests':five}})
         self.assertFalse(rejected['success'])
 
+    def test_google_images_mode_uses_licence_filter_and_returns_clean_media_urls(self):
+        cfg={**self.cfg,'browser_research':{**self.cfg['browser_research'],'sites':[b.GOOGLE,b.SITE]}}
+        tool=b.BrowserSources(cfg,self.job)
+        self.report['sources']=[
+            {'url':'https://commons.wikimedia.org/wiki/File:Map.jpg','title':'Map','observed':'CC BY-SA map',
+             'screenshot':'reference-1.png','media_url':'https://upload.wikimedia.org/wikipedia/commons/a/ab/Map.jpg'},
+            {'url':'https://example.org/page','title':'Thumb only','observed':'x','screenshot':None,
+             'media_url':'https://encrypted-tbn0.gstatic.com/images?q=tbn:abc'},
+            {'url':'https://example.org/signed','title':'Signed','observed':'x','screenshot':None,
+             'media_url':'https://cdn.example.org/a.jpg?X-Amz-Signature=secret'}]
+        params={'tool':b.TOOL,'arguments':{'query':'silk road map','purpose':'Find a licensed route map','site':b.GOOGLE,'images':True}}
+        response=tool.handle(params);self.assertTrue(response['success'])
+        data=json.loads(response['contentItems'][0]['text'])
+        self.assertEqual([s['media_url'] for s in data['sources']],
+                         ['https://upload.wikimedia.org/wikipedia/commons/a/ab/Map.jpg',None,None])
+        self.assertTrue(data['images_mode']);self.assertIn('web-media-proxy.py',data['import'])
+        prompt=self.servers[-1].prompt
+        self.assertIn('udm=2',prompt);self.assertIn('tbs=sur%3Acl',prompt);self.assertIn('Creative Commons',prompt)
+        self.assertIn('beyond the Google Images preview clicks',prompt)
+        # Ordinary Google search is unchanged and carries no media_url.
+        self.report['sources']=[{'url':'https://example.org/a','title':'A','observed':'x','screenshot':None,'media_url':'https://example.org/a.jpg'}]
+        plain=json.loads(tool.handle({**params,'arguments':{**params['arguments'],'images':False,'query':'other'}})['contentItems'][0]['text'])
+        self.assertNotIn('media_url',plain['sources'][0]);self.assertNotIn('udm=2',self.servers[-1].prompt)
+        # images is Google-only and boolean, in single and batch form.
+        for bad in ({'site':b.SITE,'images':True},{'site':b.GOOGLE,'images':'yes'}):
+            self.assertFalse(tool.handle({**params,'arguments':{**params['arguments'],**bad}})['success'])
+            batch={'requests':[{'query':'q','purpose':'p',**bad}]}
+            self.assertFalse(tool.handle({'tool':b.TOOL,'arguments':batch})['success'])
+        same=[{'site':b.GOOGLE,'query':'q','purpose':'p'},{'site':b.GOOGLE,'query':'q','purpose':'p','images':True}]
+        self.assertTrue(tool.handle({'tool':b.TOOL,'arguments':{'requests':same}})['success'])
+
     def test_google_sources_clean_public_external_identity_without_widening_other_sites(self):
         external='https://example.org/articles/diagram?id=42&utm_source=search#tracking'
         self.assertEqual(b.source_url(external,b.GOOGLE),'https://example.org/articles/diagram?id=42')
-        for site in (b.SITE,b.PINTEREST,b.X):self.assertIsNone(b.source_url(external,site))
+        for site in (b.PINTEREST,b.X):self.assertIsNone(b.source_url(external,site))
         self.assertEqual(b.source_url(b.GOOGLE+'/search?q=office+AI&udm=2&start=10&ved=tracking',b.GOOGLE),
                          b.GOOGLE+'/search?q=office+AI&udm=2&start=10')
         self.assertEqual(b.source_url('https://www.google.com.hk/search?q=office&ved=tracking',b.GOOGLE),
@@ -523,7 +566,7 @@ class Tests(unittest.TestCase):
                 if self.args['site']!=b.GOOGLE:return super().result_text(*a)
                 return json.dumps({'status':'results','summary':'Google results','limitations':'Snippets only',
                     'sources':[{'url':'https://example.org/public-guide','title':'Public guide',
-                    'observed':'Search snippet','screenshot':'reference-1.png'}]})
+                    'observed':'Search snippet','screenshot':'reference-1.png','media_url':None}]})
             def wait_turn(self,*a,**kw):
                 if self.args['site']!=b.GOOGLE:return super().wait_turn(*a,**kw)
                 self.gate.wait(timeout=3)

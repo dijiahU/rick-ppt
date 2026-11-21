@@ -32,6 +32,7 @@ BATCH_STYLE_FIELDS = {
     'shape': {'fill', 'stroke', 'line_width'},
     'connector': {'ink', 'line_width'},
     'path': {'fill', 'stroke', 'line_width', 'dash'},
+    'icon': {'ink', 'line_scale'},
     'bars': {'font_family', 'east_asian_font_family', 'font_size'},
 }
 EMU=914400
@@ -159,6 +160,34 @@ def add_path(workspace,number,box,commands,*,path_size,fill,stroke,line_width,na
     node(ln,A,'headEnd',type=start_arrow);node(ln,A,'tailEnd',type=end_arrow)
     write(path,tree);return handle(workspace,number,ident)
 
+def add_icon(workspace,number,icon,box,*,ink,name,task_root=None,line_scale=1.0):
+    """Library icon (assets/icons/*.json from pptx_icons) as native editable paths.
+
+    Keeps the icon's aspect ratio centred in box; recolour with ink. Line icons
+    scale their stroke with size (line_scale adjusts it). Several layers become
+    one named group. Returns the icon's handle.
+    """
+    source=Path(icon).resolve(strict=True);task_root=Path(task_root or Path.cwd()).resolve()
+    if not source.is_relative_to(task_root):raise ValueError('Icon must be task-scoped')
+    if source.stat().st_size>2_000_000:raise ValueError('Icon file too large')
+    data=json.loads(source.read_text())
+    if not isinstance(data,dict) or data.get('schema')!='native-icon/v1':raise ValueError('Use an icon file returned by pptx_icons')
+    vw,vh=data['viewbox'];layers=data['layers']
+    if not (isinstance(layers,list) and 1<=len(layers)<=16):raise ValueError('Invalid icon layers')
+    color(ink)
+    if len(box)!=4 or not all(math.isfinite(v) for v in box) or min(box[2:])<=0:raise ValueError('Invalid icon box')
+    if type(line_scale) not in (int,float) or not .2<=line_scale<=5:raise ValueError('line_scale must be 0.2–5')
+    x,y,w,h=box;scale=min(w/vw,h/vh);fw,fh=vw*scale,vh*scale;fitted=[x+(w-fw)/2,y+(h-fh)/2,fw,fh]
+    handles=[]
+    for index,layer in enumerate(layers):
+        if not isinstance(layer,dict) or not (layer.get('fill') or layer.get('stroke')):raise ValueError('Invalid icon layer')
+        width=max(.25,float(layer.get('stroke_width') or 0)*scale*72*line_scale) if layer.get('stroke') else .75
+        handles.append(add_path(workspace,number,fitted,layer['commands'],path_size=[vw,vh],
+                                fill=ink if layer.get('fill') else None,stroke=ink if layer.get('stroke') else None,
+                                line_width=width,name=name if len(layers)==1 else f'{name} part {index+1}'))
+    if len(handles)==1:return handles[0]
+    return semantic_group(workspace,number,handles,name=name)
+
 def add_connector(workspace,number,start,end,*,points,start_site,end_site,ink,line_width,arrow,name):
     from native_structure import anchor
     if len(points)!=4 or not all(math.isfinite(v) for v in points):raise ValueError('Specify exact start/end coordinates')
@@ -246,9 +275,10 @@ def text_measure(text,font_file,size,width,*,index=0,padding=.04,line_spacing=1.
         chunks=[]
         for token in re.findall(r'[^ \t]+|[ \t]+',paragraph):
             if any('\u3400'<=ch<='\u9fff' or '\u3040'<=ch<='\u30ff' for ch in token):
-                for ch in token:
-                    if ch in '，。！？；：、）】》」』' and chunks:chunks[-1]+=ch
-                    else:chunks.append(ch)
+                # CJK breaks between characters, but numbers and Latin words inside it stay whole ("2024年").
+                for piece in re.findall(r'[A-Za-z0-9.,%+\-/:]+|.',token):
+                    if piece in '，。！？；：、）】》」』' and chunks:chunks[-1]+=piece
+                    else:chunks.append(piece)
             else:chunks.append(token)
         current=''
         for chunk in chunks:
@@ -280,8 +310,8 @@ def add_text(workspace,number,text,font_file,size,ink,*,x,y,width,max_height,ind
         for role,chunk in (script_runs(line) if latin_font else [('ea',line)]):
             run=node(p,A,'r');rp=node(run,A,'rPr',sz=round(size*100),b=int(measure['latin_bold'] if role=='latin' else measure['bold']),i=int(measure['latin_italic'] if role=='latin' else measure['italic']));solid(rp,ink)
             node(rp,A,'latin',typeface=measure['latin_family']);node(rp,A,'ea',typeface=measure['font_family']);node(rp,A,'cs',typeface=measure['latin_family'])
+            # DrawingML keeps a:t whitespace as written; xml:space is not allowed on a:t by the schema.
             t=node(run,A,'t');t.text=chunk
-            if chunk!=chunk.strip():t.set('{http://www.w3.org/XML/1998/namespace}space','preserve')
         ending=node(p,A,'endParaRPr',sz=round(size*100))
         node(ending,A,'latin',typeface=measure['latin_family']);node(ending,A,'ea',typeface=measure['font_family']);node(ending,A,'cs',typeface=measure['latin_family'])
     write(path,tree);return {**handle(workspace,number,ident),**measure}

@@ -93,7 +93,7 @@ class SelectionTests(unittest.TestCase):
             self.assertFalse((self.root/'state'/task['id']/'author-context.json').exists())
             task={'id':str(uuid.uuid4()),'lease':'SYNTHETIC-LEASE','execution_backend':'codex'}
             selected,default=runner._run_job(cfg,task,None)
-            self.assertEqual((selected,default),(None,'gpt-6-astra'))
+            self.assertEqual((selected,default),(None,'gpt-6.2-sol'))
             self.assertEqual(json.loads((self.root/'state'/task['id']/'execution-choice.json').read_text()),
                              {'execution_backend':'codex'})
         self.assertIs(cfg['_model_profile'],self.profile,'per-task selection must not mutate the worker config')

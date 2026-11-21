@@ -21,7 +21,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
  }
  if(job.status==='complete'){const object=job.result_key?await files().head(job.result_key):null;if(object?.customMetadata?.sha256!==sha)return json({error:'Artifact changed'},409);}
  if(action==='artifact'){
-  if(job.status!=='running')return json({error:'Task is not running'},409);const bytes=await boundedBody(request,30*1024*1024);if(bytes[0]!==80||bytes[1]!==75||await hash(bytes)!==sha)return json({error:'PPTX identity mismatch'},400);const key=canvasKey(id,sha,'source.pptx');await files().put(key,bytes,{httpMetadata:{contentType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'},customMetadata:{sha256:sha}});return json({ok:true});
+  if(job.status!=='running')return json({error:'Task is not running'},409);const bytes=await boundedBody(request,80*1024*1024);if(bytes[0]!==80||bytes[1]!==75||await hash(bytes)!==sha)return json({error:'PPTX identity mismatch'},400);const key=canvasKey(id,sha,'source.pptx');await files().put(key,bytes,{httpMetadata:{contentType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'},customMetadata:{sha256:sha}});return json({ok:true});
  }
  if(action==='page'){
   const n=Number(q.get('page'));if(!Number.isSafeInteger(n)||n<1||n>200)return json({error:'Invalid page'},400);const bytes=await boundedBody(request,2*1024*1024);if(bytes.length<8||[137,80,78,71,13,10,26,10].some((x,i)=>bytes[i]!==x))return json({error:'PNG required'},400);const digest=await hash(bytes),options={httpMetadata:{contentType:'image/png'},customMetadata:{sha256:digest}};

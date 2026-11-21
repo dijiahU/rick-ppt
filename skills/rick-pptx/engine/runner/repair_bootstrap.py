@@ -21,7 +21,7 @@ import subprocess
 import zipfile
 
 
-MAX_ARTIFACT = 30 * 1024 * 1024
+MAX_ARTIFACT = 80 * 1024 * 1024
 MAX_JSON = 32 * 1024 * 1024
 MAX_PARTS = 50_000
 MAX_UNCOMPRESSED = 2 * 1024**3

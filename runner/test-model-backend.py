@@ -35,9 +35,9 @@ class Tests(unittest.TestCase):
   self.assertEqual(profile_for_task(self.root,'external',p,True),p)
   with self.assertRaises(ValueError):profile_for_task(self.root,'external',None,True)
  def test_new_default_is_61_high_and_persists_on_resume(self):
-  self.assertEqual(task_default_model(self.root,'new',False),'gpt-6-astra')
+  self.assertEqual(task_default_model(self.root,'new',False),'gpt-6.2-sol')
   self.assertEqual(task_default_reasoning_effort(self.root,'new'),'xhigh')
-  self.assertEqual(task_default_model(self.root,'new',True,'gpt-6-luna','low'),'gpt-6-astra')
+  self.assertEqual(task_default_model(self.root,'new',True,'gpt-6-luna','low'),'gpt-6.2-sol')
   self.assertEqual(task_default_reasoning_effort(self.root,'new'),'xhigh')
  def test_model_only_legacy_receipt_keeps_model_and_implicit_effort(self):
   path=self.root/'legacy/default-model.json';path.parent.mkdir();original=b'{"model":"gpt-6-sol"}\n';path.write_bytes(original)

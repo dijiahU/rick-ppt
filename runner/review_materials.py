@@ -127,7 +127,7 @@ def prepare_review_materials(root, role, *, scoped=False, include_role_documents
         name = receipt.get('path')
         if not isinstance(name, str):
             raise ReviewSessionError('Invalid prepared review image path')
-        body = read_scoped(root, name, 30 * 1024 * 1024)
+        body = read_scoped(root, name, 80 * 1024 * 1024)
         if len(body) != receipt.get('bytes') or hashlib.sha256(body).hexdigest() != receipt.get('sha256'):
             raise ReviewSessionError('Prepared review image checksum changed')
         images.append(name)

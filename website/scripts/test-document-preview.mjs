@@ -13,7 +13,7 @@ const xml='<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessing
 assert.deepEqual(documentText(word(xml),'docx'),{text:'First survey\n\n中文 & English <script>alert(1)</script>',truncated:false});
 assert.deepEqual(documentText(fflate.strToU8('中文,English\n1,2'),'csv'),{text:'中文,English\n1,2',truncated:false});
 const long=documentText(fflate.strToU8('x'.repeat(300001)),'txt');assert.equal(long.text.length,300000);assert.equal(long.truncated,true);
-assert.throws(()=>documentText(new Uint8Array(20*1024*1024+1),'txt'));
+assert.throws(()=>documentText(new Uint8Array(60*1024*1024+1),'txt'));
 assert.throws(()=>documentText(word('<!DOCTYPE x [<!ENTITY x "test">]>'+xml),'docx'));
 assert.throws(()=>documentText(fflate.zipSync({'other.xml':new Uint8Array(1)}),'docx'));
 assert.throws(()=>documentText(new Uint8Array([255]),'txt'));

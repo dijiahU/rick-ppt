@@ -1,6 +1,6 @@
-export const MAX_FILES=10,MAX_FILE_BYTES=20*1024*1024,MAX_TOTAL_BYTES=200*1024*1024;
+export const MAX_FILES=10,MAX_FILE_BYTES=60*1024*1024,MAX_TOTAL_BYTES=200*1024*1024;
 // Legacy multipart clients stay bounded; the website stages one file at a time.
-export const MAX_INLINE_BYTES=20*1024*1024;
+export const MAX_INLINE_BYTES=60*1024*1024;
 export const extensions=['pdf','pptx','docx','txt','md','csv','png','jpg','jpeg'] as const;
 export type Attachment={id:string;name:string;size:number;ext:string;sha256:string};
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

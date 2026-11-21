@@ -20,7 +20,7 @@ class ProgressiveCanvas:
     def synchronize(self):
         try:
             with self.lock:page=next(iter(self.pending));source_sha,png=self.pending[page]
-            source=read_scoped(self.root,Path('raw-blobs')/source_sha,30*1024*1024)
+            source=read_scoped(self.root,Path('raw-blobs')/source_sha,80*1024*1024)
             if hashlib.sha256(source).hexdigest()!=source_sha:raise ValueError('Progress render input differs')
             self.ready[page]={'content':fingerprint(source,page),'png':png}
             overlays,locks=load(self.cfg,self.task,self.send,images=True);artifact=graft(source,overlays);pages=native_pages(artifact);images={};protected={r['page']:r for r in locks}

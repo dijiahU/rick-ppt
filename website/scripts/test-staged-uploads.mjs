@@ -45,7 +45,7 @@ try{
  assert.equal((await stage(upload(scope,undefined,undefined,{Origin:'https://evil.test'}))).status,403);
  assert.equal((await stage(upload('../escape'))).status,400);
  assert.equal((await stage(upload(scope,Buffer.from('bad'),'fake.png'))).status,400);
- assert.equal((await stage(upload(scope,Buffer.from('x'),'big.txt',{'Content-Length':String(20*1024*1024+1)}))).status,400);
+ assert.equal((await stage(upload(scope,Buffer.from('x'),'big.txt',{'Content-Length':String(60*1024*1024+1)}))).status,400);
  assert.equal((await stage(upload(`message:${crypto.randomUUID()}:${crypto.randomUUID()}`))).status,404);
 
  // Exercise the actual browser helper: raw per-file requests, sequential transfer,

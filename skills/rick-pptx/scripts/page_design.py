@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 
 if __package__:
     from .inspect_formulas import inspect_slide
+    from .layout_checks import check as layout_check, slide_size
     # tool_prepare imports under a version-specific package so an older host's
     # already-loaded pptx_core cannot replace this release's dependencies.
     from .pptx_core.common import PptxError, NS, now, parse, sha256
@@ -25,6 +26,7 @@ if __package__:
     from .pptx_core.cli import inspect as inspect_page
 else:
     from inspect_formulas import inspect_slide
+    from layout_checks import check as layout_check, slide_size
     from pptx_core.common import PptxError, NS, now, parse, sha256
     from pptx_core.manifest import content_fingerprint, manifest
     from pptx_core.package import select
@@ -125,6 +127,22 @@ def resource(root, value):
         return {'source': value, 'availability': 'unavailable', 'detail': str(error)}
 
 
+def _layout(parts_root, tree):
+    """Mechanical clues (off-slide, overlapping text, tiny or crammed text)."""
+    try:
+        try:
+            from deck_style import load, palette
+        except ImportError:
+            from .deck_style import load, palette
+        try:
+            colours = palette(load(parts_root))
+        except ValueError:
+            colours = set()
+        return layout_check(tree, slide_size(parse(parts_root / 'ppt/presentation.xml')), palette=colours)
+    except (OSError, ValueError, PptxError):
+        return []
+
+
 def native_state(root, workspace, number):
     ws = select(scoped(root, workspace))
     scoped(root, ws.home)
@@ -154,6 +172,7 @@ def native_state(root, workspace, number):
             'objects': objects if inline_objects else None,
             'object_count': len(objects),
             'formula_inventory': inspect_slide(tree),
+            'layout_checks': _layout(ws.root, tree),
             'objects_status': 'inlined_from_inspect' if inline_objects else 'deferred; use existing inspect command for this page',
             'native_groups': len(tree.findall('.//p:grpSp', NS)),
             'connectors': len(tree.findall('.//p:cxnSp', NS)), 'preview': view,

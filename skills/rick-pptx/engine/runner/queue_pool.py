@@ -1,10 +1,10 @@
-"""One queue supervisor, at most three isolated task executions; drain on stop."""
+"""One queue supervisor, at most five isolated task executions; drain on stop."""
 from concurrent.futures import ThreadPoolExecutor
 
 
 def serve(claim, execute, stop, on_error, *, capacity=3, poll_seconds=2, once=False):
-    if not isinstance(capacity, int) or not 1 <= capacity <= 3:
-        raise ValueError('Capacity must be 1..3')
+    if not isinstance(capacity, int) or not 1 <= capacity <= 5:
+        raise ValueError('Capacity must be 1..5')
     active=set()
     with ThreadPoolExecutor(max_workers=capacity,thread_name_prefix='pptx-job') as pool:
         while not stop.is_set():

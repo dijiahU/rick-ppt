@@ -30,3 +30,9 @@ For faithful scoped edits, edit the existing page through the established native
 path. The original PowerPoint remains protected. Package writes, state refresh and
 the operation receipt commit together with rollback on failure. Real rendering,
 native behavior checks and independent reviews remain required.
+
+In `native_edit.py`, `text` accepts newline-separated paragraphs or a nested list
+such as `[["4.6", "%"], ["注册转化率"]]` to retain individual run styles.
+Set `"focus": [x, y]` on a picture edit or pass `--focus X Y` to
+`template_fill.py image` to centre the cover crop as close as possible to a point
+measured from the image's top left, with both coordinates between 0 and 1.

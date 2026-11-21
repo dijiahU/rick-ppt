@@ -48,7 +48,7 @@ author parts, and the separate parallel-authoring prototype is not enabled.
 An operator may enable [browser source research](BROWSER.md) for a locally
 authorized Edge session. Research/author phases then expose a bounded source
 tool; normal authors/reviewers retain their isolated browser/MCP configuration.
-The initial adapter supports Xiaohongshu public design examples, returning
+The adapter supports Pinterest, X, Google and bestpitchdeck.com, returning
 source links and actual screenshots through the existing image-input channel.
 It is optional, serializes the shared browser, stops on authorization failures,
 and is unavailable to customer-funded or DSH tasks. No private account activity,

@@ -1,13 +1,31 @@
 """Gate queue admission on the actual local rendering dependency, before model work."""
-import subprocess,time,threading,sys,shutil
+import subprocess,time,threading,sys,shutil,os,signal
 
 DOCKER='/usr/local/bin/docker'
 IMAGE='pptx-lab-renderer:1'
 QUALIFIED_IMAGE='docker.io/library/'+IMAGE
 
+def run_group(args,*,capture_output=True,text=True,timeout=None):
+    """subprocess.run that also kills the command's children on timeout.
+
+    A wedged Docker Desktop makes `docker info` hang in its CLI-plugin metadata
+    children; plain run() kills only the docker CLI, leaving one orphan per check."""
+    proc=subprocess.Popen(args,stdout=subprocess.PIPE if capture_output else None,
+                          stderr=subprocess.PIPE if capture_output else None,text=text,start_new_session=True)
+    try:out,err=proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:os.killpg(proc.pid,signal.SIGKILL)
+        except OSError:pass
+        proc.communicate()
+        raise
+    return subprocess.CompletedProcess(args,proc.returncode,out,err)
+
 class RendererReadiness:
-    def __init__(self,*,run=subprocess.run,clock=time.monotonic,on_state=None,log=print):
+    def __init__(self,*,run=run_group,clock=time.monotonic,on_state=None,log=print,min_free_gb=3,free_bytes=None):
         self.run,self.clock,self.on_state,self.log=run,clock,on_state,log
+        # A job needs a few GB of temp space; admitting one on a nearly full disk fails it midway.
+        self.min_free=min_free_gb*1024**3
+        self.free_bytes=free_bytes or (lambda:shutil.disk_usage(__import__('tempfile').gettempdir()).free)
         self.next_check=0;self.next_launch=0;self.available=False;self.reason=None
         self.lock=threading.Lock()
 
@@ -22,6 +40,13 @@ class RendererReadiness:
         if now<self.next_check:return self.available
         reason='renderer_ready'
         try:
+            if self.min_free and self.free_bytes()<self.min_free:
+                self.available=False;self.next_check=self.clock()+30
+                if self.reason!='disk_low':
+                    self.reason='disk_low'
+                    self.log(f'Free disk below {self.min_free//1024**3} GB; tasks remain queued.',flush=True)
+                    if self.on_state:self.on_state(False,'disk_low')
+                return False
             if sys.platform=='linux':
                 from linux_render import installation,supports_page_range
                 result=self._command([str(installation()/'program/soffice'),'--version'],6)

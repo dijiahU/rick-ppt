@@ -35,7 +35,7 @@ def missing(value):
         'route': 'native_repair'}]
     a.update(readiness='needs_revision', primary_findings=['V1'])
     a['visual_coverage'][1].update(status='missing', finding_ids=['V1'])
-    a['visual_craft']['visual_expression'].update(score=7, finding_ids=['V1'], pages=[2])
+    a['visual_craft']['visual_expression'].update(score=6, finding_ids=['V1'], pages=[2])
     return value
 
 

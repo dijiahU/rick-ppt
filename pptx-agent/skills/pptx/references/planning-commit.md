@@ -34,8 +34,9 @@ are rejected without replacing outputs. This avoids retyping accumulated researc
 inside JSON; it does not summarize or discard evidence. The original inline form
 remains supported.
 
-For new work or authorized redesign, resolve each page's main expression before
-submission using content.md. Keep content and a short reader-facing account of the
+For new work or authorized redesign, resolve each page's point and the relationship
+it must show before submission using content.md; its composition is chosen while
+authoring that page. Keep content and a short reader-facing account of the
 proposed expression in the outline summary; keep the concrete design intention,
 evidence/details and native build plans in the existing source-note handoffs, and
 reference applications in the decision register. A successful commit checks the

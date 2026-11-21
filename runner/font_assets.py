@@ -19,17 +19,53 @@ SYSTEM_FONTS={
     'times-new-roman-italic':('Times New Roman','timesi.ttf','Times New Roman Italic.ttf',0),
     'times-new-roman-bold-italic':('Times New Roman','timesbi.ttf','Times New Roman Bold Italic.ttf',0),
     'simsun-regular':('SimSun','Simsun.ttc','simsun.ttc',0),
+    # Secondary family for headings, numbers and display text: ships with Windows 10+, Office and WPS.
+    'dengxian-regular':('DengXian','Deng.ttf','Deng.ttf',0),
+    'dengxian-bold':('DengXian','Dengb.ttf','Dengb.ttf',0),
+    'dengxian-light':('DengXian Light','Dengl.ttf','Dengl.ttf',0),
+    'arial-regular':('Arial','arial.ttf','Arial.ttf',0),
+    'arial-bold':('Arial','arialbd.ttf','Arial Bold.ttf',0),
+}
+# Approved on request (2026-11-21): installed by default on Windows and bundled with Office for
+# Mac, so layouts match across both. Installed per task only when used (font-proxy.py ID),
+# because the Chinese faces are 10-19 MB each.
+OPTIONAL_SYSTEM_FONTS={
+    'microsoft-yahei-light':('Microsoft YaHei Light','msyhl.ttc','msyhl.ttc',0),
+    'microsoft-yahei-regular':('Microsoft YaHei','msyh.ttc','msyh.ttc',0),
+    'microsoft-yahei-bold':('Microsoft YaHei','msyhbd.ttc','msyhbd.ttc',0),
+    'simhei-regular':('SimHei','SimHei.ttf','SimHei.ttf',0),
+    'kaiti-regular':('KaiTi','Kaiti.ttf','Kaiti.ttf',0),
+    'fangsong-regular':('FangSong','Fangsong.ttf','Fangsong.ttf',0),
+    'calibri-regular':('Calibri','Calibri.ttf','Calibri.ttf',0),
+    'calibri-bold':('Calibri','Calibrib.ttf','Calibrib.ttf',0),
+    'cambria-regular':('Cambria','Cambria.ttc','Cambria.ttc',0),
+    'cambria-bold':('Cambria','Cambriab.ttf','Cambriab.ttf',0),
+    'georgia-regular':('Georgia','georgia.ttf','Georgia.ttf',0),
+    'georgia-bold':('Georgia','georgiab.ttf','Georgia Bold.ttf',0),
+    'century-gothic-regular':('Century Gothic','Century Gothic.ttf','Century Gothic.ttf',0),
+    'century-gothic-bold':('Century Gothic','Century Gothic Bold.ttf','Century Gothic Bold.ttf',0),
+    'verdana-regular':('Verdana','Verdana.ttf','Verdana.ttf',0),
+    'verdana-bold':('Verdana','Verdana Bold.ttf','Verdana Bold.ttf',0),
+    'tahoma-regular':('Tahoma','tahoma.ttf','Tahoma.ttf',0),
+    'tahoma-bold':('Tahoma','tahomabd.ttf','Tahoma Bold.ttf',0),
 }
 LINUX_SYSTEM_FONTS={
     'dejavu-serif-regular':('DejaVu Serif','/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf',0),
     'noto-serif-sc-regular':('Noto Serif CJK SC','/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc',2),
 }
 STARTER_IDS=tuple(LINUX_SYSTEM_FONTS) if os.sys.platform=='linux' else tuple(SYSTEM_FONTS)
+SYSTEM_FONTS={**SYSTEM_FONTS,**OPTIONAL_SYSTEM_FONTS}  # all host faces; only STARTER_IDS are preinstalled
 
 def deployment_defaults(platform=None):
     if (platform or os.sys.platform)=='linux':
         return {'latin':'DejaVu Serif','east_asian':'Noto Serif CJK SC','target':'Linux LibreOffice preview'}
-    return {'latin':'Times New Roman','east_asian':'SimSun','target':'Windows WPS'}
+    return {'latin':'Times New Roman','east_asian':'SimSun','target':'Windows WPS',
+            'display_east_asian':'DengXian (等线: light, regular, bold) for headings, figures and display text',
+            'display_latin':'Arial for Latin numerals and labels',
+            'optional':'Also approved, installed on use with font-proxy.py ID: Microsoft YaHei 微软雅黑 (light/regular/bold), '
+                       'SimHei 黑体, KaiTi 楷体, FangSong 仿宋; Calibri, Cambria, Georgia, Century Gothic, Verdana, Tahoma. '
+                       'They ship with Windows and Office for Mac. Avoid fonts outside these lists (PingFang, Source Han, '
+                       'FZ/HY families): Windows substitutes them and the layout breaks.'}
 
 def system_font_candidates(font_id):
     if font_id in LINUX_SYSTEM_FONTS:return [Path(LINUX_SYSTEM_FONTS[font_id][1])]

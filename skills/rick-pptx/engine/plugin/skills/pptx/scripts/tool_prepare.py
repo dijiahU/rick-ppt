@@ -186,6 +186,19 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
     if candidate_script.is_file():
         commands['save_candidate'] = [interpreter, str(candidate_script), '--task-root', str(root),
                                       '--workspace', parts_arg, '--output', 'exports/CHOSEN_VERSION.pptx']
+    edit_script = SCRIPTS / 'native_edit.py'
+    if edit_script.is_file():
+        commands['edit_objects'] = [interpreter, str(edit_script), '--workspace', parts_arg, '--input', 'edits.json']
+    fill_script = SCRIPTS / 'template_fill.py'
+    if fill_script.is_file():
+        # Building on a template: see its slots, keep chosen slides, swap pictures in their frames.
+        commands['template_map'] = [interpreter, str(fill_script), 'map', '--workspace', parts_arg]
+        commands['template_select'] = [interpreter, str(fill_script), 'select', '--workspace', parts_arg, '--keep', 'CHOSEN_SLIDES']
+        commands['template_image'] = [interpreter, str(fill_script), 'image', '--workspace', parts_arg, '--slide', 'N',
+                                      '--target', 'PICTURE_ID', '--source', 'CHOSEN_IMAGE']
+    notes_script = SCRIPTS / 'speaker_notes.py'
+    if notes_script.is_file():
+        commands['speaker_notes'] = [interpreter, str(notes_script), '--workspace', parts_arg, '--file', 'notes.json']
     if parts_dir:
         commands['refresh'] += ['--workspace', parts_dir]
     progress = root / 'public-progress.py'
@@ -197,7 +210,7 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
         'session_dir': session_dir, 'parts_dir': parts_dir,
         'workspace_status': 'selected' if parts_dir else 'not_selected',
         'workspace_contract': {'pptx_cli': 'session_dir or parts_dir', 'native_builds': 'session_dir or parts_dir',
-                               'native_canvas': 'parts_dir', 'design_references': 'parts_dir'},
+                               'native_canvas': 'parts_dir', 'design_references': 'parts_dir', 'speaker_notes': 'parts_dir'},
         'commands': commands, 'pptx_cli': _cli_contract(),
         'plan_check': plan_check,
         'native_authoring': {
@@ -208,7 +221,7 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
             'implementation': 'Helper geometry choices describe this callable, not the full PowerPoint geometry range. Use supported operations where suitable; direct OOXML remains available for unsupported native features and deliberate richer geometry. No fixed page layout.',
             'verification': 'Font coverage, text fit and endpoint checks do not establish design quality or target-player playback.'},
         'native_canvas': {name: _parameters(getattr(canvas, name)) for name in
-                          ('check_glyphs', 'text_measure', 'add_text', 'add_image', 'add_shape', 'add_path', 'add_connector', 'semantic_group', 'reveal', 'add_bar_chart')},
+                          ('check_glyphs', 'text_measure', 'add_text', 'add_image', 'add_shape', 'add_path', 'add_icon', 'add_connector', 'semantic_group', 'reveal', 'add_bar_chart')},
         'decision_contract': {'version': catalog['version'], 'top_level_fields': ['version', 'task', 'template_preservation', 'pages', 'design_direction', 'references'],
                               'task_options': catalog['task'], 'page_options': catalog['page'],
                               'asset_options': catalog['asset'],
@@ -255,7 +268,7 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
         # Derive the JSON call contract from the same functions used by the
         # batch implementation. Do not make the model translate Python-only
         # workspace arguments or rediscover optional/required parameter names.
-        operations = {'text': 'add_text', 'shape': 'add_shape', 'path': 'add_path', 'image': 'add_image',
+        operations = {'text': 'add_text', 'shape': 'add_shape', 'path': 'add_path', 'icon': 'add_icon', 'image': 'add_image',
                       'connector': 'add_connector', 'group': 'semantic_group',
                       'reveal': 'reveal', 'bars': 'add_bar_chart'}
         manifest['native_batch'] = {

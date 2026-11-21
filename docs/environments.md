@@ -118,5 +118,6 @@ python3 tools/environment.py copy-token     # 复制到剪贴板，不在终端�
 ```
 
 把剪贴板中的值设为网站的站点密钥 `LOCAL_WORKER_TOKEN`，发布含本功能的网站版本后，再运行
-`tools/environment.py start-mac`。配置为 5 并发、fast 模式、Edge 浏览器调研（小红书、X、Pinterest、
-Google），仍遵守"仅插电运行"：拔掉电源时 Mac 停止接单，由服务器接手。
+`tools/environment.py start-mac`。配置为 5 并发、标准速度（不开 fast）、Edge 浏览器调研（X、Pinterest、
+Google），默认"仅插电运行"：拔掉电源时 Mac 停止接单，由服务器接手。私密设置中加 `"ac_power_only": false`
+可改为电池下继续运行；此时 worker 运行期间会阻止系统空闲睡眠（`caffeinate -i`），但合上盖子仍会睡眠。

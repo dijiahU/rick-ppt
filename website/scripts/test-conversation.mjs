@@ -78,10 +78,10 @@ console.log('PASS: owner/CSRF isolation, bounded uploads, SHA metadata, conflict
 const pngFile=(size,name='reference.png')=>{const bytes=new Uint8Array(size);bytes.set([137,80,78,71,13,10,26,10]);return new File([bytes],name);};
 const ten=await send(request({files:Array.from({length:10},(_,i)=>pngFile(2*1024*1024,`reference-${i}.png`))}),params);
 assert.equal(ten.status,201);assert.equal((await ten.json()).message.attachments.length,10);
-assert.equal((await send(request({files:[pngFile(20*1024*1024)]}),params)).status,201);
-assert.equal((await send(request({files:[pngFile(20*1024*1024+1)]}),params)).status,400);
-assert.equal((await send(request({files:[pngFile(10*1024*1024),pngFile(10*1024*1024+1)]}),params)).status,400);
-console.log('PASS: legacy multipart follow-ups accept 10 files / 20 MB and reject count/inline-size overflow');
+assert.equal((await send(request({files:[pngFile(60*1024*1024)]}),params)).status,201);
+assert.equal((await send(request({files:[pngFile(60*1024*1024+1)]}),params)).status,400);
+assert.equal((await send(request({files:[pngFile(30*1024*1024),pngFile(30*1024*1024+1)]}),params)).status,400);
+console.log('PASS: legacy multipart follow-ups accept 10 files / 60 MB inline and reject count/inline-size overflow');
 
 const image=await send(request({files:[pngFile(8)]}),params);assert.equal(image.status,201);
 const picture=(await image.json()).message;

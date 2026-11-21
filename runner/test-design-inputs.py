@@ -68,6 +68,220 @@ class Tests(unittest.TestCase):
             server.start_thread(dynamic_tools=self.inputs.specs())
             return server.request('test/approval',{'method':'item/tool/call','params':params})
 
+    def key_plan(self, **overrides):
+        return {'page_id':'first', 'action':'page_plan', 'kind':'key',
+                'takeaway':'注册转化率升至 4.6%', 'relationship':'比较缩减前后的注册流程', 'steps':'先看结果，再看原因',
+                'hero':'4.6% 占画面约 40%', 'reading_order':['4.6%', '缩短的流程', '省掉的步骤'], 'cut':'删掉注册术语',
+                'visual_idea':'让缩短的注册流程直接指向 4.6% 的终点数字',
+                'rejected':'用表格排列步骤会让读者来回寻找被删掉的步骤', **overrides}
+
+    def deck_plan(self, **overrides):
+        return {'action':'deck_plan', 'occasion':'婚宴开场，宴会厅大屏', 'audience':'来赴宴的亲友',
+                'feeling':'喜庆、甜、被感动', 'expectations':['新人本人的照片或插画', '红金色彩和热闹的现场'],
+                'subject':'两位新人', 'wrong_looks':['大面积留白的编辑设计'], **overrides}
+
+    def submit(self, args, *, wire=False):
+        params = {**self.params(), 'arguments':args}
+        response = self.wire(params) if wire else self.inputs.handle(params)
+        return response['success'], json.loads(response['contentItems'][0]['text'])
+
+    def test_deck_plan_crosses_wire_without_page_id_and_is_saved(self):
+        schema = self.inputs.specs()[0]['inputSchema']
+        self.assertIn('deck_plan', schema['properties']['action']['enum'])
+        self.assertNotIn('page_id', schema.get('required', []))
+        args = self.deck_plan(references=['  婚礼开场示例  '])
+        self.assertLessEqual(set(args), set(schema['properties']))
+        ok, result = self.submit(args, wire=True)
+        self.assertTrue(ok); self.assertEqual(result['status'], 'accepted')
+        self.assertIn('主角和视觉想法都要服务于 feeling 和 expectations', result['instruction'])
+        path = self.job/'deck-plan.json'
+        self.assertEqual(json.loads(path.read_text()),
+                         {**{k:v for k,v in args.items() if k != 'action'}, 'references':['婚礼开场示例']})
+        self.assertTrue(self.submit(self.deck_plan())[0])
+        self.assertEqual(json.loads(path.read_text())['references'], [])
+
+    def test_deck_plan_lists_all_missing_and_malformed_fields(self):
+        ok, result = self.submit({'action':'deck_plan'})
+        self.assertFalse(ok); self.assertEqual(result['status'], 'invalid')
+        self.assertEqual({issue.split()[0] for issue in result['issues']},
+                         {'occasion', 'audience', 'feeling', 'subject', 'expectations', 'wrong_looks'})
+        ok, result = self.submit(self.deck_plan(occasion=' ', audience=[], subject=None,
+                                               expectations=['新人合影', '红金', '', '场景配色清晰', '灯光照亮舞台', '宾客上台致辞'],
+                                               wrong_looks=['商务风'] * 5 + [' '], references=['示例'] * 4, page_id='first'))
+        self.assertFalse(ok); self.assertEqual(result['status'], 'invalid')
+        for issue in ('occasion 必须', 'audience 必须', 'subject 必须', 'expectations 必须', 'expectations 第 1 条',
+                      'expectations 第 2 条', 'expectations 第 3 条', 'wrong_looks 必须', 'wrong_looks 第 6 条',
+                      'references 必须', '未知设计单字段：page_id'):
+            self.assertTrue(any(v.startswith(issue) for v in result['issues']), result)
+        self.assertFalse((self.job/'deck-plan.json').exists())
+
+    def test_deck_plan_feeling_requires_a_specific_mood_after_stripping_style(self):
+        for feeling in ('高级、简洁、克制、专业、现代', '整体优雅与很有专业感', 'modern and clean', '，123。'):
+            with self.subTest(feeling=feeling):
+                ok, result = self.submit(self.deck_plan(occasion='课堂投影', feeling=feeling))
+                self.assertFalse(ok); self.assertEqual(result['status'], 'invalid')
+                self.assertTrue(any(issue.startswith('feeling ') for issue in result['issues']))
+        self.assertTrue(self.submit(self.deck_plan(occasion='课堂投影', feeling='克制、好奇'))[0])
+
+    def test_social_deck_plan_checks_feeling_and_people(self):
+        for changes in (
+                {'occasion':'婚宴开场', 'feeling':'喜悦、克制'},
+                {'audience':'等着招新的同学', 'feeling':'冷静、好奇'},
+                {'feeling':'喜庆、低调'},
+                {'occasion':'颁奖晚会', 'feeling':'激动、极简'},
+                {'occasion':'婚宴开场', 'expectations':['红金色彩装点宴会厅', '拍摄舞台灯光与花墙', '无人机拍摄的宴会厅照片']}):
+            with self.subTest(changes=changes):
+                ok, result = self.submit(self.deck_plan(**{'occasion':'礼堂大屏', **changes}))
+                self.assertFalse(ok); self.assertEqual(result['status'], 'invalid')
+                self.assertIn('这是庆典或社交场合，观众期待热闹和看到人', result['issues'])
+        self.assertFalse((self.job/'deck-plan.json').exists())
+        self.assertTrue(self.submit(self.deck_plan(occasion='社团招新，礼堂投影', audience='有意入社的同学',
+                                                   feeling='好奇、想加入', expectations=['社员正在动手搭天线', '试用设备的真实场景'],
+                                                   subject='无线电社的社员'))[0])
+
+    def test_failed_deck_plan_update_preserves_saved_plan(self):
+        self.assertTrue(self.submit(self.deck_plan())[0])
+        path = self.job/'deck-plan.json'
+        before = path.read_bytes()
+        for args in (self.deck_plan(feeling='高级、简洁'), self.deck_plan(subject='新人' * 10000)):
+            ok, result = self.submit(args)
+            self.assertFalse(ok); self.assertEqual(result['status'], 'invalid')
+        with patch.object(Path, 'replace', side_effect=OSError('synthetic write failure')):
+            ok, result = self.submit(self.deck_plan(feeling='开心、激动'))
+        self.assertFalse(ok); self.assertEqual(result['status'], 'unavailable')
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(list(self.job.glob('.deck-plan-*')), [])
+
+    def test_key_plan_requires_deck_plan_but_ordinary_plan_does_not(self):
+        ok, result = self.submit(self.key_plan(), wire=True)
+        self.assertFalse(ok); self.assertEqual(result['status'], 'invalid')
+        self.assertIn('先用 action=deck_plan 提交整套场合与观众单', result['issues'])
+        self.assertFalse((self.job/'page-plans.json').exists())
+        ok, result = self.submit(self.key_plan(kind='ordinary'))
+        self.assertTrue(ok); self.assertEqual(result['status'], 'accepted')
+        self.assertNotIn('deck_plan', result)
+
+    def test_key_plan_crosses_wire_and_updates_saved_page(self):
+        deck = self.deck_plan()
+        self.assertTrue(self.submit(deck)[0])
+        args = self.key_plan()
+        ok, result = self.submit(args, wire=True)
+        self.assertTrue(ok); self.assertEqual(result['status'], 'accepted')
+        self.assertEqual(result['reading_order_note'], '阅读顺序：① 4.6% ② 缩短的流程 ③ 省掉的步骤')
+        self.assertIn('原样写进该页的讲稿备注', result['instruction'])
+        self.assertEqual(result['deck_plan'], {k:deck[k] for k in ('feeling', 'expectations')})
+        path = self.job/'page-plans.json'
+        self.assertEqual(json.loads(path.read_text()),
+                         {'first':{k:v for k,v in args.items() if k not in ('action', 'page_id')}})
+        self.assertEqual(self.submit(self.key_plan(page_id='later', kind='ordinary'))[1]['deck_plan'], result['deck_plan'])
+        self.assertTrue(self.submit(self.key_plan(page_id='later'))[0])
+        self.assertTrue(self.submit(self.key_plan(cut='删去重复标签'))[0])
+        saved = json.loads(path.read_text())
+        self.assertEqual(set(saved), {'first', 'later'})
+        self.assertEqual(saved['first']['cut'], '删去重复标签')
+        self.assertEqual(saved['later']['cut'], args['cut'])
+
+    def test_failed_plan_update_preserves_existing_file(self):
+        self.assertTrue(self.submit(self.deck_plan())[0])
+        self.assertTrue(self.submit(self.key_plan())[0])
+        path = self.job/'page-plans.json'
+        before = path.read_bytes()
+        with patch.object(Path, 'replace', side_effect=OSError('synthetic write failure')):
+            ok, result = self.submit(self.key_plan(cut='删去重复标签'))
+        self.assertFalse(ok); self.assertEqual(result['status'], 'unavailable')
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(list(self.job.glob('.page-plans-*')), [])
+
+    def test_key_plan_reports_each_failed_requirement(self):
+        self.assertTrue(self.submit(self.deck_plan())[0])
+        for changes, field in [
+                ({'hero':'转化率数字最大'}, 'hero'),
+                ({'takeaway':'采用简洁高级风格', 'visual_idea':'采用简洁高级留白大字低饱和强烈对比'}, 'visual_idea'),
+                ({'visual_idea':'把北方商路画成一连串接力的驿站'}, 'visual_idea'),
+                ({'visual_idea':'4.6% 终点'}, 'visual_idea'),
+                ({'rejected':'表格难读'}, 'rejected'),
+                ({'rejected':'改成橙色卡片并放在画面中间'}, 'rejected'),
+                ({'rejected':'：因为读者找不到自己要看的内容'}, 'rejected'),
+                ({'reading_order':['结果', '流程', '细节', '脚注']}, 'reading_order'),
+                ({'page_id':'unknown'}, 'page_id')]:
+            with self.subTest(field=field, changes=changes):
+                ok, result = self.submit(self.key_plan(**changes))
+                self.assertFalse(ok); self.assertEqual(result['status'], 'invalid')
+                self.assertTrue(any(issue.startswith(field) for issue in result['issues']), result)
+        args = self.key_plan(steps='  ', cut='')
+        del args['takeaway'], args['reading_order']
+        ok, result = self.submit(args)
+        self.assertFalse(ok)
+        self.assertEqual({issue.split()[0] for issue in result['issues']}, {'takeaway', 'steps', 'cut', 'reading_order'})
+        self.assertFalse((self.job/'page-plans.json').exists())
+
+    def test_key_plan_matches_english_words_and_numeric_content(self):
+        self.assertTrue(self.submit(self.deck_plan())[0])
+        args = self.key_plan(takeaway='Enrollment is accelerating', hero='The enrollment curve takes 40% of the slide',
+                             visual_idea='Draw a single ENROLLMENT curve as a diverging path',
+                             rejected='Use four cards because they hide the inflection')
+        self.assertTrue(self.submit(args)[0])
+        self.assertFalse(self.submit({**args, 'visual_idea':'Draw enrollments along a winding path'})[0])
+        self.assertTrue(self.submit(self.key_plan(takeaway='课程注册', hero='40% 画幅给最大的数字 4.6%',
+                                                 visual_idea='最后只点亮 4.6% 让终点数字从灰色路径中跳出来'))[0])
+
+    def test_ordinary_plan_checks_only_three_fields(self):
+        args = {'page_id':'first', 'action':'page_plan', 'kind':'ordinary',
+                'takeaway':'注册变快', 'relationship':'对照', 'reading_order':['注册结果']}
+        ok, result = self.submit(args)
+        self.assertTrue(ok); self.assertEqual(result['reading_order_note'], '阅读顺序：① 注册结果')
+        self.assertTrue(self.submit({**args, 'hero':'流程', 'visual_idea':'留白', 'rejected':'不用'})[0])
+        ok, result = self.submit({**args, 'takeaway':' ', 'relationship':'', 'reading_order':[' ']})
+        self.assertFalse(ok)
+        self.assertEqual({issue.split()[0] for issue in result['issues']}, {'takeaway', 'relationship', 'reading_order'})
+
+    def test_render_returns_missing_warning_first_then_saved_plan_alongside_pixels(self):
+        ws = self.native(); self.rendered(ws)
+        params = {**self.params(), 'arguments':{'page_id':'first', 'workspace':str(ws.root)}}
+        self.assertNotIn('plan_missing', json.loads(self.wire(self.params())['contentItems'][0]['text']))
+        response = self.wire(params)
+        missing = json.loads(response['contentItems'][0]['text'])
+        self.assertTrue(response['success'])
+        self.assertEqual(next(iter(missing)), 'plan_missing')
+        self.assertEqual(missing['plan_missing'],
+                         '这页是封面、收尾或关键页，先提交 page_plan，再判断渲染是否达到设计单，不合格就按设计单重做')
+        self.assertEqual(next(v['state'] for v in missing['visual_inputs'] if v['role']=='page_preview'), 'attached')
+        self.assertTrue(self.submit(self.key_plan(kind='ordinary'))[0])
+        self.assertIn('plan_missing', json.loads(self.wire(params)['contentItems'][0]['text']))
+        self.assertTrue(self.submit(self.deck_plan())[0])
+        args = self.key_plan()
+        self.assertTrue(self.submit(args)[0])
+        context = json.loads(self.wire(params)['contentItems'][0]['text'])
+        self.assertNotIn('plan_missing', context)
+        self.assertEqual(context['plan'], {k:args[k] for k in ('takeaway', 'hero', 'reading_order', 'visual_idea')})
+        self.assertIn('不要改写设计单去迁就现状', context['plan_check'])
+
+    def test_closing_page_and_author_marked_key_pages_use_workspace_outline(self):
+        path = self.job/'outline.json'
+        pages = json.loads(path.read_text())['slides']
+        pages[1:1] = [{'id':'middle'}, {'id':'marked', 'kind':'key'}]
+        path.write_text(json.dumps({'slides':pages}))
+        def preview(page, number, **flags):
+            params = {**self.params(page), 'arguments':{'page_id':page, 'workspace':'local', **flags}}
+            with patch.object(self.inputs, 'context', return_value={'page':{'id':page}, 'page_number':number}):
+                return json.loads(self.inputs.handle(params)['contentItems'][0]['text'])
+        self.assertIn('plan_missing', preview('later', 4))
+        self.assertIn('plan_missing', preview('marked', 3))
+        self.assertNotIn('plan_missing', preview('middle', 2))
+        self.assertIn('plan_missing', preview('middle', 2, kind='key'))
+        path.unlink()
+        self.assertNotIn('plan_missing', preview('later', 4))
+        self.assertIn('plan_missing', preview('first', 1))
+
+    def test_author_is_told_to_submit_before_building(self):
+        from design_roles import role_instruction
+        prompt = role_instruction(self.cfg, 'author')
+        self.assertIn('expects to see and how they should feel, then submit page_plan', prompt)
+        self.assertLess(prompt.index('use deck_plan'), prompt.index('submit page_plan'))
+        self.assertIn('submit the design sheet with page_plan before building', prompt)
+        fallback = role_instruction({**self.cfg, '_harness_transport':'dsh-sdk'}, 'author')
+        self.assertNotIn('page_plan', fallback); self.assertNotIn('deck_plan', fallback)
+
     def test_composition_method_crosses_actual_tool_wire_without_creating_a_page(self):
         before={p:p.read_bytes() for p in self.job.rglob('*') if p.is_file()}
         with patch('design_inputs.record') as capture:
@@ -508,3 +722,13 @@ class Tests(unittest.TestCase):
 
 
 if __name__=='__main__': unittest.main()
+
+
+class FestiveFeelingTests(unittest.TestCase):
+    def test_wedding_needs_a_celebration_feeling(self):
+        from design_inputs import deck_plan_issues
+        plan = dict(occasion='婚宴开场，宴会厅大屏', audience='新人的亲友', feeling='温暖、亲切、会心',
+                    expectations=['看见两位新人相识的小事', '新人本人的照片或插画'], subject='两位新人',
+                    wrong_looks=['商务风'], references=[])
+        self.assertTrue(any('庆典场合' in issue for issue in deck_plan_issues(plan)))
+        self.assertEqual(deck_plan_issues(dict(plan, feeling='喜庆、温馨、甜蜜')), [])

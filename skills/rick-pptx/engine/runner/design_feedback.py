@@ -16,6 +16,36 @@ from design_roles import enabled
 from progress import read_scoped
 
 POLICY={'version':1,'max_passes':1}
+# Finishing polish (Rick, 2026-11-21): a passed review used to deliver its directly fixable
+# suggestions (overflow, a numbered sequence turned into bullets, uneven sizes) unchanged.
+# One short author pass now applies them, then a normal review checks the new bytes; any
+# required finding in that review restores the passed version.
+POLISH={'version':1,'max_passes':1}
+# Reviewers often file a plainly fixable visual defect (a unit glyph colliding with its number)
+# as retain_suggestion, so visual suggestions of either route qualify; content suggestions
+# only when routed to a native fix (content_revision needs source work, not polish).
+POLISH_ROUTES={'visual':('native_repair','retain_suggestion'),'content':('native_repair',)}
+
+
+def polish_findings(receipt):
+    findings=[f for kind in ('content','visual') for f in receipt[kind]['findings']]
+    if any(f.get('severity')=='required' for f in findings):return []
+    return [f for kind in ('content','visual') for f in receipt[kind]['findings']
+            if f.get('severity')=='suggestion' and f.get('route') in POLISH_ROUTES[kind]]
+
+
+def polish_response(receipt):
+    try:
+        return (receipt.get('polish_response')==POLISH and receipt.get('review_mode')=='substantive' and
+                type(receipt.get('round')) is int and receipt['round']<3 and
+                type(receipt.get('input_revision')) is int and bool(polish_findings(receipt)))
+    except (KeyError,TypeError):
+        return False
+
+
+def transactional(receipt):
+    """A receipt whose candidate may be replaced by a bounded pass and restored."""
+    return optional_response(receipt) or polish_response(receipt)
 
 
 def mark_response(cfg,receipt,*,scoped):
@@ -24,10 +54,17 @@ def mark_response(cfg,receipt,*,scoped):
         if (enabled(cfg) and not scoped and receipt.get('round')==1
                 and response_needed(receipt)):
             receipt['designer_response']=dict(POLICY)
-        return receipt
+        return _mark_polish(cfg,receipt,scoped=scoped)
     if (enabled(cfg) and not scoped and receipt.get('round')==1 and
             any(f.get('severity')=='suggestion' for f in receipt['visual']['findings'])):
         receipt['designer_response']=dict(POLICY)
+    return _mark_polish(cfg,receipt,scoped=scoped)
+
+
+def _mark_polish(cfg,receipt,*,scoped):
+    if (cfg.get('polish_pass',True) and enabled(cfg) and not scoped and 'designer_response' not in receipt and
+            type(receipt.get('round')) is int and receipt['round']<3 and polish_findings(receipt)):
+        receipt['polish_response']=dict(POLISH)
     return receipt
 
 
@@ -78,7 +115,7 @@ def save_baseline(run,artifact,receipt,rendered,review_states):
     records=Path(run.records).resolve(strict=True);job=Path(run.job).resolve(strict=True)
     if records.is_relative_to(job):raise ValueError('Designer baseline must be host private')
     digest=hashlib.sha256(artifact).hexdigest()
-    if digest!=receipt['artifact_sha256'] or not optional_response(receipt):raise ValueError('Unverified designer baseline')
+    if digest!=receipt['artifact_sha256'] or not transactional(receipt):raise ValueError('Unverified designer baseline')
     identity=_current_identity(run)
     if identity['input_revision']!=receipt['input_revision']:raise ValueError('Stale designer baseline')
     home=records/(run.task['id']+'-designer-baseline-'+digest)
@@ -108,14 +145,14 @@ def save_baseline(run,artifact,receipt,rendered,review_states):
 def _load_home(home):
     if home.is_symlink():raise ValueError('Unsafe designer baseline')
     value=json.loads(read_scoped(home,'baseline.json',16*1024*1024))
-    if value.get('version')!=1 or not optional_response(value['receipt']):raise ValueError('Invalid designer baseline')
+    if value.get('version')!=1 or not transactional(value['receipt']):raise ValueError('Invalid designer baseline')
     def verified(info,limit):
         data=read_scoped(home,info['file'],limit)
         if hashlib.sha256(data).hexdigest()!=info['sha256']:raise ValueError('Designer baseline bytes changed')
         return data
-    value['artifact_bytes']=verified(value['artifact'],30*1024*1024)
+    value['artifact_bytes']=verified(value['artifact'],80*1024*1024)
     if hashlib.sha256(value['artifact_bytes']).hexdigest()!=value['receipt']['artifact_sha256']:raise ValueError('Designer baseline review mismatch')
-    for item in value['pages']:verified(item,30*1024*1024)
+    for item in value['pages']:verified(item,80*1024*1024)
     value['rendered']={'pages':[str(home/item['file']) for item in value['pages']]}
     if value.get('render_binding'):
         binding=json.loads(verified(value['render_binding'],8*1024*1024))

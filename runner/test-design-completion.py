@@ -8,6 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from design_completion import CONTRACT, PRESENTATION, PRESENTATION_MARKER, CRAFT, CRAFT_MARKER, CRAFT_DIMENSIONS, craft_enabled, schema, selection, notice, presentation_schema, presentation_enabled, response_findings
+from design_completion import READING_ORDER, READING_ORDER_MARKER, normalize_derived, readiness
 from design_feedback import mark_response, optional_response, introduced_required, load_baseline
 from workflow import validate_report, VISUAL_REPORT_SCHEMA, REPORT_SCHEMA, DESIGN_RESPONSE_SECONDS
 
@@ -162,7 +163,7 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(selection(self.base,self.next)['selected'],'candidate')
 
 
-def craft_report(value, score=7):
+def craft_report(value, score=6):
     value['visual_craft'] = dict(CRAFT)
     if score is not None and score < 8:value['visual']['findings'][0]['route']='native_repair'
     value['visual']['design_assessment']['visual_craft'] = {
@@ -212,6 +213,14 @@ class CraftTests(unittest.TestCase):
         value=craft_report(current());value['visual']['design_assessment']['visual_craft']['composition']['evidence']=' '
         with self.assertRaisesRegex(ValueError,'page/region evidence'):self.check(value)
 
+    def test_retained_suggestion_on_low_score_is_format_correctable_by_exact_message(self):
+        # workflow.review_pass grants one format-only correction to this exact
+        # error on every backend; keep the two strings in step.
+        value=craft_report(current());value['visual']['findings'][0]['route']='retain_suggestion'
+        with self.assertRaises(ValueError) as caught:self.check(value)
+        source=(Path(__file__).parent/'workflow.py').read_text()
+        self.assertIn("craft_error=str(error) in ('"+str(caught.exception)+"'",source)
+
     def test_quiet_finished_work_can_pass_without_images_or_new_findings(self):
         value=craft_report(current(state='ready'),8);value['visual']['findings']=[]
         self.check(value)
@@ -227,7 +236,7 @@ class CraftTests(unittest.TestCase):
                        recommendation='Rework the prop treatment and color distribution; keep the worked example, focal scale and click groups.',
                        route='native_repair')
         value['visual']['design_assessment']['visual_craft']['visual_expression'].update(
-            score=7,evidence=finding['observation'],finding_ids=['F1'])
+            score=6,evidence=finding['observation'],finding_ids=['F1'])
         self.check(value)
         with patch('design_feedback.enabled',return_value=True):mark_response({},value,scoped=False)
         self.assertTrue(optional_response(value))
@@ -262,14 +271,18 @@ class WorkflowTests(unittest.TestCase):
         self.run.review.side_effect = review
 
     def test_ready_or_uncertain_with_suggestions_does_not_start_cosmetic_work(self):
+        # No optional design response; with finishing polish switched off nothing runs.
+        # (Polish on: PolishTests.)
         for state in ('ready', 'uncertain'):
             value = mark_response(self.cfg, current(state=state), scoped=False)
             self.assertFalse(optional_response(value))
+        self.cfg['polish_pass'] = False
         self.run.review.side_effect = lambda body,*a:mark_response(self.cfg,current(body,state='ready'),scoped=False)
         self.execute()
         self.assertEqual(self.calls, [])
 
     def test_main_gap_triggers_only_one_response_and_keeps_improved_unfinished_candidate(self):
+        self.cfg['polish_pass'] = False  # designer-response behaviour alone; polish after it: PolishTests
         self.configure(); self.action = 'change'
         result, receipt = self.execute()
         self.assertEqual(result['artifact'], (self.job/'changed.pptx').read_bytes())
@@ -282,6 +295,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(decision['candidate_sha256'], hashlib.sha256(result['artifact']).hexdigest())
 
     def test_low_picture_craft_uses_existing_single_response_and_real_version_selection(self):
+        self.cfg['polish_pass'] = False  # designer-response behaviour alone; polish after it: PolishTests
         baseline=craft_report(current((self.job/'original.pptx').read_bytes()))
         def review(body,rendered,packet,payload,number):
             value=craft_report(current(body,number,'ready' if number>1 else 'needs_revision'),8 if number>1 else 7)
@@ -474,7 +488,7 @@ class GeneratedLookTests(unittest.TestCase):
             'resembles': 'Default four-tile KPI strip with matching pictograms',
             'why_unjustified': 'The quarter has two meaningful figures; the other tiles restate the title.',
             'direction': 'Lead with the two figures at the scale of their consequence; drop the filler tiles.',
-            'scope': 'deck', 'finding_ids': ['F1']}])
+            'scope': 'page', 'finding_ids': ['F1']}])
 
     def check(self, value=None):
         return validate_report(value or self.value, 2, require_design=True, completion=True, generated_look=True)
@@ -487,11 +501,17 @@ class GeneratedLookTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_report(self.value, 2, require_design=True, completion=True)
 
-    def test_level_does_not_decide_readiness(self):
-        self.check()
-        self.value['design_assessment']['generated_look'] = 'pronounced'
-        self.check()  # ready with pronounced tells stays a valid, uncalibrated report
-        self.assertFalse(any(f['severity'] == 'required' for f in self.value['findings']))
+    def test_page_tells_stay_optional_but_deck_or_pronounced_tells_need_revision(self):
+        self.check()  # page-local tells can remain suggestions on a ready deck
+        for key, value in (('generated_look', 'pronounced'), ('scope', 'deck')):
+            changed = copy.deepcopy(self.value)
+            if key == 'scope':changed['design_assessment']['generated_tells'][0]['scope'] = value
+            else:changed['design_assessment'][key] = value
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, 'Deck-wide generated look'):self.check(changed)
+            assessment = changed['design_assessment']
+            assessment.update(readiness='needs_revision', primary_findings=['F1'])
+            finding = next(f for f in changed['findings'] if f['id'] == 'F1'); finding['route'] = 'native_repair'
+            self.check(changed)
 
     def test_any_number_of_tells_but_level_must_match(self):
         self.value['design_assessment'].update(generated_look='clear', generated_tells=[])
@@ -507,6 +527,249 @@ class GeneratedLookTests(unittest.TestCase):
             with self.subTest(key=key, bad=bad), self.assertRaises(ValueError):self.check()
             tell.clear(); tell.update(original)
         self.check()
+
+
+class ReadingOrderTests(unittest.TestCase):
+    def setUp(self):
+        self.value = current(state='ready')['visual']
+        self.assessment = self.value['design_assessment']
+        self.row = {'page': 2, 'seen': ['Large portrait', 'Blue banner', 'Chart labels'],
+                    'takeaway': 'The chart compares two quarters.', 'matches_point': False}
+        self.assessment['reading_order'] = [self.row]
+
+    def check(self):
+        return validate_report(self.value, 2, require_design=True, completion=True, reading_order=True)
+
+    def test_pinned_marker_gates_review_schema_notes_and_receipt(self):
+        spec = importlib.util.spec_from_file_location('review_fixture', Path(__file__).with_name('test-review-sessions.py'))
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        fixture = module.ReviewRecoveryTests()
+        self.addCleanup(fixture.doCleanups); fixture.setUp()
+        skill = fixture.plugin/'skills/pptx'; (skill/'assets').mkdir()
+        (skill/'assets/workflow-choices.json').write_text('{"version":4}')
+        (skill/'references/design-completion.md').write_text('Substantive design review')
+        guide = skill/'references/visual-review.md'
+        glance_rule = 'Take a three-second glance at each content page.'
+        note = '阅读顺序：① Turnover ② Blue banner ③ Chart labels'
+        (fixture.packet/'audience-notes.json').write_text(json.dumps({'pages': [
+            {'number': 1, 'text': 'Unrelated speaker notes'},
+            {'number': 2, 'text': 'Author intro '+note+' [PPTX-DESIGN-REFERENCES-BEGIN] Reference record'}]}))
+        phase = fixture.run.phase
+
+        def inspect(name, prompt, **options):
+            report, thread = phase(name, prompt, **options)
+            self.assertNotIn('Unrelated speaker notes', prompt)
+            self.assertNotIn('Reference record', prompt)
+            self.assertEqual(note in prompt, active and name.startswith('visual'))
+            self.assertEqual(glance_rule in prompt, active and name.startswith('visual'))
+            if name.startswith('visual'):
+                assessment = options['schema']['properties']['design_assessment']
+                self.assertEqual('reading_order' in assessment['properties'], active)
+                self.assertEqual('reading_order' in assessment['required'], active)
+                report = copy.deepcopy(self.value)
+                if not active:report['design_assessment'].pop('reading_order')
+                if scoped:
+                    for key in ('readiness', 'primary_findings'):report['design_assessment'].pop(key)
+            return report, thread
+
+        fixture.run.phase = inspect
+        for marked, scoped in ((False, False), (True, False), (True, True)):
+            with self.subTest(marked=marked, scoped=scoped):
+                active = marked and not scoped
+                guide.write_text(READING_ORDER_MARKER+'\n'+glance_rule if marked else 'Historical policy')
+                if scoped:
+                    fixture.payload['mode'] = 'edit'
+                    fixture.expected_review_payload = fixture.payload
+                receipt = fixture.review()
+                self.assertEqual(receipt.get('reading_order'), READING_ORDER if active else None)
+
+    def test_rejects_bad_reading_order_shape(self):
+        for field, bad in (('page', 0), ('page', 3), ('page', True), ('seen', []),
+                           ('seen', ['One', 'Two', 'Three', 'Four']), ('seen', [' ']),
+                           ('seen', [1]), ('takeaway', ' '), ('matches_point', 0)):
+            with self.subTest(field=field, bad=bad):
+                self.assessment['reading_order'] = [dict(self.row, **{field: bad})]
+                with self.assertRaisesRegex(ValueError, 'reading_order'):self.check()
+        for bad in (None, {}, [{}], [dict(self.row, extra=True)]):
+            with self.subTest(bad=bad):
+                self.assessment['reading_order'] = bad
+                with self.assertRaisesRegex(ValueError, 'reading_order'):self.check()
+
+    def test_valid_evidence_is_optional_and_leaves_readiness_unchanged(self):
+        for size in (1, 2, 3):
+            self.assessment['reading_order'] = [dict(self.row, seen=self.row['seen'][:size])]
+            self.assertEqual(self.check(), self.value)
+            self.assertEqual(normalize_derived(self.value), self.value)
+            self.assertEqual(readiness(self.value), 'ready')
+        with self.assertRaises(ValueError):
+            validate_report(self.value, 2, require_design=True, completion=True)
+        self.assessment.pop('reading_order')
+        self.check()
+
+
+class StrictSchemaTests(unittest.TestCase):
+    """Every schema the host sends to a model must satisfy strict structured output:
+    each object has additionalProperties false and lists every property as required."""
+    def violations(self, node, path=''):
+        found = []
+        if isinstance(node, dict):
+            if node.get('type') == 'object' or 'properties' in node:
+                props = set(node.get('properties', {}))
+                if node.get('additionalProperties') is not False or props != set(node.get('required', [])):
+                    found.append((path, sorted(props - set(node.get('required', [])))))
+            for key, child in node.items():found += self.violations(child, path + '/' + key)
+        elif isinstance(node, list):
+            for i, child in enumerate(node):found += self.violations(child, f'{path}[{i}]')
+        return found
+
+    def test_all_visual_review_schema_variants_are_strict(self):
+        import itertools
+        from workflow import VISUAL_REPORT_SCHEMA, LEGACY_VISUAL_REPORT_SCHEMA
+        self.assertEqual(self.violations(LEGACY_VISUAL_REPORT_SCHEMA), [])
+        for craft, coverage, look, order in itertools.product((False, True), repeat=4):
+            if coverage and not craft:continue
+            value = schema(VISUAL_REPORT_SCHEMA, None, craft=craft, coverage=coverage, generated_look=look, reading_order=order)
+            with self.subTest(craft=craft, coverage=coverage, generated_look=look, reading_order=order):
+                self.assertEqual(self.violations(value), [])
+                self.assertEqual('reading_order' in value['properties']['design_assessment']['properties'], order)
+
+
+class NormalizeTests(unittest.TestCase):
+    def test_low_scores_with_actionable_links_become_primary_and_revision(self):
+        from design_completion import normalize_derived
+        report={'findings':[{'id':'F1','route':'native_repair','severity':'suggestion'},
+                            {'id':'F2','route':'retain_suggestion','severity':'suggestion'}],
+                'design_assessment':{'readiness':'ready','primary_findings':[],
+                    'visual_craft':{'composition':{'score':6,'finding_ids':['F1','F2']},'typography':{'score':8,'finding_ids':[]},
+                                    'visual_expression':{'score':6,'finding_ids':[]}},
+                    'visual_coverage':[{'page':1,'status':'missing','finding_ids':['F1']}]}}
+        out=normalize_derived(report)
+        a=out['design_assessment']
+        self.assertEqual(a['readiness'],'needs_revision');self.assertEqual(a['primary_findings'],['F1'])
+        self.assertEqual(a['visual_craft']['visual_expression']['finding_ids'],['F1'])
+        self.assertEqual(report['design_assessment']['readiness'],'ready')  # input not mutated
+
+    def test_scores_at_seven_or_above_change_nothing(self):
+        from design_completion import normalize_derived
+        report={'findings':[{'id':'F1','route':'native_repair','severity':'suggestion'}],
+                'design_assessment':{'readiness':'ready','primary_findings':[],
+                    'visual_craft':{'composition':{'score':7,'finding_ids':['F1']}}}}
+        self.assertEqual(normalize_derived(report),report)
+
+
+    def test_linked_finding_on_other_pages_extends_entry_pages(self):
+        from design_completion import normalize_derived
+        report={'findings':[{'id':'F1','route':'native_repair','severity':'suggestion','pages':[4]},
+                            {'id':'F2','route':'native_repair','severity':'suggestion','pages':[2,3]}],
+                'design_assessment':{'readiness':'needs_revision','primary_findings':['F1'],
+                    'visual_craft':{'sequence':{'score':7,'pages':[1,2],'finding_ids':['F1','F2']}}}}
+        row=normalize_derived(report)['design_assessment']['visual_craft']['sequence']
+        self.assertEqual(row['pages'],[1,2,4])  # F2 already shares page 2; F1 adds page 4
+
+
+class PolishTests(unittest.TestCase):
+    """Finishing polish: a passed review applies its directly fixable suggestions once."""
+    execute = fixture.FeedbackTests.execute
+    fake_restore = fixture.FeedbackTests.fake_restore
+
+    def setUp(self):
+        fixture.FeedbackTests.setUp(self)
+        self.prompts = []; inner = self.run.phase
+        def phase(name, prompt, **options):
+            self.prompts.append(prompt); return inner(name, prompt, **options)
+        self.run.phase = phase
+
+    def passed(self, body, number, route='native_repair', required=False):
+        value = current(body, number, 'ready')
+        value['visual']['findings'][0]['route'] = route
+        if required:
+            value['visual']['findings'] = [dict(value['visual']['findings'][0], id='F9', severity='required',
+                                                 observation='A label now overlaps the chart.')]
+        return mark_response(self.cfg, value, scoped=False)
+
+    def test_marker_needs_fixable_suggestion_full_review_and_rounds_left(self):
+        from design_feedback import polish_response
+        for number, route, scoped, expected in [(2, 'native_repair', False, True), (2, 'retain_suggestion', False, True),
+                                                 (2, 'content_revision', False, False),
+                                                 (2, 'native_repair', True, False), (3, 'native_repair', False, False)]:
+            value = fixture.receipt(b'x', number); value['visual']['findings'][0]['route'] = route
+            self.assertEqual(polish_response(mark_response(self.cfg, value, scoped=scoped)), expected, (number, route, scoped))
+        value = fixture.receipt(b'x', 2); value['visual']['findings'][0]['route'] = 'native_repair'
+        self.assertFalse(polish_response(mark_response(dict(self.cfg, polish_pass=False), value, scoped=False)))
+        content_only = fixture.receipt(b'x', 2)
+        content_only['content']['findings'] = [dict(content_only['visual']['findings'][0], route='retain_suggestion')]
+        content_only['visual']['findings'] = []
+        self.assertFalse(polish_response(mark_response(self.cfg, content_only, scoped=False)))
+        self.assertFalse(polish_response(value | {'polish_response': {'version': 1, 'max_passes': 1},
+                                                  'visual': dict(value['visual'], findings=[dict(value['visual']['findings'][0], severity='required')])}))
+
+    def test_polish_change_is_reviewed_once_and_delivered(self):
+        first = {}
+        def review(body, rendered, packet, payload, number):
+            value = self.passed(body, number)
+            if number == 1: first.update(value)
+            else: compared(first, value, 'better', resolution='resolved')
+            return value
+        self.run.review.side_effect = review
+        self.action = 'change'
+        result, receipt = self.execute()
+        self.assertEqual([n for n, _ in self.calls], ['repair-1'])
+        self.assertIn('FINISHING POLISH', self.prompts[0])
+        self.assertEqual(self.run.review.call_count, 2)
+        self.assertEqual(result['artifact'], (self.job/'changed.pptx').read_bytes())
+
+    def test_new_required_after_polish_restores_the_passed_version(self):
+        def review(body, rendered, packet, payload, number):
+            return self.passed(body, number, required=number > 1)
+        self.run.review.side_effect = review; self.action = 'change'
+        with patch('design_feedback.restore_baseline', side_effect=self.fake_restore):
+            result, receipt = self.execute()
+        self.assertEqual(result['artifact'], (self.job/'original.pptx').read_bytes())
+        self.assertEqual(receipt['round'], 1)
+        self.assertEqual([n for n, _ in self.calls], ['repair-1'])
+
+    def test_equivalent_polish_with_a_resolved_suggestion_is_kept(self):
+        first = {}
+        def review(body, rendered, packet, payload, number):
+            value = self.passed(body, number)
+            if number == 1: first.update(value)
+            else: compared(first, value, 'equivalent', resolution='resolved')
+            return value
+        self.run.review.side_effect = review; self.action = 'change'
+        result, _ = self.execute()
+        self.assertEqual(result['artifact'], (self.job/'changed.pptx').read_bytes())
+        self.assertEqual(json.loads(next(self.records.glob('*-design-selection-*')).read_text())['reason'], 'polish_resolved')
+
+    def test_accepted_designer_response_still_gets_one_polish(self):
+        first = {}
+        def review(body, rendered, packet, payload, number):
+            if number == 1:
+                value = mark_response(self.cfg, current(body, 1, 'needs_revision'), scoped=False)
+                first.update(value); return value
+            value = self.passed(body, number)
+            if number == 2: compared(first, value, 'better', resolution='resolved')
+            else: value['visual']['design_comparison'] = None; value['visual'].pop('design_comparison')
+            return value
+        self.run.review.side_effect = review; self.action = 'change'
+        self.execute()
+        self.assertEqual([n for n, _ in self.calls], ['repair-1', 'repair-2'])
+        self.assertIn('FINISHING POLISH', self.prompts[1])
+        self.assertLessEqual(self.run.review.call_count, 3)
+
+    def test_noop_polish_delivers_reviewed_bytes_without_rereview(self):
+        self.run.review.side_effect = lambda body, rendered, packet, payload, number: self.passed(body, number)
+        result, _ = self.execute()
+        self.assertEqual(self.run.review.call_count, 1)
+        self.assertEqual(result['artifact'], (self.job/'original.pptx').read_bytes())
+
+
+class FinalRoundTests(unittest.TestCase):
+    def test_final_round_delivers_latest_version_with_open_issues_by_default(self):
+        from workflow import final_round_outcome
+        self.assertEqual(final_round_outcome([],{}),'deliver')
+        self.assertEqual(final_round_outcome([{'id':'F1'}],{}),'deliver_open')
+        self.assertEqual(final_round_outcome([{'id':'F1'}],{'deliver_with_open_issues':False}),'fail')
+        self.assertEqual(final_round_outcome([{'id':'F1'}],{'deliver_with_open_issues':True}),'deliver_open')
 
 
 if __name__ == '__main__': unittest.main()

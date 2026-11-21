@@ -29,7 +29,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   const recovery=await db.prepare('SELECT job_id FROM task_recovery WHERE job_id=? AND resumable=1').bind(id).first();const draft=await db.prepare('SELECT job_id FROM task_drafts WHERE job_id=?').bind(id).first();
   if(!recovery&&!draft)return json({error:'No editable checkpoint is available for this historical task.'},409);
  }
- const original=await files().get(sourceKey!);if(!original||original.size>30*1024*1024)return json({error:'Source PPTX unavailable or exceeds 30 MiB.'},409);
+ const original=await files().get(sourceKey!);if(!original||original.size>80*1024*1024)return json({error:'Source PPTX unavailable or exceeds 80 MiB.'},409);
  await files().put(`canvas-inputs/${id}/${body.id}/baseline.pptx`,original.body,{httpMetadata:{contentType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'},customMetadata:{sha256:body.baseSha256}});
  for(const upload of uploads)await copyUpload(upload,messageFileKey(id,body.id,upload.meta.id));
  const attachments=JSON.stringify(uploads.map(u=>u.meta));

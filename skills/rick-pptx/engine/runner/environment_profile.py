@@ -16,7 +16,7 @@ def validate(cfg, worker, *, expected=None, platform=None):
     pinned = json.loads(marker.read_text()).get('environment') if marker.is_file() else None
     profile = cfg.get('deployment_environment')
     for value in (profile, pinned, expected):
-        if value is not None and value not in ('local', 'server'):
+        if value is not None and value not in ('local', 'server', 'mac'):
             raise ValueError('Unknown deployment environment')
     if any(value is not None and value != profile for value in (pinned, expected)):
         raise ValueError('Settings do not match the selected deployment environment')
@@ -39,6 +39,12 @@ def validate(cfg, worker, *, expected=None, platform=None):
             raise ValueError('Do not proxy local queue traffic')
     elif site.scheme != 'https':
         raise ValueError('HTTPS required outside explicit local development')
+    if profile == 'mac':
+        # A production worker on the operator's Mac: hosted site over HTTPS only.
+        if (platform or sys.platform) != 'darwin':
+            raise ValueError('Mac deployment requires macOS')
+        if local:
+            raise ValueError('Mac deployment requires the hosted website origin')
     if profile == 'server':
         if (platform or sys.platform) != 'linux':
             raise ValueError('Server deployment requires Linux')

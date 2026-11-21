@@ -58,7 +58,7 @@ def initialize_local(root, python, port=3000):
     return cfg
 
 
-BROWSER_SITES = ['https://www.xiaohongshu.com', 'https://x.com', 'https://www.pinterest.com', 'https://www.google.com']
+BROWSER_SITES = ['https://x.com', 'https://www.pinterest.com', 'https://www.google.com']
 
 
 def initialize_mac(root, python, site):
@@ -88,7 +88,7 @@ def initialize_mac(root, python, site):
            'blank': str(runtime / 'skills/pptx/assets/blank.pptx'),
            'state_directory': str(worker / 'state/mac'), 'capacity': 5,
            'parallel_reviews': True, 'job_timeout_seconds': 7200,
-           'author_context_mode': 'continuous', 'default_service_tier': 'fast',
+           'author_context_mode': 'continuous',
            'browser_research': {'enabled': True, 'browser': 'edge', 'sites': BROWSER_SITES}}
     validate(cfg, worker, expected='mac')
     shutil.copytree(source, runtime, ignore=shutil.ignore_patterns(
@@ -120,7 +120,12 @@ def local_launch(root, cfg, reload=False):
     for key in list(env):
         if key.startswith('PPTX_RUNNER_') or key in ('PPTX_AUTHOR_CONTEXT_MODE', 'PPTX_USAGE_PRICING_FILE'):
             env.pop(key)
-    env['PPTX_WORKER_AC_ONLY'] = '1'
+    # Default: run only on external power. "ac_power_only": false in the private
+    # settings lets this Mac keep working on battery (idle sleep is held off).
+    if cfg.get('ac_power_only', True) is not False:
+        env['PPTX_WORKER_AC_ONLY'] = '1'
+    else:
+        env.pop('PPTX_WORKER_AC_ONLY', None)
     for key in ('NO_PROXY', 'no_proxy'):
         env[key] = ','.join(filter(None, [env.get(key), 'localhost,127.0.0.1,::1']))
     command = [cfg['python'], str(Path(root) / 'runner/start-worker.py')]

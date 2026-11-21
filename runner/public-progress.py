@@ -57,7 +57,8 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     sub=parser.add_subparsers(dest='action',required=True)
     note=sub.add_parser('note')
-    note.add_argument('--phase',choices=PHASES,required=True)
+    # Authors naturally call their stage 'author'; it is the building phase.
+    note.add_argument('--phase',choices=PHASES+('author',),required=True,type=lambda v:{'author':'building'}.get(v,v))
     note.add_argument('--summary',required=True)
     note.add_argument('--next',dest='next_step')
     note.add_argument('--slide',type=int,choices=range(1,MAX_SLIDES+1))

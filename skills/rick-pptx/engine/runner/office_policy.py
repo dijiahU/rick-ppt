@@ -27,7 +27,7 @@ def xml(data):
 
 
 def validate_workbook(data):
-    with archive(data,30*1024*1024) as z:
+    with archive(data,150*1024*1024) as z:
         names=z.namelist()
         if 'xl/workbook.xml' not in names or '[Content_Types].xml' not in names:raise ValueError('Chart data must be an XLSX workbook')
         for name in names:

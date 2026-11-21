@@ -31,7 +31,7 @@ assert.equal((await submit(request({files:[new File(['x'],'bad.exe')]}))).status
 assert.equal((await submit(request({files:[new File(['fake PDF'],'fake.pdf')]}))).status,400);
 assert.equal((await submit(request({files:[new File([],'empty.txt')]}))).status,400);
 assert.equal((await submit(request({files:Array.from({length:11},()=>new File(['x'],'x.txt'))}))).status,400);
-assert.equal((await submit(request({files:[new File([new Uint8Array(20*1024*1024+1)],'large.png')]}))).status,400);
+assert.equal((await submit(request({files:[new File([new Uint8Array(60*1024*1024+1)],'large.png')]}))).status,400);
 const key=crypto.randomUUID();const accepted=await submit(request({key}));assert.equal(accepted.status,201);const {id}=await accepted.json();
 const row=db.prepare('SELECT * FROM jobs WHERE id=?').get(id),meta=JSON.parse(row.attachments)[0];assert.equal(row.language,'fr');assert.equal(meta.name,'référence.txt');assert.equal(meta.size,new TextEncoder().encode('Café reference material').length);assert.equal(objects.size,1);
 const replay=await submit(request({key}));assert.equal((await replay.json()).id,id);assert.equal(objects.size,1);
@@ -155,6 +155,6 @@ const tenRow=db.prepare('SELECT attachments FROM jobs WHERE id=?').get((await te
 const tenMetadata=JSON.parse(tenRow.attachments);assert.equal(tenMetadata.length,10);assert.equal(parseAttachments(tenRow.attachments).length,10);
 assert.equal(tenMetadata.reduce((sum,f)=>sum+f.size,0),20*1024*1024);
 assert.equal((await submit(request({files:[pngFile(20*1024*1024)]}))).status,201);
-assert.equal((await submit(request({files:[pngFile(10*1024*1024),pngFile(10*1024*1024+1)]}))).status,400);
+assert.equal((await submit(request({files:[pngFile(30*1024*1024),pngFile(30*1024*1024+1)]}))).status,400);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM jobs WHERE user_id=?').get(currentUser).n,2);
-console.log('PASS: legacy multipart accepts ten images / 20 MB; eleven files and inline/single-file overflow rejected');
+console.log('PASS: legacy multipart accepts ten images / 60 MB inline; eleven files and inline/single-file overflow rejected');

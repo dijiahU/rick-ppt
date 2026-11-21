@@ -4,7 +4,7 @@ from urllib.parse import urlsplit
 import hashlib,json,os,stat
 
 KEY_ENV='PPTX_MODEL_API_KEY'
-DEFAULT_TASK_MODEL='gpt-6-astra'
+DEFAULT_TASK_MODEL='gpt-6.2-sol'
 DEFAULT_TASK_REASONING_EFFORT='xhigh'
 
 def task_default_model(state_root,task_id,existing,configured=DEFAULT_TASK_MODEL,reasoning_effort=DEFAULT_TASK_REASONING_EFFORT):

@@ -8,7 +8,8 @@ errors, missing requested content, unreadability or broken requested native beha
 Do not turn a conversion into an unrequested rewrite. Keep the report concise.
 
 Use a fresh context without the author's conversation, outline, research notes,
-rationale or self-assessment. Do not edit the deck.
+rationale or self-assessment. Do not edit the deck. First principle: the deck exists to get its message
+across; ask of each page whether this audience would grasp its point quickly and correctly.
 
 First read every page in order from the actual audience surface. Self-reading must
 work without hidden notes. A live deck may include a real supplied script; never
@@ -36,7 +37,14 @@ attribution and scope. Separate source errors from author errors. Do not demand
 unrequested topics or novel opinions from a lesson.
 
 Report pages, observation, audience consequence, evidence and repair. Mark required
-corrections versus suggestions. State actual coverage and unreadable/untested parts.
+corrections versus suggestions. Required means the audience would learn or act on a
+false fact, a missing requested item or an unreadable statement. Wording that could be
+more precise, an inference that could be hedged better, or extra scholarly nuance is a
+suggestion. The first review is the complete pass: check every page's claims, map labels,
+picture callouts and question/answer pairs now and report all required issues together,
+because the author fixes them in one revision. On a re-review, a new required finding must
+concern a page the revision changed or an error it introduced; do not raise the precision
+bar on unchanged text. State actual coverage and unreadable/untested parts.
 No finding quota or numerical taste score. Text/thumbnails alone are insufficient.
 Follow the host JSON schema where supplied. Recheck actual revised pages and their
 context; an author's resolution claim is not verification.

@@ -10,7 +10,7 @@ from PIL import Image
 
 EXTENSIONS={'pdf','pptx','docx','txt','md','csv','png','jpg','jpeg'}
 MAX_FILES=10
-MAX_FILE=20*1024*1024
+MAX_FILE=60*1024*1024
 MAX_TOTAL=200*1024*1024
 
 def metadata(value):
@@ -40,14 +40,14 @@ def validate_content(data,ext):
     if ext in {'pptx','docx'}:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             entries=archive.infolist()
-            if len(entries)>2000 or sum(x.file_size for x in entries)>80*1024*1024:raise ValueError('Office archive too large')
+            if len(entries)>2000 or sum(x.file_size for x in entries)>150*1024*1024:raise ValueError('Office archive too large')
             required='ppt/presentation.xml' if ext=='pptx' else 'word/document.xml'
             names={x.filename for x in entries}
             if required not in names or '[Content_Types].xml' not in names:raise ValueError('Invalid Office document')
             for entry in entries:
                 path=PurePosixPath(entry.filename)
                 if path.is_absolute() or '..' in path.parts or '\\' in entry.filename or entry.flag_bits&1:raise ValueError('Unsafe Office archive')
-                if entry.file_size>20*1024*1024 or entry.file_size>max(entry.compress_size,1)*1000:raise ValueError('Compressed attachment limit exceeded')
+                if entry.file_size>40*1024*1024 or entry.file_size>max(entry.compress_size,1)*1000:raise ValueError('Compressed attachment limit exceeded')
                 if 'vbaproject' in entry.filename.lower() or (ext!='pptx' and '/embeddings/' in entry.filename.lower()):raise ValueError('Active embedded content is unsupported')
         if ext=='pptx':
             # Native charts carry passive XLSX data under ppt/embeddings.

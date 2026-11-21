@@ -20,7 +20,7 @@ from office_policy import archive, validate_delivery, xml
 from outline import MAX_SLIDES
 
 
-MAX_BYTES = 30 * 1024 * 1024
+MAX_BYTES = 80 * 1024 * 1024
 MAX_ENTRIES = 20000
 P = 'http://schemas.openxmlformats.org/presentationml/2006/main'
 R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
