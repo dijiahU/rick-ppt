@@ -29,3 +29,26 @@
 .example-deck:focus-visible{outline:3px solid var(--landing-green);outline-offset:6px;border-radius:6px}
 @media(max-width:1000px){.example-decks ul{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.example-decks{padding:48px 0 40px}.example-decks-head h2{font-size:26px}.example-decks ul{grid-template-columns:1fr;gap:28px}}
+.brief-fields{margin:26px 0 8px}
+.brief-fields .bf-intro{margin:0 0 26px;font-size:15px;line-height:1.6;color:var(--landing-ink)}
+.landing-root .workspace-form .brief-fields .bf-question{border:0;margin:0 0 28px;padding:0;min-width:0}
+.landing-root .workspace-form .brief-fields .bf-question legend,.landing-root .workspace-form .brief-fields .bf-question>label{display:flex;align-items:baseline;gap:10px;float:none;width:100%;padding:0;margin:0 0 12px;font-size:15px;font-weight:600;line-height:1.4;color:var(--landing-ink)}
+.landing-root .workspace-form .brief-fields .bf-more .bf-question>label{font-size:14px}
+.brief-fields .bf-mark{font-size:12px;font-weight:400;color:#5f6b68}
+.brief-fields .bf-choices{display:flex;flex-wrap:wrap;gap:8px}
+.landing-root .workspace-form .brief-fields label.bf-chip{position:relative;display:inline-flex;margin:0;font-size:14px;color:var(--landing-ink);cursor:pointer}
+.brief-fields .bf-chip input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;padding:0;cursor:pointer}
+.brief-fields .bf-chip span{display:inline-flex;align-items:center;min-height:40px;padding:0 16px;border:1px solid #cfd8d5;border-radius:999px;background:#fff;transition:background .15s,border-color .15s,color .15s}
+.brief-fields .bf-chip:hover span{border-color:#1d7b54}
+.brief-fields .bf-chip input:checked+span{background:#1d7b54;border-color:#1d7b54;color:#fff}
+.brief-fields .bf-chip input:focus-visible+span{outline:2px solid #1d7b54;outline-offset:3px}
+.brief-fields .bf-other{margin:-14px 0 28px}
+.brief-fields .bf-help{margin:10px 0 0;font-size:13px;line-height:1.6;color:#5f6b68}
+.brief-fields .bf-more{margin:8px 0 0;padding:26px 0 0;border-top:1px solid var(--landing-line)}
+.brief-fields .bf-subhead{margin:0 0 20px;font-size:14px;color:#5f6b68}
+.brief-fields .bf-pair{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.brief-fields .bf-preview{margin:0 0 16px;font-size:13px;color:#5f6b68}
+.brief-fields .bf-preview summary{cursor:pointer;color:#1d7b54;font-weight:600}
+.brief-fields .bf-preview pre{white-space:pre-wrap;font:inherit;line-height:1.7;margin:10px 0 0;padding:14px 16px;border:1px solid #dde3e1;border-radius:8px;background:#f7f9f8;color:var(--landing-ink)}
+.brief-fields .bf-missing{margin:0 0 6px;font-size:13px;color:#a44232}
+@media(max-width:640px){.brief-fields .bf-pair{grid-template-columns:1fr;gap:0}.brief-fields .bf-chip span{min-height:44px}}
