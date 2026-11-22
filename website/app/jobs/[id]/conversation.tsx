@@ -42,7 +42,7 @@ export default function Conversation({id,status,hasDraft}:{id:string;status:stri
 
  const terminal=['complete','failed','paused','delivery_pending'].includes(status);
  return <section className="conversation" aria-label={w[0]}>
-  <div className="conversation-heading"><div><p className="eyebrow">LIVE CONVERSATION</p><h2>{w[0]}</h2></div><span className={`conversation-connection ${offline?'offline':''}`} aria-label={offline?w[13]:'Connected'}>●</span></div><p className="fineprint">{w[1]}</p>
+  <div className="conversation-heading"><div><h2>{w[0]}</h2></div><span className={`conversation-connection ${offline?'offline':''}`} aria-label={offline?w[13]:'Connected'}>●</span></div><p className="fineprint">{w[1]}</p>
   {offline&&<p className="error" role="status">{w[13]}</p>}
   <div ref={transcript} className="conversation-transcript" role="log" aria-live="polite" aria-relevant="additions text" onScroll={event=>{const node=event.currentTarget;followLatest.current=node.scrollHeight-node.scrollTop-node.clientHeight<180;}}>
    {!data.messages.length?<p className="conversation-empty">{w[12]}</p>:data.messages.map(m=><article className={`conversation-message ${m.role}`} key={m.id} data-message-id={m.id}><header><strong>{m.role==='user'?w[11]:'Codex'}</strong><time dateTime={new Date(m.createdAt).toISOString()}>{new Date(m.createdAt).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'})}</time></header><p>{visualEditDisplay(m.body,locale==='zh-CN')??m.body}</p>{m.attachments.length>0&&<AttachmentPreviews files={m.attachments} hrefFor={file=>`/api/jobs/${id}/conversation?message=${m.id}&file=${file.id}`}/>}{m.role==='user'&&<small className={`message-status ${m.status}`}>{m.kind==='revision'?w[2]:w[3]} · {(m.status==='applied'||m.body.startsWith('[RICKPPT_VISUAL_EDITS_V1]\n')&&m.body.includes('"directSave":true'))?w[10]:m.status==='received'?w[9]:w[8]}</small>}</article>)}
@@ -57,6 +57,6 @@ export default function Conversation({id,status,hasDraft}:{id:string;status:stri
   </form>{error&&<p className="error" role="alert">{error}</p>}
   {terminal&&<div className="conversation-recovery"><p>{status==='delivery_pending'?(locale==='zh-CN'?'成品已通过审核，交付尚未确认。继续时优先重传同一份成品。':'The reviewed PPTX is preserved. Resume to retry its delivery.'):data.recovery?.resumable||hasDraft?taskControlWords[locale].elsewhere:w[26]}</p></div>}
   {data.recovery&&<p className="fineprint">{w[18]} · {new Date(data.recovery.updatedAt).toLocaleTimeString(locale)}</p>}
-  {data.versions.length>0&&<details className="conversation-versions"><summary>{w[19]} ({data.versions.length})</summary><ul>{data.versions.map(v=><li key={v.id}><time>{new Date(v.created_at).toLocaleString(locale)}</time>{!!v.pptx&&<a href={`/api/jobs/${id}/versions/${v.id}`}>PPTX ↓</a>}{!!v.bundle&&<a href={`/api/jobs/${id}/versions/${v.id}?kind=bundle`}>{w[20]} ↓</a>}</li>)}</ul></details>}
+  {data.versions.length>0&&<details className="conversation-versions"><summary>{w[19]} ({data.versions.length})</summary><ul>{data.versions.map(v=><li key={v.id}><time>{new Date(v.created_at).toLocaleString(locale)}</time>{!!v.pptx&&<a href={`/api/jobs/${id}/versions/${v.id}`}>PPTX</a>}{!!v.bundle&&<a href={`/api/jobs/${id}/versions/${v.id}?kind=bundle`}>{w[20]}</a>}</li>)}</ul></details>}
  </section>;
 }

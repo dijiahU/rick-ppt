@@ -7,7 +7,7 @@ import type {PublicReview,ReviewPage} from '@/lib/review-results';
 
 export function ReviewStatus({progress,onOpen}:{progress:Progress|null;onOpen:()=>void}){
  const {locale}=useLanguage(),w=reviewWords[locale]||reviewWords.en;
- return <div className="review-status" aria-label={w.title}><div>{(['content','visual'] as const).map(kind=>{const state=progress?.reviews?.[kind]||'pending';return <span key={kind} data-state={state}><strong>{kind==='content'?w.contentEvidence:w.visual}</strong> · {w.states[state]}</span>;})}</div><button onClick={onOpen}>{w.open} →</button></div>;
+ return <div className="review-status" aria-label={w.title}><div>{(['content','visual'] as const).map(kind=>{const state=progress?.reviews?.[kind]||'pending';return <span key={kind} data-state={state}><strong>{kind==='content'?w.contentEvidence:w.visual}</strong> · {w.states[state]}</span>;})}</div><button onClick={onOpen}>{w.open}</button></div>;
 }
 
 export default function ReviewResults({id,status}:{id:string;status:string}){

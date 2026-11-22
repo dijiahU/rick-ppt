@@ -7,5 +7,5 @@ const words={
  ja:['進捗版 PPT をダウンロード','進捗版 · 最終確認前','ページ','保存日時','最後に正常に出力された版です。プレビューより古い場合があります。操作には実行環境が必要です。','正常に出力された進捗版はまだありません。']
 };
 export default function DraftDownload({draft,base,locale}:{draft:Draft|null;base:string;locale:keyof typeof words}){
- const w=words[locale];return <section className="room-brief" aria-label={w[1]}><strong>{w[1]}</strong>{draft?<><p><a className="download" href={`${base}/draft`}>{w[0]} ↓</a></p><p>{draft.pages} {w[2]} · {w[3]} {new Date(draft.saved_at).toLocaleString(locale)}</p><p className="fineprint">{w[4]}</p></>:<p className="fineprint">{w[5]}</p>}</section>;
+ const w=words[locale];return <section className="room-brief" aria-label={w[1]}><strong>{w[1]}</strong>{draft?<><p><a className="download" href={`${base}/draft`}>{w[0]}</a></p><p>{draft.pages} {w[2]} · {w[3]} {new Date(draft.saved_at).toLocaleString(locale)}</p><p className="fineprint">{w[4]}</p></>:<p className="fineprint">{w[5]}</p>}</section>;
 }
