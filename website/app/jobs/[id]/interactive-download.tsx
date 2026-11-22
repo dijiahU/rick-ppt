@@ -4,6 +4,8 @@ export default function InteractiveDownload({base,locale}:{base:string;locale:st
  const zh=locale==='zh-CN';
  const [available,setAvailable]=useState<boolean|null>(null),[error,setError]=useState(false),[retry,setRetry]=useState(0);
  useEffect(()=>{const c=new AbortController();setAvailable(null);setError(false);fetch(`${base}/bundle?info=1`,{cache:'no-store',signal:c.signal}).then(r=>{if(!r.ok)throw Error();return r.json();}).then(v=>setAvailable(!!v&&typeof v==='object'&&'available' in v&&v.available===true)).catch(()=>{if(!c.signal.aborted)setError(true);});return()=>c.abort();},[base,retry]);
+ // Most deliveries are a single PPTX; show this section only when a real bundle exists.
+ if(available!==true)return null;
  return <section className="room-brief" aria-label={zh?'交互演示下载与使用':'Interactive download and setup'}>
  <h2>{zh?'下载与使用交互演示':'Download and use the interactive presentation'}</h2>
  {error?<p role="alert">{zh?'暂时无法检查交互包。':'Unable to check the interactive package.'} <button onClick={()=>setRetry(n=>n+1)}>{zh?'重试':'Retry'}</button></p>:available===null?<p>{zh?'正在检查完整交互包…':'Checking the complete interactive package…'}</p>:!available?<p>{zh?'此交付没有可下载的交互 ZIP；仍可使用上方的 PPTX 下载。':'This delivery has no interactive ZIP. You can still download the PPTX above.'}</p>:<>

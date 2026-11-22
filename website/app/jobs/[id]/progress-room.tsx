@@ -12,6 +12,7 @@ import type {Attachment} from '@/lib/attachments';
 import PauseControl from './pause-control';
 import DraftDownload from './draft-download';
 import InteractiveDownload from './interactive-download';
+import DeliveryCard from './delivery-card';
 import type {Draft} from '@/lib/drafts';
 import CreationStory from '@/app/creation-story';
 import PreviewLink from '@/app/preview-link';
@@ -46,16 +47,18 @@ export default function ProgressRoom({id}:{id:string}){
  const visible=useMemo(()=>{const result=(events||[]).filter(e=>(filter==='all'||category(e)===filter)&&`${e.detail||''} ${e.url||''}`.toLowerCase().includes(query.toLowerCase()));return newest?result.slice().reverse():result;},[events,filter,query,newest]);
  const sources=useMemo(()=>{const map=new Map<string,{at:number;count:number}>();for(const e of events||[]){if(e.url){const prior=map.get(e.url);map.set(e.url,{at:e.at,count:(prior?.count||0)+1});}}return [...map];},[events]);
  const base=data?.scope==='admin'?`/api/admin/jobs/${id}`:`/api/jobs/${id}`;
+ const delivered=data?.status==='complete'&&!!data.download;
  const terminal=!!data&&['complete','failed','paused','delivery_pending'].includes(data.status);
  const rw=reviewWords[locale]||reviewWords.en;
  const reviewing=data?.status==='running'&&Object.values(data.progress?.reviews||{}).includes('reviewing');
  const label=(status:string)=>Object.hasOwn(t.statuses,status)?t.statuses[status as keyof typeof t.statuses]:t.unknownStatus;
  return <main className="progress-room"><header><a className="brand" href="/">rickppt</a><div><a href="/">← {w[0]}</a><LanguagePicker/></div></header>
- <p className="eyebrow">LIVE WORKSPACE / {w[1]}</p><h1>{data?.title||w[1]}</h1>
+ <h1>{data?.title||w[1]}</h1>
  {denied?<section className="room-empty"><p>{denied===401?w[23]:w[24]}</p>{denied===401&&<a href={`/signin-with-chatgpt?return_to=${encodeURIComponent('/jobs/'+id)}`}>{t.signin} →</a>}</section>:<>
- <div className="room-status"><span className={`status status-${data?.status||'queued'}`}>{data?(reviewing?rw.reviewing:data.download&&['queued','running'].includes(data.status)?(locale==='zh-CN'?'正在修改 · 原版可下载':'Editing · previous version available'):label(data.status)):t.loading}</span><span>{terminal?w[18]:w[17]}</span><button onClick={()=>setRefresh(n=>n+1)}>{w[33]}</button>{data&&(data.scope==='user'||data.canInspectExecution)&&<PauseControl id={id} status={data.status} updatedAt={data.updatedAt} pending={data.pausePending} hasDraft={!!data.draft} allowResume={data.scope==='user'} locale={locale} onChange={()=>setRefresh(n=>n+1)}/>} {data?.download&&<a className="download" href={`${base}/download`}>{w[35]} ↓</a>}</div>
+ <div className="room-status"><span className={`status status-${data?.status||'queued'}`}>{data?(reviewing?rw.reviewing:data.download&&['queued','running'].includes(data.status)?(locale==='zh-CN'?'正在修改 · 原版可下载':'Editing · previous version available'):label(data.status)):t.loading}</span>{!delivered&&<><span>{terminal?w[18]:w[17]}</span><button onClick={()=>setRefresh(n=>n+1)}>{w[33]}</button></>}{data&&!delivered&&(data.scope==='user'||data.canInspectExecution)&&<PauseControl id={id} status={data.status} updatedAt={data.updatedAt} pending={data.pausePending} hasDraft={!!data.draft} allowResume={data.scope==='user'} locale={locale} onChange={()=>setRefresh(n=>n+1)}/>} {data?.download&&!delivered&&<a className="download" href={`${base}/download`}>{w[35]}</a>}</div>
+ {delivered&&<DeliveryCard base={base} progress={data!.progress} locale={locale} onShowAll={()=>{setTab('previews');document.querySelector('.room-tabs')?.scrollIntoView({behavior:'smooth'});}}/>}
  {data?.download&&<InteractiveDownload base={base} locale={locale}/>}
- {data&&<DraftDownload draft={data.draft??null} base={base} locale={locale}/>}
+ {data&&!delivered&&<DraftDownload draft={data.draft??null} base={base} locale={locale}/>}
  {error&&<p className="error" role="alert">{w[19]}</p>}{data?.status==='running'&&Date.now()-data.updatedAt>120000&&<p className="error">{w[32]}</p>}
  {data?.queue&&<QueueStatus queue={data.queue} position={data.queuePosition} createdAt={data.createdAt}/>}
  {data?.canInspectExecution&&<p className="fineprint">{executionWords[locale].label}: {executionLabel(data.execution_backend,locale)}</p>}
