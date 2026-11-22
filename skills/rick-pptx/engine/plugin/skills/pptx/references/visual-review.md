@@ -34,8 +34,16 @@ native behavior. Do not request a redesign.
    reconstruct it from paragraphs? Are real images used where the subject is real?
    Would an authentic image, a generated illustration or a clearer native diagram
    carry the page better?
-   Every page should reach the craft of a good poster or magazine spread in its
-   register: a clear focal point, decided sizes and crops, placed open space. Name the
+   Every page needs a clear focal point, decided sizes and crops, and enough on the
+   page for this audience: a lesson, explainer or introduction that shows only a
+   headline and one picture on page after page is a density finding (what the audience
+   should learn there is missing). The same full image repeated on many pages is a
+   finding. Secondary text stacked as loose paragraphs in one default size, without
+   hierarchy, grouping or alignment to the picture, is a craft finding. A quiet or text-only
+   page that is one flat white field with small text (no second surface, display type,
+   recurring mark or strong grid) is undesigned, not minimal: name it as a finding. Check the
+   finishing details across the deck: pages without the deck's shared header, page meta,
+   mark or caption system look unfinished next to those that have them. Name the
    elements that look like defaults a generic AI deck would produce. Judge each page's
    first impression at stamp size before any detail: a page that reads as mostly empty,
    flat (everything the same weight) or without a focus is a main finding with a
@@ -106,7 +114,7 @@ old gap is resolved, partly resolved, unchanged or worse.
 When offered, give each rendered content page a three-second glance first.
 In `design_assessment.reading_order`, give its `page`, 1–3 `seen` phrases in
 actual eye order, a one-sentence `takeaway`, and `matches_point` (the point
-appears in the first two looks). Then compare any “阅读顺序” speaker note. If
+appears in the first two looks). Then compare the author's page-plan reading order when supplied. If
 `matches_point` is false and viewers struggle to grasp the message, add a
 `suggestion`. Use `required` only when the point is completely buried and the
 message is incomprehensible. Order preference alone never warrants `required`.
@@ -124,7 +132,13 @@ manufacture any). Each tell has:
   unrelated subject, every block in a tinted card, the same skeleton on every page, a
   tool's default chart palette, a stock pictogram set, pictograms hand-assembled from
   primitive shapes, a large generic icon as the main visual, implausibly tidy numbers,
-  one metaphor forced onto every page;
+  one metaphor forced onto every page, blank fill-in lines or empty form fields on a
+  presented page, the same label + headline + grey subtitle opener on every page,
+  near-identical images on cover and closing, abstract concept pages with no real
+  number, quote, person or object, a greyed sage / dusty teal / slate / cream palette
+  with no colour at real strength where contrast is needed, pale tinted cards used as
+  the default container on many pages, "pending/待补" slots where the user's own
+  figures should be labelled illustrative values;
 - `why_unjustified`: why this content and audience give no reason for it;
 - `direction`: what a designer making this for this audience would do instead;
 - `scope`: `page` or `deck`; and `finding_ids` for the findings that carry it.

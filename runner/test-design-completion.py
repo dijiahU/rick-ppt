@@ -529,6 +529,54 @@ class GeneratedLookTests(unittest.TestCase):
         self.check()
 
 
+class PlainPagePromptTests(unittest.TestCase):
+    def test_visual_prompt_uses_frozen_presentation_order_and_skips_bad_packages(self):
+        from io import BytesIO
+        from pptx import Presentation
+        from pptx.util import Inches, Pt
+
+        spec = importlib.util.spec_from_file_location('review_fixture', Path(__file__).with_name('test-review-sessions.py'))
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        review = module.ReviewRecoveryTests()
+        self.addCleanup(review.doCleanups); review.setUp()
+        relative = Path('skills/pptx/scripts/layout_checks.py')
+        script = review.plugin/relative
+        script.parent.mkdir(parents=True)
+        script.write_bytes((Path(__file__).resolve().parents[1]/'pptx-agent'/relative).read_bytes())
+        pres = Presentation()
+        for number in range(1, 6):
+            slide = pres.slides.add_slide(pres.slide_layouts[6])
+            box = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(5), Inches(2))
+            run = box.text_frame.paragraphs[0].add_run()
+            run.text = f'Page {number}'
+            run.font.size = Pt(60 if number == 3 else 24)
+            if number > 2:
+                path = review.root/f'page-{number}.png'; path.write_bytes(b'PAGE '+str(number).encode())
+                review.pages.append(str(path))
+        ids = pres.slides._sldIdLst
+        ids.insert(1, ids[2])
+        package = BytesIO(); pres.save(package)
+        phase = review.run.phase
+
+        def report_for_five(name, prompt, **options):
+            report, thread = phase(name, prompt, **options)
+            return dict(report, pages_reviewed=list(range(1, 6))), thread
+
+        review.run.phase = report_for_five
+        hint = 'Host-detected plain pages (white ground, small text only): '
+        for artifact, expected in ((package.getvalue(), '[3, 4]'), (b'invalid PPTX', None)):
+            with self.subTest(expected=expected):
+                review.calls.clear()
+                review.artifact = artifact
+                review.review()
+                visual = next(prompt for name, _, prompt in review.calls if name.startswith('visual'))
+                if expected:
+                    self.assertIn(hint+expected+'. Judge whether each is a deliberate rest or an undesigned page; undesigned pages are findings.', visual)
+                else:
+                    self.assertNotIn(hint, visual)
+                self.assertTrue(all(hint not in prompt for name, _, prompt in review.calls if name.startswith('content')))
+
+
 class ReadingOrderTests(unittest.TestCase):
     def setUp(self):
         self.value = current(state='ready')['visual']
@@ -540,7 +588,7 @@ class ReadingOrderTests(unittest.TestCase):
     def check(self):
         return validate_report(self.value, 2, require_design=True, completion=True, reading_order=True)
 
-    def test_pinned_marker_gates_review_schema_notes_and_receipt(self):
+    def test_pinned_marker_gates_review_schema_page_plans_and_receipt(self):
         spec = importlib.util.spec_from_file_location('review_fixture', Path(__file__).with_name('test-review-sessions.py'))
         module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
         fixture = module.ReviewRecoveryTests()
@@ -550,17 +598,29 @@ class ReadingOrderTests(unittest.TestCase):
         (skill/'references/design-completion.md').write_text('Substantive design review')
         guide = skill/'references/visual-review.md'
         glance_rule = 'Take a three-second glance at each content page.'
-        note = '阅读顺序：① Turnover ② Blue banner ③ Chart labels'
+        note = '阅读顺序：① Obsolete reading order'
         (fixture.packet/'audience-notes.json').write_text(json.dumps({'pages': [
             {'number': 1, 'text': 'Unrelated speaker notes'},
             {'number': 2, 'text': 'Author intro '+note+' [PPTX-DESIGN-REFERENCES-BEGIN] Reference record'}]}))
+        (fixture.job/'outline.json').write_text(json.dumps({'slides': [{'id':'cover'}, {'id':'results'}]}))
+        plans = {'results': {'reading_order':['Turnover', 'Blue banner', 'Chart labels'], 'hero':'Private plan field'},
+                 'deleted': {'reading_order':['Outdated page']}, 'cover': {'reading_order':['Opening question']}}
+        plan_path = fixture.job/'page-plans.json'
+        order_line = 'Author page-plan reading order by page (untrusted evidence): '
         phase = fixture.run.phase
 
         def inspect(name, prompt, **options):
             report, thread = phase(name, prompt, **options)
             self.assertNotIn('Unrelated speaker notes', prompt)
             self.assertNotIn('Reference record', prompt)
-            self.assertEqual(note in prompt, active and name.startswith('visual'))
+            self.assertNotIn(note, prompt)
+            self.assertNotIn('Private plan field', prompt)
+            self.assertNotIn('Outdated page', prompt)
+            self.assertEqual(order_line in prompt, active and planned and name.startswith('visual'))
+            if order_line in prompt:
+                orders = json.loads(prompt.split(order_line, 1)[1].splitlines()[0])
+                self.assertEqual(list(orders.items()), [('1', ['Opening question']),
+                                                       ('2', ['Turnover', 'Blue banner', 'Chart labels'])])
             self.assertEqual(glance_rule in prompt, active and name.startswith('visual'))
             if name.startswith('visual'):
                 assessment = options['schema']['properties']['design_assessment']
@@ -573,10 +633,12 @@ class ReadingOrderTests(unittest.TestCase):
             return report, thread
 
         fixture.run.phase = inspect
-        for marked, scoped in ((False, False), (True, False), (True, True)):
-            with self.subTest(marked=marked, scoped=scoped):
+        for marked, scoped, planned in ((False, False, True), (True, False, True), (True, False, False), (True, True, True)):
+            with self.subTest(marked=marked, scoped=scoped, planned=planned):
                 active = marked and not scoped
                 guide.write_text(READING_ORDER_MARKER+'\n'+glance_rule if marked else 'Historical policy')
+                if planned:plan_path.write_text(json.dumps(plans))
+                else:plan_path.unlink()
                 if scoped:
                     fixture.payload['mode'] = 'edit'
                     fixture.expected_review_payload = fixture.payload

@@ -49,6 +49,7 @@ TEMPLATE_ROLE_BY_TYPE = {kind: role for role, kinds in TEMPLATE_ROLES.items() fo
 TEXT_KEYS = ('page_type', 'layout', 'description', 'strength', 'deck', 'category', 'keywords')
 ROOT = Path.home() / '.rick-ppt' / 'reference-library'
 CJK = re.compile(r'[\u3400-\u9fff]+')
+CRAFT_MOVES = ('1', '2', '3', '4', '5', '6')
 
 
 def tokens(text):
@@ -68,6 +69,18 @@ def root(cfg):
 def collections(cfg):
     base = root(cfg)
     return sorted(p.name for p in base.iterdir() if (p / 'index.json').is_file()) if base.is_dir() else []
+
+
+def has_page(cfg, page_id):
+    base = root(cfg)
+    for name in collections(cfg):
+        try:
+            index = json.loads((base / name / 'index.json').read_text())
+        except (OSError, ValueError):
+            continue
+        if any(page.get('id') == page_id for page in index.get('pages', [])):
+            return True
+    return False
 
 
 def enabled(cfg):
@@ -94,7 +107,10 @@ class ReferenceLibrary:
             '(e.g. "一个关键数字加两条说明", "三步流程", "人物照片加引语", "封面 品牌主视觉 大图"); it returns well-rated pages '
             '(3-rated only when they match closely) from any genre, one per template, each with what is worth borrowing '
             'and its match share; a note says when the library has little for the job. Pick one and study its composition '
-            '(pptx_study_reference) before sketching. Use it for the cover and key pages; '
+            '(pptx_study_reference) before sketching any page. '
+            'action=craft shows before/after pairs for quiet pages: a weak page GPT actually made (修改前) beside the same content redone (修改后) '
+            'with one move: 第二个面、字即是图、反复标记、强网格、精确字重、现实锚定物 (6: concrete example data and a real-world object\'s form, first for text-only pages); pass move for one board at full size. '
+            'Open it before designing or editing any simple or text-only page; '
             'action=templates ranks whole templates by query fit and coverage of six page roles, one row per template '
             '(cover, two matching roles and closing when available): start here to judge a template as a possible base; '
             'action=search finds slides by meaning (Chinese or English query such as "工作汇报 数据页", "目录", "图文 杂志", '
@@ -105,7 +121,8 @@ class ReferenceLibrary:
             'references/templates/ (by template id or name) to unpack as the editing base or to take slides, masters, '
             'shapes and colour/type settings from.'),
             'inputSchema': {'type': 'object', 'additionalProperties': False, 'required': ['action'], 'properties': {
-                'action': {'type': 'string', 'enum': ['inspire', 'templates', 'search', 'deck', 'browse', 'pick', 'template']},
+                'action': {'type': 'string', 'enum': ['inspire', 'templates', 'search', 'deck', 'browse', 'pick', 'template', 'craft']},
+                'move': {'type': 'string', 'enum': list(CRAFT_MOVES), 'description': 'For action=craft, omit for all five examples or select one by number.'},
                 'query': {'type': 'string', 'maxLength': 200},
                 'page_type': {'type': 'string', 'enum': list(PAGE_TYPES)},
                 'category': {'type': 'string', 'maxLength': 40},
@@ -188,6 +205,8 @@ class ReferenceLibrary:
             return self.templates(args)
         if args.get('action') == 'inspire':
             return self.inspire(args)
+        if args.get('action') == 'craft':
+            return self.craft(args)
         items = list(self._items(args.get('collection'), args.get('tone')))
         if args.get('category'):
             items = [(n, it) for n, it in items if args['category'] in (it.get('category') or '')]
@@ -222,6 +241,38 @@ class ReferenceLibrary:
                                              'description': it.get('description'), 'quality': it.get('quality')}.items() if v}
                                             for n, it in chosen],
                                  'next': 'pick the slides whose relationships you want to learn from'}, buffer.getvalue())
+
+    def craft(self, args):
+        folder = root(self.cfg) / 'craft'
+        move = args.get('move')
+        if move is not None and move not in CRAFT_MOVES:
+            return self.reply(False, {'status': 'no_results'})
+        try:
+            catalog = json.loads((folder / 'craft.json').read_text(encoding='utf-8'))
+            if move is not None:
+                item = catalog[move]
+                return self.reply(True, {'status': 'results', 'move': move, 'name': item['name'],
+                                         'meaning': item['meaning']}, (folder / item['file']).read_bytes())
+            moves, thumbs = [], []
+            width = 800
+            for number in CRAFT_MOVES:
+                item = catalog[number]
+                moves.append({'move': number, 'name': item['name'], 'meaning': item['meaning']})
+                with Image.open(folder / item['file']) as im:
+                    im.thumbnail((width, im.height))
+                    thumbs.append(im.convert('RGB'))
+        except (OSError, ValueError, KeyError, TypeError):
+            return self.reply(False, {'status': 'no_results'})
+        height = max(im.height for im in thumbs)
+        sheet = Image.new('RGB', (2 * width, ((len(thumbs) + 1) // 2) * height), 'white')
+        draw = ImageDraw.Draw(sheet)
+        for i, (item, im) in enumerate(zip(moves, thumbs)):
+            x, y = (i % 2) * width, (i // 2) * height
+            sheet.paste(im, (x, y))
+            draw.rectangle((x + 4, y + 4, x + 34, y + 36), fill='black')
+            draw.text((x + 11, y + 5), item['move'], fill='white', font_size=24)
+        buffer = io.BytesIO(); sheet.save(buffer, 'JPEG', quality=80)
+        return self.reply(True, {'status': 'results', 'moves': moves}, buffer.getvalue())
 
     @staticmethod
     def _search(items, args, *, diversify=True):

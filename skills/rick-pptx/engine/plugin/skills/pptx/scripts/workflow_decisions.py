@@ -55,7 +55,7 @@ def plan_template(outline):
 
 
 def page_reference_ids(plan, page):
-    """v4 records applications once; page IDs and note contents are derived."""
+    """v4 derives page reference IDs from the registered applications."""
     if plan.get('version') == 4:
         return [entry['id'] for entry in plan['references']
                 if any(page['id'] in app['pages'] for app in entry['applications'])]
@@ -167,10 +167,6 @@ def _references(plan, expected, root, catalog):
     if plan.get('version') == 3 and plan['task']['references']=='targeted_search' and not entries:
         raise ValueError('Executed reference search must record inspected works or honest failed access')
     return lookup
-
-
-def reference_application(entry, page_id):
-    return next(app['action'] for app in entry['applications'] if page_id in app['pages'])
 
 
 def design_report(plan, artifact):
@@ -436,11 +432,6 @@ def validate_plan(plan, outline, *, stage='planning', root=None, artifact=None,
         for ident in ids:
             if ident not in references or page['id'] not in references[ident][1]:
                 raise ValueError('Page reference lacks an inspected work and matching application: ' + page['id'])
-            if evidence is not None:
-                entry = references[ident][0]; notes = ' '.join(evidence[index]['notes'].split())
-                for value in (ident, entry['title'], entry['creator'], entry['source'], entry['observed'], entry['borrowed'], reference_application(entry, page['id'])):
-                    if ' '.join(value.split()) not in notes:
-                        raise ValueError('Final slide notes must record artwork, creator, source, observation, borrowed principle and application: ' + page['id'])
         support = page.get('support', [])
         if not free_design:
             if page['form'] not in catalog['eligible_forms'][page['intent']]:

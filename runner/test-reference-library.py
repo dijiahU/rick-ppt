@@ -1,4 +1,6 @@
 """Offline: library browse filters, contact sheet, pick copies into the task."""
+import base64
+import io
 import json
 import tempfile
 import unittest
@@ -30,6 +32,63 @@ class Tests(unittest.TestCase):
         self.assertTrue(rl.enabled(self.cfg))
         self.assertFalse(rl.enabled({'reference_library_root': '/nonexistent'}))
         self.assertFalse(rl.enabled({**self.cfg, 'reference_library': False}))
+
+    def craft_catalog(self):
+        folder = rl.root(self.cfg) / 'craft'; folder.mkdir()
+        catalog = {}
+        for number in '123456':
+            file = f'极简手法-{number}.jpg'
+            catalog[number] = {'name': f'手法 {number}', 'meaning': f'说明 {number}', 'file': file}
+            Image.new('RGB', (640, 360), 'gold').save(folder / file)
+        (folder / 'craft.json').write_text(json.dumps(catalog, ensure_ascii=False), encoding='utf-8')
+        return folder, catalog
+
+    def test_craft_returns_selected_example_and_logs_call(self):
+        folder, catalog = self.craft_catalog()
+        props = self.tool.specs()[0]['inputSchema']['properties']
+        self.assertIn('craft', props['action']['enum'])
+        self.assertEqual(props['move']['enum'], list('123456'))
+        reply = self.tool.handle({'arguments': {'action': 'craft', 'move': '3'}})
+        self.assertTrue(reply['success'])
+        self.assertEqual(json.loads(reply['contentItems'][0]['text']),
+                         {'status': 'results', 'move': '3', 'name': '手法 3', 'meaning': '说明 3'})
+        image_url = reply['contentItems'][1]['imageUrl']
+        self.assertTrue(image_url.startswith('data:image/jpeg;base64,'))
+        self.assertEqual(base64.b64decode(image_url.split(',', 1)[1]), (folder / catalog['3']['file']).read_bytes())
+        log = json.loads((folder.parent / 'search-log.jsonl').read_text())
+        self.assertEqual((log['action'], log['move'], log['success']), ('craft', '3', True))
+        invalid = self.tool.handle({'arguments': {'action': 'craft', 'move': '7'}})
+        self.assertFalse(invalid['success'])
+
+    def test_craft_returns_five_examples_in_a_numbered_two_column_sheet(self):
+        self.craft_catalog()
+        reply = self.tool.handle({'arguments': {'action': 'craft'}})
+        self.assertTrue(reply['success'])
+        value = json.loads(reply['contentItems'][0]['text'])
+        self.assertEqual(value['moves'], [{'move': n, 'name': f'手法 {n}', 'meaning': f'说明 {n}'} for n in '123456'])
+        with Image.open(io.BytesIO(base64.b64decode(reply['contentItems'][1]['imageUrl'].split(',', 1)[1]))) as sheet:
+            self.assertEqual(sheet.size, (1600, 1080))
+            for i in range(6):
+                x, y = (i % 2) * 800, (i // 2) * 360
+                self.assertLess(max(sheet.getpixel((x + 8, y + 8))), 40)
+                self.assertLess(sheet.getpixel((x + 320, y + 180))[2], 40)
+            self.assertGreater(min(sheet.getpixel((1520, 900))), 240)
+
+    def test_craft_returns_no_results_without_directory_or_catalog(self):
+        folder = rl.root(self.cfg) / 'craft'
+        for directory_exists in (False, True):
+            with self.subTest(directory_exists=directory_exists):
+                if directory_exists:
+                    folder.mkdir()
+                reply = self.tool.handle({'arguments': {'action': 'craft'}})
+                self.assertFalse(reply['success'])
+                self.assertEqual(json.loads(reply['contentItems'][0]['text']), {'status': 'no_results'})
+                self.assertEqual(len(reply['contentItems']), 1)
+
+    def test_collections_ignores_craft_without_an_index(self):
+        self.craft_catalog()
+        self.assertEqual(rl.collections(self.cfg), ['demo'])
+        self.assertEqual(list(rl.ReferenceLibrary(self.cfg, self.job).indexes), ['demo'])
 
     def test_browse_filters_by_tone_and_returns_a_sheet(self):
         reply = self.tool.handle({'arguments': {'action': 'browse', 'tone': 'light', 'count': 6}})

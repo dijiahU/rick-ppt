@@ -70,6 +70,39 @@ def line(name, x, y, cx):
             f'<a:ext cx="{cx}" cy="1"/></a:xfrm><a:prstGeom prst="line"><a:avLst/></a:prstGeom></p:spPr></p:cxnSp>')
 
 
+def test_plain_page_allows_a_full_background_thin_line_and_small_text():
+    rule = rect('Diagonal line', 0, 0, SIZE[0], SIZE[1]).replace('prst="rect"', 'prst="line"')
+    assert lc.plain_page(slide(rect('Ground', 0, 0, *SIZE, 'FFFFFF'), rule,
+                               sp('Title', 0, 0, 7000000, 700000, '小字标题', sz=5999)), SIZE, 'FFFFFF')
+
+
+def test_plain_page_uses_six_percent_of_visible_area_and_any_solid_fill_color():
+    width, height = SIZE
+    block_width = width * 6 // 100
+    assert lc.plain_page(slide(rect('Small', 0, 0, block_width - 1, height)), SIZE, 'FFFFFF')
+    for fill in ('FFFFFF', '102030'):
+        assert not lc.plain_page(slide(rect('Second surface', 0, 0, block_width, height, fill)), SIZE, 'FFFFFF')
+    assert not lc.plain_page(slide(rect('Theme color', 0, 0, block_width, height).replace(
+        '<a:srgbClr val="DCE4D7"/>', '<a:schemeClr val="accent1"/>')), SIZE, 'FFFFFF')
+
+
+def test_plain_page_rejects_picture_objects_and_picture_fills():
+    fill = '<a:blipFill><a:blip/></a:blipFill>'
+    assert not lc.plain_page(slide('<p:pic/>'), SIZE, 'FFFFFF')
+    assert not lc.plain_page(slide(f'<p:sp><p:spPr>{fill}</p:spPr></p:sp>'), SIZE, 'FFFFFF')
+    assert not lc.plain_page(slide(f'<p:bg><p:bgPr>{fill}</p:bgPr></p:bg>'), SIZE, None)
+
+
+def test_plain_page_requires_visible_text_at_display_size():
+    text = sp('Number', 0, 0, 3000000, 900000, '23', sz=6000)
+    assert not lc.plain_page(slide(text), SIZE, 'FFFFFF')
+    default = '<a:pPr><a:defRPr sz="6100"/></a:pPr>'
+    inherited = text.replace('<a:p>', '<a:p>' + default).replace('<a:rPr sz="6000"/>', '')
+    assert not lc.plain_page(slide(inherited), SIZE, 'FFFFFF')
+    smaller = text.replace('<a:p>', '<a:p>' + default).replace('sz="6000"', 'sz="2400"')
+    assert lc.plain_page(slide(smaller), SIZE, 'FFFFFF')
+
+
 def test_line_through_text_and_text_across_a_surface_edge():
     label = sp('地名', 2000000, 1000000, 2000000, 800000, '喀什绿洲')
     assert 'line_crosses_text' in kinds(label, line('路线', 0, 1400000, 6000000))
@@ -141,3 +174,26 @@ def test_candidate_save_cream_exemption_only_from_template_grounds(tmp_path):
     (tmp_path / 'references/templates').mkdir(parents=True)
     deck(tmp_path / 'references/templates/t1.pptx', 'FAF5EA')
     assert 'FAF5EA' in cs.template_grounds(tmp_path)
+
+
+def test_surface_audit_finds_cream_panels_tinted_cards_and_muted_palette(tmp_path):
+    import zipfile as _zip
+    from pptx import Presentation as _P
+    from pptx.dml.color import RGBColor
+    from pptx.util import Inches as _I
+    from layout_checks import surface_audit
+    prs = _P()
+    for fills in (['FFFCF5'], ['E4EBE1', 'E4EBE1', 'E4EBE1'], ['A8B9A8'], ['C0392B']):
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        for i, fill in enumerate(fills):
+            box = slide.shapes.add_shape(1, _I(0.5 + i * 3), _I(1), _I(2.8), _I(3))
+            box.fill.solid(); box.fill.fore_color.rgb = RGBColor.from_string(fill)
+            box.text_frame.text = 'card text'
+    path = tmp_path / 'deck.pptx'
+    prs.save(path)
+    with _zip.ZipFile(path) as archive:
+        audit = surface_audit(archive)
+    assert [(n, c) for n, c, _ in audit['cream_surfaces']] == [(1, 'FFFCF5')]
+    assert audit['card_pages'] == {1: 1, 2: 3}
+    assert audit['muted_colours'][:2] == ['E4EBE1', 'A8B9A8']
+    assert 0.5 < audit['muted_cool_share'] < 1

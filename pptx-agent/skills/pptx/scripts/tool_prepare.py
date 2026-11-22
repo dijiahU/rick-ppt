@@ -153,7 +153,11 @@ def prepare_tool_manifest(task_root, *, python=None, workspace=None):
             source = root / relative
             if source.is_symlink() or not source.resolve(strict=True).is_relative_to(root):
                 raise ValueError('Reference path escaped the task')
-            attachments.append({k: entry[k] for k in ('name', 'path', 'size', 'sha256') if k in entry})
+            item = {k: entry[k] for k in ('name', 'path', 'size', 'sha256') if k in entry}
+            if relative.lower().endswith('.xlsx'):
+                item['read_command'] = [interpreter, str(SCRIPTS / 'read_workbook.py'), relative,
+                                        '--out', 'tables/' + Path(relative).stem]
+            attachments.append(item)
     parts_arg = parts_dir or 'PARTS_DIR_FROM_UNPACK'
     cli = str(SCRIPTS / 'pptx.py')
     commands = {

@@ -110,8 +110,19 @@ class AttachmentsTests(unittest.TestCase):
         for extra in [[('../escape',b'x')],[('word/vbaProject.bin',b'x')],[('word/embeddings/ole.bin',b'x')]]:
             with self.assertRaises(ValueError):validate_content(self.archive(extra),'docx')
         with self.assertRaises(ValueError):validate_content(self.archive([]),'pptx')
+    def test_workbook_validation(self):
+        def book(extra=()):
+            out=io.BytesIO()
+            with zipfile.ZipFile(out,'w') as z:
+                z.writestr('[Content_Types].xml','t');z.writestr('xl/workbook.xml','t')
+                for name,data in extra:z.writestr(name,data)
+            return out.getvalue()
+        validate_content(book(),'xlsx')
+        for extra in [[('xl/vbaProject.bin',b'x')],[('xl/embeddings/ole.bin',b'x')]]:
+            with self.assertRaises(ValueError):validate_content(book(extra),'xlsx')
+        with self.assertRaises(ValueError):validate_content(self.archive([]),'xlsx')
     def test_signatures(self):
-        for ext in ['pdf','png','jpg','docx']:
+        for ext in ['pdf','png','jpg','docx','xlsx']:
             with self.assertRaises((ValueError,zipfile.BadZipFile,UnidentifiedImageError)):validate_content(b'fake',ext)
         with self.assertRaises(ValueError):validate_content(b'bad\0text','txt')
     def test_image_dimensions(self):

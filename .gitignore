@@ -55,3 +55,6 @@ coverage/
 !pptx-agent/runtime/tests/**
 **/__pycache__/
 *.py[cod]
+
+# Local finished decks and licensed material (never published)
+成品/

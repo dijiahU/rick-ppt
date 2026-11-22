@@ -18,7 +18,8 @@ audience must read four things at once and decide the order themselves.
   where the word "听觉" is the hero. With one page: three clicks on the same page.
 - Hero: step 1 the portrait, step 2 the bat, step 3 "听觉" set very large.
 - Reading order: ① who ② what was tested ③ the answer.
-- Cut: the paragraph; the speaker tells the story.
+- Cut: the long paragraph; the page keeps the year, the experiment in one line and
+  the result, and the speaker's script tells the story around them.
 - Visual idea: the answer arrives last and largest, like a reveal.
 - Rejected: everything on one page with a caption under each picture: no order, the
   answer is the smallest text.
@@ -138,3 +139,55 @@ A date, a project and two roles share nothing; the graphic told a false story.
   put the date in the shared headline area; or build the convergence of example 7.
 - Rule learned: when no template page carries the relationship, mark the page `new`
   and build it.
+
+## 9. A text-only page made quiet but designed (book talk)
+
+Content: four questions that organise the book: cognitive, agricultural, unification
+and scientific revolutions, each with a date and a question.
+
+Plain version: white page, title, a thin rule, and four rows of small grey text in
+two columns. Nothing on the page belongs to this deck; it could sit in any report.
+
+- Takeaway: four turning points, four questions; the talk follows them in order.
+- Move chosen: type as image plus a second surface. A dark column takes the left
+  third; in it the four dates stack in large light numerals ("7万", "1.2万", "5000",
+  "500") on a shared baseline grid. On the white two thirds, each question hangs from
+  the same top line as its date, set at reading size.
+- Mark: the coin's stamp circle (the deck's opening image) marks the current part and
+  repeats as the page number.
+- Rejected: four equal cards with icons: busy, and the dates lose their weight.
+
+## 10. A question page that is quiet but not empty (book talk)
+
+Content: "How do we know whether ancient people were happy?" with two kinds of
+evidence (skeletons and burden of work; granary records) and an open question.
+
+Plain version: title at top left, two short text rows, a dark bar with the open
+question, the rest of the page empty white.
+
+- Takeaway: evidence tells us about work and food, not about feeling.
+- Move chosen: type as image. The single character "乐" (or a huge question mark)
+  fills the right half in a pale warm grey, cropped by the right edge. The two evidence
+  lines sit on the left grid with a small label each; the open question is set large
+  against the bottom margin in the accent colour.
+- Second surface: a soft grey block under the two evidence lines groups them.
+- Rejected: a stock photo of a smiling villager: it fakes evidence the page says we lack.
+
+## 11. Anchor an abstract page in a real thing (brand introduction)
+
+Content: how a café works out bean cost per cup: bag price ÷ net weight × dose, and
+after a month, beans used ÷ cups sold.
+
+Plain version: headline, grey subtitle, two formula rows with a blank underline in
+every slot, the second row on a beige band. Nothing on the page is a number; it looks
+like an empty form and could sit in any deck. This is the average.
+
+- Anchor: labelled example data. 一袋 180 元、1000 克、单杯 18 克 → 3.24 元/杯；营业一个
+  月后 5,400 元 ÷ 1,500 杯 → 3.60 元/杯. The 0.36 元 gap is the grinding and test-cup
+  loss, which the plain page hid in a footnote.
+- Form: in a café, cost lives on a receipt. A narrow paper slip, slightly turned,
+  dashed rules between sections, label left and amount right, line by line.
+- Average rejected: "标题加两行公式和填空线".
+- Hero: "3.24 元/杯" very large on the left; "3.60" in the accent below with one line
+  explaining the 0.36 元; the receipt carries the working on the right.
+- Result: no picture, no card, no blank, and the page is specific to this content.

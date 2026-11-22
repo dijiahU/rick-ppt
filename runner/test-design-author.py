@@ -246,6 +246,22 @@ class FeedbackTests(unittest.TestCase):
    else:(run.job/name).write_bytes(data)
   (run.job/'delivery.json').write_text(json.dumps({'path':'restored.pptx'}))
   return ['restored.pptx','delivery.json']
+ def test_author_prompt_keeps_design_records_out_of_speaker_notes(self):
+  self.run.reusable_author=lambda:False
+  self.run.reusable=lambda stage:stage=='research'
+  (self.job/'decision-plan.json').write_text('{}')
+  scripts=self.plugin/'skills/pptx/scripts';scripts.mkdir();(scripts/'candidate_save.py').touch()
+  self.run.phase=Mock(side_effect=RuntimeError('Captured author prompt'))
+  for version,mode in ((3,'create'),(4,'create'),(4,'edit')):
+   with self.subTest(version=version,mode=mode), patch('workflow.choice_policy',return_value=SimpleNamespace(
+           load_catalog=lambda:{'version':version})), patch('workflow.check_decisions'):
+    with self.assertRaisesRegex(RuntimeError,'Captured author prompt'):
+     _run_workflow(self.run,SimpleNamespace(),self.cfg,self.task,self.job,{'mode':mode},SimpleNamespace(check=lambda:None),self.reporter)
+    name,prompt=self.run.phase.call_args.args
+    self.assertEqual(name,'author')
+    self.assertEqual('Write only words the speaker will say' in prompt,mode=='create')
+    self.assertEqual('write delivery.json with scripts/candidate_save.py' in prompt,mode=='create')
+    self.assertNotIn('design_references.py --workspace',prompt)
  def test_host_marks_only_first_full_review_and_preserves_optional_severity(self):
   v=mark_response(self.cfg,receipt(b'x'),scoped=False);self.assertTrue(optional_response(v));self.assertTrue(_findings_valid(v,1,v['artifact_sha256']))
   self.assertEqual(v['visual']['findings'][0]['severity'],'suggestion')

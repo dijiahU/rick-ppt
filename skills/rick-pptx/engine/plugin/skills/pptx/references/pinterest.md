@@ -60,7 +60,7 @@ Reuse the existing `decision-plan.json` reference register: `id`, `kind`, `title
 `applications[].pages/action` (see workflow-branches.md for the full schema).
 For an inspected local image, `inspection="local_image"` and `evidence` points
 to that task-local file. Record Pin-only attribution and an unvisited original
-source honestly in notes; a Pinterest account name is not proof of authorship.
+source honestly in source-notes.md; a Pinterest account name is not proof of authorship.
 Unavailable pictures stay unavailable, with no invented observations/application.
 
 Before committing a dependent page composition, call the exposed

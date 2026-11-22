@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 from PIL import Image
 from design_inputs import PageDesignInputs, TOOL
+import design_inputs
 from durable import AppServer, TransportError
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,7 +28,10 @@ class Tests(unittest.TestCase):
     def setUp(self):
         temp = tempfile.TemporaryDirectory(); self.addCleanup(temp.cleanup)
         self.root = Path(temp.name).resolve(); self.job = self.root/'task'; self.job.mkdir()
-        self.cfg = {'python':sys.executable, 'plugin':str(ROOT/'pptx-agent')}
+        library = self.root/'library'
+        templates = library/'templates'; templates.mkdir(parents=True)
+        (templates/'index.json').write_text(json.dumps({'pages':[{'id':'t4d1de641-03'}]}))
+        self.cfg = {'python':sys.executable, 'plugin':str(ROOT/'pptx-agent'), 'reference_library_root':str(library)}
         self.inputs = PageDesignInputs(self.cfg, self.job)
         (self.job/'outline.json').write_text(json.dumps({'slides':[
             {'id':'first','title':'Actual image','summary':'Keep the actual evidence and qualification.'},
@@ -69,11 +73,11 @@ class Tests(unittest.TestCase):
             return server.request('test/approval',{'method':'item/tool/call','params':params})
 
     def key_plan(self, **overrides):
-        return {'page_id':'first', 'action':'page_plan', 'kind':'key',
+        return {'page_id':'first', 'action':'page_plan', 'kind':'key', 'reference':'t4d1de641-03',
                 'takeaway':'注册转化率升至 4.6%', 'relationship':'比较缩减前后的注册流程', 'steps':'先看结果，再看原因',
                 'hero':'4.6% 占画面约 40%', 'reading_order':['4.6%', '缩短的流程', '省掉的步骤'], 'cut':'删掉注册术语',
                 'visual_idea':'让缩短的注册流程直接指向 4.6% 的终点数字',
-                'rejected':'用表格排列步骤会让读者来回寻找被删掉的步骤', **overrides}
+                'rejected':'用表格排列步骤会让读者来回寻找被删掉的步骤', 'anchor':'示例：注册由 4 步减到 2 步，转化 3.1% 到 4.6%', 'form':'手机注册页截图的步骤条', 'average':'标题加两列上线前后对照表', **overrides}
 
     def deck_plan(self, **overrides):
         return {'action':'deck_plan', 'occasion':'婚宴开场，宴会厅大屏', 'audience':'来赴宴的亲友',
@@ -157,7 +161,7 @@ class Tests(unittest.TestCase):
         self.assertFalse(ok); self.assertEqual(result['status'], 'invalid')
         self.assertIn('先用 action=deck_plan 提交整套场合与观众单', result['issues'])
         self.assertFalse((self.job/'page-plans.json').exists())
-        ok, result = self.submit(self.key_plan(kind='ordinary'))
+        ok, result = self.submit(self.key_plan(kind='ordinary', device='左侧铺灰色带'))
         self.assertTrue(ok); self.assertEqual(result['status'], 'accepted')
         self.assertNotIn('deck_plan', result)
 
@@ -167,13 +171,13 @@ class Tests(unittest.TestCase):
         args = self.key_plan()
         ok, result = self.submit(args, wire=True)
         self.assertTrue(ok); self.assertEqual(result['status'], 'accepted')
-        self.assertEqual(result['reading_order_note'], '阅读顺序：① 4.6% ② 缩短的流程 ③ 省掉的步骤')
-        self.assertIn('原样写进该页的讲稿备注', result['instruction'])
+        self.assertNotIn('reading_order_note', result)
+        self.assertEqual(result['instruction'], '阅读顺序已保存在设计单里，备注只写演讲稿。')
         self.assertEqual(result['deck_plan'], {k:deck[k] for k in ('feeling', 'expectations')})
         path = self.job/'page-plans.json'
         self.assertEqual(json.loads(path.read_text()),
                          {'first':{k:v for k,v in args.items() if k not in ('action', 'page_id')}})
-        self.assertEqual(self.submit(self.key_plan(page_id='later', kind='ordinary'))[1]['deck_plan'], result['deck_plan'])
+        self.assertEqual(self.submit(self.key_plan(page_id='later', kind='ordinary', device='左侧铺灰色带'))[1]['deck_plan'], result['deck_plan'])
         self.assertTrue(self.submit(self.key_plan(page_id='later'))[0])
         self.assertTrue(self.submit(self.key_plan(cut='删去重复标签'))[0])
         saved = json.loads(path.read_text())
@@ -225,15 +229,84 @@ class Tests(unittest.TestCase):
         self.assertTrue(self.submit(self.key_plan(takeaway='课程注册', hero='40% 画幅给最大的数字 4.6%',
                                                  visual_idea='最后只点亮 4.6% 让终点数字从灰色路径中跳出来'))[0])
 
-    def test_ordinary_plan_checks_only_three_fields(self):
-        args = {'page_id':'first', 'action':'page_plan', 'kind':'ordinary',
-                'takeaway':'注册变快', 'relationship':'对照', 'reading_order':['注册结果']}
-        ok, result = self.submit(args)
-        self.assertTrue(ok); self.assertEqual(result['reading_order_note'], '阅读顺序：① 注册结果')
+    def test_ordinary_plan_requires_and_saves_a_quiet_system_device(self):
+        args = {'page_id':'first', 'action':'page_plan', 'kind':'ordinary', 'reference':'craft-3',
+                'takeaway':'注册变快', 'relationship':'对照', 'reading_order':['注册结果'], 'anchor':'示例：注册由 4 步减到 2 步，转化 3.1% 到 4.6%', 'form':'手机注册页截图的步骤条', 'average':'标题加两列上线前后对照表'}
+        for invalid in (args, {**args, 'device':'  红点。 '}, {**args, 'device':1234}):
+            with self.subTest(device=invalid.get('device')):
+                ok, result = self.submit(invalid, wire=True)
+                self.assertFalse(ok)
+                self.assertEqual(result['issues'], ['普通页也要写本页的设计手段（来自 quiet_system 的第二个面、展示字或标记）'])
+        self.assertFalse((self.job/'page-plans.json').exists())
+        self.assertIn('device', self.inputs.specs()[0]['inputSchema']['properties'])
+        args['device'] = '  页码左边加红点  '
+        ok, result = self.submit(args, wire=True)
+        self.assertTrue(ok)
+        self.assertEqual(result, {'status': 'accepted', 'instruction': '阅读顺序已保存在设计单里，备注只写演讲稿。'})
+        saved = json.loads((self.job/'page-plans.json').read_text())['first']
+        self.assertEqual(saved['reading_order'], ['注册结果'])
+        self.assertEqual(saved['device'], '页码左边加红点')
+        self.assertEqual(saved['reference'], 'craft-3')
         self.assertTrue(self.submit({**args, 'hero':'流程', 'visual_idea':'留白', 'rejected':'不用'})[0])
         ok, result = self.submit({**args, 'takeaway':' ', 'relationship':'', 'reading_order':[' ']})
         self.assertFalse(ok)
         self.assertEqual({issue.split()[0] for issue in result['issues']}, {'takeaway', 'relationship', 'reading_order'})
+
+    def test_both_page_plan_kinds_require_a_real_page_id_or_craft_move(self):
+        self.assertTrue(self.submit(self.deck_plan())[0])
+        self.assertIn('reference', self.inputs.specs()[0]['inputSchema']['properties'])
+        path = self.job/'page-plans.json'
+        message = '每页设计前先参考：用 pptx_reference_library action=inspire / search 找一张模板页（填它的 id），或用 action=craft 看工艺示例（填 craft-N）'
+        for plan in (self.key_plan(), self.key_plan(kind='ordinary', device='左侧铺灰色带')):
+            for reference in ('t4d1de641-03', 'craft-5'):
+                with self.subTest(kind=plan['kind'], reference=reference):
+                    self.assertTrue(self.submit({**plan, 'reference':reference})[0])
+                    self.assertEqual(json.loads(path.read_text())['first']['reference'], reference)
+            before = path.read_bytes()
+            del plan['reference']
+            for invalid in (plan, {**plan, 'reference':'t4d1de641-99'}, {**plan, 'reference':'craft-7'}):
+                with self.subTest(kind=plan['kind'], reference=invalid.get('reference')):
+                    ok, result = self.submit(invalid)
+                    self.assertFalse(ok)
+                    self.assertEqual(result['issues'], [message])
+                    self.assertEqual(path.read_bytes(), before)
+
+    def test_repeated_craft_reference_gets_a_note_without_rejection(self):
+        ids = ['p1','p2','p3','p4']
+        (self.job/'outline.json').write_text(json.dumps({'slides':[{'id':i,'title':i,'summary':i} for i in ids]}))
+        plan = {'action':'page_plan', 'kind':'ordinary', 'takeaway':'注册变快', 'relationship':'对照',
+                'reading_order':['注册结果'], 'device':'左侧铺灰色带', 'reference':'craft-4', 'anchor':'示例：注册由 4 步减到 2 步，转化 3.1% 到 4.6%', 'form':'手机注册页截图的步骤条', 'average':'标题加两列上线前后对照表'}
+        notes = []
+        for i in ids[:3]:
+            ok, result = self.submit({**plan, 'page_id':i}, wire=True)
+            self.assertTrue(ok); notes.append(result.get('reference_note'))
+        self.assertEqual(notes[:2], [None, None])
+        self.assertIn('已有 3 页参考同一个 craft-4', notes[2])
+        self.assertIn('craft-2', notes[2])
+        ok, result = self.submit({**plan, 'page_id':'p4', 'reference':'craft-2'}, wire=True)
+        self.assertTrue(ok); self.assertNotIn('reference_note', result)
+
+    def test_both_kinds_require_anchor_form_and_average(self):
+        self.assertTrue(self.submit(self.deck_plan())[0])
+        for kind in ('key', 'ordinary'):
+            plan = self.key_plan(kind=kind, **({'device':'左侧铺灰色带'} if kind == 'ordinary' else {}))
+            for field in ('anchor', 'form', 'average'):
+                with self.subTest(kind=kind, field=field):
+                    ok, result = self.submit({**plan, field:'短'})
+                    self.assertFalse(ok)
+                    self.assertTrue(any(issue.startswith(field) for issue in result['issues']))
+            self.assertTrue(self.submit({**plan, 'form':'无：这页是纯引语'})[0])
+            saved = json.loads((self.job/'page-plans.json').read_text())['first']
+            self.assertEqual((saved['form'], saved['average']), ('无：这页是纯引语', '标题加两列上线前后对照表'))
+
+    def test_page_plan_skips_reference_check_without_library(self):
+        self.cfg['reference_library_root'] = str(self.root/'missing-library')
+        self.assertTrue(self.submit(self.deck_plan())[0])
+        plan = self.key_plan()
+        del plan['reference']
+        self.assertTrue(self.submit(plan)[0])
+        self.assertNotIn('reference', json.loads((self.job/'page-plans.json').read_text())['first'])
+        self.assertTrue(self.submit({**plan, 'reference':'unavailable-on-server'})[0])
 
     def test_render_returns_missing_warning_first_then_saved_plan_alongside_pixels(self):
         ws = self.native(); self.rendered(ws)
@@ -246,14 +319,14 @@ class Tests(unittest.TestCase):
         self.assertEqual(missing['plan_missing'],
                          '这页是封面、收尾或关键页，先提交 page_plan，再判断渲染是否达到设计单，不合格就按设计单重做')
         self.assertEqual(next(v['state'] for v in missing['visual_inputs'] if v['role']=='page_preview'), 'attached')
-        self.assertTrue(self.submit(self.key_plan(kind='ordinary'))[0])
+        self.assertTrue(self.submit(self.key_plan(kind='ordinary', device='左侧铺灰色带'))[0])
         self.assertIn('plan_missing', json.loads(self.wire(params)['contentItems'][0]['text']))
         self.assertTrue(self.submit(self.deck_plan())[0])
         args = self.key_plan()
         self.assertTrue(self.submit(args)[0])
         context = json.loads(self.wire(params)['contentItems'][0]['text'])
         self.assertNotIn('plan_missing', context)
-        self.assertEqual(context['plan'], {k:args[k] for k in ('takeaway', 'hero', 'reading_order', 'visual_idea')})
+        self.assertEqual(context['plan'], {k:args[k] for k in ('takeaway', 'hero', 'reading_order', 'visual_idea', 'anchor', 'form', 'average')})
         self.assertIn('不要改写设计单去迁就现状', context['plan_check'])
 
     def test_closing_page_and_author_marked_key_pages_use_workspace_outline(self):
@@ -265,13 +338,14 @@ class Tests(unittest.TestCase):
             params = {**self.params(page), 'arguments':{'page_id':page, 'workspace':'local', **flags}}
             with patch.object(self.inputs, 'context', return_value={'page':{'id':page}, 'page_number':number}):
                 return json.loads(self.inputs.handle(params)['contentItems'][0]['text'])
-        self.assertIn('plan_missing', preview('later', 4))
-        self.assertIn('plan_missing', preview('marked', 3))
-        self.assertNotIn('plan_missing', preview('middle', 2))
-        self.assertIn('plan_missing', preview('middle', 2, kind='key'))
+        key, ordinary = design_inputs.PLAN_MISSING, design_inputs.ORDINARY_PLAN_MISSING
+        self.assertEqual(preview('later', 4)['plan_missing'], key)
+        self.assertEqual(preview('marked', 3)['plan_missing'], key)
+        self.assertEqual(preview('middle', 2)['plan_missing'], ordinary)
+        self.assertEqual(preview('middle', 2, kind='key')['plan_missing'], key)
         path.unlink()
-        self.assertNotIn('plan_missing', preview('later', 4))
-        self.assertIn('plan_missing', preview('first', 1))
+        self.assertEqual(preview('later', 4)['plan_missing'], ordinary)
+        self.assertEqual(preview('first', 1)['plan_missing'], key)
 
     def test_author_is_told_to_submit_before_building(self):
         from design_roles import role_instruction

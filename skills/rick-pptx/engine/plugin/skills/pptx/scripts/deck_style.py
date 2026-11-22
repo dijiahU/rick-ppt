@@ -12,6 +12,8 @@ palette; layout checks flag colours that are not in it.
    "layouts": ["cover", "section", "text + picture", "data", "comparison", "summary"],
    "references": ["references/browse/1.jpg"],
    "rhythm": {"cover": "peak", "growth": "working", "risk": "peak", "next-week": "rest"},
+   "quiet_system": {"ground": "左侧四分之一铺浅灰色带", "display": "用浅色超大章节数字压在文字后面",
+                    "mark": "在每页右下页码旁放一个红点"},
    "devices": {"red square": "starts the one key figure on a page",
                "hairline stack": "texture that marks section openers",
                "vertical tab": "page meta at the left edge"}}
@@ -23,6 +25,8 @@ from pathlib import Path
 FILE = 'deck-style.json'
 REGISTERS = ('restrained', 'standard', 'expressive', 'celebratory')
 HEX = re.compile(r'[0-9A-Fa-f]{6}')
+QUIET_EXAMPLE = {'ground': '左侧四分之一铺浅灰色带', 'display': '用浅色超大章节数字压在文字后面',
+                 'mark': '在每页右下页码旁放一个红点'}
 
 
 def find(start):
@@ -37,11 +41,17 @@ def find(start):
     return None
 
 
-def load(start):
+def load(start, require_quiet=False):
     path = find(start)
+    style = json.loads(path.read_text()) if path is not None else None
+    if require_quiet:
+        quiet = style.get('quiet_system') if isinstance(style, dict) else None
+        if not isinstance(quiet, dict) or any(not isinstance(quiet.get(k), str) or len(quiet[k].strip()) < 8
+                                              for k in QUIET_EXAMPLE):
+            raise ValueError('deck-style.json 的 quiet_system 中 ground、display、mark 各需至少 8 个字符。完整示例：'
+                             + json.dumps({'quiet_system': QUIET_EXAMPLE}, ensure_ascii=False))
     if path is None:
         return None
-    style = json.loads(path.read_text())
     colors = style.get('colors') if isinstance(style, dict) else None
     if not isinstance(colors, dict) or not all(isinstance(v, str) and HEX.fullmatch(v) for v in colors.values()):
         raise ValueError('deck-style.json colors must map names to RRGGBB values')

@@ -76,6 +76,16 @@ class VisualCoverageTests(unittest.TestCase):
             if mutation=='optional':value['findings'][0]['severity']='suggestion'
             with self.subTest(mutation=mutation),self.assertRaises(ValueError):self.check(value)
 
+    def test_gap_may_also_cite_a_retained_suggestion_beside_its_actionable_finding(self):
+        # 2026-11-22 task 4ac88476: page 5 cited F01 native_repair and F04 retain_suggestion.
+        value=missing(report('native_chart'))
+        value['findings'].append({**value['findings'][0], 'id':'V2', 'severity':'suggestion', 'route':'retain_suggestion',
+                                  'observation':'The closing reflection repeats the chain label.'})
+        value['design_assessment']['visual_coverage'][1]['finding_ids']=['V1','V2']
+        self.check(value,{1:0,2:0})
+        value['findings'][0].update(route='retain_suggestion',severity='suggestion')
+        with self.assertRaises(ValueError):self.check(value,{1:0,2:0})
+
     def test_presence_is_not_sufficiency_and_uncertainty_cannot_be_ready(self):
         value=missing(report('embedded_image'));self.check(value,{1:0,2:1})
         value=report();value['design_assessment']['visual_coverage'][1]['status']='uncertain'

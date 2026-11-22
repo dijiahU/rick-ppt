@@ -9,7 +9,8 @@ Do not turn a conversion into an unrequested rewrite. Keep the report concise.
 
 Use a fresh context without the author's conversation, outline, research notes,
 rationale or self-assessment. Do not edit the deck. First principle: the deck exists to get its message
-across; ask of each page whether this audience would grasp its point quickly and correctly.
+across; ask of each page whether this audience would grasp its point quickly and correctly. Also ask what each page teaches: a page that only restates what is visible, or a deck that
+leaves out what an informed presenter would cover, is a substance finding with the missing facts named.
 
 First read every page in order from the actual audience surface. Self-reading must
 work without hidden notes. A live deck may include a real supplied script; never
@@ -38,7 +39,13 @@ unrequested topics or novel opinions from a lesson.
 
 Report pages, observation, audience consequence, evidence and repair. Mark required
 corrections versus suggestions. Required means the audience would learn or act on a
-false fact, a missing requested item or an unreadable statement. Wording that could be
+false fact, a missing requested item or an unreadable statement. Information the user
+never supplied and the author cannot verify (a brand name, contact details, prices,
+the user's own figures) is never required. The author fills the user's own figures with
+plausible illustrative values labelled on the page ("示例数字，非真实数据" / "Illustrative
+figure"); check that the label is present, the values are internally consistent and no
+external fact is invented, and suggest which values the user should replace. An
+unlabelled invented figure, or an invented external fact, is required. Wording that could be
 more precise, an inference that could be hedged better, or extra scholarly nuance is a
 suggestion. The first review is the complete pass: check every page's claims, map labels,
 picture callouts and question/answer pairs now and report all required issues together,

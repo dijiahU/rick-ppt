@@ -8,7 +8,7 @@ import uuid
 import zipfile
 from PIL import Image
 
-EXTENSIONS={'pdf','pptx','docx','txt','md','csv','png','jpg','jpeg'}
+EXTENSIONS={'pdf','pptx','docx','xlsx','txt','md','csv','png','jpg','jpeg'}
 MAX_FILES=10
 MAX_FILE=60*1024*1024
 MAX_TOTAL=200*1024*1024
@@ -37,11 +37,11 @@ def validate_content(data,ext):
             expected='PNG' if ext=='png' else 'JPEG'
             if image.format!=expected or width>8192 or height>8192 or width*height>33554432:
                 raise ValueError('Image dimensions or format unsupported')
-    if ext in {'pptx','docx'}:
+    if ext in {'pptx','docx','xlsx'}:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             entries=archive.infolist()
             if len(entries)>2000 or sum(x.file_size for x in entries)>150*1024*1024:raise ValueError('Office archive too large')
-            required='ppt/presentation.xml' if ext=='pptx' else 'word/document.xml'
+            required={'pptx':'ppt/presentation.xml','docx':'word/document.xml','xlsx':'xl/workbook.xml'}[ext]
             names={x.filename for x in entries}
             if required not in names or '[Content_Types].xml' not in names:raise ValueError('Invalid Office document')
             for entry in entries:

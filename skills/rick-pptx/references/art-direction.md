@@ -26,20 +26,138 @@ then build from it:
    number or a chart), where (map), when (timeline), how (flow), why (cause, comparison).
 3. **Steps.** How many things the audience must take in, in order, and where each gets
    its moment: its own page if the count allows, otherwise its own click. One thing
-   at a time.
+   holds the main position at a time; the page can still carry several.
 4. **Hero.** The single element that carries the takeaway and its share of the page
    (e.g. "+23, about 40% of the height"). Everything else is visibly secondary.
 5. **Reading order.** ① ② ③: what the eye should meet first, second, third. Size,
-   contrast, position and click order must agree. Copy this line into the slide notes
-   as "阅读顺序：① … ② … ③ …".
-6. **Cut.** What you removed because it does not serve the takeaway (keep units,
-   qualifiers, sources).
+   contrast, position and click order must agree.
+6. **Cut.** Decoration, repetition and filler you removed. Cut never removes
+   substance: every content page still gives the audience something they did not
+   know (a date, a number, a quote, a name, a mechanism, a consequence) on the page
+   itself, not only in the speaker's words.
 7. **Visual idea.** The one move that makes this page specific to this content and
    memorable, e.g. "+23 is the only figure going against the trend", "one entrance
    followed through all four stages". If the idea would fit any deck, it is not one.
 8. **Rejected.** One option you considered and why it reads worse for this audience.
 
-Ordinary pages need only items 1, 2 and 5. Worked examples of the whole sheet, with
+Every page, key or ordinary, also answers three questions before any layout:
+
+- **Anchor.** What real thing is this page anchored to? Real numbers or clearly
+  labelled example data ("示例：一袋 180 元、1000 克、单杯 18 克"), an actual quote, a
+  named person, a specific scene. Pages that only name concepts ("袋价 ÷ 净重 × 用粉",
+  "三项原则", "沟通流程") are where the generated look comes from: with nothing concrete
+  the only possible form is a generic container (cards, tables, blanks, tinted boxes).
+- **Form.** Where does this content live in the real world, and can the page borrow
+  that form? A cost lives on a receipt, a bean on its bag label, a first-week plan on
+  a desk calendar, a leave request in a chat message, a rule in the handbook page,
+  a decision in meeting minutes, a route on a ticket. Borrow the form's structure
+  (its rows, stub, stamp, margin, perforation), drawn natively; do not fake screenshots
+  or invent brands. Write "无：" with a reason when nothing fits.
+- **Average.** Name the most common way this content would be laid out ("标题加三张
+  等宽卡片", "标题加灰色副标题再加表格", "两行公式加填空线") and do not build that. If the
+  page you were about to build is the average, go back to the anchor and the form.
+
+These are `anchor`, `form` and `average` in the page plan. Text-only pages open
+action=craft move 6 (real-world anchor) first.
+
+**Anchor adds; it never replaces.** Keep the pictures, the hero and the composition the
+page would otherwise have, and add the concrete numbers, examples or quote on top. A
+photo of the real cup, bean or scene is itself an anchor: do not swap it for text.
+`average` names a layout skeleton to avoid (equal cards, a grey-subtitle-plus-table
+opener, blanks); it is never a reason to drop a picture that carries the page.
+
+**A borrowed form must be visible.** If `form` names an object, the page must show at
+least two of its traits so a viewer recognises it without being told: a receipt is a
+narrow slip with dashed section rules and label-left / amount-right lines; a bag label
+has a die-cut edge, a stamp and printed fields; a desk calendar has a grid and big
+date numerals; a ticket has a stub and perforation; minutes have a header block and
+numbered decisions. A tinted rectangle is not a form.
+
+**Colour at real strength; few boxes.** When a page needs contrast (the exception,
+the result, the one number, the category that matters), use a colour at clearly visible
+strength: a true red, orange, blue or green taken from the subject or the brand, not a
+greyed version of it. Low-saturation sage, dusty teal, slate blue and cream as the whole
+palette is the most common generated look. Pale tinted rectangles holding text (cards on
+a light ground) may appear once or twice in a deck, never as the default container:
+group content with space, one rule, size and weight, and a shared alignment line; when
+a page truly needs a surface, use a photo field, a full band of the page colour or a
+clearly coloured block. Cream or beige panels are refused at save, like cream grounds;
+pages with tinted text cards and a greyed palette are reported as warnings.
+
+**No blank fill-in lines in a presented deck.** Empty underlines, "____" and empty
+form fields read as unfinished on a screen. When the content is a form or a
+calculation, show it filled with labelled example data; leave blanks only when the
+user asked for a worksheet or handout to print.
+
+Ordinary pages need items 1, 2 and 5, the device they use from the quiet system, the
+anchor, form and average, and the reference they looked at (a library page id or
+craft-N).
+
+**Density follows the audience and the viewing mode.** A lesson, an explainer, an
+art or history introduction, a study report or a deck read on a laptop explains on the
+page: beside the hero, two to four labelled points, a caption that teaches, a data
+note, a short quote with its source line. A page of only a headline and one picture
+is right for a cover, a section opener or a deliberate pause, not for every page.
+
+**Secondary text is typeset, not dropped in.** Captions, labels, object details and
+side notes form a designed block: two or three levels of size, weight or colour; a
+shared left edge aligned to the picture or grid; related lines grouped and set apart
+from the next group by space or a rule; consistent line lengths. Several paragraphs in
+one default size stacked beside a picture are a bare page.
+
+**One picture, one job.** Show the same full image at most twice in a deck (for
+example opening and closing); other pages use different crops, details, comparison
+works or diagrams, so every page shows the audience something new.
+
+**Quiet pages: how a simple page still looks designed.** Simple, restrained or
+minimal never means one flat white field with small text. Strong minimalist decks
+solve every text-only page with the same few moves; decide them once in
+`deck-style.json` "quiet_system" and apply one or more on every quiet page:
+1. *A second surface.* The page is never one field: a colour band or dark column
+   taking a quarter to a third of the width, a white card laid on a tinted or textured
+   ground, a soft grey block under the text group, a toned photograph or paper texture
+   as the ground. Light and dark pages alternate through the deck.
+2. *Type as image.* One display element at 40–60% of the page height: a section
+   numeral, a single character, a key number or a four-word line, often cropped by the
+   page edge or set in a pale tint behind the text. Everything else is small, so the
+   contrast does the work.
+3. *A recurring mark.* One small sign that belongs to this deck (a small circle, a short
+   thick rule, a coloured dot, a stamp from the subject) always in the same places:
+   header, page number, section label, beside the key word.
+4. *A strong grid.* An asymmetric grid with a wide margin; the text group hangs from one
+   strong edge; rules, labels and numbers align to it; vertical or rotated labels can
+   add texture at the edge.
+5. *Few weights, exact.* Two or three sizes and weights, generous leading, consistent
+   rule weights; a quiet page is judged on precision.
+Solve a quiet page like this: name its point; choose which of the five moves carries
+it (usually type as image or a second surface); place the text group on the grid
+against that move; add the mark; check that the page is calm yet clearly designed.
+
+**Finishing details on every page.** The quiet system is not only for text pages:
+its mark, grid and small details run through every page, picture pages included, so
+the deck reads as finished and as one family. Give each page two or three of them,
+in the same places every time:
+- a header line: a small section label (Chinese name plus a small English or pinyin
+  line, or a part number) with the deck's mark beside it;
+- a page meta system: page number with a short rule or the mark, the deck title or
+  part name at the opposite edge;
+- numbering: 01 / 02 or 壹 / 贰 with a thin rule running from it;
+- a thin rule or short thick bar grouping the text block, in one weight deck-wide;
+- a small vertical label or rotated line at one edge;
+- an offset block behind a picture (a grey or colour rectangle shifted from it), or a
+  thin frame;
+- a caption system: small label, date or source line in one style under every picture.
+Details are small, quiet and identical across pages; a detail used once is decoration,
+a detail repeated in the same place is structure.
+
+**Speaker notes hold only the spoken script**: full sentences the presenter says for
+this page and for each click, in the deck's language. Nothing else goes there: no
+sources, credits, URLs, design references, reading orders, click plans or reminders
+(credits belong in on-page captions or a references page; design records in
+decision-plan.json and page-plans.json). Write the script as you build each page; if
+you cannot write what to say, the page is not thought through.
+
+Worked examples of the whole sheet, with
 the plain version each replaced, are in [worked-examples.md](worked-examples.md):
 read them once before page 1.
 
@@ -93,7 +211,8 @@ one element holds the main position at each step.
    units and qualifiers are sized and spaced with their number. If used, record the devices and their jobs in deck-style.json "devices".
 6. Avoid both failures. The generic AI look: dark navy, dark green or charcoal full-page
    surfaces on a report; a kicker over every title; tinted cards around everything;
-   many shades of one colour; ornament with no job; and the quiet AI look, a warm-white
+   many shades of one colour; ornament with no job; a greyed palette (sage, dusty teal,
+   slate blue, cream) used everywhere so nothing has contrast; and the quiet AI look, a warm-white
    page with one object, a thin rule and a lot of empty space, used whatever the
    occasion. The bare page: every element boxed inside the margins from the top left,
    no device, text set flat in one size; tidy, but not designed. Complexity is a skill
@@ -135,16 +254,22 @@ fails, choose a template page that fits the relationship better.
      anchor for type; at most one small accent; distinct lightness steps between ground,
      picture and type;
    - small signposts: one icon set from `pptx_icons`.
-2. **Reference.** When composing a cover, key page or closing page, search for that
-   page's actual relationship. Start with planning references and the inspiration mode of the
-   template library (pptx_reference_library action=inspire with the page's structural job,
-   e.g. "一个关键数字加两条说明", "图文叠压 标题跨图"; its best pages come from any genre, so
-   a fashion or exhibition page may hold the right composition for a report), then outside
-   works when nothing there fits:
-   painting, film stills, photography, posters and editorial design, on the subject or
-   not; Pinterest (English and Chinese, save_images) and image_query. Ordinary pages reuse
-   the references and structures already chosen, without a new search or study. Pick the
-   chosen library page with `action=pick`. Study the reference with
+2. **Reference, for every page.** Once the page's content is decided, look before
+   designing it. Search the template library for a page with the same relationship
+   (pptx_reference_library action=inspire with the page's structural job, e.g.
+   "一个关键数字加两条说明", "图文叠压 标题跨图", or action=search); its best pages
+   come from any genre, so a fashion or exhibition page may hold the right
+   composition for a report. For a quiet or text-only page, and whenever you revise a
+   plain page, also open action=craft (second surface, type as image, recurring mark,
+   strong grid, exact weights) and choose the move to use. Each board pairs a weak page
+   GPT actually made (left) with the same content redone (right): find the left page
+   that looks like yours and do what the right page added. Choose by what this page
+   lacks (no hero: type as image; no zones: second surface; mixed levels: exact
+   weights), not the same move for every page. For the cover, key pages
+   and closing page go further when the library has nothing that fits: painting, film
+   stills, photography, posters and editorial design; Pinterest (English and Chinese,
+   save_images) and image_query. Record the page id or craft-N as the page plan's
+   reference. Pick the chosen library page with `action=pick`. Study the reference with
    pptx_study_reference (its mass study is the composition under the content) and say
    in your own words where the eye lands first and goes next, how the big shapes
    balance or pull, what is grouped, what is empty and why it works. If the structure
@@ -208,7 +333,12 @@ images are for real pictures, not whole-slide text.
 ## Repairs
 
 Fix the region the reviewer identified while keeping successful neighbours, facts and
-animation. For weak structure, choose a better-fitting source page for a template base
-page. For a newly composed page, return to step 2 and search, sketch and rebuild. Fix
+animation. A content fix changes words, not design: keep the page's hero, picture,
+scale and layout, and fit the new wording into them (a cover keeps its large title and
+whole picture; a longer message goes into the subtitle, not the title). Render the
+page and compare it with the previous version; if the page lost its hero or picture,
+restore them. For weak structure, choose a better-fitting source page for a template base
+page. For a plain or thin page, open action=craft and add the missing
+second surface, display type, mark or finishing details before anything else. For a newly composed page, return to step 2 and search, sketch and rebuild. Fix
 layout details locally. Note which suggestions you applied or kept and why. Never
 claim an unapplied change.

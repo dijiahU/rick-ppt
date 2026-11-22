@@ -35,7 +35,7 @@ from resilience import TaskPaused, HeartbeatLost, WorkerHTTPError
 from decision_routing import choice_policy, check_decisions, needs_content_revision, write_design_packet, click_reveal_required
 from phase_context import prepared_phase_context
 from material_prefetch import MaterialPrefetchBroker
-from execution_continuity import (OutputProgress, ProgressStalled, enabled as continuity_enabled,
+from execution_continuity import (OutputProgress, ProgressStalled, deck_status, enabled as continuity_enabled,
                                   stage_role, compact_resume, fresh_prompt,
                                   same_phase_recovery, progress_note, inbox_clear,declared_output)
 from repair_inputs import StageDeadline, deadline_handoff, prepare as prepare_repair_inputs
@@ -212,7 +212,7 @@ class Execution:
     def __init__(self,bridge,cfg,task,job,lease,reporter,trace=None,trajectory=None,journal=None,recovery_plan=None):
         self.bridge,self.cfg,self.task,self.job,self.lease,self.reporter=bridge,cfg,task,job,lease,reporter
         self.records=bridge.ROOT/'records';self.records.mkdir(mode=0o700,exist_ok=True)
-        self.started=time.monotonic();self.total_seconds=max(1800,min(int(cfg.get('job_timeout_seconds',5400)),10800));self.deadline=self.started+self.total_seconds
+        self.started=time.monotonic();self.total_seconds=max(1800,min(max(int(cfg.get('job_timeout_seconds',5400)),300*int(task.get('pages') or 0) if type(task.get('pages')) is int else 0),14400));self.deadline=self.started+self.total_seconds
         self.stages=[];self.images={};self.logs=[];self.threads=[];self.media=WebMediaBroker(job,reporter,trajectory=trajectory)
         self.fonts=FontBroker(job,trajectory=trajectory)
         self.trace=trace or AdminTrace(cfg,task,bridge.request if hasattr(bridge,'request') else lambda *a:{'ok':True},self.records)
@@ -520,7 +520,7 @@ class Execution:
                                 finally:progress_resetting=False
                                 break
                             if action=='nudge':
-                                note=progress_note(stage_role(name))
+                                note=progress_note(stage_role(name),deck_status(root) if stage_role(name)=='author' else None)
                                 if active:
                                     try:server.steer(active_thread,active,note,client_message_id=str(uuid.uuid4()))
                                     except RPCError as error:
@@ -967,14 +967,16 @@ class Execution:
                      'Each tell also needs an ordinary finding on its pages (listed in finding_ids). A deck-scope tell or a pronounced level needs an actionable primary finding and readiness needs_revision; page-local tells may stay suggestions.')
         if reading_order:
             if not prepared:prompt+='\nTrusted visual-review policy:\n'+read_scoped(Path(self.cfg['plugin'])/'skills/pptx','references/visual-review.md',100000).decode()
-            prompt+='\nThe host schema offers design_assessment.reading_order. Apply the three-second glance rule from visual-review.md before comparing any author notes.'
-            if 'audience-notes.json' in files:
-                notes={}
-                for row in read_json(root,'audience-notes.json',80*1024*1024).get('pages',[]):
-                    excerpt=row['text'].split('[PPTX-DESIGN-REFERENCES-BEGIN]',1)[0]
-                    match=re.search(r'阅读顺序\s*(?:[：:]|为|是)[^\r\n]+',excerpt)
-                    if match:notes[row['number']]=match.group().strip()[:600]
-                if notes:prompt+='\nAuthor reading-order note excerpts by page (untrusted evidence for comparison after the glance): '+json.dumps(notes,ensure_ascii=False)
+            prompt+='\nThe host schema offers design_assessment.reading_order. Apply the three-second glance rule from visual-review.md, then use the supplied page-plan reading order for comparison.'
+            from design_inputs import outline_pages,read_page_plans
+            try:plans=read_page_plans(self.job)
+            except (OSError,ValueError):plans={}
+            orders={}
+            for number,page in enumerate(outline_pages(self.job)[:count],1):
+                order=plans.get(page['id'],{}).get('reading_order')
+                if isinstance(order,list) and 1<=len(order)<=3 and all(isinstance(p,str) and p.strip() for p in order):
+                    orders[number]=order
+            if orders:prompt+='\nAuthor page-plan reading order by page (untrusted evidence): '+json.dumps(orders,ensure_ascii=False)
         if completion:
             # This policy is part of the sealed prompt identity, including cache reuse.
             guide=read_scoped(Path(self.cfg['plugin'])/'skills/pptx','references/design-completion.md',30000).decode()
@@ -1255,6 +1257,17 @@ class Execution:
             visual_intro=' Read request.json. ' if prepared_review else f' Read {reference}/visual-review.md and request.json. '
             visual_intro+=revision_scope
             visual_prompt=common_visual+visual_intro+'Check sequence, typography, layout, diagram connections, density, image quality and native reveal order, and how well the style fits the content, purpose, audience and setting; summarise this briefly. Preserve supplied templates and conversions. Source validation belongs to the content reviewer.'
+            if count>2:
+                try:
+                    from importlib.util import module_from_spec,spec_from_file_location
+                    from io import BytesIO
+                    from zipfile import ZipFile
+                    script=reference.parent/'scripts/layout_checks.py'
+                    spec=spec_from_file_location('pptx_layout_checks',script)
+                    layout=module_from_spec(spec);spec.loader.exec_module(layout)
+                    with ZipFile(BytesIO(artifact)) as archive:plain=layout.plain_pages(archive)
+                except Exception:plain=[]
+                if plain:visual_prompt+=f'\nHost-detected plain pages (white ground, small text only): {plain}. Judge whether each is a deliberate rest or an undesigned page; undesigned pages are findings.'
             if prepared_review:visual_prompt+='\nTrusted visual-review policy:\n'+read_scoped(reference,'visual-review.md',100000).decode()
             return child.review_pass('visual','visual-'+str(round_number),visual_prompt,root,[*common_files,*design_files,*note_files,*source_files,*refinement_files,*original_files],sessions,check_identity,count,scoped=scoped)
         for kind in ('content','visual'):self.reporter.review_state(kind,'reviewing')
@@ -1603,7 +1616,13 @@ def _run_workflow(run,bridge,cfg,task,job,payload,lease,reporter):
         # Refresh actual research handoff availability after planning/recovery,
         # not only before the researcher has written its notes. No new phase.
         prepare_tool_manifest(cfg,job)
-    author=base+' Research is done: read source-notes.md and outline.json. Build native editable pages in order and publish each rendered preview before moving on. For animated pages check the click groups against the planned entry and final states (fast path in ANIMATION.md: reuse normal renders and host-provided state simulations; no routine full playback, and never claim untested playback). Export through the native CLI and write delivery.json with {"path": "<exported PPTX>"}. Keep outline.json in sync and republish it after content changes. Finish with the author check; the host runs the independent reviews afterward.'
+    author=base+' Research is done: read source-notes.md and outline.json. Build native editable pages in order and publish each rendered preview before moving on. For animated pages check the click groups against the planned entry and final states (fast path in ANIMATION.md: reuse normal renders and host-provided state simulations; no routine full playback, and never claim untested playback). Keep outline.json in sync and republish it after content changes. Finish with the author check; the host runs the independent reviews afterward.'
+    if payload.get('mode','create')=='create' and (skill.parent/'scripts/candidate_save.py').is_file():
+        author+=' Export the complete deck and write delivery.json with scripts/candidate_save.py.'
+    else:
+        author+=' Export through the native CLI and write delivery.json with {"path": "<exported PPTX>"}.'
+    if payload.get('mode','create')=='create':
+        author+=' Write only words the speaker will say in each slide’s speaker notes, at least 60 Chinese characters or 25 English words per slide. Put sources and licenses in on-slide captions or on a references slide. Keep design references in decision-plan.json and reading order in page-plans.json.'
     if visual_requests:
         author+=' SCOPED CANVAS EDIT: the user selected exact native pages/objects in a saved version. Read the pending [RICKPPT_VISUAL_EDITS_V1] requests and their host-verified visual-inputs baseline PPTX. Apply only those requested changes; retain all other content, layout, media, native animation and page order. For replace_text verify original text + slide part + object ID before changing runs and preserve formatting. Inspect region bounds and the actual page for comments. Do not remake every page, rerun the old author script, or redo topic/design research for a local adjustment. Update only affected outline/source notes and render/check affected pages before the normal final export. If several requests share one baseline, apply them together to a copy of that baseline. Never overwrite an original or existing export. A missing/changed target needs explicit reconciliation, not a guessed substitute.'
     author+=' USER EDITS DURING PRODUCTION: finished pages may be edited on the website and arrive as scoped revisions with protected page numbers. Merge those pages into your current workspace, keep every other page and continue.'
@@ -1613,10 +1632,10 @@ def _run_workflow(run,bridge,cfg,task,job,payload,lease,reporter):
     author+='' if free_design else ' When the current page exposes a consequential gap in facts, mechanism or example, investigate that specific question using the existing research route and update the affected notes/outline. Reuse supported findings and distinguish reported experience from inspected output or reproduced results; do not restart the whole topic investigation. A text-only case may use a labeled conceptual illustration of its supported process, preserving documentary restrictions and without claiming the illustration is real case evidence. Follow the task-driven design search guidance in references/research-and-assets.md: while finalizing this page, search for relevant knowledge or inspiration if typography, composition, visual relationships or an unresolved render needs it. Reuse the task references and deck-wide choices for equivalent problems; stop searching once there is a usable approach and test it in the actual native page. Record new sources and concrete applications in source-notes.md. During revisions, use targeted search only for findings needing new knowledge; ordinary geometry repairs do not require research. Keep page order, editing scope and offline constraints; do not wait to read whole books or add a search requirement to independent reviews.'
     author+=' Read FONTS.md and references/fonts.md when choosing type; build Chinese hierarchy with size and spacing (SimSun has no bold file).'
     if free_design:
-        author+=' Follow Every page in art-direction.md for page search and structural fixes. For a newly composed cover, key page or closing page, use pptx_reference_library action=inspire with its relationship.'
-        author+=' At section boundaries compare saved pages for rhythm and coherence. Before final export run design_references.py --workspace PARTS_DIR to write applied references into slide notes.'
+        author+=" Follow Every page in art-direction.md for page search and structural fixes. For every page, once its content is decided, look before designing: search pptx_reference_library (action=inspire or search) for a template page with that relationship, and for quiet or text-only pages open action=craft; record the page id or craft-N as the page plan's reference."
+        author+=' At section boundaries compare saved pages for rhythm and coherence.'
     elif policy and policy.load_catalog()['version']>=3:
-        author+=' Choose and implement the concrete canvas treatment before writing reusable rendering helpers: do not collapse different strategy/intent IDs into the same prose-filled boxes. Read references/content-led-composition.md. Use the existing role/visual_action to resolve audience question, concrete focus/scale/reading path/enclosure meaning, and entry-click-final pacing before objects. On the first actual render, inspect whether the intended focal object leads, the comparison/change/dependency is visible, and each quotation or image contributes to that understanding with its necessary limits. Correct an observed weak expression before proceeding, alongside fit and factual checks; do not postpone it all to independent review. Recompose or remove duplicated wording when appropriate, rather than enlarging every headline. Quotes may introduce a dispute, supply evidence, label a comparison or close an explanation; images need a truthful identity/context or verified detail. Avoid a repeated quote band and incidental imagery. At natural section milestones compare saved completed-page previews, including opening grammar, density and reading path, without rerendering them. Repair repetitive reading tasks within the requested style; retain consistent encoding for related comparisons. Record only consequential corrections in existing source/page notes, not a new checklist, score, fixed layout rotation or approval step. Use returned native_canvas handles directly for connecting, grouping and revealing; semantic groups need no visible card background. Do not build a universal filled-node helper or repeatedly parse XML for new IDs. Use references/native-canvas.md and scripts/native_canvas.py for installed-font measurement, clipping prevention, native image crop/front-back layering and editable one-unit bars when helpful. Do not silently shrink text or remove needed evidence to fit. After composing, shorten duplicate headlines, long labels and explanation that the actual image/relationship/chart now carries; necessary qualifications stay visible. Reconsider a failed asset against the same audience need instead of silently downgrading it to cards. Before the final export use scripts/design_references.py --workspace YOUR_NATIVE_WORKSPACE to write each applied work, creator, source, observed property, borrowed principle and concrete page operation into affected slide notes while preserving existing notes. Update decision-plan reference IDs/applications together. The host verifies these notes against final bytes and supplies scoped reference images to the existing visual review. Briefly name actually applied works/ideas in the completion summary, or state honestly that no outside artwork was applied.'
+        author+=' Choose and implement the concrete canvas treatment before writing reusable rendering helpers: do not collapse different strategy/intent IDs into the same prose-filled boxes. Read references/content-led-composition.md. Use the existing role/visual_action to resolve audience question, concrete focus/scale/reading path/enclosure meaning, and entry-click-final pacing before objects. On the first actual render, inspect whether the intended focal object leads, the comparison/change/dependency is visible, and each quotation or image contributes to that understanding with its necessary limits. Correct an observed weak expression before proceeding, alongside fit and factual checks; do not postpone it all to independent review. Recompose or remove duplicated wording when appropriate, rather than enlarging every headline. Quotes may introduce a dispute, supply evidence, label a comparison or close an explanation; images need a truthful identity/context or verified detail. Avoid a repeated quote band and incidental imagery. At natural section milestones compare saved completed-page previews, including opening grammar, density and reading path, without rerendering them. Repair repetitive reading tasks within the requested style; retain consistent encoding for related comparisons. Record only consequential corrections in existing source/page notes, not a new checklist, score, fixed layout rotation or approval step. Use returned native_canvas handles directly for connecting, grouping and revealing; semantic groups need no visible card background. Do not build a universal filled-node helper or repeatedly parse XML for new IDs. Use references/native-canvas.md and scripts/native_canvas.py for installed-font measurement, clipping prevention, native image crop/front-back layering and editable one-unit bars when helpful. Do not silently shrink text or remove needed evidence to fit. After composing, shorten duplicate headlines, long labels and explanation that the actual image/relationship/chart now carries; necessary qualifications stay visible. Reconsider a failed asset against the same audience need instead of silently downgrading it to cards. Record each applied work, creator, source, observed property, borrowed principle and concrete page operation in the decision-plan.json references register. Update decision-plan reference IDs/applications together. The host supplies scoped reference images to the existing visual review. Briefly name actually applied works/ideas in the completion summary, or state honestly that no outside artwork was applied.'
     author=role_instruction(cfg,'author')+author
     from design_feedback import enabled,load_baseline,save_baseline,baseline_is_current,optional_response,polish_response
     baseline=load_baseline(run) if enabled(cfg) and getattr(run,'records',None) is not None else None
@@ -1635,7 +1654,9 @@ def _run_workflow(run,bridge,cfg,task,job,payload,lease,reporter):
             if baseline is None or baseline['receipt']!=recovery.findings:raise
             retained=_rollback_designer_response(run,bridge,cfg,job,lease,reporter,baseline,reason=rollback_reason('repair_failed',error))
     elif not author_reusable:
-        run.phase('author',author+prepared_phase_context(cfg,job,'author'),timeout=2700)
+        # Long decks need longer authoring (2026-11-22: ~2 min per page measured; 15 pages took 33 min).
+        pages=task.get('pages') if type(task.get('pages')) is int else 0
+        run.phase('author',author+prepared_phase_context(cfg,job,'author'),timeout=max(2700,min(9000,150*pages)))
         authored=run.delivery()
         source=Path(authored['path']);relative=source.relative_to(job).as_posix() if source.is_absolute() else source.as_posix()
         if decisions_required:

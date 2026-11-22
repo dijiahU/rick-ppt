@@ -25,6 +25,7 @@ def make_task(tmp_path, style=None):
 STYLE = {'register': 'restrained', 'colors': {'background': 'FFFFFF', 'text': '1F2329', 'primary': '1f5fbf'},
          'devices': {'red square': 'starts the key figure', 'hairline': 'separates groups'},
          'type': {'display': 120, 'title': 36, 'body': 20, 'label': 14}}
+QUIET = {'ground': '左侧铺一列深蓝色窄栏', 'display': '浅灰章节数字贴着页面右边', 'mark': '页码左边放一个实心蓝点'}
 
 
 def test_tokens_resolve_from_the_task_root(tmp_path):
@@ -40,11 +41,31 @@ def test_tokens_resolve_from_the_task_root(tmp_path):
 def test_invalid_style_and_missing_file(tmp_path):
     ws = make_task(tmp_path)
     assert deck_style.load(ws) is None
+    with pytest.raises(ValueError, match='quiet_system.*完整示例'):
+        deck_style.load(ws, require_quiet=True)
     with pytest.raises(ValueError, match='needs deck-style.json'):
         deck_style.resolve('@primary', None)
     (tmp_path / 'deck-style.json').write_text(json.dumps({'register': 'loud', 'colors': {'a': 'FFFFFF'}}))
     with pytest.raises(ValueError, match='register'):
         deck_style.load(ws)
+
+
+@pytest.mark.parametrize('quiet', [None, {}, *[{**QUIET, key: '  短  '} for key in QUIET], {**QUIET, 'mark': 12345678}])
+def test_new_style_requires_three_quiet_system_descriptions(tmp_path, quiet):
+    style = STYLE if quiet is None else {**STYLE, 'quiet_system': quiet}
+    ws = make_task(tmp_path, style)
+    assert deck_style.load(ws) == style
+    with pytest.raises(ValueError, match='quiet_system') as failure:
+        deck_style.load(ws, require_quiet=True)
+    example = json.loads(str(failure.value).split('完整示例：', 1)[1])
+    assert set(example['quiet_system']) == set(QUIET)
+    assert all(len(value) >= 8 for value in example['quiet_system'].values())
+
+
+@pytest.mark.parametrize('register', ['restrained', 'celebratory'])
+def test_new_style_accepts_complete_quiet_system(tmp_path, register):
+    ws = make_task(tmp_path, {**STYLE, 'register': register, 'quiet_system': QUIET})
+    assert deck_style.load(ws, require_quiet=True)['quiet_system'] == QUIET
 
 
 def test_edit_accepts_tokens(tmp_path):

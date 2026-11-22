@@ -18,6 +18,10 @@ assert.throws(()=>documentText(word('<!DOCTYPE x [<!ENTITY x "test">]>'+xml),'do
 assert.throws(()=>documentText(fflate.zipSync({'other.xml':new Uint8Array(1)}),'docx'));
 assert.throws(()=>documentText(new Uint8Array([255]),'txt'));
 assert.throws(()=>documentText(word(xml),'pptx'));
+const book=fflate.zipSync({'xl/workbook.xml':fflate.strToU8('<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheets><sheet name="销售"/></sheets></workbook>'),'xl/sharedStrings.xml':fflate.strToU8('<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><si><t>月份</t></si><si><t>营业额</t></si></sst>'),'xl/worksheets/sheet1.xml':fflate.strToU8('<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="C1" t="s"><v>1</v></c></row><row r="2"><c r="A2"><v>1</v></c><c r="C2"><v>98.4</v></c></row></sheetData></worksheet>')});
+assert.deepEqual(documentText(book,'xlsx'),{text:'# 销售\n月份\t\t营业额\n1\t\t98.4',truncated:false});
+assert.throws(()=>documentText(fflate.zipSync({'other.xml':new Uint8Array(1)}),'xlsx'));
+
 const large=fflate.zipSync({'word/document.xml':new Uint8Array(4*1024*1024+1)});assert.throws(()=>documentText(large,'docx'));
 if(process.argv[2]){
  const actual=documentText(new Uint8Array(readFileSync(process.argv[2])),'docx');

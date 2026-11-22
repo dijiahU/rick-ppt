@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 
 import workflow
 from durable import Journal, RPCError
-from execution_continuity import (OutputProgress, ProgressStalled, compact_resume,
+from execution_continuity import (OutputProgress, ProgressStalled, compact_resume, deck_status, progress_note,
                                   fresh_prompt, same_phase_recovery, inbox_clear,declared_output)
 from phase_context import prepared_phase_context
 from progress import Reporter
@@ -253,6 +253,35 @@ class Files(unittest.TestCase):
             archive.writestr('[Content_Types].xml','<Types/>')
             archive.writestr('ppt/presentation.xml','<presentation/>')
         self.assertIsNone(declared_output(self.job,aliases))
+
+
+class DeckComplete(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory(); self.addCleanup(temp.cleanup)
+        self.job = Path(temp.name)/'job'; (self.job/'projects/base/workspace/ppt/slides').mkdir(parents=True)
+        self.records = Path(temp.name)/'records'; self.records.mkdir()
+        (self.job/'outline.json').write_text(json.dumps({'slides':[{'id':f'p{n}'} for n in range(10)]}))
+
+    def build(self, count):
+        for n in range(1, count + 1):
+            (self.job/f'projects/base/workspace/ppt/slides/slide{n}.xml').write_text('<p:sld/>')
+
+    def test_status_and_note_point_to_save_once_every_page_exists(self):
+        self.build(6)
+        self.assertEqual(deck_status(self.job), (6, 10))
+        self.assertNotIn('save_candidate', progress_note('author', deck_status(self.job)))
+        self.build(10)
+        self.assertEqual(deck_status(self.job), (10, 10))
+        note = progress_note('author', deck_status(self.job))
+        self.assertIn('All 10 planned pages are already built', note)
+        self.assertIn('save_candidate', note)
+        self.assertNotIn('save_candidate', progress_note('research', (10, 10)))
+
+    def test_author_window_grows_with_planned_pages(self):
+        self.assertEqual(OutputProgress(self.job,self.records,'t','author',0,window=12).window, 20)
+        self.assertEqual(OutputProgress(self.job,self.records,'t','research',0,window=12).window, 12)
+        (self.job/'outline.json').write_text(json.dumps({'slides':[{'id':'a'}]}))
+        self.assertEqual(OutputProgress(self.job,self.records,'t2','author',0,window=12).window, 12)
 
 
 class Phase(unittest.TestCase):

@@ -1,7 +1,7 @@
 export const MAX_FILES=10,MAX_FILE_BYTES=60*1024*1024,MAX_TOTAL_BYTES=200*1024*1024;
 // Legacy multipart clients stay bounded; the website stages one file at a time.
 export const MAX_INLINE_BYTES=60*1024*1024;
-export const extensions=['pdf','pptx','docx','txt','md','csv','png','jpg','jpeg'] as const;
+export const extensions=['pdf','pptx','docx','xlsx','txt','md','csv','png','jpg','jpeg'] as const;
 export type Attachment={id:string;name:string;size:number;ext:string;sha256:string};
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export function extension(name:string){return name.split('.').pop()?.toLowerCase()??'';}
@@ -16,7 +16,7 @@ export function parseAttachments(value:unknown):Attachment[]{
 export function validSignature(ext:string,data:Uint8Array){
  const start=(bytes:number[])=>bytes.every((v,i)=>data[i]===v);
  if(ext==='pdf')return start([37,80,68,70,45]);
- if(['docx','pptx'].includes(ext))return start([80,75,3,4]);
+ if(['docx','pptx','xlsx'].includes(ext))return start([80,75,3,4]);
  if(ext==='png')return start([137,80,78,71,13,10,26,10]);
  if(['jpg','jpeg'].includes(ext))return start([255,216,255]);
  try{const text=new TextDecoder('utf-8',{fatal:true}).decode(data);return !text.includes('\0');}catch{return false;}

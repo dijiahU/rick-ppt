@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 from threading import Lock
 
+import reference_library
 from outline import MAX_OUTLINE_BYTES
 from progress import read_scoped
 from trajectory import record
@@ -27,7 +28,17 @@ DECK_PLAN_FILE = 'deck-plan.json'
 MAX_SHEET_BYTES = 16 * 1024
 PLAN_LOCK = Lock()
 PLAN_TEXT = ('takeaway', 'relationship', 'steps', 'hero', 'cut', 'visual_idea', 'rejected')
-PLAN_FIELDS = {*PLAN_TEXT, 'reading_order'}
+ANCHOR_FIELDS = {
+    'anchor': (4, 'anchor 写这页锚定在现实里的具体东西：真实数字、示例数据（标明示例）、一句原话、一个具体的人或场景，至少 4 个字。'),
+    'form': (4, 'form 写这页借用的现实物件或现实版式（小票、豆袋标签、工牌、车票、会议纪要、日历……）；确实没有就写“无：”加原因。'),
+    'average': (6, 'average 写这页内容最常见、最平均的做法（例如“标题加三张等宽卡片”“标题加两行公式和填空线”），这一页不采用它，至少 6 个字。'),
+}
+PLAN_FIELDS = {*PLAN_TEXT, *ANCHOR_FIELDS, 'reading_order', 'reference'}
+CRAFT_REFERENCES = {f'craft-{move}' for move in reference_library.CRAFT_MOVES}
+CRAFT_REPEAT = ('已有 {count} 页参考同一个 {ref}。按这页真正缺的东西选：缺视觉主体用 craft-2（把答案放大成字图），'
+                '缺分区用 craft-1（第二个面），层级乱用 craft-5，对不齐用 craft-4，整套缺统一记号用 craft-3；'
+                '纯文字、偏抽象的页先看 craft-6（现实锚定物）；或用 action=inspire 找一张结构相同的模板页。对比图里右边比左边多了什么，就照那个改。')
+REFERENCE_REQUIRED = '每页设计前先参考：用 pptx_reference_library action=inspire / search 找一张模板页（填它的 id），或用 action=craft 看工艺示例（填 craft-N）'
 DECK_TEXT = ('occasion', 'audience', 'feeling', 'subject')
 DECK_LISTS = {
     'expectations': (2, 5, 'What this audience expects to see, at least six characters per item; include people for social occasions.'),
@@ -47,6 +58,7 @@ FESTIVE_OCCASION = re.compile(r'婚|寿|生日|年会|庆|晚会|派对|节日|�
 FESTIVE_FEELING = re.compile(r'喜庆|欢乐|喜悦|热闹|庆祝|欢庆|欢快|开心|快乐|幸福|甜蜜|祝福|喜气|celebrat|joy|festive|happy', re.I)
 PEOPLE = re.compile(r'人|成员|社员|队员|同学|大家|团队|合影|群像|新郎|新娘|亲友|朋友|宾客|嘉宾|师生|学生|员工|观众')
 PLAN_MISSING = '这页是封面、收尾或关键页，先提交 page_plan，再判断渲染是否达到设计单，不合格就按设计单重做'
+ORDINARY_PLAN_MISSING = '这页还没有设计单。每一页（包括普通页）都先提交 kind=ordinary 的 page_plan（takeaway、relationship、reading_order、device、anchor、form、average、reference），再按它检查这张渲染图。'
 PLAN_CHECK = ('对照这张图检查三件事——主角是否就是 hero、视线是否按 reading_order 走、visual_idea 是否真的做出来了；'
               '没有做到就改，不要改写设计单去迁就现状。')
 GENERIC_STYLE = re.compile(
@@ -160,6 +172,14 @@ def plan_issues(plan):
     if not isinstance(order, list) or not 1 <= len(order) <= 3 or any(
             not isinstance(phrase, str) or not phrase.strip() for phrase in order):
         issues.append('reading_order 必须包含 1–3 个非空短语。')
+    for field, (minimum, message) in ANCHOR_FIELDS.items():
+        value = plan.get(field)
+        if not isinstance(value, str) or sum(ch.isalnum() for ch in value) < minimum:
+            issues.append(message)
+    if kind == 'ordinary':
+        device = plan.get('device')
+        if not isinstance(device, str) or sum(ch.isalnum() for ch in device) < 4:
+            issues.append('普通页也要写本页的设计手段（来自 quiet_system 的第二个面、展示字或标记）')
     if kind == 'key':
         hero, idea, rejected = (plan[field].strip() if isinstance(plan.get(field), str) else ''
                                 for field in ('hero', 'visual_idea', 'rejected'))
@@ -194,7 +214,7 @@ class PageDesignInputs:
                  'inputSchema': {'type': 'object', 'properties': {
                                   'page_id': {'type': 'string', 'description': 'Required for context and page_plan. Omit for deck_plan.'},
                                   'action': {'type': 'string', 'enum': ['context', 'deck_plan', 'page_plan'],
-                                             'description': 'Default context. For deck_plan provide occasion, audience, feeling, expectations, subject and wrong_looks, with optional references. Submit page_plan before building the cover, key pages and closing page. Key plans require all eight fields. Ordinary plans require takeaway, relationship and reading_order.'},
+                                             'description': 'Default context. For deck_plan provide occasion, audience, feeling, expectations, subject and wrong_looks, with optional references. Submit page_plan before building or editing each page. Key plans require all eight design fields. Ordinary plans require takeaway, relationship, reading_order and device. Both kinds require anchor, form and average, and reference when the library is present.'},
                                   'occasion': {'type': 'string', 'description': 'Deck occasion and how the slides will be shown.'},
                                   'audience': {'type': 'string', 'description': 'Who is watching and their relationship to the speaker.'},
                                   'feeling': {'type': 'string', 'description': 'Two to four words for how the audience should feel. Social occasions cannot use 克制、冷静、极简 or 低调.'},
@@ -205,6 +225,11 @@ class PageDesignInputs:
                                   'kind': {'type': 'string', 'enum': ['key', 'ordinary'],
                                            'description': 'Required for page_plan. On a context call, key flags a page that needs a key plan.'},
                                   'reading_order': {'type': 'array', 'minItems': 1, 'maxItems': 3, 'items': {'type': 'string'}},
+                                  'reference': {'type': 'string', 'description': 'For page_plan, enter a page ID from pptx_reference_library action=inspire or search, or craft-1 through craft-6 from action=craft.'},
+                                  'anchor': {'type': 'string', 'description': 'For page_plan: the concrete real-world thing this page is anchored to — real numbers or labelled example data, an actual quote, a specific person or scene.'},
+                                  'form': {'type': 'string', 'description': 'For page_plan: the real-world object or document whose form this page borrows (receipt, bag label, badge, ticket, minutes, calendar...), or 无： with the reason.'},
+                                  'average': {'type': 'string', 'description': 'For page_plan: the most common, average layout for this content, which this page will not use.'},
+                                  'device': {'type': 'string', 'description': 'For ordinary plans, describe in at least four characters how this page uses a second surface, display type or recurring mark from quiet_system.'},
                                   **{field: {'type': 'string'} for field in PLAN_TEXT},
                                   'hero': {'type': 'string', 'description': 'Name the focal element and how much of the page it occupies.'},
                                   'visual_idea': {'type': 'string', 'description': 'Describe the visible idea in at least 12 characters and name a concrete word or number from takeaway or hero.'},
@@ -252,13 +277,18 @@ class PageDesignInputs:
     def submit_plan(self, args):
         page_id = args.get('page_id')
         issues = plan_issues(args)
+        reference = args['reference'].strip() if isinstance(args.get('reference'), str) else ''
+        if (reference_library.root(self.cfg).is_dir() and reference not in CRAFT_REFERENCES
+                and (not reference or not reference_library.has_page(self.cfg, reference))):
+            issues.append(REFERENCE_REQUIRED)
         try:
             deck_plan = read_deck_plan(self.job)
         except (OSError, ValueError):
             deck_plan = {}
         if args.get('kind') == 'key' and not deck_plan:
             issues.insert(0, DECK_PLAN_MISSING)
-        unexpected = set(args) - (PLAN_FIELDS | {'action', 'page_id', 'kind'})
+        fields = PLAN_FIELDS | {'device'} if args.get('kind') == 'ordinary' else PLAN_FIELDS
+        unexpected = set(args) - (fields | {'action', 'page_id', 'kind'})
         if unexpected:
             issues.append('未知设计单字段：' + ', '.join(sorted(unexpected)))
         if (not isinstance(page_id, str) or not 1 <= len(page_id) <= 200
@@ -266,7 +296,7 @@ class PageDesignInputs:
             issues.append('page_id 必须对应大纲中的唯一页面。')
         if issues:
             return self.reply(False, {'status': 'invalid', 'issues': issues})
-        plan = {field: args[field].strip() for field in PLAN_TEXT
+        plan = {field: args[field].strip() for field in (*PLAN_TEXT, *ANCHOR_FIELDS, 'device', 'reference')
                 if isinstance(args.get(field), str) and args[field].strip()}
         plan.update(kind=args['kind'], reading_order=[phrase.strip() for phrase in args['reading_order']])
         try:
@@ -281,11 +311,13 @@ class PageDesignInputs:
                 write_plan_file(self.job, PLAN_FILE, data)
         except (OSError, ValueError):
             return self.reply(False, {'status': 'unavailable', 'error': '无法保存 page-plans.json，已有设计单未替换。'})
-        note = '阅读顺序：' + ' '.join(f'{n} {phrase}' for n, phrase in zip('①②③', plan['reading_order']))
-        result = {'status': 'accepted', 'reading_order_note': note,
-                  'instruction': '把 reading_order_note 原样写进该页的讲稿备注。'}
+        result = {'status': 'accepted', 'instruction': '阅读顺序已保存在设计单里，备注只写演讲稿。'}
         if deck_plan:
             result['deck_plan'] = {field: deck_plan.get(field) for field in ('feeling', 'expectations')}
+        if plan.get('reference') in CRAFT_REFERENCES:
+            same = sum(entry.get('reference') == plan['reference'] for entry in plans.values())
+            if same >= 3 and same * 2 > len(plans):
+                result['reference_note'] = CRAFT_REPEAT.format(count=same, ref=plan['reference'])
         return self.reply(True, result)
 
     def plan_context(self, args, context):
@@ -301,8 +333,11 @@ class PageDesignInputs:
         details = {}
         if key and plan.get('kind') != 'key':
             details['plan_missing'] = PLAN_MISSING
+        elif not plan:
+            details['plan_missing'] = ORDINARY_PLAN_MISSING
         if plan:
-            details['plan'] = {field: plan.get(field) for field in ('takeaway', 'hero', 'reading_order', 'visual_idea')}
+            details['plan'] = {field: plan.get(field) for field in ('takeaway', 'hero', 'reading_order', 'visual_idea',
+                                                                     'anchor', 'form', 'average')}
             details['plan_check'] = PLAN_CHECK
         return {**details, **context}
 

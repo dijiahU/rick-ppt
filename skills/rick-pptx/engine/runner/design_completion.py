@@ -254,10 +254,13 @@ def validate_coverage(report, pages, picture_counts=None, request_text=None):
             raise ValueError('Text alone is not evidence of a visible demonstration; justify text_appropriate or identify the gap')
         if row['status'] == 'missing':
             score = assessment['visual_craft']['visual_expression']['score']
-            if (assessment['readiness'] != 'needs_revision' or not ids
-                    or not set(ids) <= set(assessment['primary_findings'])
-                    or any(findings[i].get('route') == 'retain_suggestion' for i in ids)
-                    or not set(ids) <= set(assessment['visual_craft']['visual_expression']['finding_ids'])
+            # 2026-11-22: a row may also cite a retained suggestion on the same page (task 4ac88476 failed
+            # twice for page 5 citing F01 native_repair + F04 retain_suggestion). At least one linked
+            # finding must be actionable, and every actionable one must drive the revision.
+            actionable = [i for i in ids if findings[i].get('route') != 'retain_suggestion']
+            if (assessment['readiness'] != 'needs_revision' or not actionable
+                    or not set(actionable) <= set(assessment['primary_findings'])
+                    or not set(actionable) <= set(assessment['visual_craft']['visual_expression']['finding_ids'])
                     or score is None or score >= 7):
                 raise ValueError('Missing demonstration needs a same-page actionable finding, unfinished expression score and revision')
         if row['status'] == 'uncertain' and assessment['readiness'] == 'ready':

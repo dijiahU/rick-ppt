@@ -1,9 +1,13 @@
 """Mechanical layout clues for one native slide: off-slide objects, overlapping text
 boxes, very small text and text crammed into its box. Clues, not design verdicts."""
+import posixpath
 import re
+from urllib.parse import unquote
+from xml.etree.ElementTree import fromstring
 
 P = '{http://schemas.openxmlformats.org/presentationml/2006/main}'
 A = '{http://schemas.openxmlformats.org/drawingml/2006/main}'
+R = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
 EMU_PT = 12700
 HEX = re.compile(r'[0-9A-Fa-f]{6}')
 TOP = (P+'sp', P+'pic', P+'grpSp', P+'graphicFrame', P+'cxnSp')
@@ -121,6 +125,56 @@ def _leaves(parent, transform=(0, 0, 1, 1)):
             yield from _leaves(node, inner)
         else:
             yield node, mapped
+
+
+def plain_page(slide_tree, size, background_color):
+    """Whether a slide lacks pictures, a second surface and display-sized text."""
+    if any(slide_tree.find(path) is not None for path in (
+            './/'+P+'pic', './/'+P+'spPr/'+A+'blipFill', './/'+P+'bgPr/'+A+'blipFill')):
+        return False
+    for paragraph in slide_tree.iter(A+'p'):
+        default = paragraph.find(A+'pPr/'+A+'defRPr[@sz]')
+        for run in paragraph:
+            if run.tag not in (A+'r', A+'fld') or not _text(run):
+                continue
+            props = run.find(A+'rPr[@sz]')
+            props = default if props is None else props
+            if props is not None and int(props.get('sz')) >= 6000:
+                return False
+    tree = slide_tree.find('.//'+P+'spTree')
+    frame = (0, 0, *size)
+    page_area = size[0] * size[1]
+    for node, box in _leaves(tree if tree is not None else []):
+        if node.tag != P+'sp' or node.find(P+'spPr/'+A+'solidFill') is None:
+            continue
+        geom = node.find(P+'spPr/'+A+'prstGeom')
+        if geom is not None and geom.get('prst') in ('line', 'lineInv'):
+            continue
+        area = _overlap(box, frame)
+        if area == page_area and (not background_color or _fill(node.find(P+'spPr')) == background_color.upper()):
+            continue
+        if area * 100 >= page_area * 6:
+            return False
+    return True
+
+
+def plain_pages(archive):
+    """Interior page numbers in presentation order, independent of slide part filenames."""
+    presentation = fromstring(archive.read('ppt/presentation.xml'))
+    slides = presentation.findall(P+'sldIdLst/'+P+'sldId')
+    if len(slides) < 3:
+        return []
+    size = slide_size(presentation)
+    targets = {rel.get('Id'): rel.get('Target') for rel in fromstring(archive.read('ppt/_rels/presentation.xml.rels'))
+               if rel.get('Type', '').endswith('/slide') and rel.get('TargetMode') != 'External'}
+    found = []
+    for number, slide in enumerate(slides[1:-1], 2):
+        target = unquote(targets[slide.get(R+'id')])
+        part = posixpath.normpath(target.lstrip('/') if target.startswith('/') else posixpath.join('ppt', target))
+        tree = fromstring(archive.read(part))
+        if plain_page(tree, size, background(tree, size)):
+            found.append(number)
+    return found
 
 
 def _glyph_width(text, size_pt, bold=False):
@@ -275,3 +329,83 @@ def check(slide_tree, size, *, min_pt=10, palette=None):
             break
     issues += off_palette(slide_tree, palette)
     return issues[:20]
+
+
+def _hue_chroma(hex_color):
+    r, g, b = (int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+    high, low = max(r, g, b), min(r, g, b)
+    chroma = high - low
+    if chroma == 0:
+        return None, 0, high
+    if high == r:
+        hue = 60 * (((g - b) / chroma) % 6)
+    elif high == g:
+        hue = 60 * ((b - r) / chroma + 2)
+    else:
+        hue = 60 * ((r - g) / chroma + 4)
+    return hue, chroma, high
+
+
+def is_muted_cool(hex_color):
+    """Greyed sage / dusty teal / slate blue: cool hue at low chroma (the stock generated palette)."""
+    hue, chroma, _ = _hue_chroma(hex_color)
+    return hue is not None and 80 <= hue <= 240 and 8 <= chroma <= 70
+
+
+def _card_fill(hex_color):
+    """A light tinted panel: not white, not dark, low chroma (pale grey-green, beige, pale blue...)."""
+    hue, chroma, high = _hue_chroma(hex_color)
+    low = high - chroma
+    return hex_color != 'FFFFFF' and low >= 190 and chroma <= 45
+
+
+def surface_audit(archive):
+    """Per-deck surface clues in presentation order: cream panels, tinted text cards, muted cool palette.
+
+    2026-11-22 (Rick): beyond the slide ground, generated decks put text on many pale tinted
+    rectangles (cream FFFCF5 cards, pale sage panels) in a greyed teal/sage palette. Clues only."""
+    presentation = fromstring(archive.read('ppt/presentation.xml'))
+    size = slide_size(presentation)
+    page_area = size[0] * size[1]
+    frame = (0, 0, *size)
+    targets = {rel.get('Id'): rel.get('Target') for rel in fromstring(archive.read('ppt/_rels/presentation.xml.rels'))
+               if rel.get('Type', '').endswith('/slide') and rel.get('TargetMode') != 'External'}
+    cream, cards, colour_area = [], {}, {}
+    for number, slide in enumerate(presentation.findall(P+'sldIdLst/'+P+'sldId'), 1):
+        target = unquote(targets[slide.get(R+'id')])
+        part = posixpath.normpath(target.lstrip('/') if target.startswith('/') else posixpath.join('ppt', target))
+        tree = fromstring(archive.read(part))
+        ground = background(tree, size)
+        if ground:
+            colour_area[ground] = colour_area.get(ground, 0) + 1.0
+        spt = tree.find('.//'+P+'spTree')
+        leaves = list(_leaves(spt if spt is not None else []))
+        texts = [box for node, box in leaves if node.tag == P+'sp' and _text(node)]
+        count = 0
+        for node, box in leaves:
+            if node.tag != P+'sp':
+                continue
+            sppr = node.find(P+'spPr')
+            if sppr is None or sppr.find(A+'solidFill') is None:
+                continue
+            geom = sppr.find(A+'prstGeom')
+            if geom is not None and geom.get('prst') not in ('rect', 'roundRect', 'snip1Rect', 'round2SameRect'):
+                continue
+            fill = _fill(sppr)
+            share = _overlap(box, frame) / page_area
+            if not fill or share >= 0.9 or share < 0.01:
+                continue
+            colour_area[fill] = colour_area.get(fill, 0) + share
+            carries_text = bool(_text(node)) or any(_overlap(box, t) >= 0.6 * t[2] * t[3] for t in texts if t != box)
+            if is_cream(fill) and share >= 0.08:
+                cream.append((number, fill, round(share * 100)))
+            if carries_text and 0.02 <= share <= 0.45 and (_card_fill(fill) or is_cream(fill)):
+                count += 1
+        if count:
+            cards[number] = count
+    chromatic = {c: a for c, a in colour_area.items() if _hue_chroma(c)[1] >= 8}
+    total = sum(chromatic.values())
+    muted = sum(a for c, a in chromatic.items() if is_muted_cool(c))
+    return {'cream_surfaces': cream, 'card_pages': cards,
+            'muted_cool_share': round(muted / total, 2) if total else 0.0,
+            'muted_colours': sorted((c for c in chromatic if is_muted_cool(c)), key=lambda c: -chromatic[c])[:5]}

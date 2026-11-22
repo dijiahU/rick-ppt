@@ -36,7 +36,11 @@ page count and source scope.
   wedding invitations and wedding films, festival and concert posters, children's
   picture books, campus and event posters, editorial magazines, film posters, brand
   campaigns, FT and Economist graphics for data. Match the mood to the occasion; do not
-  default to minimalist masters. Search by name and work; style words alone mostly
+  default to minimalist masters. For quiet and text-only pages in any register, the
+  craft references are Swiss / International Typographic Style posters, Kenya Hara and
+  MUJI, Penguin book covers, book interior spreads and the template library's best
+  restrained decks (action=templates with "极简 杂志 黑白"): look at how they use a
+  second surface, display type and a recurring mark. Search by name and work; style words alone mostly
   return template sellers' mock-ups. pptx_browse saves each screenshot under
   references/browse/; register the useful ones as local_image references.
 - Compare whole templates while planning. Start with the user-supplied template, then
@@ -92,10 +96,28 @@ causes, alternatives, decisions).
 
 ## Thin briefs
 
+When the brief is one line (introduce a painting, a person, a product, a concept),
+research first lists what an informed presenter would be expected to cover: the
+best-known facts, the creator's own words or view, how it was made, reception and
+afterlife, a well-known debate or recent finding, and one surprising detail. Decide
+which page carries each; a finding that only reaches the source notes is lost to the
+audience.
+
 When the brief supplies only bare facts (a weekly report, a short list of results),
 the deck still needs substance: add analysis, implications, risks and next steps that
-follow from the facts, clearly labelled as suggestions. Never invent numbers, quotes,
-screenshots or results.
+follow from the facts, clearly labelled as suggestions. Never invent research facts,
+quotes, screenshots or results attributed to real people, studies or companies.
+
+**When the user's own figures are missing, fill them with labelled illustrative values.**
+A pitch without a raise amount, a price, traction or a team, a plan without a budget,
+a report without the user's own numbers: do not leave "pending" or empty slots (a page
+of "待补" reads unfinished). Write a plausible, internally consistent value that fits
+the rest of the deck (for example "种子轮 300 万元，用于 18 个月" or "$49 per location per
+month") and label it on the same page in small text: "示例数字，非真实数据，请替换" /
+"Illustrative figure — replace with actual". For people, use a role and an obviously
+fictional placeholder ("创始人 A · 前连锁餐饮运营总监") rather than a real-sounding name.
+Keep every external fact (market sizes, studies, competitors) real and sourced; only the
+user's own figures may be illustrative. Say in the speaker notes which figures to replace.
 
 ## Plan the pages
 

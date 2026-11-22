@@ -63,7 +63,24 @@ def compact_resume(job, name, context=None):
                           'conversation_context': context}, ensure_ascii=False))
 
 
-def progress_note(role):
+def deck_status(root):
+    """(built, planned) page counts for an author workspace, or None when unknown."""
+    root = Path(root)
+    try:
+        planned = len(json.loads(read_scoped(root, 'outline.json', 2 * 1024 * 1024)).get('slides') or [])
+    except (OSError, ValueError, AttributeError):
+        return None
+    built = 0
+    projects = root / 'projects'
+    if projects.is_dir():
+        for workspace in projects.glob('*/workspace/ppt/slides'):
+            if workspace.is_symlink():
+                continue
+            built = max(built, sum(1 for p in workspace.glob('slide*.xml') if re.fullmatch(r'slide\d+\.xml', p.name)))
+    return (built, planned) if planned else None
+
+
+def progress_note(role, status=None):
     action = ('Record verified findings and unresolved questions in source-notes.md, '
               'then complete the supported outline/decision handoff when ready. '
               'Do not invent evidence or pretend unresolved required inputs exist.'
@@ -72,6 +89,12 @@ def progress_note(role):
               'order, or execute saved authoring work. Inspect the actual render before '
               'fine color/spacing work. A partial page is revisable; do not lock a failed '
               'composition. Preserve scope, meaning, editability and required animation.')
+    if role == 'author' and status and status[0] >= status[1]:
+        action = (f'All {status[1]} planned pages are already built. The next saved progress is the '
+                  'candidate: run save_candidate now with the exact command in tool-manifest.json / '
+                  'tool-quickstart.md and fix only what it reports. Do not re-render or re-inspect the '
+                  'whole deck first; the deck-wide visual check is the independent review that runs '
+                  'after the candidate is saved.')
     return ('HOST OUTPUT-PROGRESS CHECK: completed tool actions have not changed the '
             'phase outputs. Repeated file listing, tool-source reading, image crops, '
             'color sampling and status messages alone are not a completed handoff/page. '
@@ -142,6 +165,11 @@ class OutputProgress:
             raise ValueError('progress_action_window must be an integer from 4 to 100')
         self.root, self.records = Path(root), Path(records)
         self.role, self.window = stage_role(name), window
+        status = deck_status(root) if self.role == 'author' else None
+        if status:
+            # A final pass over N finished pages renders and inspects each one;
+            # that is legitimate quiet work, so the window grows with the deck.
+            self.window = max(window, min(100, 2 * status[1]))
         self.active, self.seen, self.pending = set(), set(), 0
         self.cache = {}
         identity=[task_id,name,revision]

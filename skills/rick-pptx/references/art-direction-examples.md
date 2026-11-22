@@ -126,7 +126,7 @@ two operations identifiable through labels, alignment or another relationship, w
 recopying the overview. If the source gives only a rule, show that exact evidence; use a
 labeled teaching instance only where allowed, never a fabricated result. Rendered check:
 can the audience point to each necessary operation and its supporting detail? Source
-notes may document provenance but must not be the only home of this mapping.
+source-notes.md may document provenance but must not be the only home of this mapping.
 
 When studying a reference series, examine what repeats and what changes; borrow a
 continuity principle, test it on current pages and record its concrete application.

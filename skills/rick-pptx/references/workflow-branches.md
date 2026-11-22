@@ -58,9 +58,9 @@ illustrative.
 Kinds: artwork, design_work, teaching, supplied_system. Inspection: local_image,
 hosted_visual, read_text or unavailable (then evidence=null, borrowed=null,
 applications=[]). Artwork/design_work applications need actual visual inspection.
-`source` is an exact credential-free HTTPS URL or task-relative file. Application page
-IDs are the single source of page associations; `design_references.py --workspace
-PARTS_DIR` writes them into slide notes. Record only works you actually looked at.
+`source` is an exact credential-free HTTPS URL or task-relative file. Record applied
+works and their page associations in the `decision-plan.json` `references` register.
+Record only works you actually looked at. Speaker notes contain only the speech script.
 
 ## Checks
 
