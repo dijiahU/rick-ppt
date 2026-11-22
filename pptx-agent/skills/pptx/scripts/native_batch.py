@@ -32,7 +32,8 @@ OPERATIONS = {'text': canvas.add_text, 'shape': canvas.add_shape,
 # animation targets stay explicit on each operation; no implicit page template.
 STYLE_FIELDS = canvas.BATCH_STYLE_FIELDS
 SYSTEM_FONTS = (Path('/System/Library/Fonts'), Path('/Library/Fonts'),
-                Path('/usr/share/fonts'), Path('/usr/local/share/fonts'))
+                Path('/usr/share/fonts'), Path('/usr/local/share/fonts'),
+                Path(os.environ.get('WINDIR') or 'C:/Windows') / 'Fonts')
 
 
 class BatchError(ValueError):

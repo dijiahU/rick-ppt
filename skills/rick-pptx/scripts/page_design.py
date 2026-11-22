@@ -4,7 +4,10 @@ Optional records live in source-notes.md. No new planning/delivery gate, source
 research, layout selection, aesthetic score or reviewer verdict is introduced.
 """
 import argparse
-import fcntl
+try:
+    from pptx_core import portable_lock as fcntl
+except ImportError:
+    from .pptx_core import portable_lock as fcntl
 import hashlib
 import json
 import os

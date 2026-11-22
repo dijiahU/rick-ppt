@@ -5,7 +5,7 @@ Notifications are marshalled to the workflow owner thread before callbacks run.
 """
 import base64
 import copy
-import fcntl
+from pptx_core import portable_lock as fcntl
 import json
 import mimetypes
 from pathlib import Path

@@ -10,8 +10,9 @@ Run `python SKILL_ROOT/scripts/doctor.py` first. Rendering requires LibreOffice
 Recipients receive only the PPTX; they need none of these author tools. Do not
 silently install dependencies. If an available authorized render tool cannot
 substitute, disclose the missing capability instead of claiming verification.
-The CLI uses POSIX locks and supports macOS/Linux; use a compatible host/WSL on
-Windows. Windows-native execution has not been verified.
+The CLI runs on macOS, Linux and Windows (file locks use fcntl or msvcrt). On
+Windows set `PYTHONUTF8=1` once and see [Any agent, any OS](any-host.md) for
+install commands. Windows support is covered by simulated tests, not a real run.
 
 Model/API/fast-mode selection, search, image generation and independent reviewer
 contexts come from the host. This skill does not configure or promise them. Do

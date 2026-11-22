@@ -17,14 +17,16 @@ from .common import PptxError, now, sha256
 
 
 def executables():
-    soffice = os.environ.get("PPTX_SOFFICE") or shutil.which("soffice")
-    mac = Path("/Applications/LibreOffice.app/Contents/MacOS/soffice")
-    if not soffice and mac.exists():
-        soffice = str(mac)
-    ppm = shutil.which("pdftoppm")
+    soffice = os.environ.get("PPTX_SOFFICE") or shutil.which("soffice") or shutil.which("libreoffice")
+    if not soffice:
+        programs = [os.environ.get(k) for k in ("ProgramFiles", "ProgramFiles(x86)")]
+        known = [Path("/Applications/LibreOffice.app/Contents/MacOS/soffice"),
+                 *(Path(p) / "LibreOffice/program/soffice.exe" for p in programs if p)]
+        soffice = next((str(p) for p in known if p.exists()), None)
+    ppm = os.environ.get("PPTX_PDFTOPPM") or shutil.which("pdftoppm")
     if not soffice or not ppm:
         raise PptxError("Rendering requires LibreOffice (soffice) and Poppler (pdftoppm). "
-                        "Install them or set PPTX_SOFFICE to the soffice executable.")
+                        "Install them, or set PPTX_SOFFICE / PPTX_PDFTOPPM to the executables.")
     return soffice, ppm
 
 

@@ -14,7 +14,25 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
-EDGE = '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'
+import shutil
+import sys
+
+
+def find_browser():
+    """Edge (or Chrome) on macOS/Linux; PPTX_BROWSER_EXECUTABLE overrides."""
+    override = os.environ.get('PPTX_BROWSER_EXECUTABLE')
+    if override:
+        return override
+    known = ['/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+             '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome']
+    for name in ('microsoft-edge', 'microsoft-edge-stable', 'google-chrome', 'chromium'):
+        found = shutil.which(name)
+        if found:
+            known.append(found)
+    return next((p for p in known if Path(p).is_file()), known[0])
+
+
+EDGE = find_browser()
 # Outside the repository: it holds the operator's site cookies and must never be committed.
 PROFILE = Path.home() / '.rick-ppt' / 'edge-profile'
 TOOL = 'pptx_browse'
@@ -50,8 +68,10 @@ class PipeBrowser:
     def start(self):
         if self.proc and self.proc.poll() is None:
             return
+        if sys.platform == 'win32':
+            raise CdpError('Browser research uses --remote-debugging-pipe, which needs macOS/Linux; built-in web search still works')
         if not Path(self.executable).is_file():
-            raise CdpError('Microsoft Edge is not installed')
+            raise CdpError('Microsoft Edge or Chrome is not installed (or set PPTX_BROWSER_EXECUTABLE)')
         self.profile.mkdir(parents=True, exist_ok=True)
         to_browser_r, self.to_browser = os.pipe()
         self.from_browser, from_browser_w = os.pipe()

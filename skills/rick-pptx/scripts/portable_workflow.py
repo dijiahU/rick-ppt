@@ -3,7 +3,7 @@
 import argparse
 from contextlib import contextmanager
 import datetime
-import fcntl
+from pptx_core import portable_lock as fcntl
 import hashlib
 import importlib
 import json

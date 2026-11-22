@@ -40,8 +40,11 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--full',action='store_true')
     args=parser.parse_args()
     root = Path(__file__).resolve().parents[1]
-    checks = {'python_3_11': sys.version_info >= (3, 11), 'posix_host': sys.platform != 'win32'}
-    details = {'python': sys.version.split()[0], 'platform': sys.platform}
+    checks = {'python_3_11': sys.version_info >= (3, 11)}
+    if sys.platform == 'win32':
+        checks['utf8_mode'] = bool(sys.flags.utf8_mode)  # setx PYTHONUTF8 1, or python -X utf8
+    details = {'python': sys.version.split()[0], 'platform': sys.platform,
+               'note': 'Core helpers run on macOS, Linux and Windows (Python file locks via fcntl/msvcrt).'}
     for module in ('lxml.etree', 'PIL.Image', 'jsonschema', 'fontTools.ttLib'):
         try:
             importlib.import_module(module)
@@ -53,11 +56,14 @@ def main():
     try:
         from pptx_core.renderer import executables
         office, poppler = executables()
-        checks['renderer'] = Path(office).is_file() and bool(shutil.which(poppler))
+        checks['renderer'] = Path(office).is_file() and (Path(poppler).is_file() or bool(shutil.which(poppler)))
         details['renderer'] = {'soffice': office, 'pdftoppm': poppler}
     except Exception as exc:
         checks['renderer'] = False
         details['renderer'] = str(exc)
+        details['install_hint'] = {'darwin': 'brew install --cask libreoffice && brew install poppler',
+                                   'linux': 'apt install libreoffice-impress poppler-utils',
+                                   'win32': 'winget install TheDocumentFoundation.LibreOffice; install Poppler (e.g. conda install -c conda-forge poppler) and put pdftoppm on PATH or set PPTX_PDFTOPPM'}.get(sys.platform, 'Install LibreOffice and Poppler')
     if args.full:
         details['package_integrity']=package_integrity(root)
         checks['package_integrity']=details['package_integrity']['verified']

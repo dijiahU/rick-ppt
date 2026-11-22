@@ -1,6 +1,23 @@
 # 成品示例 / Presentation examples
 
-这里收录 Rick 选择公开的 13 份独立 PPTX 成品，涵盖游戏宣发、技术演示、历史课件、海报和论文图复刻。点击文件后，可在 GitHub 文件页下载原始 PPTX。
+点击文件即可在 GitHub 文件页下载原始 PPTX。文字、图形和图表是原生 PowerPoint 对象，照片和复杂纹理保留为图片；可编辑范围以文件中的实际对象为准。
+
+## 最新工作流成品（2026-11，plugin opt10–opt22）
+
+由当前工作流从一句需求自动完成：调研 → 逐页设计单 → 原生制作 → 内容/视觉独立审核 → 交付。模型 gpt-6.2-sol（xhigh）。
+
+| 文件 | 场景 | 页数 | 用时 | 预览 |
+| --- | --- | ---: | ---: | --- |
+| [3D 打印液态金属电子皮肤](3d-printing-liquid-metal.pptx) | 学术汇报（英文） | 15 | 61 分钟 | [预览](previews/3d-printing-liquid-metal.jpg) |
+| [丝绸之路](silk-road.pptx) | 历史课件 | 5 | 37 分钟 | [预览](previews/silk-road.jpg) |
+| [浮力](buoyancy-lesson.pptx) | 初二物理课件 | 5 | 39 分钟 | [预览](previews/buoyancy-lesson.jpg) · [逐步讲解](../docs/workflow-walkthrough.md) |
+| [降噪耳机发布](anc-headphones-launch.pptx) | 发布会大屏 | 6 | 31 分钟 | [预览](previews/anc-headphones-launch.jpg) |
+| [梵高《星空》](van-gogh-starry-night.pptx) | 艺术赏析 | 10 | 34 分钟 | [预览](previews/van-gogh-starry-night.jpg) |
+| [精品咖啡豆](specialty-coffee-brand.pptx) | 品牌介绍 | 8 | 21 分钟 | [预览](previews/specialty-coffee-brand.jpg) |
+
+图片来自开放授权图库、博物馆公有领域藏品或内置生图，署名在各页说明里。
+
+## 早期案例
 
 | 文件 | 场景 | 页数 | 主要展示内容 |
 | --- | --- | ---: | --- |

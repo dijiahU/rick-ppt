@@ -20,7 +20,7 @@ If the selected harness has no complete adapter, or required prerequisites are
 missing, report the specific gap and preserve work; do not silently downgrade a
 requested complete run. Another harness invoking --backend dsh still uses DSH.
 
-In Claude Code, read [Claude Code route](references/claude-code.md) first. The
+Any agent with shell, image viewing and a second fresh context can run this skill on macOS, Windows or Linux; read [Any agent, any OS](references/any-host.md) for setup and tool mapping. In Claude Code, read [Claude Code route](references/claude-code.md) first. The
 session itself is the continuing author using the core helpers; it maps host
 image viewing, search, independent reviewers and fonts to Claude Code tools.
 State that route in the delivery report; it is not the managed DSH engine run.

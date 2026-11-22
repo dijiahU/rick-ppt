@@ -22,11 +22,28 @@ SYSTEM_FONTS={
 }
 STARTER_IDS=tuple(SYSTEM_FONTS)
 
+WINDOWS_FONTS=Path(os.environ.get('WINDIR') or 'C:/Windows')/'Fonts'
+
+
+def host_font_dirs():
+    """System font folders for macOS, Windows and Linux (existing ones only)."""
+    if os.sys.platform=='win32':
+        dirs=[WINDOWS_FONTS,Path(os.environ.get('LOCALAPPDATA') or Path.home()/'AppData/Local')/'Microsoft/Windows/Fonts']
+    elif os.sys.platform=='darwin':
+        dirs=[Path('/System/Library/Fonts'),Path('/Library/Fonts'),Path.home()/'Library/Fonts']
+    else:
+        dirs=[Path('/usr/share/fonts'),Path('/usr/local/share/fonts'),Path.home()/'.local/share/fonts']
+    return [d for d in dirs if d.is_dir()]
+
+
 def system_font_candidates(font_id):
     _,office,system,_=SYSTEM_FONTS[font_id]
+    linux=[Path('/usr/share/fonts/truetype/msttcorefonts')/system.replace(' ','_'),
+           Path('/usr/share/fonts/truetype/msttcorefonts')/office]
     return [Path('/Applications/Microsoft PowerPoint.app/Contents/Resources/DFonts')/office,
             Path('/System/Library/Fonts/Supplemental')/system,
-            Path('C:/Windows/Fonts')/office.lower()]
+            Path('/Library/Fonts')/system,
+            WINDOWS_FONTS/office.lower(),WINDOWS_FONTS/office,*linux]
 
 def catalog_path():
     here=Path(__file__).resolve().parent
@@ -45,7 +62,12 @@ def scoped(root,name):
     return path
 
 def read(root,name,limit=MAX_FONT):
-    scoped(root,name)
+    path=scoped(root,name)
+    if not hasattr(os,'O_NOFOLLOW'):  # Windows: no descriptor-relative opens; scoped() rejected symlinks
+        if not path.is_file():raise ValueError('Regular font resource required')
+        with path.open('rb') as stream:data=stream.read(limit+1)
+        if len(data)>limit:raise ValueError('Font resource size limit exceeded')
+        return data
     fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
     try:
         for part in Path(name).parts[:-1]:
@@ -59,7 +81,14 @@ def read(root,name,limit=MAX_FONT):
     return data
 
 def publish(root,name,data):
-    scoped(root,name);pending='.font-'+uuid.uuid4().hex+'.pending'
+    path=scoped(root,name);pending='.font-'+uuid.uuid4().hex+'.pending'
+    if not hasattr(os,'O_NOFOLLOW'):  # Windows fallback with the same atomic replace
+        path.parent.mkdir(parents=True,exist_ok=True);temp=path.parent/pending
+        try:
+            temp.write_bytes(data);os.replace(temp,path)
+        finally:
+            temp.unlink(missing_ok=True)
+        return
     fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
     try:
         for part in Path(name).parts[:-1]:
@@ -221,7 +250,8 @@ def copy_fonts(source,target,ids=None):
 def configure(root):
     from xml.sax.saxutils import escape
     root=Path(root).resolve(strict=True)
-    xml='<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig><dir>/System/Library/Fonts</dir><dir>/Library/Fonts</dir><dir>'+escape(str(root/'fonts'))+'</dir><cachedir>'+escape(str(root/'font-cache'))+'</cachedir></fontconfig>'
+    system=''.join('<dir>'+escape(d.as_posix())+'</dir>' for d in host_font_dirs())
+    xml='<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig>'+system+'<dir>'+escape(str(root/'fonts'))+'</dir><cachedir>'+escape(str(root/'font-cache'))+'</cachedir></fontconfig>'
     publish(root,'fonts.conf',xml.encode())
 
 def coverage(root,ids,text):
@@ -237,6 +267,8 @@ def coverage(root,ids,text):
 def user_install(root,ids):
     # Standalone callers opt in. Public jobs have no broker operation or write
     # permission for this directory.
+    if os.sys.platform=='win32':
+        raise ValueError('On Windows install fonts through Settings > Fonts (copying files does not register them)')
     target=Path.home()/'Library/Fonts' if os.sys.platform=='darwin' else Path.home()/'.local/share/fonts'
     target.mkdir(parents=True,exist_ok=True);files=verified_files(root);installed=[]
     for item in manifest(root)['fonts']:

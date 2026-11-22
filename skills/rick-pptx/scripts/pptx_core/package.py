@@ -10,7 +10,7 @@ import zipfile
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
 
-import fcntl
+from . import portable_lock as fcntl
 
 from .common import PptxError, atomic_json, now, sha256
 from .manifest import affected_slides, changed_paths, manifest

@@ -4,7 +4,10 @@ Reuses native export/render and the existing authored decision check. This is a
 candidate checkpoint, not independent review, aesthetic approval or delivery.
 """
 import argparse
-import fcntl
+try:
+    from pptx_core import portable_lock as fcntl
+except ImportError:
+    from .pptx_core import portable_lock as fcntl
 import json
 import os
 from pathlib import Path
@@ -249,7 +252,7 @@ def save_candidate(task_root, workspace, output, *, allow_legacy=False):
     destination = scoped(root, output)
     declaration = scoped(root, 'delivery.json')
     lock = scoped(root, '.candidate-save.lock')
-    with os.fdopen(os.open(lock, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600), 'r+') as stream:
+    with os.fdopen(os.open(lock, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600), 'r+') as stream:
         fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
         previous = read(root, 'delivery.json', 10000) if declaration.exists() else None
         request = json.loads(read(root, 'request.json')) if scoped(root, 'request.json').exists() else {}
