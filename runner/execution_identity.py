@@ -36,6 +36,15 @@ def execution_identity(cfg):
         'profile': harness.get('profile'),
         'wire_api': profile.get('wire_api'),
         'verification': 'host-selected; provider-resolved model not observed'}
+    if cfg.get('_task_service_tier'):
+        # Present only for tasks submitted with Fast; requested is the website
+        # choice, service_tier what this route was configured with (None when an
+        # API provider does not support it).
+        note = cfg.get('_service_tier_note') or {}
+        selection['requested_service_tier'] = cfg['_task_service_tier']
+        selection['service_tier'] = (profile.get('service_tier') if profile else cfg['_task_service_tier'])
+        if note.get('reason'):
+            selection['service_tier_reason'] = note['reason']
     host = Path(__file__).resolve().parent
     distribution = None
     if cfg.get('_package_manifest'):

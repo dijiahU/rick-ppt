@@ -37,5 +37,7 @@ export async function POST(request:Request) {
   await ensureModelAccounts();
   const job=await db.prepare(CLAIM_ACCOUNT_JOB).bind(crypto.randomUUID(),now,capabilities.backends.includes('api')?1:0,capabilities.backends.includes('codex')?1:0,body.funding_version===1&&capabilities.backends.length>0?1:0).first();
   const funded=job?await db.prepare('SELECT job_id FROM task_funding WHERE job_id=?').bind(job.id).first():null;
-  return json({job:job?{...job,...(funded?{funding_mode:'user_api'}:{}),...taskScope(Number(job.pages)),...(job.pages===0?{brief:editInstruction+'\n\nUSER BRIEF:\n'+job.brief}:{} )}:null});
+  const options=job?await db.prepare('SELECT service_tier FROM task_options WHERE job_id=?').bind(job.id).first<{service_tier:string}>():null;
+  // Absent unless the submitter chose Fast; older workers ignore the extra field.
+  return json({job:job?{...job,...(funded?{funding_mode:'user_api'}:{}),...(options?.service_tier==='fast'?{service_tier:'fast'}:{}),...taskScope(Number(job.pages)),...(job.pages===0?{brief:editInstruction+'\n\nUSER BRIEF:\n'+job.brief}:{} )}:null});
 }

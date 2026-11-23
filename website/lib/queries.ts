@@ -20,6 +20,11 @@ export const CLAIM_ACCOUNT_JOB = CLAIM_JOB.replace(
  OR (execution_backend='api' AND ?=1 AND EXISTS(SELECT 1 FROM task_funding WHERE job_id=jobs.id)))`
 );
 
+// Per-task options are written in the same D1 batch as the job row, so a worker
+// never claims the job without them. No row means the default service tier.
+export const INSERT_TASK_OPTIONS = `INSERT INTO task_options(job_id,service_tier,created_at)
+SELECT id,?,? FROM jobs WHERE id=? AND user_id=?`;
+
 // Explicit operator retry of one unchanged failed attempt. Reuses its row/quota.
 export const RETRY_JOB = `UPDATE jobs SET status='queued',lease=NULL,progress=NULL,summary=NULL,updated_at=?
 WHERE id=? AND status='failed' AND updated_at=? AND result_key IS NULL

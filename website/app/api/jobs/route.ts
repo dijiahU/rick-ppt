@@ -1,13 +1,13 @@
 import {database,files,json,userId,sameOrigin,workerStatus} from '@/lib/server';
-import {INSERT_JOB} from '@/lib/queries';
-import {ensureModelAccounts,resolveFunding,sameFunding,type Funding} from '@/lib/model-accounts';
+import {INSERT_JOB,INSERT_TASK_OPTIONS} from '@/lib/queries';
+import {ensureModelAccounts,resolveFunding,sameFunding,sameOptions,type Funding} from '@/lib/model-accounts';
 import {isAdmin} from '@/lib/admin';
 import {isLocale,messages,type Messages} from '@/lib/i18n';
 import {uploadMessages} from '@/lib/upload-i18n';
 import {resolvePages,hasEditableDeck} from '@/lib/task-mode';
 import {pageCountMessages} from '@/lib/page-count-i18n';
 import {taskModeMessages} from '@/lib/task-mode-i18n';
-import {isExecutionBackend,automaticExecutionBackend} from '@/lib/execution-backend';
+import {isExecutionBackend,automaticExecutionBackend,parseFast,FAST_SERVICE_TIER} from '@/lib/execution-backend';
 import {executionWords} from '@/lib/execution-backend-i18n';
 import {resolveUploads,copyUpload,type StagedAttachment} from '@/lib/staged-uploads';
 import {boundedBody,MAX_INLINE_BYTES,validFiles,validSignature,extension,attachmentKey,type Attachment} from '@/lib/attachments';
@@ -23,7 +23,7 @@ export async function POST(request:Request){
   if(type.startsWith('multipart/form-data')){
    const raw=await boundedBody(request,MAX_INLINE_BYTES+128*1024);
    const form=await new Response(raw,{headers:{'Content-Type':type}}).formData();
-   body={...Object.fromEntries(['title','brief','style','language','requestKey','execution_backend'].map(key=>[key,form.get(key)])),mode:form.get('mode')??undefined,pages:Number(form.get('pages')),modelAccount:form.has('modelAccount')?JSON.parse(String(form.get('modelAccount'))):undefined};
+   body={...Object.fromEntries(['title','brief','style','language','requestKey','execution_backend'].map(key=>[key,form.get(key)])),mode:form.get('mode')??undefined,pages:Number(form.get('pages')),fast:form.has('fast')?({true:true,false:false} as Record<string,boolean>)[String(form.get('fast'))]??'invalid':undefined,modelAccount:form.has('modelAccount')?JSON.parse(String(form.get('modelAccount'))):undefined};
    const entries=form.getAll('files');
    if(entries.some(x=>typeof x==='string'))return fail('upload',400);
    uploads=entries as File[];
@@ -43,12 +43,14 @@ export async function POST(request:Request){
  const pages=choice.pages;
  const language=body.language===undefined?'en':body.language;
  if(typeof title!=='string'||!title.trim()||title.length>120||typeof brief!=='string'||brief.trim().length<10||brief.length>12000||typeof style!=='string'||style.length>80||!isLocale(language)||typeof requestKey!=='string'||!/^[a-f0-9-]{36}$/.test(requestKey))return fail('invalid',400);
+ // Optional speed choice: strictly boolean, absent means the existing default tier.
+ const fast=parseFast(body.fast);if(fast===null)return fail('invalid',400);
  if(pages===null)return json({error:pageCountMessages[locale][choice.error??'pagesRange'],code:choice.error??'pagesRange'},400);
  if(!validFiles(uploads)||uploads.reduce((sum,f)=>sum+f.size,0)>MAX_INLINE_BYTES||(uploads.length&&body.uploadIds!==undefined))return fail('upload',400);
  const db=database();await ensureModelAccounts();let funding:Funding|null;
  try{funding=await resolveFunding(user,body.modelAccount);}catch{return json({error:'Select a connected model account and an available model',code:'model_account'},400);}
  const prior=await db.prepare('SELECT id,execution_backend FROM jobs WHERE user_id=? AND request_key=?').bind(user,requestKey).first();
- const matches=async(row:Record<string,unknown>)=>(requestedBackend==null||row.execution_backend===requestedBackend)&&await sameFunding(String(row.id),funding);
+ const matches=async(row:Record<string,unknown>)=>(requestedBackend==null||row.execution_backend===requestedBackend)&&await sameFunding(String(row.id),funding)&&await sameOptions(String(row.id),fast);
  if(prior)return await matches(prior)?json(prior):locked();
  if(funding&&requestedBackend==='codex')return locked();
  const executionBackend=funding?'api':requestedBackend??automaticExecutionBackend(await workerStatus());
@@ -71,13 +73,19 @@ export async function POST(request:Request){
   for(const {meta,data} of payloads){const key=attachmentKey(id,meta.id);stored.push(key);await files().put(key,data,{httpMetadata:{contentType:'application/octet-stream'}});}
   const args=[id,user,requestKey,title.trim(),brief.trim(),pages,style,language,executionBackend,JSON.stringify(metadata),now,now,unlimited?1:0,user];
   let row;
+  const options=fast?[db.prepare(INSERT_TASK_OPTIONS).bind(FAST_SERVICE_TIER,now,id,user)]:[];
   if(funding){
    // D1 batch is transactional: a worker sees both job and funding, or neither.
    const guarded=INSERT_JOB.replace('ON CONFLICT',`AND EXISTS(SELECT 1 FROM model_accounts WHERE id=? AND user_id=? AND provider=? AND revoked_at IS NULL) ON CONFLICT`);
    const results=await db.batch([
     db.prepare(guarded).bind(...args,funding.credentialId,user,funding.provider),
     db.prepare(`INSERT INTO task_funding(job_id,user_id,credential_id,provider,model,version,created_at) SELECT id,user_id,?,?,?,1,? FROM jobs WHERE id=? AND user_id=?`).bind(funding.credentialId,funding.provider,funding.model,now,id,user),
+    ...options,
    ]);
+   row=results[0].results?.[0];
+  }else if(options.length){
+   // Transactional like funding: a worker sees the job together with its fast choice.
+   const results=await db.batch([db.prepare(INSERT_JOB).bind(...args),...options]);
    row=results[0].results?.[0];
   }else row=await db.prepare(INSERT_JOB).bind(...args).first();
   if(row){admitted=true;return json(row,201);}

@@ -53,6 +53,10 @@ export const modelAccounts = sqliteTable('model_accounts', {
  id:text('id').primaryKey(),userId:text('user_id').notNull(),provider:text('provider').notNull(),label:text('label').notNull(),
  keyHint:text('key_hint').notNull(),secret:text('secret').notNull(),models:text('models').notNull(),createdAt:integer('created_at').notNull(),revokedAt:integer('revoked_at'),
 },t=>[index('model_accounts_user').on(t.userId,t.revokedAt)]);
+// Created at runtime by ensureModelAccounts(); no row means the default service tier.
+export const taskOptions = sqliteTable('task_options', {
+ jobId:text('job_id').primaryKey(),serviceTier:text('service_tier').notNull(),createdAt:integer('created_at').notNull(),
+});
 export const taskFunding = sqliteTable('task_funding', {
  jobId:text('job_id').primaryKey(),userId:text('user_id').notNull(),credentialId:text('credential_id').notNull(),provider:text('provider').notNull(),model:text('model').notNull(),version:integer('version').notNull().default(1),createdAt:integer('created_at').notNull(),
 });

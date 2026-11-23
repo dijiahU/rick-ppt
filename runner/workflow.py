@@ -291,6 +291,9 @@ class Execution:
                 config['model_reasoning_effort']=self.cfg['_task_default_reasoning_effort']
             from model_backend import apply_service_tier
             apply_service_tier(config,self.cfg)
+        if meter and not profile:
+            usage_options['on_usage']=meter.codex_sink(name,self.cfg.get('_task_default_model') or self.cfg.get('default_model','unknown'),
+                                                       service_tier=config.get('service_tier'))
         if stage_role(name)=='research' and not profile and not getattr(self,'review_role',None):
             config['model_reasoning_effort']=self.cfg.get('research_reasoning_effort','high')
         if stage_role(name)=='author' and not profile and not getattr(self,'review_role',None) and self.cfg.get('author_reasoning_effort'):
@@ -591,6 +594,7 @@ class Execution:
                 stage={'name':name,'seconds':round(time.monotonic()-started,3),'usage':usage_summary(events),
                        'content_work':content,'thread':active_thread,'resumed':bool(thread),'log':str(path),'transport':self.cfg.get('_harness_transport','app-server'),'model':public_identity(profile),'api_calls':safe_api_calls(api_calls),'auxiliary_calls':auxiliary.calls if auxiliary else []}
                 if images:stage['initial_image_count']=len(images)
+                if config.get('service_tier'):stage['service_tier']=config['service_tier']
                 if host_handoff:stage['host_handoff']=host_handoff
                 parsed=parse_structured_output(result) if schema else result
                 self.stages.append(stage);self.trace.emit('phase',name+' completed',state='completed',detail=stage)

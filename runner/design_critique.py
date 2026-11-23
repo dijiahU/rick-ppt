@@ -267,8 +267,11 @@ class DesignCritique:
             config['model'] = self.cfg.get('default_model', DEFAULT_TASK_MODEL)
             # Runs in the background, so a deeper look costs the author no waiting.
             config['model_reasoning_effort'] = self.cfg.get('critique_reasoning_effort', 'high')
+            from model_backend import apply_service_tier
+            apply_service_tier(config, self.cfg, task_only=True)
             meter = self.cfg.get('_usage_ledger')
-            usage = {'on_usage': meter.codex_sink(self.cfg.get('_usage_stage', 'author') + '.design_critique', config['model'])} if meter else {}
+            usage = {'on_usage': meter.codex_sink(self.cfg.get('_usage_stage', 'author') + '.design_critique', config['model'],
+                                                  service_tier=config.get('service_tier'))} if meter else {}
             with AppServer(cwd=work, config=config, tick=tick, **usage) as server:
                 thread = server.start_thread()['thread']['id']
                 turn = server.start_turn(thread, prompt, images=copies)['id']

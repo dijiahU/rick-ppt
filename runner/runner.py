@@ -521,7 +521,7 @@ def _run_job(cfg,task,lease):
     # and rejects corrupt/gapped histories or an orphan projection in either case.
     existing=(state_root/task['id']/'events'/'00000000000000000001.json').exists()
     from durable import HOST_JOURNAL_LIMITS
-    from model_backend import bind_task,profile_for_task,task_default_model,task_default_reasoning_effort,DEFAULT_TASK_MODEL,DEFAULT_TASK_REASONING_EFFORT
+    from model_backend import bind_task,profile_for_task,task_default_model,task_default_reasoning_effort,DEFAULT_TASK_MODEL,DEFAULT_TASK_REASONING_EFFORT,task_service_tier,profile_with_task_tier
     cfg=dict(cfg)
     from customer_models import customer_profile
     customer=customer_profile(state_root,task,lambda path,**options:request(cfg,path,**options))
@@ -538,6 +538,15 @@ def _run_job(cfg,task,lease):
     if not cfg.get('_model_profile'):
         cfg['_task_default_model']=task_default_model(state_root,task['id'],existing,cfg.get('default_model',DEFAULT_TASK_MODEL),cfg.get('default_reasoning_effort',DEFAULT_TASK_REASONING_EFFORT))
         cfg['_task_default_reasoning_effort']=task_default_reasoning_effort(state_root,task['id'])
+    # Per-task Fast choice from the website, pinned at first admission. It takes
+    # precedence over the worker default_service_tier for every Codex session of
+    # this task. The API profile identity above stays unchanged for resume checks.
+    tier=task_service_tier(state_root,task['id'],existing,task.get('service_tier'))
+    if tier is not None:
+        cfg['_task_service_tier']=tier
+        if cfg.get('_model_profile'):
+            cfg['_model_profile'],note=profile_with_task_tier(cfg['_model_profile'],tier)
+            if note:cfg['_service_tier_note']=note
     from decision_routing import pin_decision_contract,admitted_click_requirement
     cfg['_choice_min_version']=pin_decision_contract(cfg,state_root,task['id'],existing)
     cfg['_native_reveal_required']=admitted_click_requirement(state_root,task['id'])
@@ -617,6 +626,13 @@ def _run_job_locked(cfg,task,lease,job,journal,recovery_plan):
     from admin_trace import AdminTrace
     records=ROOT/'records';records.mkdir(mode=0o700,exist_ok=True)
     trace=AdminTrace(cfg,task,request,records);trace.roots[str(job)]='$WORKSPACE'
+    if cfg.get('_task_service_tier'):
+        note=cfg.get('_service_tier_note')
+        if note and note['applied'] is None:
+            print('Job',task['id'],'Fast tier not supported by this API provider; standard tier used',flush=True)
+            trace.emit('note','Fast tier not supported by this API provider; standard tier used',detail=note)
+        else:
+            trace.emit('note','Fast service tier selected for this task',detail=note or {'requested':cfg['_task_service_tier'],'applied':cfg['_task_service_tier'],'reason':'task_choice'})
     from usage_ledger import UsageLedger
     usage=UsageLedger(cfg,task,request)
     cfg['_usage_ledger']=usage

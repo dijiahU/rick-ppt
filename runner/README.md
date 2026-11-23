@@ -565,6 +565,18 @@ separately. A requested Fast tier is not proof of accelerated processing: a gate
 can return `default`. Inspect the actual response tier before reporting Fast as
 active. Profiles without this field preserve their historical identity/config.
 
+A website task submitted with Fast arrives with `service_tier: "fast"` in its claim.
+`_run_job` pins it in host-private `service-tier.json` on first admission; resume and
+repair rounds reuse the pin, and tasks without that receipt (historical or default)
+keep the worker behavior. The task choice takes precedence over `default_service_tier`
+for the author, reviewers, browser helper, retained search/generation helpers and the
+GPT design critique. Codex usage receipts record the configured tier (`serviceTier`)
+and the execution identity adds `requested_service_tier`/`service_tier` for Fast
+tasks only. On an API profile route, an explicit profile `service_tier` wins; otherwise
+the task's Fast is applied only for `api.openai.com` (sent upstream as `priority`).
+Other providers ignore it; the admin trace records `provider_unsupported` and the task
+continues at the standard tier. The pinned `model-backend.json` identity is unchanged.
+
 APINebula model-list, vision/function call, real sandbox file use, schema response,
 Opus→retained search and Opus→retained generation have been exercised with isolated
 fixtures. Opus 5.5's Responses probes returned convert_request_failed; use the

@@ -37,3 +37,11 @@ export function backendChoiceUnavailable(backend: ExecutionBackend, online: bool
     availability: Partial<ExecutionAvailability> | undefined): boolean {
   return online === true && availability?.[backend] === false;
 }
+
+// Optional per-task speed choice. Only an explicit `fast: true` selects the
+// Codex fast service tier; an absent field keeps the worker's existing default.
+export const FAST_SERVICE_TIER = 'fast';
+export function parseFast(value: unknown): boolean | null {
+  if (value === undefined) return false;
+  return typeof value === 'boolean' ? value : null;
+}

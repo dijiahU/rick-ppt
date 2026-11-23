@@ -25,15 +25,63 @@ def task_default_reasoning_effort(state_root,task_id):
     path=Path(state_root)/task_id/'default-model.json'
     return json.loads(path.read_text()).get('reasoning_effort') if path.exists() else None
 
-def apply_service_tier(config,cfg):
-    """Worker-level speed tier for the default local Codex route (e.g. "fast").
-    Fast mode trades higher credit use for lower latency; unset keeps Codex's own."""
-    tier=(cfg or {}).get('default_service_tier')
+SERVICE_TIERS=('auto','default','fast','priority')
+TASK_SERVICE_TIERS=('fast',)
+# Only providers known to accept an OpenAI service_tier receive the task's Fast
+# choice when their profile does not set one. Others ignore it (recorded).
+FAST_TIER_HOSTS=('api.openai.com',)
+
+def task_service_tier(state_root,task_id,existing,requested=None):
+    """Pin the website's per-task speed choice at first admission.
+
+    Like default-model.json, the receipt is written only for a new admission;
+    resume/repair rounds reuse it. Tasks without a receipt (all historical and
+    every non-Fast task) keep the worker-level behavior unchanged."""
+    if requested is not None and requested not in TASK_SERVICE_TIERS:raise ValueError('Invalid task service_tier')
+    folder=Path(state_root)/task_id;path=folder/'service-tier.json'
+    if path.exists():
+        tier=json.loads(path.read_text()).get('service_tier')
+        if tier not in TASK_SERVICE_TIERS:raise ValueError('Invalid pinned task service_tier')
+        return tier
+    if existing or requested is None:return None
+    folder.mkdir(parents=True,exist_ok=True)
+    fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+    with os.fdopen(fd,'w') as out:json.dump({'service_tier':requested},out)
+    return requested
+
+def service_tier_for(cfg,*,task_only=False):
+    """Task choice first, then the worker-level default_service_tier."""
+    cfg=cfg or {}
+    tier=cfg.get('_task_service_tier')
+    if tier is not None:
+        if tier not in SERVICE_TIERS:raise ValueError('Invalid task service_tier')
+        return tier
+    if task_only:return None
+    tier=cfg.get('default_service_tier')
+    if tier is not None and tier not in SERVICE_TIERS:raise ValueError('Invalid default_service_tier')
+    return tier
+
+def apply_service_tier(config,cfg,*,task_only=False):
+    """Speed tier for Codex sessions on the operator's Codex account (e.g. "fast").
+    Fast mode trades higher credit use for lower latency; unset keeps Codex's own.
+    task_only=True applies only a per-task choice, for helpers that never used the
+    worker-level default (so a task without the choice is unchanged)."""
+    tier=service_tier_for(cfg,task_only=task_only)
     if tier is None:return config
-    if tier not in ('auto','default','fast','priority'):raise ValueError('Invalid default_service_tier')
     config['service_tier']=tier
     config.setdefault('features',{})['fast_mode']=tier in ('fast','priority')
     return config
+
+def profile_with_task_tier(profile,tier):
+    """API profile route: an explicit profile service_tier wins; otherwise apply
+    the task choice only where the provider supports it. Never fails the task.
+    Returns (profile, note) where note records the decision or is None."""
+    if profile is None or tier is None:return profile,None
+    if profile.get('service_tier') is not None:
+        return profile,{'requested':tier,'applied':profile['service_tier'],'reason':'profile_service_tier'}
+    if urlsplit(profile['base_url']).hostname not in FAST_TIER_HOSTS:
+        return profile,{'requested':tier,'applied':None,'reason':'provider_unsupported'}
+    return {**profile,'service_tier':tier},{'requested':tier,'applied':tier,'reason':'task_choice'}
 
 def load_profile(path):
     path=Path(path).resolve(strict=True);info=path.stat()
@@ -60,7 +108,7 @@ def load_profile(path):
     if data.get('auxiliary_tools','disabled') not in ('disabled','existing_backend'):raise ValueError('Invalid auxiliary tool route')
     effort=data.get('reasoning_effort')
     if effort is not None and effort not in ('minimal','low','medium','high','xhigh'):raise ValueError('Invalid reasoning_effort')
-    if data.get('service_tier') is not None and data['service_tier'] not in ('auto','default','fast','priority'):raise ValueError('Invalid service_tier')
+    if data.get('service_tier') is not None and data['service_tier'] not in SERVICE_TIERS:raise ValueError('Invalid service_tier')
     if data.get('responses_transport','buffered') not in ('buffered','streaming'):raise ValueError('Invalid responses_transport')
     return {**data,'model':model.strip(),'base_url':url.rstrip('/'),'api_key':key,'wire_api':data.get('wire_api','responses')}
 

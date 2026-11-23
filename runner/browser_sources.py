@@ -507,7 +507,8 @@ class BrowserSources:
                     else: self.unavailable_sites[site] = reason
                     raise BrowserUnavailable(reason)
             meter = self.cfg.get('_usage_ledger')
-            options = {'on_usage': meter.codex_sink('auxiliary.browser_sources', config['model'])} if meter else {}
+            options = {'on_usage': meter.codex_sink('auxiliary.browser_sources', config['model'],
+                                                    service_tier=config.get('service_tier'))} if meter else {}
             with AppServer(cwd=root, config=config, on_event=event, tick=self.tick,
                            enabled_mcp_servers=('node_repl',), **options) as server:
                 thread = server.start_thread()['thread']['id']

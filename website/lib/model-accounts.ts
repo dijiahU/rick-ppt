@@ -8,6 +8,8 @@ export async function ensureModelAccounts(){
   db.prepare('CREATE TABLE IF NOT EXISTS model_accounts (id TEXT PRIMARY KEY,user_id TEXT NOT NULL,provider TEXT NOT NULL,label TEXT NOT NULL,key_hint TEXT NOT NULL,secret TEXT NOT NULL,models TEXT NOT NULL,created_at INTEGER NOT NULL,revoked_at INTEGER)'),
   db.prepare('CREATE INDEX IF NOT EXISTS model_accounts_user ON model_accounts(user_id,revoked_at)'),
   db.prepare('CREATE TABLE IF NOT EXISTS task_funding (job_id TEXT PRIMARY KEY,user_id TEXT NOT NULL,credential_id TEXT NOT NULL,provider TEXT NOT NULL,model TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1,created_at INTEGER NOT NULL)'),
+  // Per-task execution options pinned at admission (currently the optional Codex fast service tier).
+  db.prepare('CREATE TABLE IF NOT EXISTS task_options (job_id TEXT PRIMARY KEY,service_tier TEXT NOT NULL,created_at INTEGER NOT NULL)'),
  ]);
 }
 async function encryptionKey(){
@@ -37,6 +39,10 @@ export async function resolveFunding(user:string,value:unknown):Promise<Funding|
  const row=await database().prepare('SELECT id,provider,models FROM model_accounts WHERE id=? AND user_id=? AND revoked_at IS NULL').bind(input.credentialId,user).first<{id:string;provider:ModelProvider;models:string}>();
  if(!row||!Object.hasOwn(modelProviders,row.provider)||!(modelProviders[row.provider].models as readonly string[]).includes(input.model)||!JSON.parse(row.models).includes(input.model))throw Error('Model unavailable for this account');
  return {credentialId:row.id,provider:row.provider,model:input.model};
+}
+export async function sameOptions(job:string,fast:boolean){
+ const row=await database().prepare('SELECT service_tier FROM task_options WHERE job_id=?').bind(job).first<{service_tier:string}>();
+ return (row?.service_tier==='fast')===fast;
 }
 export async function sameFunding(job:string,funding:Funding|null){
  const row=await database().prepare('SELECT credential_id,provider,model FROM task_funding WHERE job_id=?').bind(job).first();

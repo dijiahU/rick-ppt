@@ -165,7 +165,10 @@ class UsageLedger:
             self._save(row)
         return observe
 
-    def codex_sink(self, stage, model):
+    def codex_sink(self, stage, model, service_tier=None):
+        # The configured tier of this Codex session (task Fast choice or worker
+        # default). app-server does not report a provider-confirmed tier.
+        tier = service_tier if service_tier in ('auto', 'default', 'fast', 'priority') else 'default'
         def observe(event):
             thread, turn = marker(event.get('thread_id')), marker(event.get('turn_id'))
             if not thread or not turn:
@@ -174,6 +177,7 @@ class UsageLedger:
             identity = 'codex:'+thread+':'+turn
             row = self._base(identity, stage, 'codex', 'codex', model, 'codex', usage)
             row['outcome'] = event.get('status') if event.get('status') in ('completed','failed','interrupted') else 'unknown'
+            row['serviceTier'] = tier
             self._save(row)
         return observe
 
