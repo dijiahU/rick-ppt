@@ -47,11 +47,18 @@ def ask(cfg, prompt, images=(), schema=None, *, timeout=360, model=None):
         content += [{'type': 'text', 'text': image.name},
                     {'type': 'image', 'source': {'type': 'base64', 'media_type': MEDIA.get(image.suffix.lower(), 'image/png'),
                                                  'data': base64.b64encode(image.read_bytes()).decode()}}]
+    # The operator's API relay rejects --json-schema requests (403 "client anomaly"), which
+    # silently sent every structured review to the GPT fallback. Default: put the schema in
+    # the prompt and parse the reply; "claude_json_schema": true restores the CLI flag.
+    native_schema = schema is not None and cfg.get('claude_json_schema') is True
+    if schema is not None and not native_schema:
+        prompt += ('\n\nReply with exactly one JSON object and nothing else. It must validate against this JSON Schema:\n'
+                   + json.dumps(schema, ensure_ascii=False))
     content.append({'type': 'text', 'text': prompt})
     line = json.dumps({'type': 'user', 'message': {'role': 'user', 'content': content}})
     command = [binary, '-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose',
                '--model', model, '--tools', '', '--max-turns', '3']
-    if schema is not None:
+    if native_schema:
         command += ['--json-schema', json.dumps(schema)]
     env = {k: v for k, v in os.environ.items() if not k.startswith(('CODEX_', 'PPTX_'))}
     started = time.monotonic()
@@ -72,8 +79,9 @@ def ask(cfg, prompt, images=(), schema=None, *, timeout=360, model=None):
         raise ClaudeUnavailable(f'Claude call failed (exit {done.returncode})')
     structured = final.get('structured_output')
     if structured is None and schema is not None:
+        text = final.get('result') or ''
         try:
-            structured = json.loads(final.get('result') or '')
+            structured = json.loads(text[text.index('{'):text.rindex('}') + 1])
         except ValueError:
             raise ClaudeUnavailable('Claude returned no structured report')
     return {'text': final.get('result') or '', 'structured': structured, 'usage': final.get('usage'),
