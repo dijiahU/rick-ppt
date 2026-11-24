@@ -219,7 +219,8 @@ class Tests(unittest.TestCase):
         run.records=self.records;run.deadline=__import__('time').monotonic()+10
         run.journal=Mock();run.journal.state={'input_revision':0,'inbox':{},'recoveries':{},'run_id':'repair-fixture-run'}
         run.recovery_plan={};run.conversation=Mock();run.conversation.context.return_value=None
-        run.bridge=SimpleNamespace(environment=lambda root:{},render_requests=lambda *a,**k:None)
+        run.bridge=SimpleNamespace(ROOT=ROOT/'runner', environment=lambda root:{},
+                                   render_requests=lambda *a,**k:None)
         run.reporter=Mock(last_sent=0,offset=0);run.trace=Mock();run.trajectory=None
         run.images={};run.stages=[];run.logs=[];run.threads=[]
         run.media=Mock();run.fonts=Mock();run.prefetch=Mock();run.lease=Mock()

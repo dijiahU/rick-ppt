@@ -283,7 +283,8 @@ class Execution:
         usage_options={}
         if meter and not profile:
             usage_options['on_usage']=meter.codex_sink(name,self.cfg.get('_task_default_model') or self.cfg.get('default_model','unknown'))
-        config=task_configuration(root,read_roots=[p for p in reads if p.exists()],tool_env=env)
+        # A non-root Linux host can lack access to the optional deployment paths.
+        config=task_configuration(root,read_roots=[p for p in reads if os.access(p, os.F_OK)],tool_env=env)
         if not profile and self.cfg.get('_task_default_model'):
             config['model']=self.cfg['_task_default_model']
             if self.cfg.get('_task_default_reasoning_effort'):
