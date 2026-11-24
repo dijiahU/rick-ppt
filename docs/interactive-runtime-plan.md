@@ -1,5 +1,7 @@
 # Interactive PPT + resumable, conversational authoring: execution checklist
 
+> This document describes the retired browser runtime. See the [historical source](https://github.com/dijiahU/rick-ppt/tree/a3e0552cbb1c5fa56d4efccaf9fa4dd5238a9e19).
+
 Updated 2026-09-20. This is the authoritative implementation checklist. A checked
 item means its stated acceptance evidence exists; a source file alone is not a
 pass. Each completed numbered work item is committed and pushed before the next

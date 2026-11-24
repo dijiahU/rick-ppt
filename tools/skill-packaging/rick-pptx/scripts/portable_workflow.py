@@ -233,7 +233,7 @@ def run(args):
         transport=LocalTransport(root,task,bodies);lease=StopLease(root,args.timeout)
         old_prepare=runtime.runner.prepare
         def configure_workspace(target):
-            for name in ('soffice-proxy.py','font-proxy.py','interactive-proxy.py'):
+            for name in ('soffice-proxy.py','font-proxy.py'):
                 p=target/name
                 if p.is_file() and p.read_text().startswith('#!'):
                     p.write_text('#!'+sys.executable+'\n'+p.read_text().split('\n',1)[1]);p.chmod(0o755)

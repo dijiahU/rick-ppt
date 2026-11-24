@@ -64,8 +64,10 @@ def main():
     target=Path(paths.pop()).resolve(strict=True)
     if target==source or source.is_relative_to(target) or target.is_relative_to(source):raise ValueError('Use an isolated development checkout distinct from the marketplace source')
     if json.loads((target/'.codex-plugin/plugin.json').read_text())['name']!=name:raise ValueError('Marketplace source identity mismatch')
-    for file in ('runtime/dist/preview.html','runtime/dist/content.html','runtime/manifests/manifest.addin.xml'):
-        if not (source/file).is_file():raise ValueError('Build the runtime before installing: '+file)
+    ships_runtime = (source/'runtime').is_dir()
+    if ships_runtime or not (source/'skills/pptx/assets/single-file-policy.json').is_file():
+        for file in ('runtime/dist/preview.html','runtime/dist/content.html','runtime/manifests/manifest.addin.xml'):
+            if not (source/file).is_file():raise ValueError('Build the runtime before installing: '+file)
     subprocess.run([str(python),str(helpers/'validate_plugin.py'),str(source)],check=True)
     cache=codex_root/'plugins/cache'/market/name
     backup_parent=args.backup_root.resolve() if args.backup_root else None
@@ -77,9 +79,14 @@ def main():
     # Hashed build chunks must match the tested distribution exactly. Retain an
     # older build under the release backup instead of mixing its stale chunks
     # into the new runtime or deleting them.
-    old_distribution=target/'runtime/dist'
-    if old_distribution.parent.is_symlink() or old_distribution.is_symlink():raise ValueError('Unexpected marketplace distribution symlink')
-    if old_distribution.exists():old_distribution.rename(backup/'retained-runtime-dist')
+    old_runtime = target/'runtime'
+    if not ships_runtime:
+        if old_runtime.is_symlink():raise ValueError('Unexpected marketplace runtime symlink')
+        if old_runtime.exists():old_runtime.rename(backup/'retained-runtime')
+    else:
+        old_distribution = old_runtime/'dist'
+        if old_runtime.is_symlink() or old_distribution.is_symlink():raise ValueError('Unexpected marketplace distribution symlink')
+        if old_distribution.exists():old_distribution.rename(backup/'retained-runtime-dist')
     ignore={'.venv','node_modules','__pycache__','.pytest_cache','test-results','playwright-report','.git','.DS_Store','coverage'}
     def copy_tree(src,dst):
         if dst.is_symlink():raise ValueError('Refusing to write through marketplace symlink')

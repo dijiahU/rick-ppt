@@ -34,11 +34,11 @@
 
 ## 独立 Skill：任何 Agent、任何系统
 
-已打包为 **[rick-pptx](skills/rick-pptx/SKILL.md)**，可直接下载 **[安装包](releases/rick-pptx.zip)**。解压后把 `rick-pptx` 文件夹放进宿主的技能目录（Codex、Claude Code 等），或让任意 agent 读取 `SKILL.md`。
+已打包为 **rick-pptx**，可下载最新 GitHub Release 的 **[安装包](https://github.com/dijiahU/rick-ppt/releases/latest/download/rick-pptx.zip)**。解压后把 `rick-pptx` 文件夹放进宿主的技能目录（Codex、Claude Code 等），或让任意 agent 读取 `SKILL.md`。
 
 | | 需要什么 | 说明 |
 | --- | --- | --- |
-| **Agent** | 能跑命令、能看图片、能联网搜索、能开一个新上下文做审核 | Codex、Claude Code、Cursor、Gemini CLI、OpenCode、自己的 API 循环都可以；缺哪一项、怎么降级见 [Any agent, any OS](skills/rick-pptx/references/any-host.md) |
+| **Agent** | 能跑命令、能看图片、能联网搜索、能开一个新上下文做审核 | Codex、Claude Code、Cursor、Gemini CLI、OpenCode、自己的 API 循环都可以；缺哪一项、怎么降级见 [Any agent, any OS](tools/skill-packaging/rick-pptx/references/any-host.md) |
 | **模型 / API** | 宿主自己的模型或 API key | Skill 不带任何密钥。网站执行端默认 Codex，也可以接 OpenAI 兼容的 Responses / Chat Completions 接口（[说明](docs/model-api-switching.md)）；完整托管流程可用 DSH 引擎 |
 | **系统** | macOS · Windows · Linux | Python 3.11+、LibreOffice、Poppler；Windows 需 `setx PYTHONUTF8 1`。先运行 `scripts/doctor.py` 自检 |
 | **联网搜索** | 宿主自带的搜索即可 | Pinterest / Google 图片的浏览器登录搜索是可选增强，需要单独登录一次，目前只支持 macOS / Linux |
@@ -57,7 +57,7 @@
 - `runner/`：网站任务执行端（调研 → 制作 → 审核 → 修改 → 交付）
 - `workflow/`：日志与 Codex app-server 传输
 - `website/`：线上网站源码（Next.js），本地运行需自行配置登录、数据库、存储
-- `skills/rick-pptx/`、`releases/`：独立 Skill 与安装包
+- `tools/build-skill.py`、`tools/skill-packaging/`：由同一套源码构建独立 Skill，ZIP 随 GitHub Release 发布
 
 本地初始化和启动见 [环境隔离说明](docs/environments.md)，生产部署见 [deploy/](deploy/README.md)。插件安装：
 

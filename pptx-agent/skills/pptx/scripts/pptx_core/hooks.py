@@ -160,14 +160,6 @@ def stop(ws, event):
             ws.state["stop_failures"] = 0
             ws.save()
     try:
-        from .interactive_ooxml import discover_content_addins
-        from .interactive_validate import config
-        if any(i.get("addinId") == config()["addinId"] for i in discover_content_addins(ws.root)):
-            import uuid
-            from .interactive_bundle import assemble_bundle
-            destination = ws.home.parent / (ws.home.name + "-interactive-" + uuid.uuid4().hex[:12])
-            bundle = assemble_bundle(ws, destination)
-            return {"systemMessage": f"Interactive PPTX finalized. PPTX: {bundle['pptx']}; bundle: {bundle['bundle']}; runtime_verified: {str(bundle['runtime_verified']).lower()}; desktop_verified: false (not desktop-verified)."}
         path = export(ws)
         return {"systemMessage": f"PPTX validated, rendered and exported: {path}"}
     except Exception as exc:

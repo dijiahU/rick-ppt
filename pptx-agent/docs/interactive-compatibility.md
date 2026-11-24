@@ -1,5 +1,7 @@
 # Verified compatibility
 
+> This document describes the retired browser runtime. See the [historical source](https://github.com/dijiahU/rick-ppt/tree/a3e0552cbb1c5fa56d4efccaf9fa4dd5238a9e19).
+
 Recorded 2026-09-20. `Verified` below means an actual test was run on that target;
 it is not inferred from a manifest or another renderer. Desktop UI automation was
 unavailable in this execution environment, although macOS PowerPoint is installed.

@@ -18,7 +18,7 @@ def native_only():
 
 
 def config():
-    return json.loads((PLUGIN_ROOT / 'runtime/config.json').read_text())
+    return json.loads((PLUGIN_ROOT / 'skills/pptx/assets/historical-addin.json').read_text())
 
 
 def runtime_fingerprint(runtime=None):

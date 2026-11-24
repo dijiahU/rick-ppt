@@ -67,30 +67,14 @@ def build(output):
     core = target / 'scripts/pptx_core'
     replace_checked(core / 'cli.py', 'from .interactive_ooxml import discover_content_addins',
                     'from native_policy import discover_content_addins')
-    replace_checked(core / 'cli.py', '''    from .interactive_validate import native_only
-    if not native_only():
-        from .interactive import add_parser
-        add_parser(commands)
-''', '')
-    replace_checked(core / 'cli.py', '''    if args.command == "interactive":
-        from .interactive import dispatch as interactive_dispatch
-        return interactive_dispatch(args), 0
-''', '')
     for name in ('cli.py', 'package.py'):
         replace_checked(core / name, 'from .interactive_validate import validate_interactive',
                         'from native_policy import validate_native as validate_interactive')
     replace_checked(core / 'validator.py', 'from .interactive_ooxml import validate_ooxml',
                     'from native_policy import validate_ooxml')
-    review = target / 'scripts/review_packet.py'
-    text = review.read_text()
-    start, end = text.index('def scene_inventory('), text.index('def simple_appear_steps(')
-    text = text[:start] + '''def collect_interactive(ws, destination):
-    from native_policy import validate_native
-    return validate_native(ws.root)
-
-
-''' + text[end:]
-    review.write_text(text)
+    replace_checked(target / 'scripts/review_packet.py',
+                    'from pptx_core.interactive_validate import validate_interactive',
+                    'from native_policy import validate_native as validate_interactive')
     for path in (target / 'references').rglob('*.md'):
         text = path.read_text().replace('PLUGIN_ROOT/.venv/bin/python PLUGIN_ROOT/skills/pptx/', 'python SKILL_ROOT/')
         text = text.replace('PLUGIN/skills/pptx/', 'SKILL_ROOT/')
@@ -124,7 +108,7 @@ def build(output):
         copy(path,plugin_skill/rel);inputs.append(path)
     source_files = {p.relative_to(REPO).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}
     source_digest = hashlib.sha256(json.dumps(source_files, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
-    version={'name':'rick-pptx-full-workflow','version':'0.1.0+portable.'+source_digest[:16],
+    version={'name':'rick-pptx-full-workflow','version':'0.2.0+portable.'+source_digest[:16],
              'execution':'selected-harness','website_transport':'not included'}
     version_path=plugin/'.codex-plugin/plugin.json';version_path.parent.mkdir(parents=True,exist_ok=True)
     version_path.write_text(json.dumps(version,indent=2)+'\n')

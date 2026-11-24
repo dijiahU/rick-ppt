@@ -383,12 +383,6 @@ message acknowledgements and checkpoint restoration. Read
 Resume button keeps the same job and previous successful versions. New revisions
 invalidate stale review receipts; final completion rejects any newly pending input.
 
-Interactive CLI calls route through `interactive-proxy.py`; the host independently
-copies bounded local inputs, runs Chromium, freezes sidecars and assembles a bundle.
-Read [INTERACTIVE.md](INTERACTIVE.md). Real transport and phase tests are opt-in;
-they never contact production queues. The synthetic full-workflow smoke likewise
-requires an explicit new proof path and retains its artifacts.
-
 `resilience.py` keeps one independent heartbeat thread for the whole execution,
 including attachment download, rendering, verification and upload. A successful
 heartbeat is renewed every 20 seconds; transient transport/server failures retry
