@@ -16,7 +16,7 @@ import stat
 import time
 import uuid
 
-from interactive_host import _directory, _inventory, _read, _root, _runtime_inventory
+from review_artifacts import _directory, _inventory, _read, _root, _runtime_inventory
 
 
 VERSION = 1

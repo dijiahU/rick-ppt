@@ -1,0 +1,38 @@
+name: Publish portable PPTX Skill
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.11'
+      - name: Verify tag and build distribution
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import tomllib
+
+          version = tomllib.loads(Path('pptx-agent/pyproject.toml').read_text())['project']['version']
+          if os.environ['GITHUB_REF_NAME'] != 'v' + version:
+              raise SystemExit('Tag must match the PPTX package version')
+          PY
+          python tools/build-skill.py --output "$RUNNER_TEMP/dist"
+          cd "$RUNNER_TEMP/dist"
+          sha256sum rick-pptx.zip > rick-pptx.zip.sha256
+      - name: Publish ZIP and checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "$RUNNER_TEMP/dist/rick-pptx.zip" "$RUNNER_TEMP/dist/rick-pptx.zip.sha256" \
+            --verify-tag --title "Rick PPT $GITHUB_REF_NAME" --generate-notes

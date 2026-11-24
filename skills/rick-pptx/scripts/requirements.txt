@@ -1,4 +1,0 @@
-lxml>=5
-Pillow>=10
-jsonschema>=4.23,<5
-fonttools>=4.61,<5

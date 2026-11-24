@@ -219,16 +219,17 @@ class Tests(unittest.TestCase):
         run.records=self.records;run.deadline=__import__('time').monotonic()+10
         run.journal=Mock();run.journal.state={'input_revision':0,'inbox':{},'recoveries':{},'run_id':'repair-fixture-run'}
         run.recovery_plan={};run.conversation=Mock();run.conversation.context.return_value=None
-        run.bridge=SimpleNamespace(environment=lambda root:{},render_requests=lambda *a,**k:None)
+        run.bridge=SimpleNamespace(ROOT=ROOT/'runner', environment=lambda root:{},
+                                   render_requests=lambda *a,**k:None)
         run.reporter=Mock(last_sent=0,offset=0);run.trace=Mock();run.trajectory=None
-        run.images={};run.stages=[];run.logs=[];run.threads=[];run.interactive_brokers={}
+        run.images={};run.stages=[];run.logs=[];run.threads=[]
         run.media=Mock();run.fonts=Mock();run.prefetch=Mock();run.lease=Mock()
         run.last_checkpoint=__import__('time').monotonic()
         def server(**kwargs):
             kwargs['command']=[sys.executable,'-u','-c',fixture.FAKE_SERVER]
             return AppServer(**kwargs)
         with patch('workflow.AppServer',side_effect=server),patch('workflow.phase_time_limit',return_value=.15),\
-             patch('workflow.AssetImporter'),patch('workflow.InteractiveHostBroker'):
+             patch('workflow.AssetImporter'):
             result,thread=run.phase('repair-1','WAIT',timeout=360,timeout_handoff=self.binding)
         self.assertIn('Host accepted the declared native artifact',result)
         self.assertEqual(run.stages[0]['host_handoff']['sha256'],hashlib.sha256(self.candidate).hexdigest())

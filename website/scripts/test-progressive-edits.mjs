@@ -50,7 +50,8 @@ const stalePublish=await publish(workerReq(later.sha256,'manifest&progressive=1&
 // A queued save from an unchanged earlier page is permitted, but a changed page or unfinished page is not.
 const stale=await direct.POST(post({...body,id:crypto.randomUUID()}),params);assert.equal(stale.status,409);assert.equal((await direct.POST(post({id:crypto.randomUUID(),baseSha256:result.sha256,patches:[{page:3,objectId:'2',text:'Still making'}]}),params)).status,409);
 db.exec('ALTER TABLE jobs ADD COLUMN attachments TEXT');
-modules['@/lib/slide-limits.mjs']=await import('../lib/slide-limits.mjs');modules['@/lib/progress']={parseProgress:v=>v};modules['@/lib/queries']={RETRY_JOB:''};modules['@/lib/admin-trace']={storeTrace(){}};modules['@/lib/execution-backend']={workerCapabilities(){return {advertised:false,backends:[]};}};
+modules['@/lib/slide-limits.mjs']=await import('../lib/slide-limits.mjs');modules['@/lib/progress']={parseProgress:v=>v};modules['@/lib/queries']={RETRY_JOB:''};modules['@/lib/admin-trace']={storeTrace(){}};modules['./execution-backend']=modules['@/lib/execution-backend']=load('lib/execution-backend.ts');
+modules['@/lib/worker-routing']=load('lib/worker-routing.ts');
 const deliver=load('app/api/worker/[id]/route.ts').POST;
 const deliveryRequest=()=>new Request(`https://test.local/api/worker/${id}?action=delivery-ready&revision=1&sha256=${result.sha256}`,{method:'POST',headers:{Authorization:'Bearer test-worker','X-Job-Lease':lease}});
 assert.equal((await deliver(deliveryRequest(),params)).status,412,'Pending native revision must invalidate the old reviewed candidate');

@@ -1,5 +1,7 @@
 # Native and interactive presentation architecture
 
+> This document describes the retired browser runtime. See the [historical source](https://github.com/dijiahU/rick-ppt/tree/a3e0552cbb1c5fa56d4efccaf9fa4dd5238a9e19).
+
 Native OOXML remains the source for the slide. A scene describes only a Content
 Add-in region. Native titles, definitions, equations and context stay editable;
 ordinary presentations continue through the native path without scene files.

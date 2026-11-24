@@ -68,17 +68,10 @@ def parser():
     rb.add_argument("snapshot")
     e = commands.add_parser("export")
     e.add_argument("output", nargs="?")
-    from .interactive_validate import native_only
-    if not native_only():
-        from .interactive import add_parser
-        add_parser(commands)
     return p
 
 
 def dispatch(args):
-    if args.command == "interactive":
-        from .interactive import dispatch as interactive_dispatch
-        return interactive_dispatch(args), 0
     if args.command == "unpack":
         ws = unpack(args.source, args.base)
         if args.render:

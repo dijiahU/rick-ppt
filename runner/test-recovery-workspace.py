@@ -177,7 +177,8 @@ class RecoveryWorkspaceTests(unittest.TestCase):
                 self.assertNotEqual(json.loads((queue/(identifier+'.reply.json')).read_text())['returncode'],0)
             return 'continued-with-scoped-native-render'
 
-        with patch.object(runner.tempfile,'gettempdir',return_value=str(temporary_alias)),\
+        with patch.object(runner.sys,'platform','darwin'),\
+             patch.object(runner.tempfile,'gettempdir',return_value=str(temporary_alias)),\
              patch.object(runner,'_run_job_locked',side_effect=continue_recovered):
             result=runner._run_job(cfg,task,SimpleNamespace())
         self.assertEqual(result,'continued-with-scoped-native-render')

@@ -93,11 +93,11 @@ class UpdatePluginTests(unittest.TestCase):
         policy = Path('skills/pptx/assets/single-file-policy.json')
         (self.source / policy).parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(PLUGIN / policy, self.source / policy)
+        shutil.copytree(self.source, self.target)
         for name in ("runtime/dist/preview.html", "runtime/dist/content.html", "runtime/manifests/manifest.addin.xml"):
-            path = self.source / name
+            path = self.target / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("inert release fixture")
-        shutil.copytree(self.source, self.target)
         (self.target / "runtime/dist/prior-chunk.js").write_text("retain previous build")
         shutil.copytree(self.target, self.previous)
         (self.previous / ".venv").symlink_to(Path(sys.prefix), target_is_directory=True)
@@ -133,9 +133,10 @@ class UpdatePluginTests(unittest.TestCase):
         self.assertTrue((self.previous / ".venv").is_symlink())
         self.assertEqual(self.config.read_bytes(), self.original_config)
         backup, _ = self.receipt()
-        self.assertEqual((backup / "retained-runtime-dist/prior-chunk.js").read_text(), "retain previous build")
+        self.assertEqual((backup / "retained-runtime/dist/prior-chunk.js").read_text(), "retain previous build")
         self.assertEqual((backup / "marketplace-source-before/runtime/dist/prior-chunk.js").read_text(), "retain previous build")
         self.assertTrue(self.installed.is_dir())
+        self.assertFalse((self.installed / "runtime").exists())
 
     def test_success_requires_real_default_launcher_preflight_and_keeps_old_checks(self):
         result = self.run_release()

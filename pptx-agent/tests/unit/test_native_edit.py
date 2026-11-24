@@ -22,8 +22,14 @@ def workspace(tmp_path):
     with zipfile.ZipFile(SCRIPTS.parent / 'assets/blank.pptx') as z:
         z.extractall(ws)
     canvas.add_shape(ws, 1, [0, 0, 13.333, 7.5], geometry='rect', fill='29231F', stroke=None, line_width=1, name='底')
-    fonts = sorted(Path('/System/Library/Fonts').glob('*.tt[fc]')) + sorted(Path('/Library/Fonts').glob('*.tt[fc]'))
-    font = next((f for f in fonts if f.name.startswith(('Times', 'Arial.', 'Helvetica'))), fonts[0])
+    fonts = (
+        Path('/System/Library/Fonts/Supplemental/Arial.ttf'),
+        Path('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'),
+        Path('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc'),
+    )
+    font = next((candidate for candidate in fonts if candidate.is_file()), None)
+    if font is None:
+        pytest.skip('Arial, DejaVu Sans or Noto Sans CJK required')
     canvas.add_text(ws, 1, 'Title', str(font), 40, 'FFFFFF', x=1, y=1, width=6, max_height=2, name='标题')
     return ws
 

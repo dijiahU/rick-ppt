@@ -881,7 +881,7 @@ review._publish(Path(sys.argv[2]),'00000000-'+review.digest(body)+'.json',body)
                 self.event({'type':'turn.completed','thread_id':'actual-thread','turn_id':'actual-turn','status':'completed'})
             def result_text(self,*args):return json.dumps(report())
         self.run.phase=Execution.phase.__get__(self.run)
-        with patch('workflow.AppServer',ProtocolServer),patch('workflow.AssetImporter') as importer,patch('workflow.InteractiveHostBroker'):
+        with patch('workflow.AppServer',ProtocolServer),patch('workflow.AssetImporter') as importer:
             importer.return_value.poll=Mock()
             self.review()
         states=self.attempts()
