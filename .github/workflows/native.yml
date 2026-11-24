@@ -30,26 +30,33 @@ jobs:
       - name: Durable workflow and conversation boundaries
         run: |
           pptx-agent/.venv/bin/python -m unittest discover -s workflow -p 'test_*.py'
-          pptx-agent/.venv/bin/python runner/test-conversation.py
-          pptx-agent/.venv/bin/python runner/test-recovery-workspace.py
-          pptx-agent/.venv/bin/python runner/test-content-workflow.py
-          pptx-agent/.venv/bin/python runner/test-review-sessions.py
-          pptx-agent/.venv/bin/python runner/test-repair-recovery.py
-          pptx-agent/.venv/bin/python runner/test-draft-progress.py
-          pptx-agent/.venv/bin/python runner/test-model-backend.py
-          pptx-agent/.venv/bin/python runner/test-chat-protocol.py
-          pptx-agent/.venv/bin/python runner/test-chat-proxy.py
-          pptx-agent/.venv/bin/python runner/test-installed-hooks.py
-          pptx-agent/.venv/bin/python runner/test-update-plugin.py
-          pptx-agent/.venv/bin/python runner/test-acceptance-migration.py
-          pptx-agent/.venv/bin/python runner/test-inspect-case-artifacts.py
-          pptx-agent/.venv/bin/python runner/test-review.py
-          pptx-agent/.venv/bin/python runner/test-native-editor.py
-          pptx-agent/.venv/bin/python runner/test-canvas-snapshot.py
-          pptx-agent/.venv/bin/python runner/test-user-pages.py
-          pptx-agent/.venv/bin/python runner/test-public-review.py
-          pptx-agent/.venv/bin/python runner/test-renderer-health.py
-          pptx-agent/.venv/bin/python runner/test-service-watchdog.py
+          failed=0
+          for suite in \
+            runner/test-conversation.py \
+            runner/test-recovery-workspace.py \
+            runner/test-content-workflow.py \
+            runner/test-review-sessions.py \
+            runner/test-repair-recovery.py \
+            runner/test-draft-progress.py \
+            runner/test-model-backend.py \
+            runner/test-chat-protocol.py \
+            runner/test-chat-proxy.py \
+            runner/test-installed-hooks.py \
+            runner/test-update-plugin.py \
+            runner/test-acceptance-migration.py \
+            runner/test-inspect-case-artifacts.py \
+            runner/test-review.py \
+            runner/test-native-editor.py \
+            runner/test-canvas-snapshot.py \
+            runner/test-user-pages.py \
+            runner/test-public-review.py \
+            runner/test-renderer-health.py \
+            runner/test-service-watchdog.py \
+            runner/test-repair-inputs.py
+          do
+            pptx-agent/.venv/bin/python "$suite" || failed=1
+          done
+          exit "$failed"
       - name: Build and verify the portable Skill
         run: |
           pptx-agent/.venv/bin/python tools/build-skill.py --output "$RUNNER_TEMP/rick-pptx"
