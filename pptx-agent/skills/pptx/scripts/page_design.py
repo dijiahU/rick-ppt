@@ -37,7 +37,7 @@ else:
     from pptx_core.cli import inspect as inspect_page
 
 MAX_NOTES = 2 * 1024 * 1024
-HANDOFF_FIELDS = ('question', 'evidence', 'materials', 'preserve', 'uncertainties', 'visual_opportunity')
+HANDOFF_FIELDS = ('question', 'evidence', 'materials', 'preserve', 'uncertainties', 'visual_opportunity', 'poster_move')
 
 
 def scoped(root, value):
@@ -260,7 +260,7 @@ def context(task_root, page_id, workspace=None):
                 if not applications:
                     continue
                 reference = {k: entry[k] for k in
-                             ('id', 'kind', 'title', 'creator', 'source', 'inspection',
+                             ('id', 'kind', 'borrow_kind', 'title', 'creator', 'source', 'inspection',
                               'evidence', 'observed', 'borrowed') if k in entry}
                 reference['applications'] = [{'pages': [page_id], 'action': app.get('action')}
                                              for app in applications]

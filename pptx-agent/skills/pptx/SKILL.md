@@ -26,7 +26,7 @@ ones you need with tool_prepare.py --group GROUP_ID.
 3. **Author**: build native pages in order from assets/blank.pptx, a supplied template,
    or an editable library template fetched with `action=template`. Follow the
    [template paths](references/content.md). Fill base pages in place, build new pages
-   on template masters, or study a source page and sketch a new composition. Follow the [art direction](references/art-direction.md) for page search, sketches and render checks before moving on. Tools:
+   on template masters, or study a source page and sketch a new composition. Follow the [art direction](references/art-direction.md) for page search, sketches and render checks before moving on, and [poster thinking](references/poster-thinking.md) before designing any key page: the deck is a sequence, each key page is a poster. Tools:
    [native batches](references/native-batch.md), [native canvas](references/native-canvas.md),
    [native pages](references/native-pages.md), [image recreation](references/image-recreation.md).
 4. **Animate** ([animations](references/animations.md)): new decks use native click

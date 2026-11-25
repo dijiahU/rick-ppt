@@ -1,6 +1,8 @@
 {
   "version": 3,
-  "requirements": {"new_deck_click_reveal": true},
+  "requirements": {
+    "new_deck_click_reveal": true
+  },
   "task": {
     "operation": [
       "create",
@@ -194,6 +196,14 @@
       "hosted_visual",
       "read_text",
       "unavailable"
+    ],
+    "borrow_kind": [
+      "structure",
+      "visual_grammar",
+      "treatment",
+      "motif",
+      "mood",
+      "idea"
     ]
   }
 }

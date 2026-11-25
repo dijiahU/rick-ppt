@@ -24,7 +24,7 @@ SCRIPTS = ('pptx.py', 'candidate_save.py', 'native_canvas.py', 'native_builds.py
 CORE = ('__init__.py', 'common.py', 'cli.py', 'package.py', 'renderer.py',
         'manifest.py', 'validator.py', 'relationships.py', 'snapshots.py', 'diff.py', 'portable_lock.py')
 REFERENCES = ('content.md', 'content-review.md', 'visual-review.md', 'research-and-assets.md', 'pinterest.md',
-              'workflow-branches.md', 'content-led-composition.md', 'art-direction.md', 'art-direction-examples.md', 'design-completion.md', 'execution-continuity.md', 'native-canvas.md',
+              'workflow-branches.md', 'content-led-composition.md', 'art-direction.md', 'art-direction-examples.md', 'poster-thinking.md', 'design-completion.md', 'execution-continuity.md', 'native-canvas.md',
               'animations.md', 'ooxml-overview.md', 'slides-and-shapes.md', 'text.md',
               'images.md', 'charts.md', 'groups.md', 'masters-and-layouts.md',
               'relationships.md', 'safe-mutation-rules.md', 'review-examples.md',

@@ -67,6 +67,7 @@ def test_brief_projects_only_current_tasks_without_promoting_author_verdicts(tas
                'evidence': [{'source': 'references/data.txt', 'claim': 'Measured input; retain units.'}],
                'materials': [{'file': 'assets/not-yet-present.png', 'role': 'Unviewed candidate'}],
                'preserve': ['Measured units'], 'uncertainties': ['Image not obtained'],
+               'poster_move': 'One measured value enlarged to half the page height, the rest in a narrow column',
                'visual_opportunity': 'Trace the actual input to output; finish when the mapping is visible.',
                'readiness': 'PRIVATE AUTHOR PASS', 'design_direction': 'PRIVATE STYLE VERDICT'}
     orphan = {**handoff, 'page_id': 'removed-page', 'question': 'STALE TASK'}

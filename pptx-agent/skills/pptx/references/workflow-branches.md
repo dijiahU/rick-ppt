@@ -49,11 +49,16 @@ illustrative.
 ## References (written once)
 
 ```json
-{"id":"R1","kind":"artwork","title":"Exact work title","creator":"Verified creator",
+{"id":"R1","kind":"artwork","borrow_kind":"treatment","title":"Exact work title","creator":"Verified creator",
  "source":"https://original.source/work","inspection":"local_image","evidence":"references/work.png",
- "observed":"What is visible","borrowed":"Useful visual relationship",
- "applications":[{"pages":["method"],"action":"Concrete adaptation on this page"}]}
+ "observed":"What is visible","borrowed":"Named visual decision, e.g. mist the edges and keep one clear channel",
+ "applications":[{"pages":["method"],"action":"Concrete adaptation on this page, with size, crop or spacing"}]}
 ```
+
+`borrow_kind`: structure, visual_grammar, treatment, motif, mood or idea. A work can be
+useful when its structure does not match at all: a photograph may lend one treatment, a
+painting one organizing idea. Take at most two or three decisions from one work, and only
+ones a viewer can point to in the render.
 
 Kinds: artwork, design_work, teaching, supplied_system. Inspection: local_image,
 hosted_visual, read_text or unavailable (then evidence=null, borrowed=null,

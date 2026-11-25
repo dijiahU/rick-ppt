@@ -34,6 +34,26 @@ native behavior. Do not request a redesign.
    reconstruct it from paragraphs? Are real images used where the subject is real?
    Would an authentic image, a generated illustration or a clearer native diagram
    carry the page better?
+   **Poster test (key pages).** For the cover, section, statement and closing pages,
+   name the page's single move in one sentence. Then check it against the render:
+   - Is the picture *made into* the page, or only *placed on* it? A photograph inside
+     a rectangular frame with a gap to the text, on a plain field, is placement and a
+     craft finding; bleeding to two or more edges, sharing a colour with the type
+     field, or meeting the type along a shaped seam is a page.
+   - Does the image and type relationship have one deliberate decision — a shaped
+     boundary, a colour sampled from the picture, one element at extreme scale, a
+     material change — or is it a default left-text right-image arrangement?
+   - At stamp size, is there one thing that holds the eye, or does everything sit at
+     the same weight?
+   - Is the move actually visible, or only claimed in the page task's `poster_move`?
+     A claimed move that cannot be pointed to in the render is a finding.
+   - When the brief names a style (hand-drawn, pixel, collage), judge it on the whole page,
+     not only the pictures: illustrations in that style placed on an office-report system
+     (plain white field, navy cards, teal headings, thin rules) is a deck-level style finding.
+   Purposeful restraint still counts: a poster page may be very quiet, but it must
+   show a decision, not an absence of one. Do not require a poster treatment on data
+   or working pages where it would cost the reading; judge whether the page still
+   looks designed at its job.
    Every page needs a clear focal point, decided sizes and crops, and enough on the
    page for this audience: a lesson, explainer or introduction that shows only a
    headline and one picture on page after page is a density finding (what the audience

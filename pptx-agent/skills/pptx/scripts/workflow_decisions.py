@@ -126,11 +126,14 @@ def _references(plan, expected, root, catalog):
     if not isinstance(entries,list) or len(entries)>64:raise ValueError('Invalid design reference register')
     lookup={}
     for entry in entries:
-        _keys(entry, ('id','kind','title','creator','source','inspection','evidence','observed','borrowed','applications'))
+        _keys(entry, ('id','kind','title','creator','source','inspection','evidence','observed','borrowed','applications'), ('borrow_kind',))
         ident=entry['id']
         if not isinstance(ident,str) or not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]{0,63}',ident) or ident in lookup:
             raise ValueError('Missing, duplicate or unsafe reference ID')
         _enum(entry['kind'],catalog['reference']['kind'],'reference.kind')
+        if entry.get('borrow_kind') is not None:
+            _enum(entry['borrow_kind'],catalog['reference'].get('borrow_kind') or
+                  ['structure','visual_grammar','treatment','motif','mood','idea'],'reference.borrow_kind')
         _enum(entry['inspection'],catalog['reference']['inspection'],'reference.inspection')
         for field in ('title','creator','source','observed'):_text(entry[field],'reference.'+field,4000)
         source=entry['source']

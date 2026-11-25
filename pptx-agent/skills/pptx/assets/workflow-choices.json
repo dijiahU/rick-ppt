@@ -59,6 +59,14 @@
       "hosted_visual",
       "read_text",
       "unavailable"
+    ],
+    "borrow_kind": [
+      "structure",
+      "visual_grammar",
+      "treatment",
+      "motif",
+      "mood",
+      "idea"
     ]
   }
 }

@@ -16,6 +16,7 @@ from pathlib import Path
 from statistics import median
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps, ImageStat
+from design_roles import reference_transfer_enabled
 
 TOOL = 'pptx_study_reference'
 GRID = 12  # analysis cells per side
@@ -360,7 +361,9 @@ def sketch(arrangements):
     for n, item in enumerate(arrangements):
         x0, y0 = (n % cols) * (w + 16), (n // cols) * (h + 30 + top) + 18
         label = f"{n + 1}. {str(item.get('name', ''))[:30]}"
-        if item.get('typicality') is not None:
+        if item.get('task_fit') is not None:
+            label += f"  表达 {item['task_fit']}/5"
+        elif item.get('typicality') is not None:
             label += f"  典型度 {item['typicality']}"
         draw.text((x0, y0 - 17), label, fill=(200, 0, 0), font=_font(14))
         if item.get('_anchor_path'):
@@ -410,10 +413,11 @@ def fresh_eyes(path):
 class DesignStudy:
     def __init__(self, cfg, job, *, trajectory=None):
         self.cfg = cfg; self.job = Path(job).resolve(); self.trajectory = trajectory
+        self.audience_first = reference_transfer_enabled(cfg)
         self._sketch_draws = {}
 
     def specs(self):
-        return [{'type': 'function', 'name': TOOL, 'description': (
+        spec = {'type': 'function', 'name': TOOL, 'description': (
             'Study a reference image you saved in this task (a slide, poster, painting, film still, photograph, editorial '
             'page) the way designers do: a mass study (light/mid/dark shapes with texture removed) shows the composition '
             'underneath the content, plus thirds grid, a rough focal mark, quiet space and the palette with area shares. '
@@ -441,16 +445,71 @@ class DesignStudy:
                                                                  'would: is there one focal point, does the structure hold?'},
                 'sequence': {'type': 'array', 'items': {'type': 'string'}, 'maxItems': 30,
                              'description': 'Instead of a reference: your rendered pages in order, shown as a strip over their '
-                                            'mass studies to judge the rhythm of the deck (peaks, working pages, rests).'}}}}]
+                                            'mass studies to judge the rhythm of the deck (peaks, working pages, rests).'}}}}
+        if self.audience_first:
+            props = spec['inputSchema']['properties']
+            props['sketch']['description'] = (
+                'Show grey-block alternatives in slide inches, each with name, ground, blocks '
+                '[[x,y,w,h,tone,label]], and optionally an anchor (saved reference path). '
+                'For an uncertain page, compare a direct expression and a reference-informed one. '
+                'After looking, pass audience_task and rate how directly each sketch shows it with '
+                'task_fit (integer 1–5) and a short fit_evidence naming a visible feature or omission. '
+                'No rating is needed just to see the sketches.')
+            props['audience_task'] = {
+                'type': 'string', 'description': 'With sketch: what a viewer should be able to see or compare.'}
+            props['asset_check'] = {
+                'type': 'object', 'additionalProperties': False, 'required': ['file', 'detail'],
+                'properties': {
+                    'file': {'type': 'string', 'description': 'Task-relative candidate picture.'},
+                    'detail': {'type': 'string', 'description': 'Specific visible thing the asset needs to demonstrate.'},
+                    'crop': {'type': 'array', 'minItems': 4, 'maxItems': 4, 'items': {'type': 'number'},
+                             'description': 'Fractions to trim on left, top, right and bottom. Default: whole image.'},
+                    'width': {'type': 'integer', 'minimum': 1, 'maximum': 1200,
+                              'description': 'Placement width in pixels at intended reading size. Default: 600.'},
+                },
+                'description': 'Before committing a key asset, see its actual crop at placement scale and inspect the required detail.',
+            }
+        return [spec]
+
+    def _asset_check(self, args):
+        path = (self.job / str(args.get('file') or '')).resolve()
+        if not path.is_relative_to(self.job) or not path.is_file():
+            return self._reply(False, {'status': 'not_found', 'hint': 'Use a picture inside the task.'})
+        detail = args.get('detail')
+        width = args.get('width', 600)
+        crop = args.get('crop', [0, 0, 0, 0])
+        if (not isinstance(detail, str) or not detail.strip() or type(width) is not int or not 1 <= width <= 1200
+                or not isinstance(crop, list) or len(crop) != 4
+                or any(type(v) not in (int, float) or not 0 <= v < 1 for v in crop)
+                or crop[0] + crop[2] >= 1 or crop[1] + crop[3] >= 1):
+            return self._reply(False, {'status': 'invalid', 'hint': 'Specify a visible detail, placement width and a nonempty crop.'})
+        try:
+            image = _load(path)
+            left, top, right, bottom = crop
+            w, h = image.size
+            picture = image.crop((round(left*w), round(top*h), round((1-right)*w), round((1-bottom)*h)))
+            if not all(picture.size):
+                return self._reply(False, {'status': 'invalid', 'hint': 'The crop contains no source pixels.'})
+            preview = ImageOps.contain(picture, (width, 900), Image.Resampling.LANCZOS)
+        except (OSError, ValueError) as error:
+            return self._reply(False, {'status': 'unreadable', 'error': str(error)})
+        buffer = io.BytesIO()
+        preview.save(buffer, 'JPEG', quality=90)
+        return self._reply(True, {'file': str(path.relative_to(self.job)), 'detail': detail.strip(),
+                                  'crop': crop, 'source_pixels': list(picture.size),
+                                  'preview_pixels': list(preview.size),
+                                  'meaning': 'Point to the requested detail in this actual crop. If it is missing or '
+                                             'unclear, change the crop, viewpoint, asset or native explanation.'}, buffer.getvalue())
 
     def handle(self, params):
         args = params.get('arguments') or {}
+        if self.audience_first and isinstance(args.get('asset_check'), dict):
+            return self._asset_check(args['asset_check'])
         if args.get('sketch'):
             items = args['sketch']
             if not isinstance(items, list) or not all(isinstance(i, dict) and isinstance(i.get('blocks'), list) for i in items):
                 return self._reply(False, {'status': 'invalid', 'hint': 'sketch takes [{"name", "ground", "blocks": [[x, y, w, h, tone, label]]}]'})
-            if len(items) >= 3:
-                # Options drawn from habit share one skeleton. Each must come from somewhere outside it.
+            if self.audience_first or len(items) >= 3:
                 problems = []; seen = set()
                 for item in items:
                     name = item.get('name')
@@ -465,12 +524,12 @@ class DesignStudy:
                             problems.append(f'{item.get("name")}: anchor {anchor} is not a saved reference image')
                         else:
                             item['_anchor_path'] = path
-                    elif not (isinstance(item.get('concept'), str) and item['concept'].strip()):
+                    elif not self.audience_first and not (isinstance(item.get('concept'), str) and item['concept'].strip()):
                         problems.append(f'{item.get("name")}: needs an anchor (a saved reference whose structure it carries over) or a one-sentence concept')
                     typical = item.get('typicality')
-                    if type(typical) not in (int, float) or not 0 <= typical <= 1:
+                    if not self.audience_first and (type(typical) not in (int, float) or not 0 <= typical <= 1):
                         problems.append(f'{item.get("name")}: needs typicality, the chance (0-1) a generic AI deck would produce it')
-                if not any(i.get('anchor') for i in items) or not any(i.get('concept') for i in items):
+                if not self.audience_first and (not any(i.get('anchor') for i in items) or not any(i.get('concept') for i in items)):
                     problems.append('at least one option must carry over a saved reference (anchor) and one must be a concept')
                 if problems:
                     return self._reply(False, {'status': 'invalid', 'problems': problems,
@@ -480,6 +539,22 @@ class DesignStudy:
                 image = sketch(items)
             except (TypeError, ValueError) as error:
                 return self._reply(False, {'status': 'invalid', 'error': str(error)})
+            if self.audience_first:
+                audience_task = args.get('audience_task')
+                audience_task = audience_task.strip() if isinstance(audience_task, str) else ''
+                value = {'sketches': len(items), 'audience_task': audience_task,
+                         'meaning': 'Compare the visible alternatives against the audience task. Use the layout with '
+                                    'the clearest evidence and reading path; keep a direct solution when it works best.'}
+                rated = audience_task and all(
+                    type(i.get('task_fit')) is int and 1 <= i['task_fit'] <= 5
+                    and isinstance(i.get('fit_evidence'), str) and i['fit_evidence'].strip() for i in items)
+                if rated:
+                    order = sorted(items, key=lambda i: (-i['task_fit'], i['name']))
+                    highest = order[0]['task_fit']
+                    value['by_task_fit'] = [{k: i[k] for k in ('name', 'task_fit', 'fit_evidence')} for i in order]
+                    value['best_fit'] = [i['name'] for i in order if i['task_fit'] == highest]
+                    value['meaning'] += ' Break a tie by the page purpose and craft when you inspect the sketches.'
+                return self._reply(True, value, image)
             order = sorted((i.get('typicality', 1), i.get('name')) for i in items)
             value = {'sketches': len(items), 'by_typicality': [n for _, n in order],
                      'meaning': 'Each anchored sketch sits under its reference\'s mass study: does it really carry '

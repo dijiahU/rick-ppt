@@ -35,6 +35,14 @@ def enabled(cfg):
     return (Path(cfg['plugin'])/'skills/pptx/references/art-direction.md').is_file()
 
 
+def reference_transfer_enabled(cfg):
+    plugin = cfg.get('plugin')
+    if not plugin:
+        return False
+    guide = Path(plugin)/'skills/pptx/references/art-direction.md'
+    return guide.is_file() and '<!-- audience-first-reference/v1 -->' in guide.read_text()
+
+
 def research_breadth_instruction(cfg):
     """Discovery guidance plus only the host's actually enabled sites."""
     text = ('Search widely before narrowing: facts and mechanisms, real cases and material that can appear on '
@@ -101,7 +109,9 @@ def style_context_instruction(cfg, stage):
                      'references. '),
         'author': ('Before page 1 follow art-direction.md "Deck direction" and write deck-style.json; use its @tokens for new designs. '
                    'For the cover, key pages and closing page fill the page design sheet and read worked-examples.md once; follow '
-                   '"Every page" for search, sketches (build the host\'s try_first) and render checks. '),
+                   '"Every page" for search, '
+                   +('audience-first sketch comparison' if reference_transfer_enabled(cfg)
+                     else 'sketches (build the host\'s try_first)')+' and render checks. '),
         'render': 'Does it match the chosen register and deck-style.json, look like a real example of this kind of deck, and stay coherent with earlier pages? ',
     }[stage]
 
@@ -178,11 +188,15 @@ def role_instruction(cfg,stage):
     contract=role_contract(cfg,stage)
     if contract is None:return ''
     page_tools=(Path(cfg['plugin'])/'skills/pptx/scripts/page_design.py').is_file()
+    transfer = reference_transfer_enabled(cfg)
     if stage=='research':
         return ('RESEARCH AND PLANNING. '+('You stay the author of every page afterward. ' if continuous_author(cfg) else '')+
                 'Understand the topic and audience well enough to plan a deck worth watching. '
                 +research_breadth_instruction(cfg)+style_context_instruction(cfg, 'research')+
                 'For each page decide the one point, its evidence and what the audience will see. '
+                +('For design guidance, state the precise audience task before looking for images. Consider references solving '
+                  'different parts of that task, such as organizing information and depicting an action. Respect the brief\'s '
+                  'reference scope, use only useful roles, and name exactly what each chosen image contributes. ' if transfer else '')
                 +visual_presence_instruction(cfg, 'research')+explanation_instruction(cfg, 'research')+
                 'When the brief is thin, add useful analysis, implications and next steps, labeled as suggestions; never invent '
                 'numbers, quotes, screenshots or results. '
@@ -192,6 +206,12 @@ def role_instruction(cfg,stage):
     return ('AUTHOR. You design and build the whole deck in page order and make later repairs. Use the planned page tasks as '
             'a starting point; improve a weak plan rather than executing it literally. Read art-direction.md once. '
             +style_context_instruction(cfg, 'author')+visual_presence_instruction(cfg, 'author')+
+            ('For an uncertain key page, compare a direct sketch and a reference-informed sketch on the same audience task. '
+             'Use audience_task and task_fit in pptx_study_reference after looking at the sketches. '
+             'Before building around an essential photo or illustration, use asset_check or open the actual image at its intended '
+             'crop and size; point to the detail the audience needs. If it is absent, change the view, asset or native explanation. '
+             'Use the paired examples in art-direction.md to judge tradeoffs and the first render to verify them. '
+             if transfer else '')+
             ('Before building, use deck_plan to state the occasion, what the audience expects to see and how they should feel, then submit page_plan for individual pages. '
              'For the cover, key pages and closing page, submit the design sheet with page_plan before building so the host can check it on submission. '
              if page_tools and cfg.get('_harness_transport') != 'dsh-sdk' else '')+

@@ -13,9 +13,15 @@ For a page with real material or a non-obvious visual task, write one fenced blo
   "materials": [{"file": "assets/attention-reference.png", "role": "Inspected detail useful for this explanation"}],
   "preserve": ["Illustrative weights are not reported measurements"],
   "uncertainties": ["Exact example values still need checking"],
+  "poster_move": "The page's one invented move: the title sits on a dark field sampled from the trunk and the photo meets it along an S-shaped seam traced by a hairline",
   "visual_opportunity": "Main visual: one worked example aligning the current position's weights with their source values and the resulting combination; reveal the combination after its inputs. Finished when the audience can trace which values contribute."
 }
 ```
+
+`poster_move` states the page's single design decision as a sentence a viewer could
+point to (see [poster thinking](poster-thinking.md)). Required for the cover, section,
+statement and closing pages; optional but encouraged elsewhere. Naming it in the page
+task gives the visual reviewer the intended move to check against the render.
 
 A prose heading is not a block. planning_commit returns `page_task_projection`
 showing which page IDs were recorded; fix a missing block there. The host passes these

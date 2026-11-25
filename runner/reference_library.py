@@ -15,6 +15,7 @@ import time
 from pathlib import Path
 
 from PIL import Image, ImageDraw
+from design_roles import reference_transfer_enabled
 
 TOOL = 'pptx_reference_library'
 # Chinese and common English words mapped to the tag vocabulary (page types and layout words).
@@ -38,6 +39,16 @@ SYNONYMS = {
     '流程': 'process steps', '三步': 'process steps', '时间线': 'timeline', '时间轴': 'timeline', '里程碑': 'timeline',
     '引语': 'quote', '人物': 'team quote', '前后': 'comparison', '对比': 'comparison', '图文': 'image',
     '叠压': 'image', '满版': 'image cover', '章节': 'section', '结尾': 'closing', '收尾': 'closing',
+    # Style and treatment words (2026-11-24): used by mode=style/idea and as low-weight hints elsewhere.
+    '雾化': '雾 褪色 渐变', '褪色': '褪色 雾 低对比', '留白': '负空间 空白', '负空间': '留白 空白 极简',
+    '对角线': '对角线 斜线', '斜线': '对角线', '单色': '单色 明度', '明度': '单色 层次 深浅',
+    '高对比': '高对比 硬光 黑白', '低对比': '低饱和 柔光 灰', '质感': '纹理 材质 纸 布 石',
+    '纹理': '质感 纹理 纸', '安静': '安静 克制 清透', '克制': '克制 安静 极简', '戏剧': '戏剧 浓烈 高对比',
+    '温暖': '温暖 暖色', '冷峻': '冷峻 冷色', '怀旧': '怀旧 褪色 胶片', '电影感': '电影 摄影 光影',
+    '摄影': '照片 摄影 光影', '实拍': '照片 摄影', '静物': '静物 产品摄影', '裁切': '裁切 局部 放大',
+    '出血': '满版出血 裁切', '聚焦': '焦点 主体 放大', '路径': '一条路径 引导线', '引导线': '路径 斜线',
+    '材质': '纹理 材质', '纸张': '纸 纹理', '雾面': '雾 柔光 低对比', '颗粒': '胶片 纹理',
+    'style': 'mood palette treatment', 'mood': 'mood 气质', 'poster': '海报 排版', 'editorial': '杂志 编辑 排版',
 }
 PAGE_TYPES = ('cover', 'agenda', 'section', 'statement', 'data', 'comparison', 'process', 'timeline', 'image',
               'text', 'team', 'quote', 'summary', 'closing', 'problem', 'solution', 'product', 'how_it_works', 'market',
@@ -47,6 +58,18 @@ TEMPLATE_ROLES = {'cover': ('cover',), 'section': ('agenda', 'section'),
                   'process': ('process', 'timeline'), 'closing': ('closing', 'summary')}
 TEMPLATE_ROLE_BY_TYPE = {kind: role for role, kinds in TEMPLATE_ROLES.items() for kind in kinds}
 TEXT_KEYS = ('page_type', 'layout', 'description', 'strength', 'deck', 'category', 'keywords')
+# Style/idea fields (2026-11-24): a page can be worth borrowing when its structure does not fit
+# at all — a treatment, a palette relationship, a mood, or the idea the picture embodies.
+STYLE_KEYS = ('mood', 'light', 'palette', 'composition', 'treatment', 'motif', 'metaphor', 'borrowable')
+STYLE_DEFAULTS = {
+    'mood': ('安静', '戏剧', '温暖', '冷峻', '怀旧', '克制', '浓烈', '清透', '厚重', '轻盈'),
+    'light': ('自然光', '硬光', '柔光', '逆光', '阴影', '雾', '无'),
+    'composition': ('对角线', '居中', '左右分置', '上下分层', '满版出血', '负空间', '框架', '密集', '网格', '对称', '不对称'),
+    'treatment': ('雾化', '褪色', '裁切', '叠压', '单色', '高对比', '拼贴', '纹理', '无'),
+    'motif': ('一条路径', '重复', '孤点', '纹理', '框', '层叠', '网格', '空白'),
+    'borrow_kind': ('structure', 'visual_grammar', 'treatment', 'motif', 'mood', 'idea'),
+}
+SEARCH_MODES = ('any', 'structure', 'style', 'idea')
 ROOT = Path.home() / '.rick-ppt' / 'reference-library'
 CJK = re.compile(r'[\u3400-\u9fff]+')
 CRAFT_MOVES = ('1', '2', '3', '4', '5', '6')
@@ -103,11 +126,16 @@ class ReferenceLibrary:
             '(action=template): it is faster than starting blank, and its masters, type and base pages can carry a deck even '
             'when its colours or pictures need replacing; pages from other templates can lend layouts, devices and type systems. '
             "Use the deck's own content and the palette the direction needs; never keep sample text or stock photos. "
-            'action=inspire is the inspiration mode for one page: describe the page\'s structural job, not its topic '
-            '(e.g. "一个关键数字加两条说明", "三步流程", "人物照片加引语", "封面 品牌主视觉 大图"); it returns well-rated pages '
+            'action=inspire is the inspiration mode for one page: say what the page needs to do, not its topic. '
+            'mode=structure (default for concrete layouts) describes the page\'s structural job '
+            '(e.g. "一个关键数字加两条说明", "三步流程", "人物照片加引语", "封面 品牌主视觉 大图") and returns well-rated pages '
             '(3-rated only when they match closely) from any genre, one per template, each with what is worth borrowing '
-            'and its match share; a note says when the library has little for the job. Pick one and study its composition '
-            '(pptx_study_reference) before sketching any page. '
+            'and its match share; a note says when the library has little for the job. '
+            'mode=style finds pages worth borrowing for treatment or atmosphere even when their structure does not fit '
+            '(雾化边缘, 单色明度, 对角线分区, 安静克制, 纸张纹理); mode=idea finds pages whose organizing idea transfers to '
+            'unrelated content (一条路径成为唯一清晰的东西; 秩序里的孤点); mode=any mixes both. Style/idea results name '
+            "borrow_kind and borrowable moves; a page can be useful without lending its layout. Pick one and study its "
+            "composition (pptx_study_reference) before sketching any page. "
             'action=craft shows before/after pairs for quiet pages: a weak page GPT actually made (修改前) beside the same content redone (修改后) '
             'with one move: 第二个面、字即是图、反复标记、强网格、精确字重、现实锚定物 (6: concrete example data and a real-world object\'s form, first for text-only pages); pass move for one board at full size. '
             'Open it before designing or editing any simple or text-only page; '
@@ -124,6 +152,9 @@ class ReferenceLibrary:
                 'action': {'type': 'string', 'enum': ['inspire', 'templates', 'search', 'deck', 'browse', 'pick', 'template', 'craft']},
                 'move': {'type': 'string', 'enum': list(CRAFT_MOVES), 'description': 'For action=craft, omit for all five examples or select one by number.'},
                 'query': {'type': 'string', 'maxLength': 200},
+                'mode': {'type': 'string', 'enum': list(SEARCH_MODES),
+                         'description': 'For action=inspire: structure (layout job), style (treatment, palette, mood), '
+                                        'idea (organizing idea that transfers), or any (default).'},
                 'page_type': {'type': 'string', 'enum': list(PAGE_TYPES)},
                 'category': {'type': 'string', 'maxLength': 40},
                 'deck': {'type': 'string', 'maxLength': 120},
@@ -149,7 +180,7 @@ class ReferenceLibrary:
             if collection and name != collection:
                 continue
             for item in index['pages']:
-                if tone is None or item['tone'] == tone:
+                if tone is None or item.get('tone') == tone:
                     yield name, item
 
     def _log(self, args, result):
@@ -235,7 +266,7 @@ class ReferenceLibrary:
         buffer = io.BytesIO(); sheet.save(buffer, 'JPEG', quality=80)
         return self.reply(True, {'status': 'results', 'shown': len(chosen), 'available': len(items),
                                  'next_offset': offset + len(chosen) if offset + len(chosen) < len(items) else None,
-                                 'slides': [{k: v for k, v in {'id': it['id'], 'collection': n, 'tone': it['tone'],
+                                 'slides': [{k: v for k, v in {'id': it['id'], 'collection': n, 'tone': it.get('tone'),
                                              'deck': it.get('deck'), 'template': it.get('template'), 'category': it.get('category'),
                                              'slide': it.get('slide'), 'page_type': it.get('page_type'), 'layout': it.get('layout'),
                                              'description': it.get('description'), 'quality': it.get('quality')}.items() if v}
@@ -330,7 +361,7 @@ class ReferenceLibrary:
             shutil.copyfile(root(self.cfg) / name / item['file'], target)
             files.append({'file': str(target.relative_to(self.job)), 'collection': name,
                           'source': self.indexes[name]['source'], 'license': self.indexes[name]['license'],
-                          'tone': item['tone'], 'colors': item['colors']})
+                          'tone': item.get('tone'), 'colors': item.get('colors')})
         return self.reply(True, {'status': 'copied', 'files': files,
                                  'meaning': 'Register them as local_image references; they are inspiration, not assets for the deck.'})
 
@@ -460,41 +491,96 @@ class ReferenceLibrary:
             buffer.getvalue())
 
     def inspire(self, args):
-        """Cross-genre best pages for a page's structural job, one per template, with the borrowable move and match share."""
+        """Cross-genre pages for a page's job: structural, style/technique, idea, or any."""
         import math
         items = list(self._items(args.get('collection')))
         query = (args.get('query') or '').lower()
         words = tokens(query + ' ' + ' '.join(v for k, v in SYNONYMS.items() if k in query))
         texts = {item['id']: tokens(' '.join(str(item.get(k) or '') for k in TEXT_KEYS)) for _, item in items}
-        df = {w: sum(w in t for t in texts.values()) for w in words}
-        # Fragments the library never uses (越页, 的地) cannot be matched, so they do not count against a page.
-        weight = {w: math.log((len(texts) + 1) / (df[w] + 1)) for w in words if df[w]}
-        total = sum(weight.values()) or 1
+        style_texts = {item['id']: tokens(' '.join(str(item.get(k) or '') for k in STYLE_KEYS)) for _, item in items}
+        has_style = any(style_texts.values())
+        mode = args.get('mode') or 'any'
 
-        def coverage(item):  # share of the query's rarity-weighted words this page actually mentions
-            return sum(weight[w] for w in weight.keys() & texts[item['id']]) / total
+        def coverage_map(source):
+            # Fragments the library never uses (越页, 的地) cannot be matched, so they do not count against a page.
+            df = {w: sum(w in t for t in source.values()) for w in words}
+            weight = {w: math.log((len(source) + 1) / (df[w] + 1)) for w in words if df[w]}
+            total = sum(weight.values()) or 1
+            return {iid: sum(weight[w] for w in weight.keys() & t) / total for iid, t in source.items()}
+
+        structure = coverage_map(texts)
+        style = coverage_map(style_texts) if has_style else {}
+
+        def score_of(s, t):
+            return {'structure': s, 'style': t, 'idea': 0.25 * s + 0.75 * t,
+                    'any': 0.65 * s + 0.35 * t}[mode]
+
+        if mode in ('style', 'idea') and not has_style:
+            return self.reply(False, {'status': 'no_style_tags',
+                                      'hint': 'This library has no style/idea tags yet; use mode=structure for now.'})
 
         # Pages rated 3 compete too, with a penalty, so a rare exact match (a map) beats a vague 4-rated one
         # (2026-11-21: a map query returned only big-title pages because every map page is rated 3).
         floor = args.get('min_quality') or 3
-        count = args.get('count') or 8
-        ranked = sorted(self._search(items, {**args, 'min_quality': floor}, diversify=False) or [],
-                        key=lambda row: -(coverage(row[1]) + 0.04 * ((row[1].get('quality') or 3) - 4)))
-        chosen, seen = [], set()
-        for name, item in ranked:
-            key = item.get('template') or (name, item.get('deck') or item['id'])
-            if key in seen or ((item.get('quality') or 3) < 4 and coverage(item) < 0.3):
+        count = args.get('count') or 6
+        scored = []
+        for name, item in items:
+            quality = item.get('quality') or 3
+            if quality < floor:
                 continue
-            seen.add(key); chosen.append((name, item))
+            s, t = structure.get(item['id'], 0), style.get(item['id'], 0)
+            if mode == 'structure' or not has_style:
+                if quality < 4 and s < 0.3:
+                    continue
+            elif mode == 'style':
+                # A page with no style match at all is not a style reference, however well rated.
+                if t <= 0 or (quality < 4 and t < 0.2):
+                    continue
+            elif mode == 'idea':
+                if t <= 0 and s <= 0:
+                    continue
+                if quality < 4 and max(t, 0.5 * s) < 0.2:
+                    continue
+            elif quality < 4 and max(s, t) < 0.25:
+                continue
+            scored.append((score_of(s, t) + 0.04 * (quality - 4), quality, name, item, s, t))
+        scored.sort(key=lambda row: (-row[0], -row[1], row[3]['id']))
+        chosen, seen = [], set()
+        for _, quality, name, item, s, t in scored:
+            key = item.get('template') or (name, item.get('deck') or item['id'])
+            if key in seen:
+                continue
+            seen.add(key); chosen.append((name, item, s, t))
             if len(chosen) >= count:
                 break
-        best = max((coverage(it) for _, it in chosen), default=0)
+        # Structure match weak: add pages matched by treatment, mood or idea, so a page that does
+        # not share the layout can still be borrowed from (2026-11-24: three test decks never
+        # tried mode=style on their own, so the tool falls back instead of waiting to be asked).
+        supplemented = 0
+        if mode in ('structure', 'any') and has_style and words:
+            if max((s for _, _, s, _ in chosen), default=0) < 0.3:
+                extras = sorted(((style.get(item['id'], 0), name, item) for name, item in items
+                                 if (item.get('quality') or 3) >= 3 and style.get(item['id'], 0) >= 0.15),
+                                key=lambda row: (-row[0], row[2]['id']))
+                for t, name, item in extras:
+                    key = item.get('template') or (name, item.get('deck') or item['id'])
+                    if key in seen:
+                        continue
+                    seen.add(key); chosen.append((name, item, structure.get(item['id'], 0), t))
+                    supplemented += 1
+                    if supplemented >= 2:
+                        break
+        best = max((score_of(s, t) for _, _, s, t in chosen), default=0)
         note = None
-        if chosen and words and best < 0.3:
-            note = ('Weak match: the library has little for this page job. Check each page\'s matched share; borrow '
-                    'only a page whose structure truly fits, otherwise design from the content.')
+        if supplemented:
+            note = ('Structure match is weak; the last pages are matched by treatment, mood or idea. '
+                    'Borrow a named move (borrow_kind) even when the layout does not fit, or build from the content.')
+        elif chosen and words and best < 0.3:
+            note = ('Weak match: the library has little for this job. Check each page\'s match share; borrow only a '
+                    'named move or relationship that truly applies, otherwise design from the content.')
         if not chosen:
-            return self.reply(False, {'status': 'no_results', 'hint': 'Describe the structure (大数字, 图文叠压, 三步流程, 引语, 封面大图) rather than the topic.'})
+            return self.reply(False, {'status': 'no_results', 'hint': 'Describe what the page must do (大数字, 图文叠压, '
+                                     '三步流程, 雾化边缘, 对角线分区) rather than the topic; try another mode.'})
         # Three per row at 480 px (was four at 360): a composition is judged from these
         # thumbnails, and the sheet stays within the width the model sees unscaled.
         cols = 3
@@ -502,19 +588,31 @@ class ReferenceLibrary:
         width, height = 480, 270
         sheet = Image.new('RGB', (cols * width, rows * (height + 18)), 'white')
         draw = ImageDraw.Draw(sheet)
-        for i, (name, item) in enumerate(chosen):
+        for i, (name, item, _, _) in enumerate(chosen):
             with Image.open(root(self.cfg) / name / item['file']) as im:
                 im = im.convert('RGB'); im.thumbnail((width, height))
                 sheet.paste(im, ((i % cols) * width, (i // cols) * (height + 18)))
             draw.text(((i % cols) * width + 4, (i // cols) * (height + 18) + height + 2), item['id'], fill=(200, 0, 0))
         buffer = io.BytesIO(); sheet.save(buffer, 'JPEG', quality=82)
-        return self.reply(True, {'status': 'results', 'pages': [
-            {**{k: v for k, v in {'id': it['id'], 'genre': it.get('category'), 'layout': it.get('layout'),
-                                 'borrow': it.get('strength'), 'quality': it.get('quality'), 'surface': it.get('surface'),
-                                 'match': round(coverage(it), 2) if words else None}.items() if v},
-             'template': it.get('template'), 'slide': it.get('slide'), 'page_type': it.get('page_type')}
-            for _, it in chosen],
+        pages = []
+        for _, it, s, t in chosen:
+            row = {'id': it['id'], 'genre': it.get('category'), 'layout': it.get('layout'),
+                   'borrow': it.get('borrowable') or it.get('strength'), 'quality': it.get('quality'),
+                   'surface': it.get('surface'), 'match': round(max(s, t), 2) if words else None,
+                   'structure_match': round(s, 2) if words else None, 'style_match': round(t, 2) if words else None,
+                   'template': it.get('template'), 'slide': it.get('slide'), 'page_type': it.get('page_type')}
+            for key in ('mood', 'palette', 'composition', 'treatment', 'motif', 'metaphor', 'borrow_kind'):
+                if it.get(key):
+                    row[key] = it[key]
+            pages.append({k: v for k, v in row.items() if v is not None or k in ('template', 'slide')})
+        return self.reply(True, {'status': 'results', 'mode': mode, 'pages': pages,
             **({'note': note} if note else {}),
-            'meaning': 'Borrow the composition (where the focus sits, how picture, colour block and type overlap, what is left empty), '
-                       'never the genre, colours or content. pick the chosen id, study it, then sketch from its structure.'},
+            'meaning': ('Choose by the visual job. A page may contribute composition, emphasis, crop, colour relationships, '
+                        'a treatment, or the idea it embodies. Name what you borrow (borrow_kind) and where it applies; '
+                        'the layout need not match. '
+                        'Open the actual reference, identify the usable feature and adapt it to this content. '
+                        'Combine complementary moves only if each helps a distinct part of the expression.'
+                        if reference_transfer_enabled(self.cfg) else
+                        'Borrow the composition (where the focus sits, how picture, colour block and type overlap, what is left empty), '
+                        'never the genre, colours or content. pick the chosen id, study it, then sketch from its structure.')},
             buffer.getvalue())

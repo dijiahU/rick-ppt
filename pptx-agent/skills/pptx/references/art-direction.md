@@ -2,6 +2,7 @@
 
 <!-- developed-composition/v1 --> <!-- style-context/v1 --> <!-- deck-surface/v3 --> <!-- background-exclusion/v1 -->
 <!-- concrete-reference-transfer/v1 --> <!-- visible-explanation/v1 --> <!-- visual-presence/v2 --> <!-- visual-coverage/v1 --> <!-- image-first/v1 -->
+<!-- audience-first-reference/v1 -->
 
 Read once before the first page. You own the whole visual sequence: direction,
 pages, render checks and repairs. For a small scoped edit keep the existing visual
@@ -91,7 +92,16 @@ user asked for a worksheet or handout to print.
 
 Ordinary pages need items 1, 2 and 5, the device they use from the quiet system, the
 anchor, form and average, and the reference they looked at (a library page id or
-craft-N).
+craft-N) with `borrow_kind` and a named borrowed decision.
+
+**Every page is also a poster.** Read [poster thinking](poster-thinking.md) before
+designing a page, and at least for the cover, key, section and closing pages work out
+the page's one move and put it in the page task's `poster_move`: the single decision a
+viewer could name (a full-bleed picture meeting a shaped seam, a photograph turned into
+an ink plate, one word at half-page height). The deck stays a deck — order, rhythm and
+one visual grammar — while each page is designed by a poster designer rather than
+filled by a layout. A picture placed in a white field beside a text box is placement;
+a picture that runs to the edges and meets the type along a shaped boundary is a page.
 
 **Density follows the audience and the viewing mode.** A lesson, an explainer, an
 art or history introduction, a study report or a deck read on a laptop explains on the
@@ -224,9 +234,9 @@ one element holds the main position at each step.
 ## Every page
 
 For a [template base page](content.md), fill the existing slots and check the render
-in step 5. Keep the source arrangement and type hierarchy. The three-sketch and
-structural rebuild rules apply to newly composed pages. If a base page's structure
-fails, choose a template page that fits the relationship better.
+in step 5. Keep the source arrangement and type hierarchy as required by the brief.
+Use the composition comparison below when developing a new page or redesigning
+within authorized scope.
 
 1. **Message and main visual.** What should the audience see, understand or compare
    here? When the story is about people (a couple, a team, a club, a customer), the
@@ -254,48 +264,67 @@ fails, choose a template page that fits the relationship better.
      anchor for type; at most one small accent; distinct lightness steps between ground,
      picture and type;
    - small signposts: one icon set from `pptx_icons`.
-2. **Reference, for every page.** Once the page's content is decided, look before
-   designing it. Search the template library for a page with the same relationship
-   (pptx_reference_library action=inspire with the page's structural job, e.g.
-   "一个关键数字加两条说明", "图文叠压 标题跨图", or action=search); its best pages
-   come from any genre, so a fashion or exhibition page may hold the right
-   composition for a report. For a quiet or text-only page, and whenever you revise a
-   plain page, also open action=craft (second surface, type as image, recurring mark,
-   strong grid, exact weights) and choose the move to use. Each board pairs a weak page
-   GPT actually made (left) with the same content redone (right): find the left page
-   that looks like yours and do what the right page added. Choose by what this page
-   lacks (no hero: type as image; no zones: second surface; mixed levels: exact
-   weights), not the same move for every page. For the cover, key pages
-   and closing page go further when the library has nothing that fits: painting, film
-   stills, photography, posters and editorial design; Pinterest (English and Chinese,
-   save_images) and image_query. Record the page id or craft-N as the page plan's
-   reference. Pick the chosen library page with `action=pick`. Study the reference with
-   pptx_study_reference (its mass study is the composition under the content) and say
-   in your own words where the eye lands first and goes next, how the big shapes
-   balance or pull, what is grouped, what is empty and why it works. If the structure
-   is hard to name, rebuild it in grey blocks (sketch, a master copy). Borrow the
-   structure, never the picture or content; record work, creator, source and what you
-   borrowed once in the reference register.
-3. **Sketch.** For a newly composed cover, key page or closing page, sketch three
-   options in grey blocks, each anchored outside your own habits: A carries over the structure of a
-   master of this register, B the structure of a work from another field (a painting,
-   photograph or poster), C a concept: first one sentence on the form that carries the
-   message (e.g. "+23 is the one figure going against the trend"), then its blocks; a
-   concept never invents a quantity (no bar without a real value behind it). The
-   three must differ in fundamentals: where the focus sits and how big it is, whether
-   there is a title bar at all (a title can be the focus or merge with the message),
-   figure and ground. After you estimate how likely a generic AI deck would produce each option
-   (the sketch tool takes "anchor" or "concept" and "typicality" for each option and shows each
-   anchor's mass study above its sketch), the host draws one of the less typical options to try first (try_first);
-   build it unless it cannot carry the message, then take the next in fallback_order. Other pages reuse the
-   deck's chosen structures and graphic voice. The focal point is the page's message, not its most
-   dramatic fact. Every large empty area has a job (breathing room for the focus,
-   separating groups, leading the eye), or it is left over.
+2. **Reference.** Name the visual job, then look before designing. A page can be worth
+   borrowing without sharing its structure. Decide what kind of thing you are taking:
+   `structure` (where things sit), `visual_grammar` (scale, density, colour or lightness
+   relationships), `treatment` (how a picture is misted, faded, cropped, overlaid),
+   `motif` (a path, a repeat, an isolated dot, a frame, empty space), `mood` (quiet,
+   theatrical, cold, warm) or `idea` (the organizing thought, which can transfer to
+   unrelated content). Within the brief's reference scope:
+   - For the page's structural job use action=inspire `mode=structure` ("一个关键数字加
+     两条说明", "图文叠压 标题跨图") or action=search. Its best pages come from any genre,
+     so a fashion or exhibition page may hold the right composition for a report.
+   - When the structure does not fit but the page needs an atmosphere, a picture
+     treatment or a stronger hand, use `mode=style` ("雾化边缘", "单色明度", "对角线分区",
+     "安静克制", "纸张纹理"). A photograph, poster or painting may contribute one
+     treatment even though nothing on it matches this page.
+   - When the content needs an organizing idea, use `mode=idea` ("一条路径成为唯一清晰的
+     东西，其余退后", "秩序里的一个孤点"). The subject may be entirely different.
+   - For a quiet or text-only page, and whenever you revise a plain page, also open
+     action=craft (second surface, type as image, recurring mark, strong grid, exact
+     weights) and choose the move to use. Each board pairs a weak page GPT actually made
+     (left) with the same content redone (right): find the left page that looks like
+     yours and do what the right page added. Choose by what this page lacks (no hero:
+     type as image; no zones: second surface; mixed levels: exact weights), not the same
+     move for every page. For the cover, key pages and closing page go further when the
+     library has nothing that fits: painting, film stills, photography, posters and
+     editorial design; Pinterest (English and Chinese, save_images) and image_query.
+   Record the page id or craft-N as the page plan's reference, pick it with `action=pick`,
+   and study it with pptx_study_reference (its mass study is the composition under the
+   content). Say in your own words where the eye lands first and goes next, how the big
+   shapes balance or pull, what is grouped, what is empty and why it works. If the
+   structure is hard to name, rebuild it in grey blocks.
+   **Borrow a named decision, not an impression.** In the reference register record
+   `borrow_kind`, `borrowed` (e.g. "右侧照片左缘用白渐变洗淡，只留一条清晰通道") and each
+   application's `action` (where it lands on this page, with a size, crop, spacing or
+   weight where possible). A page may contribute a treatment or an idea while matching
+   none of the layout; do not force its structure. Take at most two or three decisions
+   from one work. A borrowing that cannot be pointed to in the render is not a borrowing.
+   Consider distinct solutions where
+   useful: one work may organize comparable information and another show an
+   object, action or detail. Use an actual inspected feature for each role.
+   Combine them only when their roles help the same reading path and can coexist
+   at reading size. A direct composition, one partial borrowing or a whole-page
+   treatment can each suffice. Register each applied work, creator, source and
+   concrete adaptation once.
+3. **Sketch.** For a key page with a consequential choice, put a direct expression
+   and a reference-informed expression side by side as simple blocks. Keep the same
+   audience task and facts. Look at the alternatives, then use the sketch tool's
+   `audience_task`, per-option `task_fit` and short `fit_evidence` to name what makes
+   the comparison, attribution or action read more clearly. Select on that basis;
+   use craft and viewing context to decide among equally clear alternatives. An
+   initial sketch without scores is fine. Check that the chosen expression can be
+   achieved with actual available assets. Ordinary pages can reuse a working
+   relationship and graphic voice.
 4. **Build.** Decide each element's size, position, crop and colour. Size follows
    the takeaway. Label hypotheses and keep supporting details secondary. Hold the craft in every register: decisive scale contrast, one alignment
    grid, labels attached to what they name, qualifiers and units kept, careful
-   tracking, leading, line length and Chinese punctuation. For a key picture look at
-   pptx_study_reference crops before settling on the whole frame. Plan click reveals
+   tracking, leading, line length and Chinese punctuation. For a key picture, decide
+   the observable detail and request or acquire a viewpoint that shows it. Before
+   building around it, use `pptx_study_reference` with `asset_check`, or inspect the
+   actual file at the intended crop and size. Point to the detail in the pixels. An
+   ambiguous detail calls for a different view, crop, asset or native explanation.
+   Confirm the picture and its label together on the first actual render. Plan click reveals
    for multi-step content: entry state, each click group, complete final view.
    Covers, section openers and closing pages, and every page of an expressive or
    celebratory deck, go further: type as image, full-bleed plates, layered pictures,
@@ -313,6 +342,19 @@ fails, choose a template page that fits the relationship better.
    Sketch again and rebuild the page at most once. Snapshot
    before a big recomposition and revert if it gets worse. Every few pages view the
    rendered sequence and check the planned rhythm.
+
+### Worked choices from Rick's side-by-side review
+
+- **A meeting must locate a bottleneck.** Rick preferred the direct page, which
+  kept the duration comparison together and the next action easy to scan. A
+  borrowed equal-column arrangement made the bottleneck salient at the cost of a
+  common scale. Borrow emphasis selectively when the shared scale already works.
+- **A new employee must see how an operation happens.** Rick preferred the
+  reference-informed page with the path of the action visible in one image. In
+  the hand-pour example, the adapted picture shows the spout, stream and point of
+  contact. The top-down photo shows bubbles well, and a side view or section can
+  show the rise in height. Use these choices when the viewing task calls for them
+  and check where the instructions and numbers fit around the picture.
 
 Native tools: edit_objects adds rotate, vertical, tracking, leading, opacity, gradient
 (scrim over a picture), shape (a picture cut to an ellipse or diagonal) and crop.

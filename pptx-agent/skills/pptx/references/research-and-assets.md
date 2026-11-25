@@ -11,6 +11,11 @@ design, photography, scientific illustration, film, posters. Open the actual ima
 a title or description is not enough. Borrow concrete decisions and record them once
 in the reference register (workflow-branches.md). A reference used only for
 inspiration need not appear in the deck; embedding needs its own permission.
+When both composition and the main pictured action are unresolved, look for useful
+approaches to each. A single work may help both. Two works can contribute separate
+decisions, such as a reading path and an annotation method, if their combination
+leaves the page easy to read. Judge inspected works by what the audience needs to see
+or compare and respect supplied-only reference scope.
 
 Useful starting points when a specific question comes up: W3C Requirements for
 Chinese Text Layout (CJK typography); Lupton & Phillips, *Graphic Design: The New
@@ -42,9 +47,13 @@ relationship itself.
 - Historical and documentary people, events and objects need authentic images; real
   app screens, case photos and results are never generated. Generated images are
   illustrative.
-- Inspect each image at its intended size (resolution, crop, text) before composing
-  around it; a thumbnail is not enough. If it does not work, find a better one or
-  change the composition.
+- For an image carrying the explanation, name the detail before acquisition: an
+  action and its point of contact, a difference in height, a readable label, or a
+  visible before/after change. Specify the viewpoint when commissioning a permitted
+  illustration. Inspect the acquired file at the intended reading size and crop and
+  point to the detail it actually shows. If it is missing, try another vantage point,
+  a better crop, a different asset or a native diagram. Check the annotation endpoint
+  and evidence together on the page render.
 - Record creator, source page, file URL, licence and required attribution. Do not
   remove watermarks or bypass access controls.
 - On a failed download read the actual error and use another legitimate source.

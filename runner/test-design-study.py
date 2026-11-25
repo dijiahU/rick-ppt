@@ -205,6 +205,50 @@ class DesignStudyTest(unittest.TestCase):
         reply = self.tool.handle({'arguments': {'file': '../../etc/hosts'}})
         self.assertFalse(reply['success'])
 
+    def audience_first_tool(self):
+        plugin = self.job / 'plugin'
+        guide = plugin / 'skills/pptx/references/art-direction.md'
+        guide.parent.mkdir(parents=True)
+        guide.write_text('<!-- audience-first-reference/v1 -->')
+        return design_study.DesignStudy({'plugin': str(plugin)}, self.job)
+
+    def test_audience_fit_beats_novelty_and_allows_direct_layout(self):
+        tool = self.audience_first_tool()
+        items = self.sketch_options((.9, .1, .2))
+        items[0].pop('anchor')
+        items[1]['anchor'] = 'references/r.png'
+        for item, fit, evidence in zip(items, [5, 2, 3],
+                                       ['common scale', 'equal columns hide differences', 'read values individually']):
+            item.update(task_fit=fit, fit_evidence=evidence)
+        reply = tool.handle({'arguments': {'sketch': items, 'audience_task': 'Compare the step durations'}})
+        self.assertTrue(reply['success'])
+        value = json.loads(reply['contentItems'][0]['text'])
+        self.assertEqual(value['best_fit'], ['A'])
+        self.assertEqual([x['name'] for x in value['by_task_fit']], ['A', 'C', 'B'])
+        self.assertNotIn('try_first', value)
+
+    def test_audience_first_sketches_are_viewable_before_scoring(self):
+        tool = self.audience_first_tool()
+        items = [{'name': n, 'blocks': [[1, 1, 5, 1, 'dark']]} for n in 'AB']
+        value = self.sketch_result(items, tool)
+        self.assertEqual(value['sketches'], 2)
+        self.assertNotIn('best_fit', value)
+        self.assertNotIn('try_first', value)
+
+    def test_asset_check_displays_the_actual_crop_at_the_intended_width(self):
+        tool = self.audience_first_tool()
+        request = {'file': 'references/r.png', 'detail': 'the thin dark lines', 'crop': [.5, 0, 0, 0], 'width': 320}
+        reply = tool.handle({'arguments': {'asset_check': request}})
+        self.assertTrue(reply['success'])
+        value = json.loads(reply['contentItems'][0]['text'])
+        self.assertEqual(value['source_pixels'], [600, 675])
+        self.assertEqual(value['preview_pixels'], [320, 360])
+        preview = reply['contentItems'][1]['imageUrl'].split(',', 1)[1]
+        with Image.open(io.BytesIO(base64.b64decode(preview))) as image:
+            self.assertEqual(image.size, (320, 360))
+        for invalid in ({'file': '../../etc/hosts'}, {'crop': [.5, 0, .5, 0]}):
+            self.assertFalse(tool.handle({'arguments': {'asset_check': {**request, **invalid}}})['success'])
+
 
 if __name__ == '__main__':
     unittest.main()

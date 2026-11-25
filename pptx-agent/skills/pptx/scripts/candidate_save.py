@@ -244,6 +244,25 @@ def _declare(root, value, previous):
         pending.unlink(missing_ok=True)
 
 
+def poster_move_gaps(root, count):
+    """Cover and closing pages should name the page's poster move (2026-11-24)."""
+    path = Path(root) / 'design-task.json'
+    if not path.is_file():
+        return []
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return []
+    gaps = []
+    for page in data.get('pages') or []:
+        if not isinstance(page, dict) or page.get('page') not in (1, count):
+            continue
+        move = (page.get('handoff') or {}).get('poster_move')
+        if not (isinstance(move, str) and move.strip()):
+            gaps.append(page['page'])
+    return sorted(set(gaps))
+
+
 def save_candidate(task_root, workspace, output, *, allow_legacy=False):
     root = Path(task_root).resolve(strict=True)
     ws = select(scoped(root, workspace))
@@ -315,6 +334,7 @@ def save_candidate(task_root, workspace, output, *, allow_legacy=False):
         audit = surfaces(artifact) if request.get('mode', 'create') == 'create' else surfaces(None)
         card_pages = sorted(audit['card_pages'])
         too_many_cards = len(card_pages) > max(2, count // 8) or any(v >= 3 for v in audit['card_pages'].values())
+        move_gaps = poster_move_gaps(root, count) if request.get('mode', 'create') == 'create' else []
         digest = sha256(artifact)
         value = {'path': str(artifact), 'workspace': str(ws.root)}
         _declare(root, value, previous)
@@ -342,6 +362,10 @@ def save_candidate(task_root, workspace, output, *, allow_legacy=False):
                 **({'plain_pages_warning': {'pages': plain, 'meaning': (
                     '这些页只有白底和小字。用 deck-style.json 的 quiet_system 给每页加上第二个面、展示字或标记中的至少一样。')}}
                    if len(plain) * 4 > count or any(b == a + 1 for a, b in zip(plain, plain[1:])) else {}),
+                **({'poster_move_warning': {'pages': move_gaps, 'meaning': (
+                    '封面或结尾页没有写 poster_move：这一页作为海报的那一个动作。在页面任务块里写一句能指着画面认出来的决定'
+                    '（例如：整幅静物出血；深色文字面用 S 形曲边与图表相接；22.8% 与柱顶共用同一亮绿）。'
+                    '视觉审核会按这句话核对画面。')}} if move_gaps else {}),
                 'meaning': 'Complete exported candidate declared. Independent review and host delivery checks remain required.'}
 
 
