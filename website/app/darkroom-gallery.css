@@ -1,0 +1,112 @@
+/* Photographic prints developing in a shallow bath. All cases stay live DOM. */
+.water-gallery.darkroom-gallery .case-stage{
+  background:#7b9388;
+  border-top:1px solid #9b9d8e;
+  border-bottom:1px solid #b4b4a4;
+  box-shadow:inset 0 5px 13px #344b3f33;
+}
+.darkroom-gallery .water-still{
+  background:#829b8f url('/showcase/darkroom-water-still.jpg') center/cover no-repeat;
+}
+.darkroom-gallery .water-still:after{
+  background:linear-gradient(#41574e33,transparent 12%,transparent 88%,#41574e22);
+}
+.darkroom-gallery .water-surface:after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  box-shadow:inset 0 0 21px #344b3f44,inset 0 1px 1px #edf3e299;
+  border:5px solid #a1a8991f;
+  background:radial-gradient(ellipse at 5% 8%,#d2ab7c0d,transparent 48%);
+}
+.water-gallery.darkroom-gallery .case-card{
+  border-radius:1px;background:#e6dfd0;
+  box-shadow:0 6px 11px -6px #07110c99,0 1px 2px #c8ccb24d;
+}
+.water-gallery.darkroom-gallery .case-card.is-current{
+  box-shadow:0 8px 14px -9px #08140cab,0 1px 2px #e8e4cd55;
+}
+.water-gallery.darkroom-gallery .case-card.is-previous,
+.water-gallery.darkroom-gallery .case-card.is-next{
+  opacity:.9;filter:none;
+}
+.water-gallery.darkroom-gallery .case-paper{
+  isolation:isolate;border:7px solid #e9e2d3;border-radius:1px;
+  background:#f4f0e5;box-shadow:inset 0 0 7px #182b2533;
+  filter:grayscale(1) brightness(.98) contrast(.88);
+}
+.darkroom-gallery .case-card.is-current .case-paper{
+  animation:darkroom-develop 3.2s cubic-bezier(.24,.48,.25,1) both;
+}
+.darkroom-gallery .case-paper:after{
+  content:"";position:absolute;inset:0;width:auto;height:auto;z-index:5;
+  pointer-events:none;border:0;
+  background:linear-gradient(118deg,transparent 17%,#fffdf01c 24%,transparent 33%,transparent 67%,#9fbca815 72%,transparent 80%);
+  box-shadow:inset 0 1px 2px #f8f5df66,inset 0 -2px 5px #123b3029;
+  animation:darkroom-reflection 9s ease-in-out infinite alternate;
+}
+.darkroom-gallery .case-card:not(.is-current) .case-paper:after{
+  height:auto;background:linear-gradient(116deg,transparent 22%,#faf4db1a 36%,transparent 51%);
+}
+.darkroom-gallery .darkroom-emulsion{
+  position:absolute;inset:0;z-index:4;pointer-events:none;
+  background:radial-gradient(ellipse at 28% 10%,#d6d6d666,transparent 63%),
+    radial-gradient(ellipse at 80% 90%,#bcbcbc44,transparent 62%),
+    linear-gradient(172deg,#e6e6e622,transparent 40%,#cdcdcd33);
+  opacity:.2;
+}
+.darkroom-gallery .case-card.is-current .darkroom-emulsion{
+  animation:darkroom-emulsion-clear 3.2s ease-out both;
+}
+.darkroom-gallery .darkroom-print-status{position:relative;min-width:90px;text-align:right;white-space:nowrap}
+.darkroom-status-developing{position:absolute;right:0;animation:darkroom-status-out 3.2s step-end both}
+.darkroom-status-ready{animation:darkroom-status-in 3.2s step-end both}
+.darkroom-gallery .case-card.is-current .case-paper[data-developed=true]{
+  animation:none;filter:none;
+}
+.darkroom-gallery .case-paper[data-developed=true] .darkroom-emulsion{animation:none;opacity:0}
+.darkroom-gallery .case-paper[data-developed=true] .darkroom-status-developing{animation:none;opacity:0}
+.darkroom-gallery .case-paper[data-developed=true] .darkroom-status-ready{animation:none;opacity:1}
+.darkroom-gallery .case-stage[data-water-motion=still] .case-paper:after{animation-play-state:paused}
+.darkroom-gallery .case-bring-forward>span{
+  background:#25342bd9;border-color:#cad4bb33;color:#ede8d7;
+  backdrop-filter:blur(6px);height:48px;
+}
+.darkroom-gallery .case-bring-forward small{color:#adbaa1}
+.darkroom-gallery .case-bring-forward i{color:#d6dec6}
+.water-gallery.darkroom-gallery .case-selector{
+  background:#e7e9dbef;border-color:#cbd0bd;box-shadow:0 3px 9px #0e241521;
+}
+.water-gallery.darkroom-gallery .gallery-arrow{background:#f0f0e3f5;border-color:#cbd2bd}
+.landing-root .darkroom-gallery .water-motion-toggle{
+  background:#263a30db;border-color:#b6c3aa55;color:#d2dfc4;box-shadow:0 2px 8px #0c191c33;
+}
+@keyframes darkroom-develop{
+  0%{filter:grayscale(1) brightness(.98) contrast(.88)}
+  40%{filter:grayscale(.65) brightness(.99) contrast(.92)}
+  75%{filter:grayscale(.18) brightness(1) contrast(.98)}
+  100%{filter:grayscale(0) brightness(1) contrast(1)}
+}
+@keyframes darkroom-emulsion-clear{
+  0%{opacity:.28;transform:translateY(0) scale(1.08)}
+  48%{opacity:.12;transform:translateY(5%) scale(1.06)}
+  100%{opacity:0;transform:translateY(12%) scale(1.02)}
+}
+@keyframes darkroom-reflection{
+  from{opacity:.4;transform:translateX(-1%)}
+  to{opacity:.8;transform:translateX(1%)}
+}
+@keyframes darkroom-status-out{0%,99.9%{opacity:1}100%{opacity:0}}
+@keyframes darkroom-status-in{0%,99.9%{opacity:0}100%{opacity:1}}
+@media(max-width:800px){
+  .water-gallery.darkroom-gallery .case-paper{border-width:5px}
+}
+@media(max-width:550px){
+  .water-gallery.darkroom-gallery .case-paper{border-width:4px}
+  .darkroom-gallery .case-bring-forward>span{height:44px}
+}
+@media(prefers-reduced-motion:reduce){
+  .darkroom-gallery .case-card.is-current .case-paper{animation:none;filter:none}
+  .darkroom-gallery .case-card.is-current .darkroom-emulsion{animation:none;opacity:0}
+  .darkroom-gallery .case-paper:after{animation:none;opacity:.35}
+  .darkroom-gallery .darkroom-status-developing{animation:none;opacity:0}
+  .darkroom-gallery .darkroom-status-ready{animation:none;opacity:1}
+}
