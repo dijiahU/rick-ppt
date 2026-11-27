@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {useLanguage} from '@/app/language';
 import {reviewWords} from '@/lib/review-i18n';
 import type {Progress} from '@/lib/progress';
@@ -10,29 +10,39 @@ export function ReviewStatus({progress,onOpen}:{progress:Progress|null;onOpen:()
  return <div className="review-status" aria-label={w.title}><div>{(['content','visual'] as const).map(kind=>{const state=progress?.reviews?.[kind]||'pending';return <span key={kind} data-state={state}><strong>{kind==='content'?w.contentEvidence:w.visual}</strong> · {w.states[state]}</span>;})}</div><button onClick={onOpen}>{w.open}</button></div>;
 }
 
-export default function ReviewResults({id,status}:{id:string;status:string}){
+export default function ReviewResults({id,status,updatedAt,active=true}:{id:string;status:string;updatedAt?:number;active?:boolean}){
  const {locale}=useLanguage(),w=reviewWords[locale]||reviewWords.en;
  const [reports,setReports]=useState<PublicReview[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(false),[refresh,setRefresh]=useState(0),[all,setAll]=useState(false);
+ const terminal=['complete','failed','paused','delivery_pending'].includes(status);
+ const version=terminal?updatedAt??0:null;
+ const history=useRef({cursor:0,attempt:null as string|null,collected:new Map<string,PublicReview>(),finished:false,status:'',version:null as number|null,refresh:0});
  useEffect(()=>{
-  let active=true,cursor=0,attempt:string|null=null,terminalPolls=3;
-  const collected=new Map<string,PublicReview>(),controller=new AbortController();let timer:ReturnType<typeof setTimeout>;
-  setReports([]);setLoading(true);setError(false);
+  if(!active)return;
+  const state=history.current;
+  if(state.finished&&terminal&&state.status===status&&state.version===version&&state.refresh===refresh)return;
+  state.status=status;state.version=version;state.refresh=refresh;
+  const controller=new AbortController();let timer:ReturnType<typeof setTimeout>,terminalPolls=3;
+  setError(false);
   async function poll(){try{
-   const response=await fetch(`/api/jobs/${encodeURIComponent(id)}/reviews?after=${cursor}`,{cache:'no-store',signal:controller.signal});
-   if(!response.ok)throw Error();const data=await response.json() as ReviewPage;if(!active)return;
-   if(attempt!==null&&data.attempt!==attempt){collected.clear();setReports([]);cursor=0;attempt=data.attempt;timer=setTimeout(poll,0);return;}
-   if(data.nextChunk<cursor){collected.clear();cursor=0;}
-   attempt=data.attempt;
-   for(const report of data.reports)collected.set(report.id,report);
-   cursor=data.nextChunk;
+   const response=await fetch(`/api/jobs/${encodeURIComponent(id)}/reviews?after=${state.cursor}`,{cache:'no-store',signal:controller.signal});
+   if(!response.ok)throw Error();const data=await response.json() as ReviewPage;if(controller.signal.aborted)return;
+   if(state.attempt!==null&&data.attempt!==state.attempt){
+    state.collected.clear();setReports([]);
+    if(state.cursor){state.cursor=0;state.attempt=data.attempt;timer=setTimeout(poll,0);return;}
+   }
+   if(data.nextChunk<state.cursor){state.collected.clear();state.cursor=0;}
+   state.attempt=data.attempt;
+   for(const report of data.reports)state.collected.set(report.id,report);
+   state.cursor=data.nextChunk;
    // Prefer a host-validated, file-bound receipt over its matching legacy copy.
-   const values=[...collected.values()];
+   const values=[...state.collected.values()];
    setReports(values.filter(r=>r.verified||!values.some(v=>v.verified&&v.kind===r.kind&&v.round===r.round&&v.summary===r.summary)).sort((a,b)=>b.at-a.at||Number(b.id)-Number(a.id)));
-   const more=cursor<data.totalChunks;setLoading(more);setError(false);
-   if(more||(!data.finished&&(!['complete','failed','paused','delivery_pending'].includes(status)||terminalPolls-->0)))timer=setTimeout(poll,more?50:3000);
-  }catch{if(active){setLoading(false);setError(true);timer=setTimeout(poll,6000);}}}
-  void poll();return()=>{active=false;controller.abort();clearTimeout(timer);};
- },[id,status,refresh]);
+   const more=state.cursor<data.totalChunks;
+   state.finished=!more&&data.finished;setLoading(more&&!state.collected.size);setError(false);
+   if(more||(!data.finished&&(!terminal||terminalPolls-->0)))timer=setTimeout(poll,more?0:3000);
+  }catch{if(!controller.signal.aborted){state.finished=false;setLoading(false);setError(true);timer=setTimeout(poll,6000);}}}
+  void poll();return()=>{controller.abort();clearTimeout(timer);};
+ },[id,status,refresh,active,terminal,version]);
  const visible=all?reports:reports.slice(0,4);
  return <section className="review-results" aria-label={w.title}>
   <div className="review-heading"><h2>{w.title}</h2><button onClick={()=>setRefresh(n=>n+1)}>{w.retry}</button></div>

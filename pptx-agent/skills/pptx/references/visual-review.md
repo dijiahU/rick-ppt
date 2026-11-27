@@ -84,19 +84,39 @@ native behavior. Do not request a redesign.
    joins; labels placed and aligned, not scattered; one level of detail across the
    deck. A rough sketch where a finished diagram was needed, or a map visibly cruder
    than an earlier map in the same deck, is a finding on that region with a concrete
-   redraw direction. Fonts: Times New Roman /
-   SimSun for reading text, DengXian / Arial approved for headings, figures and display
-   text, unless the user or template specifies otherwise.
+   redraw direction. Fonts: any family is
+   allowed; judge fit and legibility, not membership of a list. A finding is a face that
+   does not match the script (Chinese faces such as SimSun or DengXian on Japanese text),
+   a visible fallback or substitution in the render, or a face that fights the register.
 6. **Sequence.** Consistent colour meaning and type, with deliberate changes of focus,
    scale and density; the same page skeleton repeated for unrelated content is a
-   weakness.
+   weakness. **Three or more consecutive pages built on the same skeleton (same split,
+   same picture side and size, same text block), or most of the deck opening the same
+   way, is a required finding** with a concrete recomposition for the middle pages. A
+   series (four seasons, four painters, five days) may share a language, but its pages
+   must differ in crop, scale, position or density, or be merged into one overview page
+   with one member given a full page. Also name the palette when it is the generic one
+   (dark navy or teal with an orange or coral accent on white) and not drawn from the
+   subject; for a subject with its own colours (paintings, products, a place) that is a
+   required finding with the colours to take instead.
 7. **Click reveals.** Check native entrance targets and the supplied initial,
    intermediate and final states: questions before answers, labels and connectors
    entering with their objects, persistent context, readable final view. A wholly
    static new deck or title-only animation is a required finding. Static previews are
    not PowerPoint playback; say so.
-8. **References.** If design-references.json is supplied, check whether the borrowed
-   relationship actually appears on the named page, beyond a matching palette.
+8. **References.** If design-references.json is supplied, compare each reference image with
+   the page it is applied to, side by side, and judge the borrowing, not merely whether the
+   palette matches. Three verdicts:
+   - **transferred** — the reference's distinctive decision is recognisable on the page in a
+     form this content needed; the page does not look like the source.
+   - **copied** — the page reproduces the source's arrangement, subject or palette where the
+     content did not call for it; a reader would recognise the template it came from.
+   - **generic** — what the page took is a relation that fits any page ("text beside a
+     picture", "a large number with a note"), so nothing of the source's decision reached the
+     page. `borrowed` describing its own work as a generic relation is a required finding:
+     name the decision the source actually makes and a page region where it could land.
+   Also check the record's honesty: a work claimed as applied whose relation cannot be
+   pointed to on the page is a required finding.
 
 ## Writing findings
 

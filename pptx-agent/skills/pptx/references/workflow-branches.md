@@ -58,7 +58,9 @@ illustrative.
 `borrow_kind`: structure, visual_grammar, treatment, motif, mood or idea. A work can be
 useful when its structure does not match at all: a photograph may lend one treatment, a
 painting one organizing idea. Take at most two or three decisions from one work, and only
-ones a viewer can point to in the render.
+ones a viewer can point to in the render. `borrowed` names the work's most distinctive
+decision, the one an average version would not make; a generic relation such as "text
+beside a photo" is not a borrowing.
 
 Kinds: artwork, design_work, teaching, supplied_system. Inspection: local_image,
 hosted_visual, read_text or unavailable (then evidence=null, borrowed=null,

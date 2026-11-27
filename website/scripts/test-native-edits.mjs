@@ -6,9 +6,9 @@ import ts from 'typescript';
 const modules={};
 function load(path){const code=ts.transpileModule(readFileSync(new URL('../'+path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;const exports={};new Function('require','exports',code)(name=>{assert.ok(modules[name],name);return modules[name];},exports);return exports;}
 const db=new DatabaseSync(':memory:');db.exec("CREATE TABLE jobs(id TEXT PRIMARY KEY,user_id TEXT,status TEXT,lease TEXT,result_key TEXT,summary TEXT,updated_at INTEGER);CREATE TABLE task_drafts(job_id TEXT PRIMARY KEY);CREATE TABLE worker(id TEXT PRIMARY KEY,heartbeat INTEGER)");
-const id=crypto.randomUUID(),lease=crypto.randomUUID(),versionId=crypto.randomUUID();let user='owner',admin=false;const objects=new Map();
+const id=crypto.randomUUID(),lease=crypto.randomUUID(),versionId=crypto.randomUUID();let user='owner',admin=false;const objects=new Map(),reads=[];
 const binding={prepare(sql){let args=[];const s={bind(...v){args=v;return s;},async first(){return db.prepare(sql).get(...args)??null;},async all(){return {results:db.prepare(sql).all(...args)};},async run(){return {meta:{changes:Number(db.prepare(sql).run(...args).changes)}};}};return s;},async batch(statements){db.exec('BEGIN');try{const values=[];for(const s of statements)values.push(await s.run());db.exec('COMMIT');return values;}catch(e){db.exec('ROLLBACK');throw e;}}};
-const r2={async put(key,data,options={}){const bytes=new Uint8Array(await new Response(data).arrayBuffer());objects.set(key,{bytes,customMetadata:options.customMetadata||{}});},async get(key){const o=objects.get(key);return o?{body:new Response(o.bytes).body,size:o.bytes.length,customMetadata:o.customMetadata,json:async()=>JSON.parse(new TextDecoder().decode(o.bytes))}:null;},async head(key){const o=objects.get(key);return o?{size:o.bytes.length,customMetadata:o.customMetadata}:null;}};
+const r2={async put(key,data,options={}){const bytes=new Uint8Array(await new Response(data).arrayBuffer());objects.set(key,{bytes,customMetadata:options.customMetadata||{}});},async get(key){reads.push(['get',key]);const o=objects.get(key);return o?{body:new Response(o.bytes).body,size:o.bytes.length,customMetadata:o.customMetadata,json:async()=>JSON.parse(new TextDecoder().decode(o.bytes))}:null;},async head(key){reads.push(['head',key]);const o=objects.get(key);return o?{size:o.bytes.length,customMetadata:o.customMetadata}:null;}};
 modules['@/lib/server']={database:()=>binding,files:()=>r2,json:(v,status=200)=>Response.json(v,{status}),userId:async()=>user,sameOrigin:r=>r.headers.get('Origin')===new URL(r.url).origin,workerAuthorized:async r=>r.headers.get('Authorization')==='Bearer test-worker',workerIdentity:async r=>r.headers.get('Authorization')==='Bearer test-worker'?'server':null};
 modules['@/lib/admin']={isAdmin:async()=>admin};modules['@/lib/attachments']=load('lib/attachments.ts');modules['@/lib/conversation']=load('lib/conversation.ts');modules['@/lib/staged-uploads']=load('lib/staged-uploads.ts');modules['@/lib/visual-edits']=load('lib/visual-edits.ts');modules['./visual-edits']=modules['@/lib/visual-edits'];modules['./server']=modules['@/lib/server'];modules['@/lib/canvas-storage']=load('lib/canvas-storage.ts');modules['./canvas-storage']=modules['@/lib/canvas-storage'];modules['@/lib/progressive-canvas']=load('lib/progressive-canvas.ts');
 const visual=modules['@/lib/visual-edits'];const publish=load('app/api/worker/[id]/canvas/route.ts').POST;const read=load('app/api/jobs/[id]/canvas/route.ts').GET;const submit=load('app/api/jobs/[id]/visual-edits/route.ts').POST;const params={params:Promise.resolve({id})};
@@ -39,8 +39,27 @@ assert.equal((await direct.POST(post({...body,id:crypto.randomUUID()}),params)).
 // Admin opt-in works without changing ownership; stale leases cannot publish.
 user='operator';admin=true;const adminBody={...body,id:crypto.randomUUID(),baseSha256:after.sha256,adminEdit:true};assert.equal((await direct.POST(post(adminBody),params)).status,201);const next=(await (await worker(wget('claim'))).json()).edit;assert.equal(next.administrator,true);assert.equal(db.prepare('SELECT user_id FROM jobs WHERE id=?').get(id).user_id,'owner');db.prepare("UPDATE jobs SET status='queued' WHERE id=?").run(id);assert.equal((await worker(wget('artifact',edited,next.id,'test-worker',next.lease))).status,409);assert.equal(db.prepare('SELECT status FROM native_edits WHERE id=?').get(next.id).status,'failed');assert.equal((await r2.head(job.result_key)).customMetadata.sha256,after.sha256);
 modules['@/lib/slide-limits.mjs']=await import('../lib/slide-limits.mjs');const preview=load('app/api/jobs/[id]/preview/[slide]/route.ts').GET;user='owner';admin=false;db.prepare("UPDATE jobs SET status='complete' WHERE id=?").run(id);const finalPreview=await preview(new Request('https://test.local/preview'),{params:Promise.resolve({id,slide:'1'})});assert.equal(finalPreview.status,200);assert.equal(await hash(new Uint8Array(await finalPreview.arrayBuffer())),after.pages[0].imageSha256);
+const canvasImage=(sha,page,digest)=>read(new Request(`https://test.local/api/jobs/${id}/canvas?sha256=${sha}&page=${page}&image=${digest}`),params);
+const pageHash=after.pages[0].imageSha256,previewKey=`canvas/${id}/${after.sha256}/page-1-${pageHash}.png`;
+reads.length=0;
+const fastImage=await canvasImage(after.sha256,1,pageHash);
+assert.equal(fastImage.status,200);
+assert.equal(fastImage.headers.get('ETag'),'"'+pageHash+'"');
+assert.deepEqual(reads,[['get',previewKey]],'Versioned preview skips the artifact head and canvas manifest');
+assert.equal(await hash(new Uint8Array(await fastImage.arrayBuffer())),pageHash);
+reads.length=0;user='other';
+assert.equal((await canvasImage(after.sha256,1,pageHash)).status,404);
+assert.deepEqual(reads,[],'Authorize before reading an image by hash');
+admin=true;
+assert.equal((await canvasImage(after.sha256,1,pageHash)).status,200);
+user='owner';admin=false;
+assert.equal((await canvasImage(after.sha256,2,pageHash)).status,404);
+assert.equal((await canvasImage(after.sha256,1,'x')).status,400);
+assert.equal((await canvasImage(after.sha256,1,'b'.repeat(64))).status,404);
+assert.equal((await canvasImage(snapshot.sha256,1,snapshot.pages[0].imageSha256)).status,200,'Old versions with unversioned image files still load');
+
 // A pre-upgrade running task can adopt its checksum-verified delivered baseline.
 db.prepare("UPDATE jobs SET status='running',lease=? WHERE id=?").run(lease,id);
 const legacy=await direct.POST(post({...body,id:crypto.randomUUID(),baseSha256:after.sha256}),params);assert.equal(legacy.status,201,await legacy.text());
 assert.equal(db.prepare('SELECT sha256 FROM canvas_heads WHERE job_id=?').get(id).sha256,after.sha256);
-console.log('PASS: native editor real SQLite/R2 routes, owner/admin opt-in, CSRF, shape/schema checks, byte-bound sources, idempotency, concurrent saves, lease fencing, atomic versioned publication, model-free completion and preserved task ownership/status.');
+console.log('PASS: native editor real SQLite/R2 routes, owner/admin opt-in, CSRF, shape/schema checks, byte-bound sources, idempotency, concurrent saves, lease fencing, atomic versioned publication, fast private previews, model-free completion and preserved task ownership/status.');

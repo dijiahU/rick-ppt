@@ -6,22 +6,25 @@ import ts from 'typescript';
 import * as React from 'react';
 import * as jsx from 'react/jsx-runtime';
 import {renderToStaticMarkup} from 'react-dom/server';
-let mode='create',locale='en',calls=0,brief='',pageInput='10',account=null;
-const modules={react:{...React,useState(initial){calls++;return React.useState(calls===2?mode:calls===3?account:calls===8?pageInput:calls===9?brief:initial);}},'react/jsx-runtime':jsx};
+let mode='create',locale='en',calls=0,notes='',pageInput='10',account=null;
+const modules={react:{...React,useState(initial){calls++;return React.useState(calls===2?mode:calls===3?account:calls===8?pageInput:calls===11?{...initial,notes}:initial);}},'react/jsx-runtime':jsx};
 modules['./slide-limits.mjs']=slideLimits;modules['@/lib/slide-limits.mjs']=slideLimits;
 function load(path){const code=ts.transpileModule(readFileSync(new URL('../'+path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;const exports={};new Function('require','exports',code)(name=>{assert.ok(modules[name],name);return modules[name];},exports);return exports;}
-for(const name of ['i18n','quota-i18n','queue-i18n','upload-i18n','task-mode-i18n','task-mode','page-count-i18n','presentation-language','execution-backend','execution-backend-i18n']){modules['@/lib/'+name]=load('lib/'+name+'.ts');modules['./'+name]=modules['@/lib/'+name];}
+for(const name of ['i18n','quota-i18n','queue-i18n','upload-i18n','task-mode-i18n','task-mode','page-count-i18n','presentation-language','execution-backend','execution-backend-i18n','brief-fields']){modules['@/lib/'+name]=load('lib/'+name+'.ts');modules['./'+name]=modules['@/lib/'+name];}
 modules['./language']={useLanguage:()=>({locale,t:modules['@/lib/i18n'].messages[locale]})};
 modules['@/lib/upload-client']={uploadFiles:async()=>[]};
 modules['./attachment-previews']={default:()=>null};
 modules['./file-upload']={default:({title})=>React.createElement('p',null,title||'Optional references')};
 modules['./model-accounts.css']={};
 modules['./model-accounts']=load('app/model-accounts.tsx');
+modules['./brief-fields']=load('app/brief-fields.tsx');
 const Form=load('app/brief-form.tsx').default;
 for(locale of Object.keys(modules['@/lib/i18n'].languages)){
  for(mode of ['create','edit']){
   calls=0;const html=renderToStaticMarkup(React.createElement(Form));
   assert.equal(html.includes('name="pages"'),mode==='create');
+  assert.equal(html.includes('class="brief-fields"'),mode==='create');
+  assert.equal(html.includes('name="brief"'),mode==='edit');
   assert.ok(html.includes('id="task-mode"'));
   assert.ok(!html.includes('name="execution_backend"'));assert.ok(!html.includes('id="execution-backend"'));assert.ok(!html.includes('Astra · high'));
   if(mode==='create'){
@@ -34,14 +37,14 @@ for(locale of Object.keys(modules['@/lib/i18n'].languages)){
  }
 }
 console.log('PASS: numeric slide input from 1–50, default of 10 and create/edit form branches in all five languages; editing hides slide count and requires original PPTX copy');
-mode='create';locale='zh-CN';brief='请做30页的历史课程介绍。';pageInput='15';calls=0;
+mode='create';locale='zh-CN';notes='请做30页的历史课程介绍。';pageInput='15';calls=0;
 const resolved=renderToStaticMarkup(React.createElement(Form));
 const countInput=resolved.match(/<input[^>]*name="pages"[^>]*>/)[0];
 assert.ok(countInput.includes('value="30"'));assert.ok(countInput.includes('disabled=""'));
 assert.ok(resolved.includes('本次将制作 30 页，采用需求中明确指定的页数。'));
 console.log('PASS: actual form visibly uses the 30-page brief over the 15-page fallback before submission');
 
-brief='';mode='create';locale='zh-CN';account={signedIn:true,remaining:10,jobs:[],online:true,executionAvailability:{api:false,codex:true}};calls=0;
+notes='';mode='create';locale='zh-CN';account={signedIn:true,remaining:10,jobs:[],online:true,executionAvailability:{api:false,codex:true}};calls=0;
 let html=renderToStaticMarkup(React.createElement(Form));assert.ok(!html.includes('name="execution_backend"'));assert.ok(!html.includes('这种制作方式暂不可用。'));
 account.online=false;calls=0;html=renderToStaticMarkup(React.createElement(Form));assert.ok(!html.includes('name="execution_backend"'));assert.ok(!html.includes('所选方式将排队等待'));
 account.jobs=[{id:'legacy',title:'历史示例',status:'complete',created_at:1,summary:null,download:false,language:null,execution_backend:null,attachments:[]}];calls=0;html=renderToStaticMarkup(React.createElement(Form));assert.ok(!html.includes('历史任务 · 制作方式未记录'));

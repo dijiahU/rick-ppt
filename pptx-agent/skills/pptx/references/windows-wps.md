@@ -10,8 +10,9 @@ without actual target-viewer evidence. Preserve historical files and scoped edit
 
 ## Fonts and text
 
-- New English/Latin text, numbers and ordinary Latin punctuation use **Times New
-  Roman**; Chinese text and punctuation use **SimSun (宋体)**. Set explicit run
+- Font choice is open (references/fonts.md). When nothing argues otherwise, new
+  English/Latin text uses **Times New Roman** and Chinese text **SimSun (宋体)**;
+  Japanese text uses a Japanese face. Set explicit run
   fonts and major/minor theme defaults, including inherited text, table cells,
   chart categories, axes and data labels. Preserve explicit user font choices and
   actual supplied template typefaces. Newly recreated text without a specified
@@ -22,12 +23,10 @@ without actual target-viewer evidence. Preserve historical files and scoped edit
   Times New Roman regular/bold/italic faces are listed separately. SimSun Regular
   is not a supplied bold face; use size/spacing for hierarchy. Check actual mixed
   text, punctuation, Greek/math symbols and any missing glyphs.
-- Do not acquire new families merely for decorative variety. An explicit user or
-  template requirement, or a functional need such as mathematical notation, can
-  justify another font. A functional exception needs a concrete need, not an
-  uncertain appearance match. Record its actual family, weight, glyph forms/coverage, source,
-  and the recipient-availability or verified editable-embedding route in source
-  notes. Honor embedding permissions and no-subsetting flags. A font download or
+- Another family is welcome when it serves the language, register or requested
+  style. Install its actual file into the task, record the family in the completion
+  summary (recipients are told to install missing fonts), and honor embedding
+  permissions and no-subsetting flags. A font download or
   a file in the authoring folder is not an embedded font in the PPTX.
 - If the selected fonts are unavailable, disclose the actual missing resource;
   never claim a substitute is Times New Roman/SimSun. Prefer a permitted compatible

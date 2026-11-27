@@ -16,8 +16,17 @@ function load(path){const code=ts.transpileModule(readFileSync(new URL('../'+pat
 modules['@/lib/visual-edits']=load('lib/visual-edits.ts');modules['./visual-edits']=modules['@/lib/visual-edits'];modules['@/lib/native-edits']=load('lib/native-edits.ts');modules['@/lib/native-canvas-client']=load('lib/native-canvas-client.ts');modules['./native-editor']=load('app/jobs/[id]/native-editor.tsx');const Workbench=load('app/jobs/[id]/canvas-workbench.tsx').default;
 const parsed=modules['@/lib/native-canvas-client'].readNativeCanvas(readFileSync(directory+'/baseline.pptx'),base);assert.ok(parsed['1:2'].canText);assert.ok(parsed['1:11'].canTransform);assert.equal(parsed['1:3'].canDelete,false);assert.equal(parsed['1:5'].cells.length,4);
 let submitted=0;const root=createRoot(document.getElementById('root'));const settle=async()=>act(async()=>{await new Promise(r=>setTimeout(r,30));});
-await act(async()=>{root.render(React.createElement(Workbench,{id:'11111111-1111-4111-8111-111111111111',status:'complete',progress:null,onSubmitted(){submitted++;},conversation:React.createElement('p',null,'Full conversation history')}));});await settle();
+async function render(active=true,updatedAt=100){
+ await act(async()=>root.render(React.createElement(Workbench,{id:'11111111-1111-4111-8111-111111111111',status:'complete',progress:null,active,updatedAt,onSubmitted(){submitted++;},conversation:React.createElement('p',null,'Full conversation history')})));
+ await settle();
+}
+await render();
 assert.equal(document.querySelector('[role=tab][aria-selected=true]').textContent,'Conversation');
+assert.deepEqual(requests.map(url=>url.split('/').at(-1)),['canvas'],'Opening the workspace does not download the PPTX');
+await render(false);await render();
+assert.equal(requests.length,1,'Returning to the same finished workspace reuses its canvas');
+await render(true,200);
+assert.equal(requests.length,2,'A completed task updated in the background refreshes its canvas');
 async function click(el){assert.ok(el,'Expected control');await act(async()=>el.dispatchEvent(new MouseEvent('click',{bubbles:true})));await settle();}
 async function input(el,text){assert.ok(el,'Expected input');await act(async()=>{Object.getOwnPropertyDescriptor(dom.window[el.tagName==='TEXTAREA'?'HTMLTextAreaElement':'HTMLInputElement'].prototype,'value').set.call(el,text);el.dispatchEvent(new Event('input',{bubbles:true}));});}
 await click(document.getElementById('canvas-edit-tab-11111111-1111-4111-8111-111111111111'));

@@ -164,4 +164,28 @@ class FontsTests(unittest.TestCase):
         tree=E.parse(str(workspace/'ppt/theme/theme1.xml'))
         self.assertTrue(all(x.get('typeface')=='Test Latin' for x in tree.findall('.//a:fontScheme/*/a:latin',ns)))
 
-if __name__=='__main__':unittest.main()
+
+
+class HostFamilyTests(unittest.TestCase):
+    def test_host_font_id_is_stable_and_safe(self):
+        import font_assets
+        self.assertEqual(font_assets.host_font_id('Hiragino Mincho ProN', 'W3'), 'host-hiragino-mincho-pron-w3')
+        self.assertTrue(font_assets.host_font_id('游明朝', 'Regular').startswith('host-f'))
+
+    def test_invalid_family_names_are_rejected(self):
+        import font_assets
+        for bad in ('', 'a:b', 'x\ny'):
+            with self.assertRaises((ValueError, FileNotFoundError)):
+                font_assets.find_host_face(bad)
+
+    def test_configure_maps_windows_japanese_names(self):
+        import tempfile, font_assets
+        with tempfile.TemporaryDirectory() as temp:
+            font_assets.configure(temp)
+            conf = (Path(temp) / 'fonts.conf').read_text()
+            self.assertIn('<family>Yu Mincho</family><prefer><family>YuMincho</family>', conf)
+            self.assertIn('<family>Meiryo</family>', conf)
+
+
+if __name__ == '__main__':
+    unittest.main()

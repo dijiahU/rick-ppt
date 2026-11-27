@@ -127,7 +127,8 @@ class ReferenceLibrary:
             'when its colours or pictures need replacing; pages from other templates can lend layouts, devices and type systems. '
             "Use the deck's own content and the palette the direction needs; never keep sample text or stock photos. "
             'action=inspire is the inspiration mode for one page: say what the page needs to do, not its topic. '
-            'mode=structure (default for concrete layouts) describes the page\'s structural job '
+            'mode=any (the default; keep it unless only a pure layout question is left) returns layout matches '
+            'together with treatment and idea matches. mode=structure describes only the page\'s structural job '
             '(e.g. "一个关键数字加两条说明", "三步流程", "人物照片加引语", "封面 品牌主视觉 大图") and returns well-rated pages '
             '(3-rated only when they match closely) from any genre, one per template, each with what is worth borrowing '
             'and its match share; a note says when the library has little for the job. '
@@ -153,8 +154,8 @@ class ReferenceLibrary:
                 'move': {'type': 'string', 'enum': list(CRAFT_MOVES), 'description': 'For action=craft, omit for all five examples or select one by number.'},
                 'query': {'type': 'string', 'maxLength': 200},
                 'mode': {'type': 'string', 'enum': list(SEARCH_MODES),
-                         'description': 'For action=inspire: structure (layout job), style (treatment, palette, mood), '
-                                        'idea (organizing idea that transfers), or any (default).'},
+                         'description': 'For action=inspire: any (default, recommended), structure (layout job only), '
+                                        'style (treatment, palette, mood), or idea (organizing idea that transfers).'},
                 'page_type': {'type': 'string', 'enum': list(PAGE_TYPES)},
                 'category': {'type': 'string', 'maxLength': 40},
                 'deck': {'type': 'string', 'maxLength': 120},

@@ -119,6 +119,19 @@ fictional placeholder ("创始人 A · 前连锁餐饮运营总监") rather than
 Keep every external fact (market sizes, studies, competitors) real and sourced; only the
 user's own figures may be illustrative. Say in the speaker notes which figures to replace.
 
+**When a requested structure needs information the brief does not give, change the
+structure rather than fill it.** "One page per day" without saying what happened on which
+day, "the expected gain of each proposal" without any basis for a gain: do not keep the
+empty frame and pour unrelated or week-wide content into it (a "Day 6" page about the whole
+week's ascent misleads). Build the pages from what is known: group by place or by walk
+instead of by day, show the break-even threshold and what would have to be true for each
+proposal to pay, and say plainly on the page what is assumed. Use a labelled illustrative
+value only where one plausible number completes an otherwise sound page. Never print
+production notes to the audience ("No entry for this day", "Undated field note", "待补").
+In the completion summary list, in the brief's language, each question the user should
+answer to finish the deck (which day each walk was, the expected extra sales, a photo of
+the signature product), and each placeholder or illustrative figure to replace.
+
 ## Plan the pages
 
 For each page decide the one point, the evidence and what the audience will see.

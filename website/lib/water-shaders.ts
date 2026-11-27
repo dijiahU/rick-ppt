@@ -11,8 +11,9 @@ uniform vec2 uTexel;
 uniform float uTime;
 uniform sampler2D uHeight;
 uniform sampler2D uEnvironment;
-uniform vec4 uSurges[6];
-uniform vec4 uCards[3];
+uniform vec4 uCards[6];
+uniform vec2 uLamp;
+uniform vec3 uPointer;
 const float PI=3.14159265;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+1.),f.x),f.y);}
@@ -49,40 +50,40 @@ void main(){
  float h=readHeight(topUv);float dx=(readHeight(topUv+vec2(uTexel.x,0))-readHeight(topUv-vec2(uTexel.x,0)))*.9;
  float dy=(readHeight(topUv+vec2(0,uTexel.y))-readHeight(topUv-vec2(0,uTexel.y)))*.9;
  float e=.035;dx+=(smallWaves(p+vec2(e,0))-smallWaves(p-vec2(e,0)))/(2.*e)*.42;dy+=(smallWaves(p+vec2(0,e))-smallWaves(p-vec2(0,e)))/(2.*e)*.42;
- float foam=0.;
- for(int i=0;i<6;i++){vec4 wave=uSurges[i];float age=uTime-wave.x;if(age>=0.&&age<3.){float front=mix(-.18,1.18,age/2.15);if(wave.y<0.)front=1.-front;float curve=sin(topUv.y*5.5+wave.w)*.038;float distanceToFront=topUv.x-front+curve;float ridge=exp(-distanceToFront*distanceToFront/0.0016)*exp(-age*.65)*wave.z;dx+=ridge*.42*sin(distanceToFront*50.);dy+=ridge*.09*cos(topUv.y*5.5+wave.w);foam+=ridge*.18;}}
  vec3 normal=normalize(vec3(-dx*1.25,1.,dy*1.25));vec3 view=normalize(vec3((.5-uv.x)*.4,.86,.82+uv.y*.32));vec3 reflected=reflect(-view,normal);
  float fresnel=.025+.975*pow(1.-max(0.,dot(view,normal)),5.);
  vec2 refracted=p+normal.xz*.28;
- // A softly lit, pale developer bath keeps the ripples visible and the prints legible.
- float grain=(noise(refracted*30.)-.5)*.006+(noise(refracted*8.)-.5)*.009;
- float mottling=(noise(refracted*1.9)-.5)*.018;
- vec2 lampDelta=(topUv-vec2(.10,.18))*vec2(aspect,.85);
- float safelight=exp(-dot(lampDelta,lampDelta)*2.8);
- vec3 floorColor=mix(vec3(.42,.52,.50),vec3(.57,.65,.58),topUv.y);
- floorColor+=vec3(grain+mottling+smallWaves(p)*.05+clamp(h,-.3,.3)*.012);
- floorColor+=vec3(.045,.02,.008)*safelight;
- float bathLight=poolCaustics(refracted*1.5+vec2(.7,1.4));
- floorColor+=vec3(.14,.15,.105)*bathLight*.16;
+ // A shallow bath of diluted developer under a red safelight: pale coral where the lamp reaches, deeper rose away from it.
+ vec2 lampDelta=(topUv-uLamp)*vec2(aspect,1.);float lampDistance=dot(lampDelta,lampDelta);
+ float lampPool=exp(-lampDistance*1.05),lampCore=exp(-lampDistance*9.);
+ vec2 pointerDelta=(topUv-uPointer.xy)*vec2(aspect,1.);float torch=uPointer.z*exp(-dot(pointerDelta,pointerDelta)*11.);
+ float light=.5+lampPool*.52+lampCore*.3+torch*.3;
+ vec3 safelight=vec3(.96,.24,.14),bath=vec3(.97,.56,.47);
+ // Clear water: the tray floor is seen plainly through it, with no grain or cloudiness of its own. What shows the
+ // water is light: bright caustic lines focused on the floor by the waves, and the lamp glinting on the surface.
+ vec3 floorColor=vec3(.31,.13,.11)+bath*light*(.5+smallWaves(p)*.2+clamp(h,-.3,.3)*.06);
+ float bathLight=poolCaustics(refracted*2.1+vec2(.7,1.4));
+ floorColor+=vec3(1.,.8,.7)*pow(bathLight,1.7)*light*.15;
+ // Prints shade the tray floor beneath them, offset away from the lamp.
+ for(int i=0;i<6;i++){vec4 card=uCards[i];if(card.z>0.){vec2 away=normalize(card.xy-uLamp+vec2(.0001))*.012;vec2 q=abs(topUv-(card.xy+away+normal.xz*.02))-card.zw;float edge=length(max(q,0.))+min(max(q.x,q.y),0.);floorColor*=1.-.34*smoothstep(.03,-.004,edge);}}
  reflected.y=max(.04,reflected.y);
- float softbox=exp(-pow((reflected.x+.24)*3.2,2.)-pow((reflected.z-.72)*7.,2.));
- vec3 reflection=vec3(.40,.51,.49)+vec3(.28,.27,.22)*softbox+vec3(.045,.02,.008)*safelight;
- reflection+=environment(normalize(reflected))*.035;
- vec3 water=mix(floorColor,reflection,clamp(fresnel+.15,0.,.48));
- // Broad shading describes each small wave without a web of white highlights.
- water*=1.+clamp(normal.x*.035+normal.z*.10,-.055,.055);
- float crest=pow(max(0.,sin(swellPhase(p)-.25)),9.);
- float crestBreakup=.25+.75*noise(vec2(p.x*3.2-uTime*.045,p.y*.8));
- water=mix(water,vec3(.68,.77,.67),crest*crestBreakup*.05);
- vec3 light=normalize(vec3(-.35,1.,-.7));float spec=pow(max(0.,dot(reflect(-light,normal),view)),55.);
- float glint=pow(max(0.,dot(reflect(-normalize(vec3(.2,1.,-.95)),normal),view)),180.);
- water+=vec3(.66,.67,.48)*spec*.07+vec3(.87,.87,.68)*glint*.03;
- // Soft reflected paper silhouettes, refracted by the same water normal.
- for(int i=0;i<3;i++){vec4 card=uCards[i];vec2 q=abs(topUv-(card.xy+normal.xz*.028))-card.zw;float edge=length(max(q,0.))+min(max(q.x,q.y),0.);float reflectedPaper=exp(-max(edge,0.)*45.)*.045;water=mix(water,vec3(.65,.68,.54),reflectedPaper);}
- foam+=texture2D(uHeight,topUv).b*.035;water=mix(water,vec3(.69,.76,.61),clamp(foam*.6,0.,.16));
- float vignette=clamp(length((uv-.5)*vec2(1.,.7)),0.,1.);water*=1.-vignette*.05;
- // The tray's shaded rim contains the bath; the surrounding site stays ivory.
- float edgeFade=smoothstep(0.,.035,uv.y)*smoothstep(0.,.045,1.-uv.y);water=mix(vec3(.32,.41,.37),water,edgeFade);
+ vec3 reflection=vec3(.36,.16,.135)+bath*(lampPool*.42+torch*.3)+safelight*lampCore*.5;
+ reflection+=environment(normalize(reflected))*bath*.06;
+ // Little of the room is mirrored in it, so the floor is not veiled.
+ vec3 water=mix(floorColor,reflection,clamp(fresnel+.03,0.,.45));
+ // Broad shading describes each small wave; highlights are the lamp itself, broken by the surface.
+ water*=1.+clamp(normal.x*.1+normal.z*.26,-.16,.16);
+ vec3 toLamp=normalize(vec3((uLamp.x-topUv.x)*aspect,.42,(topUv.y-uLamp.y)+.2));
+ float spec=pow(max(0.,dot(reflect(-toLamp,normal),view)),42.);
+ float glint=pow(max(0.,dot(reflect(-toLamp,normal),view)),220.);
+ water+=vec3(1.,.62,.5)*(spec*.26+glint*.4)*(.25+lampPool);
+ vec3 toPointer=normalize(vec3((uPointer.x-topUv.x)*aspect,.5,(topUv.y-uPointer.y)+.05));
+ water+=vec3(1.,.7,.6)*pow(max(0.,dot(reflect(-toPointer,normal),view)),60.)*torch*.45;
+ water+=bath*texture2D(uHeight,topUv).b*.05*light;
+ // The tray's far corners fall off a little; its lower edge meets the wall below.
+ float vignette=clamp(length((uv-.5)*vec2(1.,.82)),0.,1.);water*=1.-vignette*vignette*.22;
+ // The water deepens into shade over its lowest quarter, so the tray has no edge where it meets the room below.
+ float rim=smoothstep(0.,.26,uv.y);water=mix(vec3(.34,.14,.12),water,rim);
  gl_FragColor=vec4(clamp(water,0.,1.),1.);
 }
 `;

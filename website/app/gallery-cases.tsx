@@ -4,11 +4,20 @@ import {usePaintDrag} from './use-paint-drag';
 import TransformerDiagram,{diagramObjects} from './transformer-diagram';
 import type {GalleryCopy} from '@/lib/gallery-i18n';
 import type {LandingCopy} from '@/lib/landing-i18n';
-type CaseProps={g:GalleryCopy;c:LandingCopy;active?:boolean};
-export function ScientificCase({g,c}:CaseProps){
+/** `phase` and `step` come from the tray: a print lifted for the first time is built in stages before it can be edited. */
+type CaseProps={g:GalleryCopy;c:LandingCopy;active?:boolean;phase?:string;step?:number};
+export function ScientificCase({g,c,phase,step=0}:CaseProps){
  const paint=usePaintDrag();
  const [zoom,setZoom]=useState(false),[selected,setSelected]=useState<string|null>(null),[overrides,setOverrides]=useState<Record<string,{label?:string;fill?:string}>>({});
  const dialog=useRef<HTMLDialogElement>(null);const opener=useRef<HTMLButtonElement>(null);const editorId=useId();
+ // While the print is built the diagram is linework. At the colour stage the divider sweeps in from the left and stops where the visitor takes over.
+ const building=phase==='building',colouring=building&&step>=2;
+ useEffect(()=>{
+  if(!building)return;
+  if(!colouring){paint.set(0);return;}
+  const begun=performance.now();let frame=requestAnimationFrame(function sweep(now){const t=Math.min(1,(now-begun)/1100);paint.set(paint.initial*(1-(1-t)**3));if(t<1)frame=requestAnimationFrame(sweep);});
+  return()=>{cancelAnimationFrame(frame);paint.set(paint.initial);};
+ },[building,colouring]);
  useEffect(()=>{if(!zoom||!dialog.current)return;const element=dialog.current;element.showModal();const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{element.close();document.body.style.overflow=previous;opener.current?.focus();};},[zoom]);
 
  const object=diagramObjects.find(obj=>obj.id===selected);const fill=object?(overrides[object.id]?.fill??object.fill):'#f1dfbd';

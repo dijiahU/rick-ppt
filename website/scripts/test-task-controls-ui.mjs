@@ -31,7 +31,7 @@ await React.act(async()=>root.unmount());
 // Render the real task page too: controls stay at the top even in the canvas tab.
 modules['@/app/language']={useLanguage:()=>({locale:'en',t:load('lib/i18n.ts').messages.en}),LanguagePicker:()=>null};
 for(const name of ['@/app/queue-status','./canvas-workbench','@/app/admin/conversation-history','@/app/attachment-previews','./draft-download','./interactive-download','@/app/creation-story','@/app/preview-link'])modules[name]={default:()=>null};
-modules['./conversation']={default:()=>React.createElement('p',null,'Conversation history')};modules['./pause-control']={default:Controls};
+modules['./conversation']={default:()=>React.createElement('p',null,'Conversation history')};modules['@/app/sunlight']={default:()=>null};modules['./pause-control']={default:Controls};
 modules['@/lib/upload-i18n']=load('lib/upload-i18n.ts');modules['@/lib/creation-i18n']=load('lib/creation-i18n.ts');modules['@/lib/creation-progress']={progressNotes:()=>[],previewVersion:()=>''};modules['./execution-backend']=load('lib/execution-backend.ts');modules['./worker-routing']=modules['@/lib/worker-routing']=load('lib/worker-routing.ts');modules['@/lib/execution-backend-i18n']=load('lib/execution-backend-i18n.ts');modules['@/lib/task-mode-i18n']=load('lib/task-mode-i18n.ts');
 modules['@/lib/review-i18n']=load('lib/review-i18n.ts');modules['./review-results']=load('app/jobs/[id]/review-results.tsx');
 modules['./delivery-card']=load('app/jobs/[id]/delivery-card.tsx');

@@ -300,3 +300,72 @@ def test_blank_fields_finds_fill_in_lines_but_not_ordinary_text(tmp_path):
     path = tmp_path / 'blanks.pptx'
     prs.save(path)
     assert tool.blank_fields(path) == [1, 3]
+
+
+def test_font_report_flags_chinese_faces_on_japanese_text_only(tmp_path):
+    path = tmp_path / 'ja.pptx'
+    with zipfile.ZipFile(path, 'w') as archive:
+        archive.writestr('ppt/slides/slide1.xml', '<p:sld xmlns:a="a" xmlns:p="p"><a:rPr><a:latin typeface="Times New Roman"/>'
+                         '<a:ea typeface="SimSun"/></a:rPr><a:rPr><a:ea typeface="Yu Mincho"/></a:rPr></p:sld>')
+    japanese = tool.font_report(tmp_path, path, 'ja')
+    assert japanese['wrong_script'] == ['SimSun']
+    assert set(japanese['fonts_used']) == {'Times New Roman', 'SimSun', 'Yu Mincho'}
+    assert tool.font_report(tmp_path, path, 'zh-CN')['wrong_script'] == []
+
+
+def _layout_deck(path, pages):
+    prs = Presentation()
+    prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
+    for picture_left, title in pages:
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        image = path.parent / f'p{len(prs.slides)}.png'
+        Image.new('RGB', (1600, 1200), 'gray').save(image)
+        x = Inches(0) if picture_left else Inches(8.333)
+        slide.shapes.add_picture(str(image), x, Inches(0), Inches(5.0), Inches(7.5))
+        tx = Inches(9.0) if picture_left else Inches(1.0)
+        box = slide.shapes.add_textbox(tx, Inches(1.5), Inches(3.0), Inches(1.0))
+        box.text_frame.text = title
+        box.text_frame.paragraphs[0].runs[0].font.size = Pt(40)
+    prs.save(path)
+    return path
+
+
+def test_skeleton_report_finds_mirrored_runs_but_not_varied_pages(tmp_path):
+    repeated = _layout_deck(tmp_path / 'repeat.pptx', [(True, '春'), (False, '夏'), (True, '秋'), (False, '冬')])
+    assert tool.skeleton_report(repeated)['runs'] == [[1, 2, 3, 4]]
+    varied = tmp_path / 'varied' / 'varied.pptx'
+    varied.parent.mkdir()
+    prs = Presentation()
+    for n, (w, x) in enumerate([(10.0, 0), (5.0, 0), (3.0, 7.0), (10.0, 0)]):
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        image = varied.parent / f'v{n}.png'
+        Image.new('RGB', (1600, 1200), 'gray').save(image)
+        slide.shapes.add_picture(str(image), Inches(x), Inches(n), Inches(w), Inches(4))
+    prs.save(varied)
+    assert tool.skeleton_report(varied)['runs'] == []
+
+
+def test_upscaled_pictures_reports_small_sources_shown_large(tmp_path):
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    small, large = tmp_path / 'small.png', tmp_path / 'large.png'
+    Image.new('RGB', (250, 300), 'gray').save(small)
+    Image.new('RGB', (2400, 1600), 'gray').save(large)
+    slide.shapes.add_picture(str(small), Inches(0), Inches(0), Inches(4), Inches(5))
+    slide.shapes.add_picture(str(large), Inches(5), Inches(0), Inches(4), Inches(3))
+    path = tmp_path / 'res.pptx'
+    prs.save(path)
+    found = tool.upscaled_pictures(path)
+    assert [f['source_px'] for f in found] == [250]
+
+
+def test_generic_palette_and_library_only_references(tmp_path):
+    (tmp_path / 'deck-style.json').write_text(json.dumps({'colors': {'text': '172B35', 'accent': 'C44719', 'bg': 'FFFFFF'}}))
+    assert tool.generic_palette(tmp_path)['dark'] == ['172B35']
+    (tmp_path / 'deck-style.json').write_text(json.dumps({'colors': {'text': '2B2B2B', 'accent': '8A6A3C', 'bg': 'F4F1EA'}}))
+    assert tool.generic_palette(tmp_path) is None
+    library = {'references': [{'source': 'references/library/templates-t1-01.jpg', 'kind': 'design_work', 'applications': [{'pages': ['a']}]},
+                              {'source': 'references/x.jpg', 'kind': 'supplied_system', 'applications': [{'pages': ['b']}]}]}
+    assert tool.outside_reference_missing(library) is True
+    library['references'].append({'source': 'https://museum.example/work', 'kind': 'artwork', 'applications': [{'pages': ['c']}]})
+    assert tool.outside_reference_missing(library) is False

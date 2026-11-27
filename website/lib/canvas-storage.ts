@@ -5,3 +5,14 @@ export const canvasKey=(job:string,sha:string,name:string)=>`canvas/${job}/${sha
 export async function canvasSnapshot(job:string,sha:string):Promise<CanvasSnapshot|null>{if(!digestPattern.test(sha))return null;const object=await files().get(canvasKey(job,sha,'manifest.json'));if(!object)return null;return validateSnapshot(await object.json());}
 export async function canvasVersions(job:string){await ensureCanvas();const rows=await database().prepare('SELECT sha256,version_id AS versionId,created_at AS createdAt,pages FROM canvas_snapshots WHERE job_id=? ORDER BY created_at DESC LIMIT 30').bind(job).all();return rows.results;}
 export async function latestCanvas(job:string){const versions=await canvasVersions(job);return versions.length?canvasSnapshot(job,String(versions[0].sha256)):null;}
+
+export async function canvasVersionPageCount(job:string,sha:string){
+ try{
+  const row=await database().prepare('SELECT pages FROM (SELECT sha256,pages FROM canvas_snapshots WHERE job_id=? ORDER BY created_at DESC LIMIT 30) WHERE sha256=?').bind(job,sha).first<{pages:number}>();
+  return row?.pages??null;
+ }catch(error){
+  // The first manifest may not have initialized the table yet.
+  if(error instanceof Error&&error.message.includes('no such table: canvas_snapshots'))return null;
+  throw error;
+ }
+}

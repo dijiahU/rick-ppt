@@ -1,6 +1,6 @@
 {
   "name": "pptx-agent",
-  "version": "0.2.0+codex.20261125poster",
+  "version": "0.2.0+codex.20261127slots",
   "description": "Standalone editable native PowerPoint with native animation and independent reviews.",
   "author": {
     "name": "rick"

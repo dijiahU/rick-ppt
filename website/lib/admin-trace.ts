@@ -3,7 +3,8 @@ import {boundedBody} from '@/lib/attachments';
 export const traceKinds=['phase','command','tool','search','file','media','note','review','error'] as const;
 export type TraceEvent={seq:number;at:number;stage:string;kind:typeof traceKinds[number];label:string;state:'started'|'completed'|'failed';command?:string;output?:string;detail?:string;itemId?:string;exitCode?:number;truncated?:boolean};
 type Batch={version:1;chunk:number;events:TraceEvent[]};
-type Index={chunks:number;events:number;updatedAt:number;finished?:boolean};
+type Index={chunks:number;events:number;updatedAt:number;finished?:boolean;reviewChunks?:number[]};
+type TraceJob={lease:string|null;status:string};
 const LIMIT=1024*1024;
 const prefix=(id:string,lease:string)=>`admin-traces/${id}/${lease}/`;
 function scrub(value:string){return value.replace(/\b(?:Bearer|Basic)\s+[A-Za-z0-9+/_.=:-]+/gi,'[authorization redacted]').replace(/\b(?:sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9]{15,}|github_pat_[A-Za-z0-9_]{15,})/g,'[credential redacted]').replace(/(\b(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|secret|authorization)\b["']?\s*[:=]\s*)(?:"[^"\n]*"|'[^'\n]*'|[^\s,;}]+)/gi,'$1[redacted]');}
@@ -30,35 +31,47 @@ export async function storeTrace(request:Request,id:string,lease:string){
  const base=prefix(id,lease),key=base+String(batch.chunk).padStart(5,'0')+'.json';
  const body=credential?JSON.stringify(batch).replaceAll(credential,'[redacted]'):JSON.stringify(batch);
  const [current,existing]=await Promise.all([files().get(base+'index.json'),files().get(key)]);
- const index:Index=current?await current.json():{chunks:0,events:0,updatedAt:0};
+ const index:Index=current?await current.json():{chunks:0,events:0,updatedAt:0,reviewChunks:[]};
  if(existing&&await existing.text()!==body)return json({error:'Execution record conflict'},409);
  if(batch.chunk<=index.chunks)return existing?json({ok:true}):json({error:'Execution record unavailable'},409);
  if(batch.chunk!==index.chunks+1||batch.events[0].seq!==index.events+1)return json({error:'Execution record sequence mismatch'},409);
  // Job/lease authorization happens in the worker route before any storage read.
  if(!existing)await files().put(key,body,{httpMetadata:{contentType:'application/json'}});
  const next:Index={chunks:batch.chunk,events:batch.events.at(-1)!.seq,updatedAt:Date.now(),finished:index.finished||batch.events.some(e=>e.stage==='finished')};
+ // Older indexes have no coverage guarantee. Keep their paginated fallback
+ // rather than claiming that newly indexed chunks cover the existing history.
+ if(index.reviewChunks){
+  const containsReview=batch.events.some(e=>e.kind==='review'||e.kind==='note'&&e.label==='Assistant update'&&/^(content-first|content-evidence|visual)-\d+$/.test(e.stage));
+  next.reviewChunks=containsReview?[...index.reviewChunks,batch.chunk]:index.reviewChunks;
+ }
  await files().put(base+'index.json',JSON.stringify(next),{httpMetadata:{contentType:'application/json'}});
  return json({ok:true});
 }
-export async function readTrace(request:Request,id:string){
+export async function readTracePage(request:Request,id:string,reviewJob?:TraceJob){
  const raw=new URL(request.url).searchParams.get('after')??'0';
  if(!/^\d{1,5}$/.test(raw)||Number(raw)>20001)return json({error:'Invalid record cursor'},400);
  const after=Number(raw);
- const job=await database().prepare('SELECT lease,status FROM jobs WHERE id=?').bind(id).first<{lease:string|null;status:string}>();
+ const job=reviewJob??await database().prepare('SELECT lease,status FROM jobs WHERE id=?').bind(id).first<TraceJob>();
  if(!job)return json({error:'Task not found'},404);
- if(!job.lease)return json({available:false,events:[],nextChunk:0,totalEvents:0,totalChunks:0,status:job.status,attempt:null});
- const base=prefix(id,job.lease),object=await files().get(base+'index.json');
- const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(job.lease));
+ if(!job.lease)return {available:false,events:[],nextChunk:0,totalEvents:0,totalChunks:0,status:job.status,attempt:null};
+ const base=prefix(id,job.lease);
+ const [object,digest]=await Promise.all([files().get(base+'index.json'),crypto.subtle.digest('SHA-256',new TextEncoder().encode(job.lease))]);
  const attempt=Array.from(new Uint8Array(digest)).map(n=>n.toString(16).padStart(2,'0')).join('').slice(0,16);
- if(!object)return json({available:false,events:[],nextChunk:0,totalEvents:0,totalChunks:0,status:job.status,attempt});
- const index=await object.json<Index>(),start=after>index.chunks?0:after,end=Math.min(start+5,index.chunks);
- const events:TraceEvent[]=[];
- for(let chunk=start+1;chunk<=end;chunk++){
+ if(!object)return {available:false,events:[],nextChunk:0,totalEvents:0,totalChunks:0,status:job.status,attempt};
+ const index=await object.json<Index>(),start=after>index.chunks?0:after;
+ const indexed=reviewJob?index.reviewChunks:undefined;
+ const chunks=indexed?.filter(chunk=>chunk>start).slice(0,12);
+ const end=chunks?(chunks.length===12?chunks.at(-1)!:index.chunks):Math.min(start+(reviewJob?12:5),index.chunks);
+ const requested=chunks??Array.from({length:end-start},(_,n)=>start+n+1);
+ const batches=await Promise.all(requested.map(async chunk=>{
   const data=await files().get(base+String(chunk).padStart(5,'0')+'.json');
-  if(!data)return json({error:'Execution record temporarily unavailable'},503);
-  const batch=parseTraceBatch(await data.json());
-  if(!batch)return json({error:'Invalid stored execution record'},503);
-  events.push(...batch.events);
- }
- return json({available:true,events,nextChunk:end,totalEvents:index.events,totalChunks:index.chunks,updatedAt:index.updatedAt,finished:!!index.finished,status:job.status,attempt});
+  return data?parseTraceBatch(await data.json()):null;
+ }));
+ if(batches.some(batch=>batch===null))return json({error:'Execution record temporarily unavailable'},503);
+ const events=batches.flatMap(batch=>batch?.events??[]);
+ return {available:true,events,nextChunk:end,totalEvents:index.events,totalChunks:index.chunks,updatedAt:index.updatedAt,finished:!!index.finished,status:job.status,attempt};
+}
+export async function readTrace(request:Request,id:string){
+ const page=await readTracePage(request,id);
+ return page instanceof Response?page:json(page);
 }

@@ -62,10 +62,11 @@ def deployment_defaults(platform=None):
     return {'latin':'Times New Roman','east_asian':'SimSun','target':'Windows WPS',
             'display_east_asian':'DengXian (等线: light, regular, bold) for headings, figures and display text',
             'display_latin':'Arial for Latin numerals and labels',
-            'optional':'Also approved, installed on use with font-proxy.py ID: Microsoft YaHei 微软雅黑 (light/regular/bold), '
-                       'SimHei 黑体, KaiTi 楷体, FangSong 仿宋; Calibri, Cambria, Georgia, Century Gothic, Verdana, Tahoma. '
-                       'They ship with Windows and Office for Mac. Avoid fonts outside these lists (PingFang, Source Han, '
-                       'FZ/HY families): Windows substitutes them and the layout breaks.'}
+            'optional':'Font choice is open: any other family suits when it serves the language, register or requested '
+                       'style (Japanese text in a Japanese face such as Yu Mincho, Yu Gothic or Hiragino; a handwriting or '
+                       'bitmap face for a requested hand-drawn or pixel style). Install the actual file so previews match '
+                       '(font-proxy.py host --family NAME, or a catalog ID such as microsoft-yahei-regular, kaiti-regular) '
+                       'and list every family used in the completion summary; recipients are told to install missing fonts'}
 
 def system_font_candidates(font_id):
     if font_id in LINUX_SYSTEM_FONTS:return [Path(LINUX_SYSTEM_FONTS[font_id][1])]
@@ -238,6 +239,85 @@ def install_system_font(root,font_id,*,text=''):
     configure(root)
     return {**record,'missing_characters':meta['missing_characters'],'cache_hit':False}
 
+STYLE_PREFERENCE=('regular','w3','book','normal','roman','medium','w4','light')
+# Windows family names used in decks, mapped to the macOS faces so previews match.
+PREVIEW_ALIASES={'Yu Mincho':'YuMincho','游明朝':'YuMincho','Yu Gothic':'YuGothic','游ゴシック':'YuGothic',
+    'Yu Gothic UI':'YuGothic','Meiryo':'Hiragino Sans','メイリオ':'Hiragino Sans','Meiryo UI':'Hiragino Sans',
+    'MS Mincho':'Hiragino Mincho ProN','ＭＳ 明朝':'Hiragino Mincho ProN','MS PMincho':'Hiragino Mincho ProN',
+    'MS Gothic':'Hiragino Sans','ＭＳ ゴシック':'Hiragino Sans','MS PGothic':'Hiragino Sans',
+    'BIZ UDMincho':'Hiragino Mincho ProN','BIZ UDGothic':'Hiragino Sans','Malgun Gothic':'Apple SD Gothic Neo',
+    'Segoe UI':'Helvetica Neue'}
+
+def host_font_id(family,style):
+    """Stable task font ID for a host-installed family (2026-11-26: any installed font may be used)."""
+    def slug(value):
+        text=re.sub('[^a-z0-9]+','-',value.lower()).strip('-')
+        return text or 'f'+hashlib.sha256(value.encode()).hexdigest()[:10]
+    return ('host-'+slug(family)+'-'+slug(style or 'regular'))[:80].rstrip('-')
+
+def find_host_face(family,style=None):
+    """Locate an installed face by family name (any localized name) with fontconfig."""
+    import shutil,subprocess
+    fc=shutil.which('fc-list') or next((p for p in ('/opt/homebrew/bin/fc-list','/usr/local/bin/fc-list','/usr/bin/fc-list') if Path(p).is_file()),None)
+    if not fc:raise FileNotFoundError('fc-list is unavailable on this host')
+    if not isinstance(family,str) or not family.strip() or len(family)>128 or any(c in family for c in ':\n\\'):raise ValueError('Invalid font family')
+    done=subprocess.run([fc,family.strip(),'file','index','family','style'],capture_output=True,text=True,timeout=60)
+    rows=[]
+    for line in done.stdout.splitlines():
+        try:path,rest=line.split(': ',1)
+        except ValueError:continue
+        fields=dict(x.split('=',1) for x in rest.split(':') if '=' in x)
+        rows.append((path,int(fields.get('index','0') or 0),fields.get('family',''),fields.get('style','')))
+    if not rows:raise FileNotFoundError('No installed font family named '+family)
+    wanted=(style or '').strip().lower()
+    def rank(row):
+        styles=[s.strip().lower() for s in row[3].split(',') if s.strip()]
+        primary=styles[0] if styles else 'regular'  # fontconfig appends a generic "Regular" to named weights
+        if wanted:return (0 if primary==wanted else 1 if wanted in styles or wanted in primary else 2,row[1],row[0])
+        return (STYLE_PREFERENCE.index(primary) if primary in STYLE_PREFERENCE else len(STYLE_PREFERENCE),row[1],row[0])
+    path,index,_,styles=sorted(rows,key=rank)[0]
+    if wanted and rank((path,index,'',styles))[0]==2:raise FileNotFoundError(f'{family} has no {style} style; installed: '+'; '.join(sorted({r[3].split(",")[0] for r in rows})))
+    return Path(path),index
+
+def install_host_family(root,family,style=None,*,text=''):
+    """Copy any installed host face, found by family name, into the task so previews and reviews
+    render the chosen font. Recipients still need the font; nothing is embedded or downloaded."""
+    from fontTools.ttLib import TTFont
+    root=Path(root).resolve(strict=True)
+    source,face_index=find_host_face(family,style)
+    if source.stat().st_size>MAX_FONT*4:raise ValueError('Host font collection exceeds size limit')
+    original=source.read_bytes()
+    with TTFont(io.BytesIO(original),fontNumber=face_index,lazy=False) as font:
+        names={n.toUnicode() for n in font['name'].names if n.nameID in (1,4,16) and n.isUnicode()}
+        actual_family=font['name'].getDebugName(16) or font['name'].getDebugName(1)
+        actual_style=font['name'].getDebugName(17) or font['name'].getDebugName(2) or 'Regular'
+        if 'fvar' in font:raise ValueError('Variable host fonts are not supported; choose a static style')
+        if original[:4]==b'ttcf':
+            output=io.BytesIO();font.save(output);data=output.getvalue()
+        else:data=original
+    font_id=host_font_id(actual_family,actual_style)
+    index=manifest(root)
+    existing=next((x for x in index['fonts'] if x.get('id')==font_id),None)
+    if existing:return {**existing,'missing_characters':inspect(read(root,existing['file']),text)['missing_characters'],'cache_hit':True}
+    if len(data)>MAX_FONT:raise ValueError('Host font face exceeds size limit')
+    meta=inspect(data,text)
+    if sum(x.get('size',0) for x in index['fonts'])+len(data)>MAX_TOTAL or len(index['fonts'])>=32:raise ValueError('Task font limit reached')
+    filename='fonts/'+font_id+'-'+meta['sha256'][:12]+'.'+meta['format']
+    provenance_file='fonts/'+font_id+'-provenance.json'
+    provenance=json.dumps({'source_kind':'host-installed-font','source_file':str(source),'requested_family':family,
+        'source_sha256':hashlib.sha256(original).hexdigest(),'collection_face':face_index if original[:4]==b'ttcf' else None,
+        'family':meta['family'],'style':meta['style'],'names':sorted(names)[:12],
+        'use':'Private authoring metrics and rendering; recipients need this font installed. Not embedded.'},ensure_ascii=False,indent=2).encode()
+    record={**meta,'id':font_id,'file':filename,'source_kind':'host-installed-font','requested_family':family,
+        'source_sha256':hashlib.sha256(original).hexdigest(),'provenance_file':provenance_file,
+        'provenance_sha256':hashlib.sha256(provenance).hexdigest(),'license':'host-installed; see original font licensing metadata',
+        'extracted_collection_face':original[:4]==b'ttcf'}
+    record.pop('missing_characters')
+    publish(root,filename,data);publish(root,provenance_file,provenance)
+    index['fonts'].append(record);publish(root,'fonts/index.json',json.dumps(index,ensure_ascii=False,indent=2).encode())
+    configure(root)
+    return {**record,'missing_characters':meta['missing_characters'],'cache_hit':False}
+
 def prepare_default_fonts(root):
     available=[];missing=[]
     for font_id in STARTER_IDS:
@@ -275,7 +355,16 @@ def configure(root):
     from xml.sax.saxutils import escape
     root=Path(root).resolve(strict=True)
     system='<include>/etc/fonts/fonts.conf</include>' if os.sys.platform=='linux' else '<dir>/System/Library/Fonts</dir><dir>/Library/Fonts</dir>'
-    xml='<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig>'+system+'<dir>'+escape(str(root/'fonts'))+'</dir><cachedir>'+escape(str(root/'font-cache'))+'</cachedir></fontconfig>'
+    aliases=dict(PREVIEW_ALIASES)
+    try:
+        for item in manifest(root)['fonts']:
+            if item.get('source_kind')=='host-installed-font' and item.get('requested_family'):
+                aliases.setdefault(item['requested_family'],item['family'])
+    except (ValueError,OSError):pass
+    alias=''.join('<alias binding="same"><family>'+escape(a)+'</family><prefer><family>'+escape(b)+'</family></prefer></alias>'
+                  for a,b in aliases.items() if a!=b)
+    xml=('<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig>'+system+'<dir>'+escape(str(root/'fonts'))
+         +'</dir><cachedir>'+escape(str(root/'font-cache'))+'</cachedir>'+alias+'</fontconfig>')
     publish(root,'fonts.conf',xml.encode())
 
 def coverage(root,ids,text):

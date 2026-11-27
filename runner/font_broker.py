@@ -3,7 +3,7 @@ import json
 import re
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from font_assets import install,publish,manifest,copy_fonts
+from font_assets import install,install_host_family,publish,manifest,copy_fonts
 from progress import read_scoped
 from web_media import download
 from trajectory import record
@@ -16,6 +16,10 @@ class FontBroker:
     def fetch(self,data):
         try:
             descriptor=None
+            if data.get('font_id')=='host' or (data.get('family') and not data.get('url')):
+                # Any font installed on this host, by family name (2026-11-26: font choice is open).
+                font=install_host_family(self.job,data.get('family') or '',data.get('style'),text=data.get('text',''))
+                return {'ok':True,'font':font,'path':str(self.job/font['file'])}
             cache=Path(__file__).parent/'font-cache.local'
             if not data.get('url') and (cache/'fonts/index.json').is_file():
                 found=next((x for x in manifest(cache)['fonts'] if x['id']==data.get('font_id')),None)

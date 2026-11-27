@@ -47,6 +47,32 @@ relationship itself.
 - Historical and documentary people, events and objects need authentic images; real
   app screens, case photos and results are never generated. Generated images are
   illustrative.
+- **The user's own things are never generated** as if they were real: their products,
+  shop, premises, staff, team, customers and events. A generated picture of "our
+  signature sweet" or "our two bakers" misrepresents them, even when labelled. Use a
+  photo the user supplied; otherwise place a clearly designed placeholder frame of the
+  right size and crop, captioned with what belongs there ("替换为实拍：招牌商品「白川」
+  俯拍，深色器皿"), and list these placeholders in the completion summary. Generic
+  context (an ingredient, a landscape, a mood, a street) may still be sourced or generated.
+
+## Pictures that look real
+
+A generic real-world scene (hands kneading dough, a bakery counter, a classroom, a
+mountain path) is easiest to make convincing with a real photograph: search open
+collections first (Wikimedia Commons, Openverse, museum and agency archives, image_query).
+When you generate one:
+
+- Write the prompt as a documentary photograph, not an advert: candid moment, available
+  or mixed light, ordinary people turned away or partly cropped, working clutter, wear,
+  flour on the apron, an imperfect crop, film grain. Avoid "warm", "cinematic",
+  "beautiful", "golden hour", "professional", "stock": they produce the generated look.
+- Prefer hands, tools, materials and details to faces; faces and smiles give generation
+  away first. Keep landmarks and local symbols out unless they are the subject.
+- Check every generated photographic picture with `pptx_study_reference` asset_check
+  `realism: true` before placing it; a "some_tells" or "obviously_generated" verdict means
+  regenerate with its fix, use a real photograph, or switch to an openly illustrative
+  style (watercolour, ink, linocut, collage), which does not pretend to be a photograph and
+  so never looks fake.
 - For an image carrying the explanation, name the detail before acquisition: an
   action and its point of contact, a difference in height, a readable label, or a
   visible before/after change. Specify the viewpoint when commissioning a permitted

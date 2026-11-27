@@ -450,13 +450,25 @@ class DesignStudy:
             props = spec['inputSchema']['properties']
             props['sketch']['description'] = (
                 'Show grey-block alternatives in slide inches, each with name, ground, blocks '
-                '[[x,y,w,h,tone,label]], and optionally an anchor (saved reference path). '
-                'For an uncertain page, compare a direct expression and a reference-informed one. '
-                'After looking, pass audience_task and rate how directly each sketch shows it with '
-                'task_fit (integer 1–5) and a short fit_evidence naming a visible feature or omission. '
-                'No rating is needed just to see the sketches.')
+                '[[x,y,w,h,tone,label]], an optional anchor (saved reference path), and distance '
+                '(near = keeps the source\'s kind of object, middle = swaps it for one of your own, '
+                'far = keeps only the principle). For a key page draw three at different distances, '
+                'each naming the principle it carries. After looking, pass audience_task and rate how '
+                'directly each sketch shows it with task_fit (integer 1–5), a short fit_evidence '
+                'naming a visible feature or omission, and typicality (0–1, the chance a generic deck '
+                'would produce it). No rating is needed just to see the sketches.')
             props['audience_task'] = {
                 'type': 'string', 'description': 'With sketch: what a viewer should be able to see or compare.'}
+            props['migrate'] = {
+                'type': 'object', 'additionalProperties': False, 'required': ['file', 'page_job'],
+                'properties': {
+                    'file': {'type': 'string', 'description': 'Saved reference image in this task.'},
+                    'page_job': {'type': 'string', 'description': 'What this page must let the audience see or compare.'},
+                    'content': {'type': 'string', 'description': 'The page\'s actual facts, numbers or lines.'},
+                },
+                'description': 'A second model reads the reference and returns three migrations of its decision - '
+                               'near, middle, far - with the roles mapped onto this page. Use it before drawing the '
+                               'sketches on a key page (references/borrowing.md).'}
             props['asset_check'] = {
                 'type': 'object', 'additionalProperties': False, 'required': ['file', 'detail'],
                 'properties': {
@@ -466,8 +478,12 @@ class DesignStudy:
                              'description': 'Fractions to trim on left, top, right and bottom. Default: whole image.'},
                     'width': {'type': 'integer', 'minimum': 1, 'maximum': 1200,
                               'description': 'Placement width in pixels at intended reading size. Default: 600.'},
+                    'realism': {'type': 'boolean',
+                                'description': 'For a generated picture meant to look like a photograph: a second model '
+                                               'lists the tells that make it read as AI-generated, and what to change.'},
                 },
-                'description': 'Before committing a key asset, see its actual crop at placement scale and inspect the required detail.',
+                'description': 'Before committing a key asset, see its actual crop at placement scale and inspect the required detail. '
+                               'Use realism=true on every generated photographic picture before placing it.',
             }
         return [spec]
 
@@ -495,14 +511,130 @@ class DesignStudy:
             return self._reply(False, {'status': 'unreadable', 'error': str(error)})
         buffer = io.BytesIO()
         preview.save(buffer, 'JPEG', quality=90)
-        return self._reply(True, {'file': str(path.relative_to(self.job)), 'detail': detail.strip(),
+        realism = self._realism(picture, detail.strip()) if args.get('realism') is True else None
+        return self._reply(True, {**({'realism': realism} if realism else {}),
+                                  'file': str(path.relative_to(self.job)), 'detail': detail.strip(),
                                   'crop': crop, 'source_pixels': list(picture.size),
                                   'preview_pixels': list(preview.size),
                                   'meaning': 'Point to the requested detail in this actual crop. If it is missing or '
                                              'unclear, change the crop, viewpoint, asset or native explanation.'}, buffer.getvalue())
 
+    REALISM_TELLS = ('waxy or plastic skin', 'posed stock smiles and eye contact with the camera', 'everyone attractive and '
+                     'tidy', 'perfect symmetry or a centred hero object', 'uniform golden or teal-orange grading', 'glossy '
+                     'over-detailed texture with no grain', 'impossible hands, fingers, tools or reflections', 'garbled '
+                     'lettering', 'empty, staged surroundings', 'the same light direction on every surface')
+
+    def _realism(self, picture, detail):
+        """A second model's verdict on whether a generated picture reads as a real photograph (2026-11-26)."""
+        checklist = ('Look at it at full size for: ' + '; '.join(self.REALISM_TELLS) + '. If it reads as generated, '
+                     'search a real photograph first; otherwise regenerate in documentary terms (candid, available '
+                     'light, mixed colour temperature, clutter, grain, people turned away or cropped, hands and objects '
+                     'rather than faces) or switch to an openly illustrative style.')
+        import tempfile
+        import claude_vision
+        if not claude_vision.available(self.cfg, 'critique'):
+            return {'status': 'self_check', 'checklist': checklist}
+        schema = {'type': 'object', 'additionalProperties': False, 'required': ['verdict', 'tells', 'fix'],
+                  'properties': {'verdict': {'type': 'string', 'enum': ['convincing', 'some_tells', 'obviously_generated']},
+                                 'tells': {'type': 'array', 'maxItems': 8, 'items': {'type': 'string', 'maxLength': 160}},
+                                 'fix': {'type': 'string', 'maxLength': 500}}}
+        prompt = ('This picture was generated for a presentation and is meant to read as a real photograph of: '
+                  + detail + '. Would an ordinary viewer believe it is a photograph? Name the specific visible tells '
+                  'that give it away (look for: ' + '; '.join(self.REALISM_TELLS) + '). Then say concretely what would '
+                  'make it convincing: a different subject framing, light, crop, imperfection, or using a real photo '
+                  'or an openly illustrative style instead. Be strict; tidy stock-like images count as tells.')
+        try:
+            with tempfile.TemporaryDirectory(prefix='pptx-realism-') as temp:
+                image = Path(temp) / 'candidate.jpg'
+                ImageOps.contain(picture.convert('RGB'), (1600, 1600)).save(image, 'JPEG', quality=90)
+                answer = claude_vision.ask(self.cfg, prompt, [image], schema, timeout=240, slot='critique')
+            return {'status': 'reviewed', **(answer.get('structured') or {}),
+                    'by': str(answer.get('adapter') or 'claude') + ':' + answer['model']}
+        except claude_vision.ClaudeUnavailable as error:
+            return {'status': 'self_check', 'checklist': checklist, 'note': str(error)[:200]}
+
+    MIGRATION_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['decision', 'principle', 'migrations'],
+        'properties': {
+            'decision': {'type': 'string', 'maxLength': 300,
+                         'description': 'What this work does that an ordinary version of the same thing would not.'},
+            'principle': {'type': 'string', 'maxLength': 300,
+                          'description': 'The relation behind it, stated with no subject from the source.'},
+            'migrations': {'type': 'array', 'minItems': 3, 'maxItems': 3, 'items': {
+                'type': 'object', 'additionalProperties': False, 'required': ['distance', 'roles', 'page'],
+                'properties': {
+                    'distance': {'type': 'string', 'enum': ['near', 'middle', 'far']},
+                    'roles': {'type': 'string', 'maxLength': 400,
+                              'description': 'Who or what plays each of the source\'s parts on this page.'},
+                    'page': {'type': 'string', 'maxLength': 600,
+                             'description': 'The concrete page: what is where, at what scale, with what colour or crop.'},
+                    'risk': {'type': 'string', 'maxLength': 200, 'description': 'What could make this unreadable.'}}}}}}
+
+    def _migrate(self, args):
+        """A second model's reading of the reference and three migrations of its decision (2026-11-26)."""
+        path = (self.job / str(args.get('file') or '')).resolve()
+        if not path.is_relative_to(self.job) or not path.is_file():
+            return self._reply(False, {'status': 'not_found', 'hint': 'Use a saved picture inside the task.'})
+        page_job = args.get('page_job')
+        content = args.get('content') or ''
+        if not isinstance(page_job, str) or not page_job.strip():
+            return self._reply(False, {'status': 'invalid', 'hint': 'Say what the page must let the audience see.'})
+        protocol = ('Name the decision (what an ordinary version would not do), strip it to a principle with no '
+                    'subject, map its parts onto this page, then try it at near, middle and far distance '
+                    '(references/borrowing.md).')
+        import claude_vision
+        if not claude_vision.available(self.cfg, 'advisor'):
+            return self._reply(True, {'status': 'self_work', 'protocol': protocol,
+                                      'prompt_to_answer_twice': ['What is the decision?', 'What principle?',
+                                                                 'Who plays each role here?', 'Near / middle / far?']})
+        prompt = ('You are a design director helping an author borrow from a reference without copying it. '
+                  'The picture is the reference. The page the author must design is for: ' + page_job.strip() +
+                  '.\nThe page\'s actual content: ' + (content.strip() or '(not supplied)') + '\n\n'
+                  'Read the reference first. Say what it does that a competent but ordinary version of the same '
+                  'thing would not (the decision), then state the relation behind it with none of the source\'s '
+                  'subject left in it (the principle). Then give exactly three migrations onto the author\'s page: '
+                  'near (keeps the kind of object the source uses), middle (the same relation carried by an object '
+                  'of the author\'s own kind) and far (only the principle survives, in a form this page has not '
+                  'used). For each, name who plays each of the source\'s parts, then the concrete page: what is '
+                  'where, at what scale, with what colour, crop or spacing; and the risk that would make it '
+                  'unreadable. Be specific to this content; a migration that would fit any page is useless.')
+        def valid(value):
+            rows = (value or {}).get('migrations')
+            if not isinstance(rows, list) or len(rows) != 3:
+                return None
+            ordered = sorted(rows, key=lambda r: ['near', 'middle', 'far'].index(r.get('distance'))
+                             if isinstance(r, dict) and r.get('distance') in ('near', 'middle', 'far') else 9)
+            if [r.get('distance') for r in ordered] != ['near', 'middle', 'far']:
+                return None
+            if not all(isinstance(r.get('page'), str) and r['page'].strip() for r in ordered):
+                return None
+            return ordered
+
+        try:
+            answer = claude_vision.ask(self.cfg, prompt, [path], self.MIGRATION_SCHEMA, timeout=300, slot='advisor')
+            value = answer.get('structured') or {}
+            rows = valid(value)
+            if rows is None:  # The relay does not validate the schema: ask once more for the three distances.
+                retry = claude_vision.ask(self.cfg, prompt + '\nYour previous reply did not give exactly three migrations '
+                                          'with distances near, middle and far. Reply again with all three.',
+                                          [path], self.MIGRATION_SCHEMA, timeout=300, slot='advisor')
+                value = retry.get('structured') or {}
+                rows = valid(value)
+            result = {'status': 'reviewed', 'reference': str(path.relative_to(self.job)),
+                      'decision': value.get('decision'), 'principle': value.get('principle'),
+                      'migrations': rows or value.get('migrations'),
+                      'by': str(answer.get('adapter') or 'claude') + ':' + answer['model']}
+            if rows is None:
+                result['partial'] = True
+                result['meaning'] = ('The advisor did not return three clean distances; use what is usable and work '
+                                     'the missing distances yourself: ' + protocol)
+            return self._reply(True, result)
+        except claude_vision.ClaudeUnavailable as error:
+            return self._reply(True, {'status': 'self_work', 'protocol': protocol, 'note': str(error)[:200]})
+
     def handle(self, params):
         args = params.get('arguments') or {}
+        if self.audience_first and isinstance(args.get('migrate'), dict):
+            return self._migrate(args['migrate'])
         if self.audience_first and isinstance(args.get('asset_check'), dict):
             return self._asset_check(args['asset_check'])
         if args.get('sketch'):
@@ -553,7 +685,39 @@ class DesignStudy:
                     highest = order[0]['task_fit']
                     value['by_task_fit'] = [{k: i[k] for k in ('name', 'task_fit', 'fit_evidence')} for i in order]
                     value['best_fit'] = [i['name'] for i in order if i['task_fit'] == highest]
-                    value['meaning'] += ' Break a tie by the page purpose and craft when you inspect the sketches.'
+                    value['meaning'] += ' Rule out anything below 4 at the viewing distance first.'
+                    # Readable options only, then the least typical one: a borrowing that lands on an
+                    # arrangement a generic deck would also produce has not been carried across (2026-11-26).
+                    readable = [i for i in items if i['task_fit'] >= max(4, highest - 1)]
+                    typed = [i for i in readable if type(i.get('typicality')) in (int, float)]
+                    if typed:
+                        ranked = sorted(typed, key=lambda i: (i['typicality'], -i['task_fit'], i['name']))
+                        value['least_typical'] = [i['name'] for i in ranked if i['typicality'] == ranked[0]['typicality']]
+                    unlabelled = [i['name'] for i in items if i.get('anchor') and not
+                                  (isinstance(i.get('principle'), str) and i['principle'].strip())]
+                    if unlabelled:
+                        # 2026-11-27: the distances were drawn but never named, so the borrowing
+                        # could not be checked against the render. Ask for the principle now.
+                        value['name_the_principle'] = unlabelled
+                        value['meaning'] += (' Name the principle each anchored sketch carries (what relation it took '
+                                             'from the reference) and the distance (near/middle/far); the visual review '
+                                             'judges the borrowing from that record.')
+                        value['typicality_order'] = [{'name': i['name'], 'typicality': round(i['typicality'], 2),
+                                                      'distance': i.get('distance')} for i in ranked]
+                        if len({round(i['typicality'], 1) for i in typed}) == 1:
+                            value['meaning'] += (' All options are about equally typical: the borrowing distances '
+                                                 'were too close. Redraw, with one option that changes scale, '
+                                                 'material or count, not only arrangement.')
+                        else:
+                            value['meaning'] += (' Among the readable options prefer least_typical; say in the page '
+                                                 'notes what makes it less typical than the others.')
+                    if any(i.get('distance') for i in items):
+                        value['distances'] = {i.get('distance') or 'unspecified': [n['name'] for n in items
+                                                                                    if (n.get('distance') or 'unspecified') == (i.get('distance') or 'unspecified')]
+                                              for i in items}
+                        if len({i.get('distance') for i in items} & {'near', 'middle', 'far'}) < 3:
+                            value['meaning'] += (' Mark the three options near, middle and far; the far one is where '
+                                                 'a new page usually comes from.')
                 return self._reply(True, value, image)
             order = sorted((i.get('typicality', 1), i.get('name')) for i in items)
             value = {'sketches': len(items), 'by_typicality': [n for _, n in order],

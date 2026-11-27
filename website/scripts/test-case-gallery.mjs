@@ -6,44 +6,60 @@ import * as React from 'react';
 import * as jsx from 'react/jsx-runtime';
 import {renderToStaticMarkup} from 'react-dom/server';
 let locale='zh-CN',slots=[],cursor=0,effects=new Map(),pending=[],timerCount=0;
-const timers=new Map();globalThis.window={setInterval(fn){const id=++timerCount;timers.set(id,fn);return id;},clearInterval(id){timers.delete(id);}};
+const timers=new Map(),timeouts=new Map();let reducedMotion=false;globalThis.window={setInterval(fn){const id=++timerCount;timers.set(id,fn);return id;},clearInterval(id){timers.delete(id);},setTimeout(fn,at){const id=++timerCount;timeouts.set(id,{fn,at});return id;},clearTimeout(id){timeouts.delete(id);},matchMedia:()=>({matches:reducedMotion})};
 const modules={react:{...React,useState(initial){const i=cursor++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;return [slots[i],value=>{slots[i]=typeof value==='function'?value(slots[i]):value;}];},useRef(value){const i=cursor++;return slots[i]??=( {current:value} );},useEffect(fn,deps){const i=cursor++,prior=effects.get(i);if(!prior||deps.some((v,n)=>v!==prior.deps[n]))pending.push(()=>{prior?.cleanup?.();effects.set(i,{deps,cleanup:fn()});});},useId:()=>`test-${cursor++}`},'react/jsx-runtime':jsx};
 function load(path){const code=ts.transpileModule(readFileSync(new URL('../'+path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;const exports={};new Function('require','exports',code)(name=>{assert.ok(name in modules,name);return modules[name];},exports);return exports;}
 modules['@/lib/landing-i18n']=load('lib/landing-i18n.ts');modules['@/lib/gallery-i18n']=load('lib/gallery-i18n.ts');
 modules['./language']={useLanguage:()=>({locale})};modules['./transformer-diagram']=load('app/transformer-diagram.tsx');modules['./use-paint-drag']=load('app/use-paint-drag.ts');modules['./gallery-cases']=load('app/gallery-cases.tsx');
-const waterSignals=[];let waterPaused=false;modules['./use-water-gallery']={useWaterGallery:(_active,paused)=>{waterPaused=paused;return {stageRef:{current:null},surge(index,direction){waterSignals.push({index,direction});},onPointerMove(){},onPointerDown(){}};}};modules['@/lib/water-model']=load('lib/water-model.ts');
+const waterSignals=[];let waterPaused=false;modules['./use-water-gallery']={useWaterGallery:(lifted,paused)=>{waterPaused=paused;waterSignals.push(lifted);return {stageRef:{current:null},onPointerMove(){},onPointerDown(){},onPointerLeave(){}};}};modules['@/lib/water-model']=load('lib/water-model.ts');
 const Gallery=load('app/case-gallery.tsx').default;const cases=modules['./gallery-cases'];
 const props=()=>({g:modules['@/lib/gallery-i18n'].galleryCopy[locale],c:modules['@/lib/landing-i18n'].landingCopy[locale]});
-function reset(){for(const effect of effects.values())effect.cleanup?.();slots=[];effects=new Map();pending=[];cursor=0;timers.clear();}
+function reset(){for(const effect of effects.values())effect.cleanup?.();slots=[];effects=new Map();pending=[];cursor=0;timers.clear();timeouts.clear();}
 function render(Component,additional={}){cursor=0;const tree=Component({...props(),...additional});const work=pending;pending=[];for(const fn of work)fn();return tree;}
 function nodes(tree,match){if(!React.isValidElement(tree))return [];return [...(match(tree)?[tree]:[]),...React.Children.toArray(tree.props.children).flatMap(child=>nodes(child,match))];}
 function one(tree,match){const found=nodes(tree,match);assert.equal(found.length,1);return found[0].props;}
 function button(tree,match){return one(tree,n=>n.type==='button'&&match(n.props));}
-reset();let tree=render(Gallery);assert.equal(tree.props['data-active-case'],0);assert.equal(nodes(tree,n=>n.props.role==='tab').length,6);assert.equal(nodes(tree,n=>n.props.role==='tab'&&n.props['aria-selected']).length,1);
-assert.ok(tree.props.className.includes('darkroom-gallery'));
-assert.equal(nodes(tree,n=>n.props.className==='darkroom-emulsion'&&n.props['aria-hidden']==='true').length,6);
-assert.equal(nodes(tree,n=>n.props.className==='darkroom-status-developing').length,1);
-assert.equal(nodes(tree,n=>n.props.className==='darkroom-status-ready').length,1);
-assert.equal(nodes(tree,n=>n.props.className==='darkroom-print-status'&&n.props.children===props().g.undeveloped).length,5);
-const currentPaper=tree=>one(nodes(tree,n=>n.type==='article'&&n.props.className.includes('is-current'))[0],n=>n.props.className==='case-paper');
-assert.equal(currentPaper(tree)['data-developed'],false);
-const paperElement={};currentPaper(tree).onAnimationEnd({target:{},currentTarget:paperElement,animationName:'darkroom-develop'});tree=render(Gallery);
-assert.equal(currentPaper(tree)['data-developed'],false,'Child animations must not complete paper development');
-currentPaper(tree).onAnimationEnd({target:paperElement,currentTarget:paperElement,animationName:'darkroom-develop'});tree=render(Gallery);
-assert.equal(currentPaper(tree)['data-developed'],true);
-one(tree,n=>n.props.className==='case-stage').onPointerDown();tree=render(Gallery);
-assert.equal(currentPaper(tree)['data-developed'],true,'A background click must retain the developed colour');
-button(tree,p=>p['aria-label']==='切换到 对象编辑').onClick();tree=render(Gallery);assert.equal(tree.props['data-active-case'],5);assert.deepEqual(waterSignals.at(-1),{index:5,direction:-1});
-assert.equal(currentPaper(tree)['data-developed'],false,'A newly selected print starts development');
-currentPaper(tree).onFocusCapture();tree=render(Gallery);
-one(tree,n=>n.props.className==='case-stage').onPointerDown();tree=render(Gallery);
-assert.equal(currentPaper(tree)['data-developed'],true,'Editing completes development persistently, including after clicking outside');
-const selectedPrint=nodes(tree,n=>n.type==='article'&&n.props.className.includes('is-current'))[0];
-assert.equal(selectedPrint.props.id,'gallery-panel-5');
-assert.equal(nodes(selectedPrint,n=>n.props.className==='darkroom-status-developing').length,1);
-assert.equal(nodes(tree,n=>n.props.className==='darkroom-print-status'&&n.props.children===props().g.undeveloped).length,5,'Visited side prints return to the undeveloped treatment.');
-button(tree,p=>p['aria-label']==='下一个案例').onClick();tree=render(Gallery);assert.equal(tree.props['data-active-case'],0);assert.deepEqual(waterSignals.at(-1),{index:0,direction:1});button(tree,p=>p.className==='water-motion-toggle').onClick();tree=render(Gallery);assert.equal(waterPaused,true);assert.equal(button(tree,p=>p.className==='water-motion-toggle')['aria-pressed'],true);assert.ok(nodes(tree,n=>n.type===cases.ObjectCase).length,'Visited object case stays mounted to preserve edits');
-const list=one(tree,n=>n.props.role==='tablist');let focused=-1,prevented=false;list.onKeyDown({key:'End',preventDefault(){prevented=true;},currentTarget:{querySelectorAll:()=>Array.from({length:6},(_,i)=>({focus(){focused=i;}}))}});tree=render(Gallery);assert.equal(tree.props['data-active-case'],5);assert.equal(focused,5);assert.ok(prevented);
+const g=()=>props().g;
+const articles=tree=>nodes(tree,n=>n.type==='article');
+const paper=(tree,index)=>one(articles(tree)[index],n=>n.props.className==='case-paper');
+const statusOf=(tree,index)=>one(articles(tree)[index],n=>n.props.className==='print-status').children;
+/** Fire the scheduled build steps in time order, re-rendering after each, until `until` milliseconds. */
+function advance(until=Infinity){let tree;for(;;){const due=[...timeouts.entries()].filter(([,t])=>t.at<=until).sort((a,b)=>a[1].at-b[1].at)[0];if(!due)break;timeouts.delete(due[0]);due[1].fn();tree=render(Gallery);}return tree??render(Gallery);}
+reset();let tree=render(Gallery);
+// At rest: four prints afloat (diagram, animation, equation, objects), none open, each only offering to be opened.
+assert.equal(tree.props['data-lifted'],undefined);assert.equal(articles(tree).length,4);assert.ok(articles(tree).every(a=>a.props.className==='case-card is-afloat'));
+assert.deepEqual(articles(tree).map(a=>a.props['data-case']),[0,1,4,5]);assert.deepEqual(articles(tree).map(a=>a.props['aria-label']),[0,1,4,5].map(i=>g().titles[i]));
+assert.equal(nodes(tree,n=>n.type===cases.ChartCase||n.type===cases.ImageCase).length,0,'Charts and image layout are not in the tray');
+assert.equal(nodes(tree,n=>n.props.className==='case-bring-forward').length,4);assert.equal(nodes(tree,n=>n.props.className==='lift-bar').length,0);assert.equal(one(tree,n=>n.props.className==='lift-hint').children,'');
+for(let i=0;i<4;i++){assert.equal(paper(tree,i).inert,true,'A floating print is not operable');assert.equal(paper(tree,i)['data-phase'],'latent');assert.equal(statusOf(tree,i),g().undeveloped);}
+assert.equal(one(tree,n=>n.props.className==='pool-copy').inert,false);
+// First lift: the print is built on one timeline (shapes, text, colour) and only then handed over.
+button(tree,p=>p['aria-label']==='打开 对象编辑').onClick();tree=render(Gallery);
+assert.equal(tree.props['data-lifted'],3);assert.equal(waterSignals.at(-1),3);assert.equal(articles(tree)[3].props.className,'case-card is-lifted');assert.ok(articles(tree).slice(0,3).every(a=>a.props.className==='case-card is-waiting'));
+assert.equal(one(tree,n=>n.props.className==='pool-copy').inert,true);assert.equal(one(tree,n=>n.props.className==='lift-hint').children,g().hints[5],'The hint for the open print sits under it');assert.equal(timeouts.size,3,'Two stage names and the handover are scheduled; the motion itself is CSS');
+assert.equal(paper(tree,3)['data-phase'],'building','The build starts with the lift, while the print is still rising');assert.equal(paper(tree,3).inert,true,'Controls stay locked while the print is built');assert.equal(statusOf(tree,3),g().buildSteps[0]);assert.equal(paper(tree,3)['data-step'],0);assert.equal(nodes(articles(tree)[3],n=>n.props.className==='case-bring-forward').length,0);
+assert.equal(one(articles(tree)[3],n=>n.props.className==='case-position').children[0].props.children,'04');
+tree=advance(1150);assert.equal(paper(tree,3)['data-phase'],'building');assert.equal(statusOf(tree,3),g().buildSteps[1]);assert.equal(one(tree,n=>n.type===cases.ObjectCase).step,1);
+tree=advance(1950);assert.equal(statusOf(tree,3),g().buildSteps[2]);assert.equal(paper(tree,3)['data-step'],2);assert.equal(nodes(tree,n=>n.props.className==='lift-skip').length,1);
+tree=advance();assert.equal(paper(tree,3)['data-phase'],'ready');assert.equal(paper(tree,3).inert,false,'The finished print is editable');assert.equal(statusOf(tree,3),g().output);assert.equal(paper(tree,3)['data-step'],undefined);assert.equal(timeouts.size,0);assert.equal(nodes(tree,n=>n.props.className==='lift-replay').length,1);
+// Stepping to the neighbour builds it; skipping finishes at once.
+button(tree,p=>p['aria-label']?.startsWith('下一个案例')).onClick();tree=render(Gallery);assert.equal(tree.props['data-lifted'],0,'Stepping past the last print wraps to the first');assert.equal(paper(tree,3)['data-phase'],'ready');
+assert.equal(paper(tree,0)['data-phase'],'building');button(tree,p=>p.className==='lift-skip').onClick();tree=render(Gallery);assert.equal(paper(tree,0)['data-phase'],'ready');assert.equal(timeouts.size,0,'Skipping cancels the remaining steps');assert.equal(paper(tree,0).inert,false);
+// A click on the print while it is still being built also finishes it.
+button(tree,p=>p['aria-label']?.startsWith('上一个案例')).onClick();tree=render(Gallery);assert.equal(tree.props['data-lifted'],3);assert.equal(timeouts.size,0,'A print that was built once opens finished');assert.equal(paper(tree,3).inert,false);
+button(tree,p=>p.className==='lift-replay').onClick();tree=render(Gallery);assert.equal(paper(tree,3)['data-phase'],'building');assert.equal(timeouts.size,3);articles(tree)[3].props.onClick();tree=render(Gallery);assert.equal(paper(tree,3)['data-phase'],'ready');assert.equal(timeouts.size,0);
+// Returning a print to the bath keeps it developed and keeps its edits mounted.
+button(tree,p=>p.className==='lift-close').onClick();tree=render(Gallery);assert.equal(tree.props['data-lifted'],undefined);assert.equal(waterSignals.at(-1),null);assert.equal(paper(tree,3)['data-phase'],'ready');assert.equal(paper(tree,3).inert,true);assert.equal(paper(tree,1)['data-phase'],'latent');assert.ok(articles(tree).every(a=>a.props.className==='case-card is-afloat'));assert.ok(nodes(tree,n=>n.type===cases.ObjectCase).length,'Visited object case stays mounted to preserve edits');
+// Escape returns the print, except from inside a dialog that handles its own Escape.
+button(tree,p=>p['aria-label']==='打开 分步动画').onClick();tree=render(Gallery);let prevented=false;tree.props.onKeyDown({key:'Escape',target:{closest:()=>({})},preventDefault(){prevented=true;}});tree=render(Gallery);assert.equal(tree.props['data-lifted'],1);assert.equal(prevented,false);
+tree.props.onKeyDown({key:'Escape',target:{closest:()=>null},preventDefault(){prevented=true;}});tree=render(Gallery);assert.equal(tree.props['data-lifted'],undefined);assert.ok(prevented);assert.equal(paper(tree,1)['data-phase'],'ready','A print put back mid-build is finished, not left half made');assert.equal(timeouts.size,0);
+// Reduced motion: no staged build.
+reducedMotion=true;button(tree,p=>p['aria-label']==='打开 公式表达').onClick();tree=render(Gallery);assert.equal(paper(tree,2)['data-phase'],'ready');assert.equal(timeouts.size,0);assert.equal(paper(tree,2).inert,false);reducedMotion=false;
+button(tree,p=>p.className==='water-motion-toggle').onClick();tree=render(Gallery);assert.equal(waterPaused,true);assert.equal(button(tree,p=>p.className==='water-motion-toggle')['aria-pressed'],true);
+// The diagram is always complete in the markup; each object carries its turn in the build, connectors after their boxes.
+reset();tree=render(cases.ScientificCase,{phase:'building',step:0});const built=one(tree,n=>n.type===modules['./transformer-diagram'].default&&n.props.monochrome);assert.equal(built.stage,undefined);
+reset();const drawn=render(modules['./transformer-diagram'].default,{label:'Order'});const turns=nodes(drawn,n=>n.type==='g'&&typeof n.props.className==='string'&&n.props.className.includes('diagram-object')).map(n=>n.props.style['--i']);assert.deepEqual(turns,Array.from({length:14},(_,i)=>i+1));
+assert.deepEqual(nodes(drawn,n=>n.type==='g'&&typeof n.props.className==='string'&&n.props.className.includes('diagram-lines')).map(n=>n.props.style['--i']),[4,8,10,12]);assert.ok(nodes(drawn,n=>n.type==='path'&&n.props.markerEnd).every(n=>n.props.pathLength===1),'Connectors can be drawn in');
 reset();tree=render(cases.ScientificCase);assert.equal(one(tree,n=>n.type==='input'&&n.props.type==='range').defaultValue,48);assert.equal(nodes(tree,n=>n.props.className==='paint-divider').length,1);
 // Pointer precision, immediate updates and cancellation use actual DOM events in test-paint-drag-ui.mjs.
 // Editing shares the exact overrides across paint layers and the enlarged diagram.
@@ -76,5 +92,5 @@ button(tree,p=>p['data-term']==='K').onClick();tree=render(cases.FormulaCase);as
 button(tree,p=>p.className==='formula-reset').onClick();tree=render(cases.FormulaCase);
 assert.equal(one(tree,n=>n.type==='input'&&n.props['data-symbol']==='Q').value,'Q');assert.equal(one(tree,n=>n.type==='input'&&n.props['data-symbol']==='dimension').value,'k');assert.equal(one(tree,n=>n.type==='input'&&n.props.type==='range').value,1);
 reset();tree=render(cases.ObjectCase);one(tree,n=>n.props.id==='gallery-title').onChange({target:{value:'A new title'}});tree=render(cases.ObjectCase);button(tree,p=>p['aria-label']==='颜色 #365a70').onClick();tree=render(cases.ObjectCase);assert.equal(one(tree,n=>n.props.className==='object-headline').fill,'#365a70');const title=one(tree,n=>n.props.className==='movable-title');title.onKeyDown({key:'ArrowRight',preventDefault(){}});tree=render(cases.ObjectCase);assert.equal(one(tree,n=>n.props.className==='movable-title').transform,'translate(81 157)');const pointerTarget={ownerSVGElement:{getBoundingClientRect:()=>({width:900})},setPointerCapture(){},hasPointerCapture:()=>true};const movable=one(tree,n=>n.props.className==='movable-title');movable.onPointerDown({pointerId:1,currentTarget:pointerTarget,clientX:10,clientY:10});movable.onPointerMove({pointerId:1,currentTarget:pointerTarget,clientX:35,clientY:30});tree=render(cases.ObjectCase);assert.equal(one(tree,n=>n.props.className==='movable-title').transform,'translate(106 177)');button(tree,p=>p.className==='object-reset').onClick();tree=render(cases.ObjectCase);assert.equal(one(tree,n=>n.props.id==='gallery-title').value,'Ideas worth sharing.');
-for(locale of ['en','zh-CN','fr','es','ja']){reset();tree=render(Gallery);const html=renderToStaticMarkup(tree);assert.ok(html.includes(props().g.disclosure));assert.ok(html.includes(props().g.titles[0]));assert.equal(nodes(tree,n=>n.props.role==='tab').length,6);reset();const formula=render(cases.FormulaCase);const sample=renderToStaticMarkup(formula);assert.ok(sample.includes(props().g.equation.edit));assert.ok(sample.includes('14.25'));assert.equal(nodes(formula,n=>n.type==='input'&&n.props.type==='text').length,4);}
-reset();console.log('PASS: six-case side switching/wraparound/keyboard navigation; preserved visited cases; initially visible divider and clamped painting drag; shared paint/label/colour editing in normal and enlarged views, isolated input layer, close/reset and multiline fit; timed animation completion and inactive cleanup; selected chart values; image composition; equation terms; editable title/colour/drag/reset; five-language rendering.');
+for(locale of ['en','zh-CN','fr','es','ja']){reset();tree=render(Gallery);const html=renderToStaticMarkup(tree);assert.ok(html.includes(props().g.disclosure));assert.ok(html.includes(props().g.titles[0]));assert.equal(nodes(tree,n=>n.props.className==='case-bring-forward'&&n.props['aria-label']===`${props().g.open} ${props().g.titles[0]}`).length,1);assert.ok(html.includes(props().g.pauseWater));reset();const formula=render(cases.FormulaCase);const sample=renderToStaticMarkup(formula);assert.ok(sample.includes(props().g.equation.edit));assert.ok(sample.includes('14.25'));assert.equal(nodes(formula,n=>n.type==='input'&&n.props.type==='text').length,4);}
+reset();console.log('PASS: four floating prints (charts and image layout left out); first lift builds on one timeline (shapes, text, colour) with locked controls, then hands over; stepping/wraparound, skip, click-to-finish, replay, return to the bath, Escape and reduced motion; preserved visited cases; diagram build order and drawable connectors; initially visible divider and clamped painting drag; shared paint/label/colour editing in normal and enlarged views, isolated input layer, close/reset and multiline fit; timed animation completion and inactive cleanup; selected chart values; image composition; equation terms; editable title/colour/drag/reset; five-language rendering.');

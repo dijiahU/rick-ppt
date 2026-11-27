@@ -9,6 +9,12 @@ CATALOG = {
     'siliconflow': ('https://api.siliconflow.cn/v1', 'chat_completions', (
         'deepseek-ai/DeepSeek-V4.1-Flash','zai-org/GLM-5.3-Flash',
         'Pro/moonshotai/Kimi-K2.6','Qwen/Qwen3.6-35B-A3B')),
+    # Added 2026-11-27 for cross-model tests. These are the approved model IDs per
+    # provider; edit the tuple to approve another one, and keep model-providers.ts in step.
+    'google': ('https://generativelanguage.googleapis.com/v1beta/openai', 'chat_completions', (
+        'gemini-4-pro','gemini-4-flash','gemini-3-pro')),
+    'qwen': ('https://dashscope.aliyuncs.com/compatible-mode/v1', 'chat_completions', (
+        'qwen3-max','qwen-plus','qwen-vl-max')),
 }
 
 def customer_profile(state_root,task,send):

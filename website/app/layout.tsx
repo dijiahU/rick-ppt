@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./fonts.css";
 import "./account.css";
 import "./preview.css";
 import {LanguageProvider} from './language';

@@ -10,6 +10,10 @@ tokens for a five-page deck) and returns in about a minute.
 Settings (runner/settings.local.json): "claude_cli" (path, default: claude on PATH or
 ~/.local/bin/claude), "claude_model" (default "opus"). Raises ClaudeUnavailable when the
 CLI is missing or the call fails, so callers can fall back to their GPT route.
+
+With `slot=`, model_slots decides who answers instead: the same call may go to an
+OpenAI-compatible API or to another installed CLI (see model_slots.py). The return shape
+is the same either way.
 """
 import base64
 import json
@@ -32,12 +36,81 @@ def cli(cfg):
     return path if Path(path).is_file() else None
 
 
-def available(cfg):
-    return cfg.get('claude_review', True) is not False and not cfg.get('_customer_funded') and cli(cfg) is not None
+def available(cfg, slot=None):
+    """Whether this slot can answer here. No slot: the local Claude CLI, as before."""
+    if cfg.get('claude_review', True) is False or cfg.get('_customer_funded'):
+        return False
+    if slot is None:
+        return cli(cfg) is not None
+    import model_slots
+    try:
+        if not model_slots.second_model(cfg, slot):
+            return False
+        return model_slots.available(cfg, slot)
+    except (ValueError, OSError):
+        return False
 
 
-def ask(cfg, prompt, images=(), schema=None, *, timeout=360, model=None):
+def _schema_prompt(prompt, schema):
+    return (prompt + '\n\nReply with exactly one JSON object and nothing else. It must validate against this JSON Schema:\n'
+            + json.dumps(schema, ensure_ascii=False))
+
+
+def _ask_cli(value, prompt, images, schema, timeout):
+    """One call to an arbitrary installed CLI: `{prompt}`, `{model}` and `{images}` placeholders."""
+    text = _schema_prompt(prompt, schema) if schema is not None else prompt
+    paths = [str(Path(image).resolve()) for image in images]
+    command = []
+    for token in value['command']:
+        if token == '{images}':
+            command += paths
+        elif '{images}' in token:
+            command.append(token.replace('{images}', ' '.join(paths)))
+        else:
+            command.append(token.replace('{prompt}', text).replace('{model}', value.get('model') or ''))
+    stdin = text if value.get('prompt_mode', 'arg') == 'stdin' and '{prompt}' not in value['command'] else None
+    env = {k: v for k, v in os.environ.items() if not k.startswith(('CODEX_', 'PPTX_'))}
+    started = time.monotonic()
+    with tempfile.TemporaryDirectory(prefix='pptx-model-') as work:
+        try:
+            done = subprocess.run(command, input=None if stdin is None else stdin.encode(),
+                                  capture_output=True, cwd=work, env=env, timeout=timeout)
+        except (OSError, subprocess.TimeoutExpired) as error:
+            raise ClaudeUnavailable(f'{value["command"][0]} call failed: {type(error).__name__}') from error
+    if done.returncode != 0:
+        detail = done.stderr.decode('utf-8', 'replace')[:300]
+        raise ClaudeUnavailable(f'{value["command"][0]} exited {done.returncode}: {detail}')
+    reply = done.stdout.decode('utf-8', 'replace')
+    import model_api
+    structured = model_api._extract_json(reply)
+    if structured is None and schema is not None:
+        raise ClaudeUnavailable(f'{value["command"][0]} returned no JSON report')
+    return {'text': reply, 'structured': structured, 'usage': None, 'cost_usd': None,
+            'seconds': round(time.monotonic() - started, 1), 'model': value.get('model') or value['command'][0],
+            'adapter': 'cli'}
+
+
+def ask(cfg, prompt, images=(), schema=None, *, timeout=360, model=None, slot=None):
+    """One call, answered by the slot's model when a slot is named."""
     binary = cli(cfg)
+    adapter = 'claude_cli'
+    if slot is not None:
+        import model_slots
+        try:
+            value = model_slots.resolve(cfg, slot)
+        except (model_slots.SlotUnavailable, ValueError) as error:
+            raise ClaudeUnavailable(str(error)) from None
+        adapter = value.get('adapter', 'claude_cli')
+        if adapter == 'openai_api':
+            import model_api
+            try:
+                return model_api.ask(value, prompt, images, schema, timeout=timeout)
+            except model_api.ApiUnavailable as error:
+                raise ClaudeUnavailable(str(error)) from None
+        if adapter == 'cli':
+            return _ask_cli(value, prompt, images, schema, timeout)
+        binary = value.get('executable') or binary
+        model = value.get('model') or model
     if binary is None:
         raise ClaudeUnavailable('Claude CLI not found')
     model = model or cfg.get('claude_model', 'opus')
@@ -52,8 +125,7 @@ def ask(cfg, prompt, images=(), schema=None, *, timeout=360, model=None):
     # the prompt and parse the reply; "claude_json_schema": true restores the CLI flag.
     native_schema = schema is not None and cfg.get('claude_json_schema') is True
     if schema is not None and not native_schema:
-        prompt += ('\n\nReply with exactly one JSON object and nothing else. It must validate against this JSON Schema:\n'
-                   + json.dumps(schema, ensure_ascii=False))
+        prompt = _schema_prompt(prompt, schema)
     content.append({'type': 'text', 'text': prompt})
     line = json.dumps({'type': 'user', 'message': {'role': 'user', 'content': content}})
     command = [binary, '-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose',

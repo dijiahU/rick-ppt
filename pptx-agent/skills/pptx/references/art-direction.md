@@ -212,9 +212,11 @@ one element holds the main position at each step.
    rhythm (peak, working or rest). Check rhythm in the rendered sequence. Use `@primary`, `@text` and so on for new designs in native batches
    and edits. Include retained template colours in the palette used by page checks.
    Record the choice and its reason in `design_direction`.
-5. **Reuse graphic devices with a clear job**, such as an accent mark for exceptions or a rule grouping related items. Default type: SimSun for reading text,
-   DengXian (等线) light, regular and bold for headings and figures, Arial for Latin
-   numerals and labels; weight contrast is now available, use it. Set a type scale of
+5. **Reuse graphic devices with a clear job**, such as an accent mark for exceptions or a rule grouping related items. Type is your choice (references/fonts.md): pick faces
+   for the language and the register; Japanese text takes a Japanese face; a requested
+   hand-drawn, pixel or editorial style can carry into the display face. When nothing
+   argues otherwise the default is SimSun for Chinese reading text, DengXian (等线) light,
+   regular and bold for headings and figures, Arial for Latin numerals and labels. Set a type scale of
    three or four steps in deck-style.json "type" and keep to it: a projected page needs
    body text of 18 pt or more and labels of 14 pt or more, and a middle step between a
    giant figure and the small text so the page does not jump from 200 pt to 14 pt;
@@ -264,7 +266,9 @@ within authorized scope.
      anchor for type; at most one small accent; distinct lightness steps between ground,
      picture and type;
    - small signposts: one icon set from `pptx_icons`.
-2. **Reference.** Name the visual job, then look before designing. A page can be worth
+2. **Reference.** Name the visual job, then look before designing — and look before you
+   decide a layout. Search first by subject and feeling, never by layout words; open the
+   actual images, then work the borrowing as [borrowing](borrowing.md) describes. A page can be worth
    borrowing without sharing its structure. Decide what kind of thing you are taking:
    `structure` (where things sit), `visual_grammar` (scale, density, colour or lightness
    relationships), `treatment` (how a picture is misted, faded, cropped, overlaid),
@@ -294,12 +298,39 @@ within authorized scope.
    content). Say in your own words where the eye lands first and goes next, how the big
    shapes balance or pull, what is grouped, what is empty and why it works. If the
    structure is hard to name, rebuild it in grey blocks.
-   **Borrow a named decision, not an impression.** In the reference register record
+   **Work the borrowing as a relation, not a copy** ([borrowing](borrowing.md)): name the
+   decision, strip it to a principle with no subject, assign the roles on your page, and try
+   it at near, middle and far distance before choosing. On the cover and the pages that carry
+   the argument, get the three distances from the advisor (`design_study` `migrate`: decision,
+   principle, near/middle/far) and write the chosen principle into the page task, so the
+   borrowing can be checked against the render. Copying stops at "this looks like the
+   source"; borrowing carries a principle across a gap so the page becomes yours. A worked
+   example: "what is not looked at is still a loss" → render absence as a gap in a line that
+   should have continued → your page keeps one continuous line and leaves a measured gap
+   where the lost thing would be.
+   In the reference register record
    `borrow_kind`, `borrowed` (e.g. "右侧照片左缘用白渐变洗淡，只留一条清晰通道") and each
    application's `action` (where it lands on this page, with a size, crop, spacing or
    weight where possible). A page may contribute a treatment or an idea while matching
    none of the layout; do not force its structure. Take at most two or three decisions
    from one work. A borrowing that cannot be pointed to in the render is not a borrowing.
+   **Take the work's most distinctive decision.** Before you register a work, say what
+   it does that an average version of the same thing would not: the hand-lettered type
+   wrapped round the loaf, the confections scattered across a scroll of vertical
+   writing, the one pale field with a deer far off. Borrow that, adapted to this page.
+   "Separate text from picture", "a large photo beside a narrow column" or "align the
+   labels" describe every template; if that is all you found, you have not looked yet:
+   look again or choose another work. Check the result side by side with the source
+   (pptx_study_reference compare) and ask whether the distinctive decision survived.
+   **Look beyond the template library.** The library holds commercial PPT templates:
+   useful for structure, weak as a standard of craft. For the cover and the key pages,
+   find at least one actual work outside it on your own — for the subject or the
+   feeling: an exhibition identity, poster, book or magazine spread, photo essay, film
+   still, painting, a shop's or brand's real printed matter (web search, Pinterest,
+   image_query, museum and design sites). A user's attached example counts as one
+   reference, not as the search. Use `mode=any` (the default) for library searches so
+   treatment and idea matches come back with layout matches; ask for `mode=structure`
+   only when a pure layout question remains.
    Consider distinct solutions where
    useful: one work may organize comparable information and another show an
    object, action or detail. Use an actual inspected feature for each role.
@@ -307,13 +338,14 @@ within authorized scope.
    at reading size. A direct composition, one partial borrowing or a whole-page
    treatment can each suffice. Register each applied work, creator, source and
    concrete adaptation once.
-3. **Sketch.** For a key page with a consequential choice, put a direct expression
-   and a reference-informed expression side by side as simple blocks. Keep the same
-   audience task and facts. Look at the alternatives, then use the sketch tool's
-   `audience_task`, per-option `task_fit` and short `fit_evidence` to name what makes
-   the comparison, attribution or action read more clearly. Select on that basis;
-   use craft and viewing context to decide among equally clear alternatives. An
-   initial sketch without scores is fine. Check that the chosen expression can be
+3. **Sketch.** For a key page, draw three options at near, middle and far borrowing
+   distance (borrowing.md), each naming the principle and the roles it assigns, as
+   simple blocks with the same audience task and facts. Pass `audience_task`, per-option
+   `task_fit`, `fit_evidence` and `distance`. Rule out any option that is not readable at
+   the viewing distance; among the readable ones prefer the least typical, not the
+   safest — a page that a generic deck would also produce has not used the borrowing.
+   If all three are typical, the distances were too close: redraw. An initial sketch
+   without scores is fine. Check that the chosen expression can be
    achieved with actual available assets. Ordinary pages can reuse a working
    relationship and graphic voice.
 4. **Build.** Decide each element's size, position, crop and colour. Size follows

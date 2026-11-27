@@ -75,9 +75,9 @@ def write_json(path,value):
 def deployment_font_instruction(platform=None):
     from font_assets import deployment_defaults
     fonts=deployment_defaults(platform)
-    return (' For newly authored text without an explicit source typeface, this deployment uses '
+    return (' For newly authored text, this deployment\'s default when nothing argues otherwise is '
             +fonts['latin']+' for English/Latin and '+fonts['east_asian']+' for Chinese reading text'
-            +(('; '+fonts['display_east_asian']+' and '+fonts['display_latin']+' are also approved deployment fonts, not a font violation')
+            +(('; '+fonts['display_east_asian']+' and '+fonts['display_latin'])
               if fonts.get('display_east_asian') else '')
             +(('; '+fonts['optional']) if fonts.get('optional') else '')
             +', matching the verified files and defaults in capabilities.json. '
@@ -907,8 +907,8 @@ class Execution:
                 self.author_thread=receipt.get('thread_id');return True
         return False
 
-    def claude_review(self,name,prompt,root,images,schema,attempt,*,thread=None,previous=None,error=None):
-        """One Claude call standing in for the visual reviewer turn; same prompt, images and schema."""
+    def claude_review(self,name,prompt,root,images,schema,attempt,*,thread=None,previous=None,error=None,slot='visual_review'):
+        """One call to the review slot's model, standing in for the reviewer turn: same prompt, images and schema."""
         import claude_vision,uuid
         note=('\n\nYou receive everything in this single message: files named above cannot be opened. Judge from the '
               'attached page images and the facts inlined here, and return only the JSON report.')
@@ -916,21 +916,21 @@ class Execution:
             note+=('\n\nFORMAT-ONLY CORRECTION. The host rejected your previous report: '+str(error)[:800]+
                    '. Keep your observations, findings and scores; fix only the fields that must agree. Previous report:\n'
                    +json.dumps(previous,ensure_ascii=False)[:60000])
-        answer=claude_vision.ask(self.cfg,prompt+note,[Path(root)/i for i in images],schema,timeout=600)
+        answer=claude_vision.ask(self.cfg,prompt+note,[Path(root)/i for i in images],schema,timeout=600,slot=slot)
         ident=thread or 'claude-'+uuid.uuid4().hex
         turn='turn-'+uuid.uuid4().hex
         attempt.started(ident+'-'+turn,str(Path(root)/'claude-review'),ident)
         attempt.bind(ident,turn)
         attempt.observe({'type':'turn.completed','thread_id':ident,'turn_id':turn,'status':'completed'})
         usage=answer.get('usage') or {}
-        stage={'name':name,'seconds':answer['seconds'],'transport':'claude-cli','model':answer['model'],
+        stage={'name':name,'seconds':answer['seconds'],'transport':answer.get('adapter') or 'claude-cli','model':answer['model'],
                'usage':{'input_tokens':(usage.get('input_tokens') or 0)+(usage.get('cache_read_input_tokens') or 0)+(usage.get('cache_creation_input_tokens') or 0),
                         'cached_input_tokens':usage.get('cache_read_input_tokens') or 0,
                         'output_tokens':usage.get('output_tokens') or 0,
                         'reasoning_output_tokens':((usage.get('output_tokens_details') or {}).get('thinking_tokens') or 0)},'cost_usd':answer.get('cost_usd'),
                'thread':ident,'turn':turn,'content_work':False}
         self.stages.append(stage);self.threads.append({'stage':name,'thread':ident,'turn':turn})
-        self.trace.emit('phase',name+' reviewed by Claude ('+answer['model']+')',state='completed',detail=stage)
+        self.trace.emit('phase',name+' reviewed by '+str(answer['model'])+' ('+str(answer.get('adapter') or 'claude-cli')+')',state='completed',detail=stage)
         if not isinstance(answer.get('structured'),dict):raise ValueError('Invalid reviewer report')
         return answer['structured']
 
@@ -1026,21 +1026,21 @@ class Execution:
             if presentation:schema=presentation_schema(schema)
             if prior_ids is not None:schema=carried_schema(schema)
             format_prompt=prompt;format_thread=None;result=None
-            # A second model's eye (2026-11-21): the visual pass may run as one Claude call
-            # with the same prompt, images and schema; GPT remains the fallback.
-            use_claude=role=='visual' and self.cfg.get('visual_backend')=='claude'
-            if use_claude:
-                import claude_vision
-                use_claude=claude_vision.available(self.cfg)
+            # A second model's eye (2026-11-21): a review pass may run as one call to the
+            # model configured for its slot (content_review / visual_review), with the same
+            # prompt, images and schema; the author backend remains the fallback.
+            import claude_vision
+            slot=('visual_review' if role=='visual' else 'content_review')
+            use_claude=claude_vision.available(self.cfg,slot) if role in ('visual','content') else False
             for formatting in range(2):
                 try:
                     reviewed=None
                     if use_claude:
                         try:reviewed=self.claude_review(name,prompt,root,model_images,schema,attempt,thread=format_thread,
-                                                        previous=result if formatting else None,error=format_error if formatting else None)
+                                                        previous=result if formatting else None,error=format_error if formatting else None,slot=slot)
                         except claude_vision.ClaudeUnavailable as error:
                             use_claude=False
-                            self.trace.emit('phase',name+' Claude review unavailable; using GPT',state='completed',detail=str(error)[:200])
+                            self.trace.emit('phase',name+' review slot unavailable; using the author backend',state='completed',detail=str(error)[:200])
                             if formatting:raise ValueError(format_error)
                     if reviewed is not None:result=reviewed
                     else:

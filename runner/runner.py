@@ -528,6 +528,13 @@ def _run_job(cfg,task,lease):
     if customer is not None:
         cfg['_model_profile']=customer
         cfg['_customer_funded']=True
+    else:
+        # The author slot may name another OpenAI-compatible model for this session
+        # (2026-11-27: DeepSeek/Qwen/Gemini authoring through the same harness). A
+        # customer-funded task still wins, and an unset slot keeps Codex's default.
+        from model_slots import author_profile
+        chosen=author_profile(cfg)
+        if chosen is not None:cfg['_model_profile']=chosen
     selected=profile_for_task(state_root,task['id'],cfg.get('_model_profile'),existing,
                               execution_backend=task.get('execution_backend'))
     if selected is None:cfg.pop('_model_profile',None)

@@ -1,28 +1,28 @@
 # Actual fonts
 
-Use `font-catalog.json` and `fonts/index.json` to choose from real installed files.
-For hosted work, use the verified default pair and available IDs in
-`capabilities.json.font_assets.defaults` and `fonts/index.json`. The Linux host
-uses DejaVu Serif and Noto Serif CJK SC. For standalone Windows WPS work, the
-default remains **Times New Roman for English/Latin** and **SimSun (宋体) for Chinese**. Apply the pair to native runs, theme defaults, For headings, figures and display text the deck may add DengXian (等线; IDs `dengxian-light|regular|bold`) and Arial (`arial-regular|bold`), which give the weight contrast SimSun lacks. Also approved, installed on use (host FONTS.md):
-Microsoft YaHei 微软雅黑, SimHei 黑体, KaiTi 楷体, FangSong 仿宋, Calibri, Cambria, Georgia,
-Century Gothic, Verdana, Tahoma; they ship with Windows and Office for Mac. Fonts outside
-these lists are substituted on Windows and break the layout.
-chart/table labels and inherited text. Preserve explicit user font choices and
-actual supplied template typefaces for scoped edits. Newly recreated image text
-without a specified source typeface still uses the defaults. Descriptions such as
-"rounded", "handwritten" or "looks like" a font are uncertain visual observations,
-not an explicit font requirement or verified template font metadata; do not use
-them to justify a decorative replacement. Read [Windows WPS compatibility](windows-wps.md).
-Use size, spacing, hierarchy and real weights; one or two families per deck.
-The default IDs are `times-new-roman-regular`, `times-new-roman-bold`,
-`times-new-roman-italic`, `times-new-roman-bold-italic`, and `simsun-regular`.
-Use actual returned family/style names; do not simulate an unavailable SimSun bold.
-Special fonts are exceptions for an explicit requirement or functional need.
-For a functional exception, identify the concrete need and record the actual
-family/style/weight, relevant glyph forms and coverage, plus recipient availability
-or verified editable embedding before using it. An appearance guess alone is not
-that evidence. A downloaded font is not embedded.
+**Font choice is open (2026-11-26).** Choose the families that suit the language, the
+register and any requested style; there is no approved list. The defaults below are a
+starting point when the deck gives no reason to choose otherwise. Recipients without a
+chosen font are told by the website to install it, so do not avoid a good font merely
+because it may be missing on some machines. List every family you used (Latin and East
+Asian) in the completion summary.
+
+- **Match the script.** Japanese text uses a Japanese face (Yu Mincho / Yu Gothic,
+  Hiragino Mincho ProN / Hiragino Sans, Meiryo, BIZ UD…); Chinese faces render kanji in
+  Chinese forms and kana poorly. Korean uses a Korean face. Set run `lang` to the text's
+  language (`ja-JP`, `ko-KR`, `zh-CN`…). Chinese text keeps a Chinese face.
+- **Match the style.** A hand-drawn journal can take a handwriting or brush face for
+  notes; a pixel deck a bitmap display face; an editorial deck a strong serif display.
+  Keep reading text legible; use one or two families plus one display face.
+- **Install the actual file into the task** so measurements, previews and reviews show
+  the real font: any font installed on this host by family name
+  (`python font-proxy.py host --family 'Hiragino Mincho ProN' --style W3 --text '…'`),
+  or an OFL download as below. Windows names such as Yu Mincho, Yu Gothic, Meiryo and
+  MS Mincho are mapped to their macOS equivalents in previews.
+- Defaults when nothing argues otherwise: Times New Roman for Latin and SimSun (宋体)
+  for Chinese reading text, DengXian 等线 / Arial for headings and figures (Linux host:
+  DejaVu Serif and Noto Serif CJK SC). Preserve explicit user font choices and supplied
+  template typefaces in scoped edits.
 
 The host prepares genuine installed default faces in `fonts/` when available,
 including the actual SimSun face extracted from its collection. Check the manifest;

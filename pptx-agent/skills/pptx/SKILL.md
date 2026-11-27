@@ -26,7 +26,7 @@ ones you need with tool_prepare.py --group GROUP_ID.
 3. **Author**: build native pages in order from assets/blank.pptx, a supplied template,
    or an editable library template fetched with `action=template`. Follow the
    [template paths](references/content.md). Fill base pages in place, build new pages
-   on template masters, or study a source page and sketch a new composition. Follow the [art direction](references/art-direction.md) for page search, sketches and render checks before moving on, and [poster thinking](references/poster-thinking.md) before designing any key page: the deck is a sequence, each key page is a poster. Tools:
+   on template masters, or study a source page and sketch a new composition. Follow the [art direction](references/art-direction.md) for page search, sketches and render checks before moving on, and [borrowing](references/borrowing.md) with [poster thinking](references/poster-thinking.md) before designing any key page: the deck is a sequence, each key page is a poster. Tools:
    [native batches](references/native-batch.md), [native canvas](references/native-canvas.md),
    [native pages](references/native-pages.md), [image recreation](references/image-recreation.md).
 4. **Animate** ([animations](references/animations.md)): new decks use native click
@@ -48,10 +48,11 @@ ones you need with tool_prepare.py --group GROUP_ID.
   reported results, interpretation, suggestions and illustrative examples. Real
   interfaces, historical subjects and case evidence need authentic sources; generated
   images are labelled illustrative. Acquisition rules: [research and assets](references/research-and-assets.md).
-- Fonts: the verified pair in `capabilities.json.font_assets.defaults` (default Times
-  New Roman for Latin, SimSun 宋体 for Chinese) for reading text, plus DengXian 等线
-  (light/regular/bold) and Arial for headings, figures and display text, unless the
-  user or template specifies otherwise. See [fonts](references/fonts.md) and [Windows WPS](references/windows-wps.md).
+- Fonts: choice is open. Pick families for the language (Japanese text in a Japanese
+  face, never SimSun), register and requested style, install the actual file into the
+  task so previews match, and list every family used in the completion summary. The
+  default pair (Times New Roman / SimSun, DengXian / Arial for display) applies when
+  nothing argues otherwise. See [fonts](references/fonts.md).
 - Respect supplied-only/offline instructions and the scope of an edit. Preserve
   original files and earlier exports.
 - Use the requested language for slides and notes; keep proper names and code.

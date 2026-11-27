@@ -71,8 +71,9 @@ primitive shapes, the same card grid repeated, default-looking palettes (navy or
 misalignment, unattached labels, small text for the viewing setting. Skip what is
 already good; do not praise. No facts or content changes beyond presentation.
 
-Fixed project constraints (never suggest otherwise): fonts are {fonts}, with hierarchy
-from size, spacing and the available weights; a tinted ground is fine when it is the deck's
+Fixed project constraints (never suggest otherwise): font choice is open ({fonts}); suggest a
+different face only when it does not suit the script, register or requested style (Japanese text
+needs a Japanese face, not SimSun or DengXian); hierarchy from size, spacing and weights; a tinted ground is fine when it is the deck's
 declared background in deck-style.json (taken from its imagery or references), never a
 default off-white; slides stay native and editable.
 '''
@@ -243,16 +244,15 @@ class DesignCritique:
             fonts = deployment_defaults()
             prompt = PROMPT.format(pages='pages ' + ', '.join(map(str, pages)), brief=brief, references=ref_text, language=language, style=style,
                                    deck_plan=deck_plan, audience_check=audience_check, plans=plans,
-                                   fonts=f"{fonts['east_asian']} for Chinese and {fonts['latin']} for Latin text, plus DengXian (等线, "
-                                         f"light/regular/bold) and Arial for headings, numbers and display text")
+                                   fonts=f"defaults {fonts['east_asian']} for Chinese and {fonts['latin']} for Latin, DengXian and Arial for display")
             text = backend = None
-            # A second model's eye (2026-11-21): Claude critiques when available; GPT is the fallback.
-            if self.cfg.get('critique_backend') == 'claude':
-                import claude_vision
-                if claude_vision.available(self.cfg):
+            # A second model's eye (2026-11-21): the configured critique model answers when
+            # available; the author backend is the fallback.
+            import claude_vision
+            if claude_vision.available(self.cfg, 'critique'):
                     try:
-                        answer = claude_vision.ask(self.cfg, prompt, copies)
-                        text, backend = answer['text'][:20000], 'claude:' + answer['model']
+                        answer = claude_vision.ask(self.cfg, prompt, copies, slot='critique')
+                        text, backend = answer['text'][:20000], str(answer.get('adapter') or 'claude') + ':' + answer['model']
                         record(self.trajectory, 'emit', 'design_critique.claude', {'id': ident, 'usage': answer['usage'],
                                                                                    'seconds': answer['seconds']})
                     except claude_vision.ClaudeUnavailable as error:

@@ -45,7 +45,12 @@ the user's own figures) is never required. The author fills the user's own figur
 plausible illustrative values labelled on the page ("示例数字，非真实数据" / "Illustrative
 figure"); check that the label is present, the values are internally consistent and no
 external fact is invented, and suggest which values the user should replace. An
-unlabelled invented figure, or an invented external fact, is required. Wording that could be
+unlabelled invented figure, or an invented external fact, is required. When a requested
+structure needs facts the brief never gave ("one page per day" without the days, "the
+expected gain" without any basis), a deck restructured around what is known, with its
+assumption stated and the open question listed for the user, meets the request; do not
+require the missing facts. A frame kept and filled with unrelated or misleading content,
+or production notes shown to the audience ("No entry for this day"), is required. Wording that could be
 more precise, an inference that could be hedged better, or extra scholarly nuance is a
 suggestion. The first review is the complete pass: check every page's claims, map labels,
 picture callouts and question/answer pairs now and report all required issues together,
